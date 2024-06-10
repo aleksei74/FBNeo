@@ -149,6 +149,7 @@ BURN_BLACKLIST := $(ADSP2100_CPU_DIR)/2100ops.c \
 	$(CAPCOM_DIR)/ctv_make.cpp \
 	$(PGM_DIR)/pgm_sprite_create.cpp \
 	$(FBNEO_INTERFACE_DIR)/audio/aud_interface.cpp \
+	$(PST90S_DIR)/d_ngp.cpp \
 	$(ATARI_DIR)/WHATSNEW.txt.cpp
 
 ifeq ($(LIGHT), 1)
@@ -327,27 +328,18 @@ endif
 FBNEO_BURN_DRIVERS_DIRS := $(ATARI_DIR) \
 	$(CAPCOM_DIR) \
 	$(CAVE_DIR) \
-	$(CHANNELF_DIR) \
-	$(COLECO_DIR) \
 	$(CPS3_DIR) \
 	$(DATAEAST_DIR) \
 	$(GALAXIAN_DIR) \
 	$(IREM_DIR) \
 	$(KONAMI_DIR) \
-	$(MD_DIR) \
 	$(MIDWAY_DIR) \
-	$(MSX_DIR) \
 	$(NEOGEO_DIR) \
-	$(NES_DIR) \
-	$(PCE_DIR) \
 	$(PGM_DIR) \
 	$(PRE90S_DIR) \
 	$(PSIKYO_DIR) \
 	$(PST90S_DIR) \
 	$(SEGA_DIR) \
-	$(SG1000_DIR) \
-	$(SMS_DIR) \
-	$(SPECTRUM_DIR) \
 	$(TAITO_DIR) \
 	$(TOAPLAN_DIR) \
 	$(FBNEO_BURN_DRIVERS_DIR)
