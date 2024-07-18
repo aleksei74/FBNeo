@@ -18,6 +18,7 @@ static unsigned nMaxControllers = 0;
 static unsigned nDeviceType[MAX_PLAYERS];
 static unsigned nPerPlayerAxises[MAX_PLAYERS] = {0, };
 static int nLibretroInputBitmask[MAX_PLAYERS];
+static int nLibretroTouchCount[MAX_PLAYERS];
 static std::vector<retro_input_descriptor> normal_input_descriptors;
 static struct KeyBind sKeyBinds[MAX_KEYBINDS];
 static struct AxiBind sAxiBinds[MAX_PLAYERS*MAX_AXISES];
@@ -323,14 +324,19 @@ INT32 GameInpInit()
 
 static inline int input_cb_wrapper(unsigned port, unsigned device, unsigned index, unsigned id)
 {
-	if (bLibretroSupportsBitmasks && device == RETRO_DEVICE_JOYPAD)
-	{
+	if (bLibretroSupportsBitmasks && device == RETRO_DEVICE_JOYPAD) {
 		if (nLibretroInputBitmask[port] == -1)
 			nLibretroInputBitmask[port] = input_cb(port, RETRO_DEVICE_JOYPAD, index, RETRO_DEVICE_ID_JOYPAD_MASK);
 		return (nLibretroInputBitmask[port] & (1 << id));
 	}
-	else
+	else if (device == RETRO_DEVICE_POINTER && id == RETRO_DEVICE_ID_POINTER_COUNT) {
+		if (nLibretroTouchCount[port] == -1)
+			nLibretroTouchCount[port] = input_cb(port, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_COUNT);
+		return nLibretroTouchCount[port];
+	}
+	else {
 		return input_cb(port, device, index, id);
+	}
 }
 
 // Deadzone when faking digital controls through analog sticks
@@ -460,6 +466,15 @@ static inline void CinpDirectCoord(int port, int axis)
 			if (sAxiBinds[axis].id == RETRO_DEVICE_ID_POINTER_X) pointerValues[port][0] = (INT32)(width * (double(val)/double(0x10000)));
 			else if (sAxiBinds[axis].id == RETRO_DEVICE_ID_POINTER_Y) pointerValues[port][1] = (INT32)(height * (double(val)/double(0x10000)));
 		}
+		else if (nDeviceType[port] == RETRO_DEVICE_TOUCHSCREEN)
+		{
+			unsigned pressed = input_cb_wrapper(port, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
+			if (pressed)
+			{
+				if (sAxiBinds[axis].id == RETRO_DEVICE_ID_POINTER_X) pointerValues[port][0] = (INT32)(width * (double(val)/double(0x10000)));
+				else if (sAxiBinds[axis].id == RETRO_DEVICE_ID_POINTER_Y) pointerValues[port][1] = (INT32)(height * (double(val)/double(0x10000)));
+			}
+		}
 		else if (nDeviceType[port] == RETROARCADE_GUN)
 		{
 			if (sAxiBinds[axis].id == RETRO_DEVICE_ID_ANALOG_X) pointerValues[port][0] = (INT32)(width * (double(val)/double(0x10000)));
@@ -477,10 +492,20 @@ static inline int CinpMouseAxis(int port, int axis)
 	return input_cb_wrapper(port, RETRO_DEVICE_MOUSE, 0, sAxiBinds[axis].id);
 }
 
+static inline int CinpTouch(int nCode)
+{
+	unsigned count = input_cb_wrapper(sKeyBinds[nCode].port, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_COUNT);
+
+	if (count > 0 && count <= 4)
+		return (count == sKeyBinds[nCode].id);
+
+	return 0;
+}
+
 // Analog to analog mapping
 static INT32 GameInpAnalog2RetroInpAnalog(struct GameInp* pgi, unsigned port, unsigned id, int index, char *szn, UINT8 nInput = GIT_JOYAXIS_FULL, INT32 nSliderValue = 0x8000, INT16 nSliderSpeed = 0x0800, INT16 nSliderCenter = 10)
 {
-	if(bButtonMapped || !(pgi->nType & BIT_GROUP_ANALOG)) return 0;
+	if (bButtonMapped || !(pgi->nType & BIT_GROUP_ANALOG)) return 0;
 	if (!bInputInitialized) {
 		// It shouldn't hurt to set both even if we are only gonna use one at once
 		// note : in this port, there is no benefit from making a difference between JoyAxis and MouseAxis ? maybe we should forget about using gameinp.h's structs and define something more "unified" for this port
@@ -557,9 +582,9 @@ static INT32 GameInpAnalog2RetroInpAnalog(struct GameInp* pgi, unsigned port, un
 // Digital to digital mapping
 static INT32 GameInpDigital2RetroInpKey(struct GameInp* pgi, unsigned port, unsigned id, char *szn, unsigned device = RETRO_DEVICE_JOYPAD, unsigned nInput = GIT_SWITCH)
 {
-	if(bButtonMapped || pgi->nType != BIT_DIGITAL) return 0;
+	if (bButtonMapped || pgi->nType != BIT_DIGITAL) return 0;
 	pgi->nInput = nInput;
-	if(nInput == GIT_SWITCH)
+	if (nInput == GIT_SWITCH)
 	{
 		if (!bInputInitialized) {
 			pgi->Input.Switch.nCode = (UINT16)(nSwitchCode++);
@@ -570,7 +595,7 @@ static INT32 GameInpDigital2RetroInpKey(struct GameInp* pgi, unsigned port, unsi
 		sKeyBinds[pgi->Input.Switch.nCode].device = device;
 		sKeyBinds[pgi->Input.Switch.nCode].index = -1;
 	}
-	if(nInput == GIT_MACRO_AUTO)
+	if (nInput == GIT_MACRO_AUTO)
 	{
 		if (!bInputInitialized) {
 			pgi->Macro.Switch.nCode = (UINT16)(nSwitchCode++);
@@ -619,7 +644,7 @@ static INT32 GameInpDigital2RetroInpKey(struct GameInp* pgi, unsigned port, unsi
 // szn is the descriptor text
 static INT32 GameInpDigital2RetroInpAnalogRight(struct GameInp* pgi, unsigned port, unsigned id, unsigned position, char *szn)
 {
-	if(bButtonMapped || pgi->nType != BIT_DIGITAL) return 0;
+	if (bButtonMapped || pgi->nType != BIT_DIGITAL) return 0;
 	pgi->nInput = GIT_SWITCH;
 	if (!bInputInitialized) {
 		pgi->Input.Switch.nCode = (UINT16)(nSwitchCode++);
@@ -640,6 +665,24 @@ static INT32 GameInpDigital2RetroInpAnalogRight(struct GameInp* pgi, unsigned po
 		descriptor.description = szn;
 		normal_input_descriptors.push_back(descriptor);
 	}
+	bButtonMapped = true;
+	return 0;
+}
+
+// Digital to digital mapping
+static INT32 GameInpDigital2RetroTouchEvent(struct GameInp* pgi, unsigned port, unsigned count, char *szn)
+{
+	if (bButtonMapped || pgi->nType != BIT_DIGITAL) return 0;
+	pgi->nInput = GIT_TOUCH;
+	if (!bInputInitialized) {
+		pgi->Input.Switch.nCode = (UINT16)(nSwitchCode++);
+		HandleMessage(RETRO_LOG_DEBUG, "[FBNeo] nSwitchCode 0x%02X : P%d %s\n", pgi->Input.Switch.nCode, port+1, szn);
+	}
+	sKeyBinds[pgi->Input.Switch.nCode].id = count;
+	sKeyBinds[pgi->Input.Switch.nCode].port = port;
+	sKeyBinds[pgi->Input.Switch.nCode].device = RETRO_DEVICE_POINTER;
+	sKeyBinds[pgi->Input.Switch.nCode].index = 0;
+	// No retro_input_descriptor for touch events ?
 	bButtonMapped = true;
 	return 0;
 }
@@ -685,7 +728,7 @@ static INT32 GameInpSpecialOne(struct GameInp* pgi, INT32 nPlayer, char* szb, ch
 	}
 
 	// After handling super special case(s), we can handle generic pointer/lightgun/mouse logic
-	if (nDeviceType[nPlayer] == RETRO_DEVICE_POINTER && BurnGunIsActive()) {
+	if ((nDeviceType[nPlayer] == RETRO_DEVICE_POINTER || nDeviceType[nPlayer] == RETRO_DEVICE_TOUCHSCREEN) && BurnGunIsActive()) {
 		if (strcmp("x-axis", szb) == 0) {
 			GameInpAnalog2RetroInpAnalog(pgi, nPlayer, RETRO_DEVICE_ID_POINTER_X, 0, description, GIT_DIRECT_COORD);
 		}
@@ -770,6 +813,21 @@ static INT32 GameInpSpecialOne(struct GameInp* pgi, INT32 nPlayer, char* szb, ch
 			if (strcmp("fire 5", szb) == 0) {
 				GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_MOUSE_BUTTON_5, description, RETRO_DEVICE_MOUSE);
 			}
+		}
+	}
+
+	if (nDeviceType[nPlayer] == RETRO_DEVICE_TOUCHSCREEN && BurnGunIsActive()) {
+		if (strcmp("fire 1", szb) == 0 || strcmp("button 1", szb) == 0 || strcmp("button", szb) == 0) {
+			GameInpDigital2RetroTouchEvent(pgi, nPlayer, 1, description);
+		}
+		if (strcmp("fire 2", szb) == 0 || strcmp("button 2", szb) == 0) {
+			GameInpDigital2RetroTouchEvent(pgi, nPlayer, 2, description);
+		}
+		if (strcmp("fire 3", szb) == 0) {
+			GameInpDigital2RetroTouchEvent(pgi, nPlayer, 3, description);
+		}
+		if (strcmp("fire 4", szb) == 0) {
+			GameInpDigital2RetroTouchEvent(pgi, nPlayer, 4, description);
 		}
 	}
 
@@ -1941,13 +1999,13 @@ static INT32 GameInpSpecialOne(struct GameInp* pgi, INT32 nPlayer, char* szb, ch
 	}
 	if (bIsNeogeoCartGame || (nGameType == RETRO_GAME_TYPE_NEOCD)) {
 		if (strncmp("Buttons ABC", description, 11) == 0)
-			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_4TH_COL_BOTTOM, description, RETRO_DEVICE_JOYPAD, GIT_MACRO_AUTO);
+			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_FIRE07, description, RETRO_DEVICE_JOYPAD, GIT_MACRO_AUTO);
 		if (strncmp("Buttons BCD", description, 11) == 0)
-			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_4TH_COL_TOP, description, RETRO_DEVICE_JOYPAD, GIT_MACRO_AUTO);
+			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_FIRE08, description, RETRO_DEVICE_JOYPAD, GIT_MACRO_AUTO);
 		if (strncmp("Buttons AB", description, 10) == 0)
-			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_3RD_COL_BOTTOM, description, RETRO_DEVICE_JOYPAD, GIT_MACRO_AUTO);
+			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_FIRE05, description, RETRO_DEVICE_JOYPAD, GIT_MACRO_AUTO);
 		if (strncmp("Buttons CD", description, 10) == 0)
-			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_3RD_COL_TOP, description, RETRO_DEVICE_JOYPAD, GIT_MACRO_AUTO);
+			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_FIRE06, description, RETRO_DEVICE_JOYPAD, GIT_MACRO_AUTO);
 	}
 
 	// Handle megadrive
@@ -2839,13 +2897,14 @@ void SetControllerInfo()
 	} else {
 		// For anything else, let's use standard device handling for now
 		static const struct retro_controller_description controller_description[] = {
-			{ "Classic", RETROPAD_CLASSIC },
-			{ "Modern", RETROPAD_MODERN },
-			{ "6-Button Panel", RETROPAD_6PANEL },
+			{ "Classic",           RETROPAD_CLASSIC },
+			{ "Modern",            RETROPAD_MODERN },
+			{ "6-Button Panel",    RETROPAD_6PANEL },
 			{ "Mouse (ball only)", RETROMOUSE_BALL },
-			{ "Mouse (full)", RETROMOUSE_FULL },
-			{ "Pointer", RETRO_DEVICE_POINTER },
-			{ "Lightgun", RETRO_DEVICE_LIGHTGUN },
+			{ "Mouse (full)",      RETROMOUSE_FULL },
+			{ "Pointer",           RETRO_DEVICE_POINTER },
+			{ "Touchscreen",       RETRO_DEVICE_TOUCHSCREEN },
+			{ "Lightgun",          RETRO_DEVICE_LIGHTGUN },
 			{ "Analog Arcade Gun", RETROARCADE_GUN }
 		};
 
@@ -3062,8 +3121,10 @@ void InputMake(void)
 	// make sure controllers are properly set before polling
 	RefreshControllers();
 
-	for (int i = 0; i < MAX_PLAYERS; i++)
+	for (int i = 0; i < MAX_PLAYERS; i++) {
 		nLibretroInputBitmask[i] = -1;
+		nLibretroTouchCount[i] = -1;
+	}
 
 	poll_cb();
 
@@ -3169,6 +3230,11 @@ void InputMake(void)
 			case GIT_DIRECT_COORD:
 				CinpDirectCoord(pgi->Input.MouseAxis.nMouse, pgi->Input.MouseAxis.nAxis);
 				break;
+			case GIT_TOUCH: {
+				pgi->Input.nVal = CinpTouch(pgi->Input.Switch.nCode);
+				*(pgi->Input.pVal) = pgi->Input.nVal;
+				break;
+			}
 		}
 	}
 
@@ -3186,10 +3252,10 @@ void InputMake(void)
 void RefreshLightgunCrosshair()
 {
 	if ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_NES)
-		bBurnGunHide[0] = (nLightgunCrosshairEmulation == 0 && nDeviceType[1] == RETRO_DEVICE_LIGHTGUN) || (nLightgunCrosshairEmulation == 1);
+		bBurnGunHide[0] = (nLightgunCrosshairEmulation == 0 && (nDeviceType[1] == RETRO_DEVICE_LIGHTGUN || nDeviceType[1] == RETRO_DEVICE_TOUCHSCREEN)) || (nLightgunCrosshairEmulation == 1);
 	else
 		for (int i = 0; i < MAX_GUNS; i++)
-			bBurnGunHide[i] = (nLightgunCrosshairEmulation == 0 && nDeviceType[i] == RETRO_DEVICE_LIGHTGUN) || (nLightgunCrosshairEmulation == 1);
+			bBurnGunHide[i] = (nLightgunCrosshairEmulation == 0 && (nDeviceType[i] == RETRO_DEVICE_LIGHTGUN || nDeviceType[i] == RETRO_DEVICE_TOUCHSCREEN)) || (nLightgunCrosshairEmulation == 1);
 }
 
 void InputInit()
@@ -3271,6 +3337,7 @@ void retro_set_controller_port_device(unsigned port, unsigned device)
 				device != RETROMOUSE_BALL &&
 				device != RETROMOUSE_FULL &&
 				device != RETRO_DEVICE_POINTER &&
+				device != RETRO_DEVICE_TOUCHSCREEN &&
 				device != RETRO_DEVICE_LIGHTGUN &&
 				device != RETROARCADE_GUN)
 			{
