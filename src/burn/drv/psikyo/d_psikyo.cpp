@@ -501,7 +501,7 @@ static struct BurnDIPInfo s1945DIPList[] = {
 	{0x15,	0x01, 0x80,	0x80, "Continue mode"				},
 
 	// DIP 2
-	{0,		0xFE, 0,	2,	  "Screen Reverse"				},
+	{0,		0xFE, 0,	2,	  "Screen reverse"				},
 	{0x16,	0x01, 0x01,	0x00, "Normal"						},
 	{0x16,	0x01, 0x01,	0x01, "Reverse"						},
 
@@ -581,7 +581,7 @@ static struct BurnDIPInfo tengaiDIPList[] = {
 	{0x15,	0x00, 0xFF, 0xFF, NULL							},
 
 	// DIP 2
-	{0,		0xFE, 0,	2, 	  "Screen Reverse"				},
+	{0,		0xFE, 0,	2, 	  "Screen reverse"				},
 	{0x16,	0x01, 0x01,	0x00, "Normal screen"				},
 	{0x16,	0x01, 0x01,	0x01, "Invert screen"				},
 

@@ -1545,31 +1545,31 @@ STDINPUTINFO(Sf2ceuabl)
 
 static struct BurnInputInfo SfzchInputList[] =
 {
-	{"P1 Pause"         , BIT_DIGITAL  , CpsInp018+2, "p1 coin"   },
+	{"P1 Pause"            , BIT_DIGITAL  , CpsInp018+2, "p1 pause"  },
 	{"P1 Start"         , BIT_DIGITAL  , CpsInp018+4, "p1 start"  },
 	{"P1 Up"            , BIT_DIGITAL  , CpsInp001+3, "p1 up"     },
 	{"P1 Down"          , BIT_DIGITAL  , CpsInp001+2, "p1 down"   },
 	{"P1 Left"          , BIT_DIGITAL  , CpsInp001+1, "p1 left"   },
 	{"P1 Right"         , BIT_DIGITAL  , CpsInp001+0, "p1 right"  },
-	{"P1 Weak Punch"    , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
-	{"P1 Medium Punch"  , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
-	{"P1 Strong Punch"  , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
-	{"P1 Weak Kick"     , BIT_DIGITAL  , CpsInp001+7, "p1 fire 4" },
-	{"P1 Medium Kick"   , BIT_DIGITAL  , CpsInp018+0, "p1 fire 5" },
-	{"P1 Strong Kick"   , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
+	{"P1 Weak Punch (L)"   , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
+	{"P1 Medium Punch (X)" , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
+	{"P1 Strong Punch (R)" , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
+	{"P1 Weak Kick (Y)"    , BIT_DIGITAL  , CpsInp001+7, "p1 fire 4" },
+	{"P1 Medium Kick (B)"  , BIT_DIGITAL  , CpsInp018+0, "p1 fire 5" },
+	{"P1 Strong Kick (A)"  , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
 
-	{"P2 Pause"         , BIT_DIGITAL  , CpsInp018+3, "p2 coin"   },
+	{"P2 Pause"            , BIT_DIGITAL  , CpsInp018+3, "p2 pause"  },
 	{"P2 Start"         , BIT_DIGITAL  , CpsInp018+5, "p2 start"  },
 	{"P2 Up"            , BIT_DIGITAL  , CpsInp000+3, "p2 up"     },
 	{"P2 Down"          , BIT_DIGITAL  , CpsInp000+2, "p2 down"   },
 	{"P2 Left"          , BIT_DIGITAL  , CpsInp000+1, "p2 left"   },
 	{"P2 Right"         , BIT_DIGITAL  , CpsInp000+0, "p2 right"  },
-	{"P2 Weak Punch"    , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
-	{"P2 Medium Punch"  , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
-	{"P2 Strong Punch"  , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
-	{"P2 Weak Kick"     , BIT_DIGITAL  , CpsInp000+7, "p2 fire 4" },
-	{"P2 Medium Kick"   , BIT_DIGITAL  , CpsInp018+1, "p2 fire 5" },
-	{"P2 Strong Kick"   , BIT_DIGITAL  , CpsInp018+7, "p2 fire 6" },
+	{"P2 Weak Punch (L)"   , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
+	{"P2 Medium Punch (X)" , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
+	{"P2 Strong Punch (R)" , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
+	{"P2 Weak Kick (Y)"    , BIT_DIGITAL  , CpsInp000+7, "p2 fire 4" },
+	{"P2 Medium Kick (B)"  , BIT_DIGITAL  , CpsInp018+1, "p2 fire 5" },
+	{"P2 Strong Kick (A)"  , BIT_DIGITAL  , CpsInp018+7, "p2 fire 6" },
 
 	{"Reset"            , BIT_DIGITAL  , &CpsReset  , "reset"     },
 };
@@ -1843,31 +1843,31 @@ STDINPUTINFO(Wof)
 
 static struct BurnInputInfo WofchInputList[] =
 {
-	{"P1 Pause"         , BIT_DIGITAL  , CpsInp018+2, "p1 coin"   },
+	{"P1 Pause"         , BIT_DIGITAL  , CpsInp018+2, "p1 pause"  },
 	{"P1 Start"         , BIT_DIGITAL  , CpsInp018+4, "p1 start"  },
 	{"P1 Up"            , BIT_DIGITAL  , CpsInp001+3, "p1 up"     },
 	{"P1 Down"          , BIT_DIGITAL  , CpsInp001+2, "p1 down"   },
 	{"P1 Left"          , BIT_DIGITAL  , CpsInp001+1, "p1 left"   },
 	{"P1 Right"         , BIT_DIGITAL  , CpsInp001+0, "p1 right"  },
-	{"P1 Attack"        , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
-	{"P1 Jump"          , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
-	{"P1 Fire"          , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
-	{"P1 Fire 4"        , BIT_DIGITAL  , CpsInp001+7, "p1 fire 4" },
-	{"P1 Fire 5"        , BIT_DIGITAL  , CpsInp018+0, "p1 fire 5" },
-	{"P1 Fire 6"        , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
+	{"P1 Attack (L)"    , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
+	{"P1 Jump (X)"      , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
+	{"P1 Special (R)"   , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
+	{"P1 Fire 4 (Y)"    , BIT_DIGITAL  , CpsInp001+7, "p1 fire 4" },
+	{"P1 Fire 5 (B)"    , BIT_DIGITAL  , CpsInp018+0, "p1 fire 5" },
+	{"P1 Fire 6 (A)"    , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
 
-	{"P2 Pause"         , BIT_DIGITAL  , CpsInp018+3, "p2 coin"   },
+	{"P2 Pause"         , BIT_DIGITAL  , CpsInp018+3, "p2 pause"  },
 	{"P2 Start"         , BIT_DIGITAL  , CpsInp018+5, "p2 start"  },
 	{"P2 Up"            , BIT_DIGITAL  , CpsInp000+3, "p2 up"     },
 	{"P2 Down"          , BIT_DIGITAL  , CpsInp000+2, "p2 down"   },
 	{"P2 Left"          , BIT_DIGITAL  , CpsInp000+1, "p2 left"   },
 	{"P2 Right"         , BIT_DIGITAL  , CpsInp000+0, "p2 right"  },
-	{"P2 Attack"        , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
-	{"P2 Jump"          , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
-	{"P2 Fire"          , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
-	{"P2 Fire 4"        , BIT_DIGITAL  , CpsInp000+7, "p2 fire 4" },
-	{"P2 Fire 5"        , BIT_DIGITAL  , CpsInp018+1, "p2 fire 5" },
-	{"P2 Fire 6"        , BIT_DIGITAL  , CpsInp018+7, "p2 fire 6" },
+	{"P2 Attack (L)"    , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
+	{"P2 Jump (X)"      , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
+	{"P2 Special (R)"   , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
+	{"P2 Fire 4 (Y)"    , BIT_DIGITAL  , CpsInp000+7, "p2 fire 4" },
+	{"P2 Fire 5 (B)"    , BIT_DIGITAL  , CpsInp018+1, "p2 fire 5" },
+	{"P2 Fire 6 (A)"    , BIT_DIGITAL  , CpsInp018+7, "p2 fire 6" },
 
 	{"Reset"            , BIT_DIGITAL  , &CpsReset,   "reset"     },
 };
@@ -2282,23 +2282,23 @@ STDINPUTINFOEXT(FfightVS,		Ffight,		VerSwitch  )
 #define CPS1_DIFFICULTY_1(dipval) \
 	{0   , 0xfe, 0   , 8   , "Difficulty"               }, \
 	{dipval, 0x01, 0x07, 0x00, "1 (Easiest)"            }, \
-	{dipval, 0x01, 0x07, 0x01, "2"                      }, \
-	{dipval, 0x01, 0x07, 0x02, "3"                      }, \
+	{dipval, 0x01, 0x07, 0x01, "2 (Easier)"             }, \
+	{dipval, 0x01, 0x07, 0x02, "3 (Easy)"               }, \
 	{dipval, 0x01, 0x07, 0x03, "4 (Normal)"             }, \
-	{dipval, 0x01, 0x07, 0x04, "5"                      }, \
-	{dipval, 0x01, 0x07, 0x05, "6"                      }, \
-	{dipval, 0x01, 0x07, 0x06, "7"                      }, \
+	{dipval, 0x01, 0x07, 0x04, "5 (Medium)"             }, \
+	{dipval, 0x01, 0x07, 0x05, "6 (Hard)"               }, \
+	{dipval, 0x01, 0x07, 0x06, "7 (Harder)"             }, \
 	{dipval, 0x01, 0x07, 0x07, "8 (Hardest)"            },
 	
 #define CPS1_DIFFICULTY_2(dipval) \
 	{0   , 0xfe, 0   , 8   , "Difficulty"               }, \
 	{dipval, 0x01, 0x07, 0x03, "1 (Easiest)"            }, \
-	{dipval, 0x01, 0x07, 0x02, "2"                      }, \
-	{dipval, 0x01, 0x07, 0x01, "3"                      }, \
+	{dipval, 0x01, 0x07, 0x02, "2 (Easier)"             }, \
+	{dipval, 0x01, 0x07, 0x01, "3 (Easy)"               }, \
 	{dipval, 0x01, 0x07, 0x00, "4 (Normal)"             }, \
-	{dipval, 0x01, 0x07, 0x04, "5"                      }, \
-	{dipval, 0x01, 0x07, 0x05, "6"                      }, \
-	{dipval, 0x01, 0x07, 0x06, "7"                      }, \
+	{dipval, 0x01, 0x07, 0x04, "5 (Medium)"             }, \
+	{dipval, 0x01, 0x07, 0x05, "6 (Hard)"               }, \
+	{dipval, 0x01, 0x07, 0x06, "7 (Harder)"             }, \
 	{dipval, 0x01, 0x07, 0x07, "8 (Hardest)"            },
 
 static struct BurnDIPInfo NTFODIPList[]=
@@ -22756,7 +22756,7 @@ struct BurnDriver BurnDrvCpsFfightbl = {
 
 struct BurnDriver BurnDrvCpsFfightbla = {
 	"ffightbla", "ffight", NULL, NULL, "1990",
-	"Final Fight (bootleg set 2 (with 2xYM2203 + 2xMSM5205), World))\0", NULL, "bootleg", "CPS1",
+	"Final Fight (bootleg set 2 (with 2xYM2203 + 2xMSM5205), World)\0", NULL, "bootleg", "CPS1",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
 	NULL, FfightblaRomInfo, FfightblaRomName, NULL, NULL, NULL, NULL, FfightInputInfo, FfightDIPInfo,

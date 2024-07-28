@@ -11196,7 +11196,7 @@ static INT32 samsh5spInit()
 struct BurnDriver BurnDrvSamsh5sp = {
 	"samsh5sp", NULL, "neogeo", NULL, "2004",
 	"Samurai Shodown V Special / Samurai Spirits Zero Special (NGM-2720)\0", NULL, "Yuki Enterprise / SNK Playmore", "Neo Geo MVS",
-	L"Samurai Shodown V Special\0\u30B5\u30E0\u30E9\u30A4\u30B9\u30D4\u30EA\u30C3\u30C4\u96F6 Special  (NGM-2720)\0", NULL, NULL, NULL,
+	L"Samurai Shodown V Special\0\u30B5\u30E0\u30E9\u30A4\u30B9\u30D4\u30EA\u30C3\u30C4\u96F6 Special (NGM-2720)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_SAMSHO,
 	NULL, samsh5spRomInfo, samsh5spRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	samsh5spInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
@@ -16498,10 +16498,10 @@ struct BurnDriver BurnDrvCakefght = {
 // Voltage Fighter - Gowcaizer / Choujin Gakuen Gowcaizer (Eternal, Hack)
 // Modified by jlima
 // https://www.ppxclub.com/forum.php?mod=viewthread&tid=724160
-// 20240411
+// 20240523
 
 static struct BurnRomInfo gowcaietRomDesc[] = {
-	{ "094-p1et.p1",	0x200000, 0xfe5df757, 1 | BRF_ESS | BRF_PRG },
+	{ "094-p1et.p1",	0x200000, 0x4236d373, 1 | BRF_ESS | BRF_PRG },
 
 	{ "094-s1.s1",		0x020000, 0x2f8748a2, 2 | BRF_GRA },
 
@@ -28082,6 +28082,36 @@ struct BurnDriver BurnDrvYoyoshkn = {
 	0x1000,	304, 224, 4, 3
 };
 
+
+// Soldier Girl Amazon (HB, IQ_132 port)
+
+static struct BurnRomInfo amazoneoRomDesc[] = {
+	{ "amazon-p1.p1",    0x020000, 0xF5F57B9D, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+
+	{ "amazon-s1.s1",    0x020000, 0x128166BB, 2 | BRF_GRA },           //  1 Text layer tiles
+
+	{ "amazon-c1.c1",    0x020000, 0x901C6AE1, 3 | BRF_GRA },           //  2 Sprite data
+	{ "amazon-c2.c2",    0x020000, 0xA02A8679, 3 | BRF_GRA },           //  3
+
+	{ "amazon-m1.m1",    0x010000, 0x681D2398, 4 | BRF_ESS | BRF_PRG }, //  4 Z80 code
+
+	{ "amazon-v1.v1",    0x200000, 0x1A1A886C, 5 | BRF_SND },           //  5 Sound data
+	{ "amazon-v2.v2",    0x200000, 0x86CADE60, 5 | BRF_SND },           //  6
+};
+
+STDROMPICKEXT(amazoneo, amazoneo, neogeo)
+STD_ROM_FN(amazoneo)
+
+struct BurnDriver BurnDrvamazoneo = {
+	"amazoneo", NULL, "neogeo", NULL, "2023",
+	"Soldier Girl Amazon Neo\0", NULL, "IQ_132", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_HOMEBREW, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_MISC, 0,
+	NULL, amazoneoRomInfo, amazoneoRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 224, 304, 3, 4
+};
+
 //========================
 // Add Korean Translation
 //========================
@@ -28115,6 +28145,41 @@ struct BurnDriver BurnDrvAofk = {
 	NULL, aofkRomInfo, aofkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// Samurai Shodown / Samurai Spirits (AES Uncensored Hack)
+/* AES VERSION */
+
+static struct BurnRomInfo samshouhRomDesc[] = {
+	{ "045-p1uh.p1",  0x100000, 0xf6920923, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
+	{ "045-p2.sp2",   0x080000, 0x38ee9ba9, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC534200
+
+	{ "045-s1.s1",    0x020000, 0x9142a4d3, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "045-c1.c1",    0x200000, 0x2e5873a4, 3 | BRF_GRA },           //  3 Sprite data 		/ TC5316200
+	{ "045-c2.c2",    0x200000, 0x04febb10, 3 | BRF_GRA },           //  4 					/ TC5316200
+	{ "045-c3.c3",    0x200000, 0xf3dabd1e, 3 | BRF_GRA },           //  5 					/ TC5316200
+	{ "045-c4.c4",    0x200000, 0x935c62f0, 3 | BRF_GRA },           //  6 					/ TC5316200
+	{ "045-c5.c5",    0x080000, 0xa2bb8284, 3 | BRF_GRA },           //  7 					/ TC534200
+	{ "045-c6.c6",    0x080000, 0x4fa71252, 3 | BRF_GRA },           //  8 					/ TC534200
+
+	{ "045-m1.m1",    0x020000, 0x95170640, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code 		/ TC531001
+
+	{ "045-v1.v1",    0x200000, 0x37f78a9b, 5 | BRF_SND },           // 10 Sound data 		/ TC5316200
+	{ "045-v2.v2",    0x200000, 0x568b20cf, 5 | BRF_SND },           // 11 					/ TC5316200
+};
+
+STDROMPICKEXT(samshouh, samshouh, neogeo)
+STD_ROM_FN(samshouh)
+
+struct BurnDriver BurnDrvSamShouh = {
+	"samshouh", "samsho", "neogeo", NULL, "2024",
+	"Samurai Shodown / Samurai Spirits (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samshouhRomInfo, samshouhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
 };
 
 // The King of Fighters '94 (Korean Translation)
@@ -28151,6 +28216,79 @@ struct BurnDriver BurnDrvKof94kr = {
 	NULL, kof94krRomInfo, kof94krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// The King of Fighters '94 (AES Uncensored Hack)
+
+static struct BurnRomInfo kof94uhRomDesc[] = {
+	{ "055-p1uh.p1",  0x200000, 0xbae7e4da, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ mask rom TC5316200
+
+	{ "055-s1.s1",    0x020000, 0x825976c1, 2 | BRF_GRA },           //  1 Text layer tiles / mask rom TC531000
+
+	{ "055-c1.c1",    0x200000, 0xb96ef460, 3 | BRF_GRA },           //  2 Sprite data 		/ mask rom TC5316200
+	{ "055-c2.c2",    0x200000, 0x15e096a7, 3 | BRF_GRA },           //  3 					/ mask rom TC5316200
+	{ "055-c3.c3",    0x200000, 0x54f66254, 3 | BRF_GRA },           //  4 					/ mask rom TC5316200
+	{ "055-c4.c4",    0x200000, 0x0b01765f, 3 | BRF_GRA },           //  5 					/ mask rom TC5316200
+	{ "055-c5.c5",    0x200000, 0xee759363, 3 | BRF_GRA },           //  6 					/ mask rom TC5316200
+	{ "055-c6.c6",    0x200000, 0x498da52c, 3 | BRF_GRA },           //  7 					/ mask rom TC5316200
+	{ "055-c7.c7",    0x200000, 0x62f66888, 3 | BRF_GRA },           //  8 					/ mask rom TC5316200
+	{ "055-c8.c8",    0x200000, 0xfe0a235d, 3 | BRF_GRA },           //  9 					/ mask rom TC5316200
+
+	{ "055-m1.m1",    0x020000, 0xf6e77cf5, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code 		/ mask rom TC531001
+
+	{ "055-v1.v1",    0x200000, 0x8889596d, 5 | BRF_SND },           // 11 Sound data 		/ mask rom TC5316200
+	{ "055-v2.v2",    0x200000, 0x25022b27, 5 | BRF_SND },           // 12 					/ mask rom TC5316200
+	{ "055-v3.v3",    0x200000, 0x83cf32c0, 5 | BRF_SND },           // 13 					/ mask rom TC5316200
+};
+
+STDROMPICKEXT(kof94uh, kof94uh, neogeo)
+STD_ROM_FN(kof94uh)
+
+struct BurnDriver BurnDrvKof94uh = {
+	"kof94uh", "kof94", "neogeo", NULL, "2024",
+	"The King of Fighters '94 (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof94uhRomInfo, kof94uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Samurai Shodown II / Shin Samurai Spirits - Haohmaru Jigokuhen (AES Uncensored Hack)
+
+static struct BurnRomInfo samsho2uhRomDesc[] = {
+	{ "063-p1uh.p1",  0x200000, 0x4cf271c7, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC5316200
+
+	{ "063-s1.s1",    0x020000, 0x64a5cd66, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "063-c1.c1",    0x200000, 0x86cd307c, 3 | BRF_GRA },           //  2 Sprite data		/ TC5316200
+	{ "063-c2.c2",    0x200000, 0xcdfcc4ca, 3 | BRF_GRA },           //  3 					/ TC5316200
+	{ "063-c3.c3",    0x200000, 0x7a63ccc7, 3 | BRF_GRA },           //  4 					/ TC5316200
+	{ "063-c4.c4",    0x200000, 0x751025ce, 3 | BRF_GRA },           //  5 					/ TC5316200
+	{ "063-c5.c5",    0x200000, 0x20d3a475, 3 | BRF_GRA },           //  6 					/ TC5316200
+	{ "063-c6.c6",    0x200000, 0xae4c0a88, 3 | BRF_GRA },           //  7 					/ TC5316200
+	{ "063-c7.c7",    0x200000, 0x2df3cbcf, 3 | BRF_GRA },           //  8 					/ TC5316200
+	{ "063-c8.c8",    0x200000, 0x1ffc6dfa, 3 | BRF_GRA },           //  9 					/ TC5316200
+
+	{ "063-m1.m1",    0x020000, 0x56675098, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code			/ TC531001
+
+	{ "063-v1.v1",    0x200000, 0x37703f91, 5 | BRF_SND },           // 11 Sound data		/ TC5316200
+	{ "063-v2.v2",    0x200000, 0x0142bde8, 5 | BRF_SND },           // 12 					/ TC5316200
+	{ "063-v3.v3",    0x200000, 0xd07fa5ca, 5 | BRF_SND },           // 13 					/ TC5316200
+	{ "063-v4.v4",    0x100000, 0x24aab4bb, 5 | BRF_SND },           // 14 					/ TC538200
+};
+
+STDROMPICKEXT(samsho2uh, samsho2uh, neogeo)
+STD_ROM_FN(samsho2uh)
+
+struct BurnDriver BurnDrvSamsho2uh = {
+	"samsho2uh", "samsho2", "neogeo", NULL, "2024",
+	"Samurai Shodown II / Shin Samurai Spirits - Haohmaru Jigokuhen (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Samurai Shodown II\0\u771F Samurai Spirits - \u8987\u738B\u4E38\u5730\u7344\u5909 (AES Uncensored Hack)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samsho2uhRomInfo, samsho2uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
 };
 
 // Windjammers / Flying Power Disc (Korean Translation)
@@ -28220,6 +28358,109 @@ struct BurnDriver BurnDrvKof95kr = {
 	NULL, kof95krRomInfo, kof95krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// The King of Fighters '95 (AES Uncensored Hack)
+
+static struct BurnRomInfo kof95uhRomDesc[] = {
+	{ "084-p1uh.p1",  0x200000, 0x3560dc75, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC5316200
+
+	{ "084-s1.s1",    0x020000, 0xde716f8a, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "084-c1.c1",    0x400000, 0xfe087e32, 3 | BRF_GRA },           //  2 Sprite data		/ TC5332202
+	{ "084-c2.c2",    0x400000, 0x07864e09, 3 | BRF_GRA },           //  3 					/ TC5332202
+	{ "084-c3.c3",    0x400000, 0xa4e65d1b, 3 | BRF_GRA },           //  4					/ TC5332202
+	{ "084-c4.c4",    0x400000, 0xc1ace468, 3 | BRF_GRA },           //  5 					/ TC5332202
+	{ "084-c5.c5",    0x200000, 0x8a2c1edc, 3 | BRF_GRA },           //  6 					/ TC5316200
+	{ "084-c6.c6",    0x200000, 0xf593ac35, 3 | BRF_GRA },           //  7 					/ TC5316200
+	{ "084-c7.c7",    0x100000, 0x9904025f, 3 | BRF_GRA },           //  8 					/ TC538200
+	{ "084-c8.c8",    0x100000, 0x78eb0f9b, 3 | BRF_GRA },           //  9 					/ TC538200
+
+	{ "084-m1.m1",    0x020000, 0x6f2d7429, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code			/ TC531001
+
+	{ "084-v1.v1",    0x400000, 0x84861b56, 5 | BRF_SND },           // 11 Sound data		/ TC5332201
+	{ "084-v2.v2",    0x200000, 0xb38a2803, 5 | BRF_SND },           // 12 					/ TC5316200
+	{ "084-v3.v3",    0x100000, 0xd683a338, 5 | BRF_SND },           // 13 					/ TC538200
+};
+
+STDROMPICKEXT(kof95uh, kof95uh, neogeo)
+STD_ROM_FN(kof95uh)
+
+struct BurnDriver BurnDrvKof95uh = {
+	"kof95uh", "kof95", "neogeo", NULL, "2024",
+	"The King of Fighters '95 (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof95uhRomInfo, kof95uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Samurai Shodown III / Samurai Spirits - Zankurou Musouken (AES Uncensored Hack)
+
+static struct BurnRomInfo samsho3uhRomDesc[] = {
+	{ "087-p1uh.p1",  0x100000, 0x6066e69f, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ mask rom TC538200
+	{ "087-p2.sp2",   0x200000, 0x9bbe27e0, 1 | BRF_ESS | BRF_PRG }, //  1 					/ mask rom TC5316200
+
+	{ "087-s1.s1",    0x020000, 0x74ec7d9f, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "087-c1.c1",    0x400000, 0x07a233bc, 3 | BRF_GRA },           //  3 Sprite data		/ TC5332202
+	{ "087-c2.c2",    0x400000, 0x7a413592, 3 | BRF_GRA },           //  4 					/ TC5332202
+	{ "087-c3.c3",    0x400000, 0x8b793796, 3 | BRF_GRA },           //  5 					/ TC5332202
+	{ "087-c4.c4",    0x400000, 0x728fbf11, 3 | BRF_GRA },           //  6 					/ TC5332202
+	{ "087-c5.c5",    0x400000, 0x172ab180, 3 | BRF_GRA },           //  7 					/ TC5332202
+	{ "087-c6.c6",    0x400000, 0x002ff8f3, 3 | BRF_GRA },           //  8 					/ TC5332202
+	{ "087-c7.c7",    0x100000, 0xae450e3d, 3 | BRF_GRA },           //  9 					/ TC538200
+	{ "087-c8.c8",    0x100000, 0xa9e82717, 3 | BRF_GRA },           // 10 					/ TC538200
+
+	{ "087-m1.m1",    0x020000, 0x8e6440eb, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/ TC531001
+
+	{ "087-v1.v1",    0x400000, 0x84bdd9a0, 5 | BRF_SND },           // 12 Sound data		/ TC5332201
+	{ "087-v2.v2",    0x200000, 0xac0f261a, 5 | BRF_SND },           // 13 					/ TC5316200
+};
+
+STDROMPICKEXT(samsho3uh, samsho3uh, neogeo)
+STD_ROM_FN(samsho3uh)
+
+struct BurnDriver BurnDrvSamSho3uh = {
+	"samsho3uh", "samsho3", "neogeo", NULL, "2024",
+	"Samurai Shodown III / Samurai Spirits - Zankurou Musouken (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Samurai Shodown III\0\u30B5\u30E0\u30E9\u30A4\u30B9\u30D4\u30EA\u30C3\u30C4 - \u65AC\u7D05\u90CE\u7121\u53CC\u5263 (AES Uncensored Hack)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samsho3uhRomInfo, samsho3uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Metal Slug - Super Vehicle-001 (AES Uncensored Hack)
+
+static struct BurnRomInfo msluguhRomDesc[] = {
+	{ "201-p1uh.p1",  0x200000, 0x63e59056, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC5316200
+
+	{ "201-s1.s1",    0x020000, 0x2f55958d, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "201-c1.c1",    0x400000, 0x72813676, 3 | BRF_GRA },           //  2 Sprite data		/ TC5332205
+	{ "201-c2.c2",    0x400000, 0x96f62574, 3 | BRF_GRA },           //  3 					/ TC5332205
+	{ "201-c3.c3",    0x400000, 0x5121456a, 3 | BRF_GRA },           //  4 					/ TC5332205
+	{ "201-c4.c4",    0x400000, 0xf4ad59a3, 3 | BRF_GRA },           //  5 					/ TC5332205
+
+	{ "201-m1.m1",    0x020000, 0xc28b3253, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code			/ TC531001
+
+	{ "201-v1.v1",    0x400000, 0x23d22ed1, 5 | BRF_SND },           //  7 Sound data		/ TC5332204
+	{ "201-v2.v2",    0x400000, 0x472cf9db, 5 | BRF_SND },           //  8 					/ TC5332204
+};
+
+STDROMPICKEXT(msluguh, msluguh, neogeo)
+STD_ROM_FN(msluguh)
+
+struct BurnDriver BurnDrvMsluguh = {
+	"msluguh", "mslug", "neogeo", NULL, "2024",
+	"Metal Slug - Super Vehicle-001 (AES Uncensored Hack)\0", NULL, "Nazca", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_RUNGUN, FBF_MSLUG,
+	NULL, msluguhRomInfo, msluguhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000,	304, 224, 4, 3
 };
 
 // Puzzle De Pon! (Korean Translation)
@@ -28322,6 +28563,41 @@ struct BurnDriver BurnDrvKof97kr = {
 	0x1000, 304, 224, 4, 3
 };
 
+// The King of Fighters '97 (AES Uncensored Hack)
+
+static struct BurnRomInfo kof97uhRomDesc[] = {
+	{ "232-p1uh.p1",  0x100000, 0x2ceeda58, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "232-p2.sp2",   0x400000, 0x158b23f6, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "232-s1.s1",    0x020000, 0x8514ecf5, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "232-c1.c1",    0x800000, 0x5f8bf0a1, 3 | BRF_GRA },           //  3 Sprite data
+	{ "232-c2.c2",    0x800000, 0xe4d45c81, 3 | BRF_GRA },           //  4
+	{ "232-c3.c3",    0x800000, 0x581d6618, 3 | BRF_GRA },           //  5
+	{ "232-c4.c4",    0x800000, 0x49bb1e68, 3 | BRF_GRA },           //  6
+	{ "232-c5.c5",    0x400000, 0x34fc4e51, 3 | BRF_GRA },           //  7
+	{ "232-c6.c6",    0x400000, 0x4ff4d47b, 3 | BRF_GRA },           //  8
+
+	{ "232-m1.m1",    0x020000, 0x45348747, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code
+
+	{ "232-v1.v1",    0x400000, 0x22a2b5b5, 5 | BRF_SND },           // 10 Sound data
+	{ "232-v2.v2",    0x400000, 0x2304e744, 5 | BRF_SND },           // 11
+	{ "232-v3.v3",    0x400000, 0x759eb954, 5 | BRF_SND },           // 12
+};
+
+STDROMPICKEXT(kof97uh, kof97uh, neogeo)
+STD_ROM_FN(kof97uh)
+
+struct BurnDriver BurnDrvKof97uh = {
+	"kof97uh", "kof97", "neogeo", NULL, "2024",
+	"The King of Fighters '97 (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof97uhRomInfo, kof97uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Puzzle De Pon! R! (Korean Translation)
 
 static struct BurnRomInfo puzzldrkRomDesc[] = {
@@ -28341,11 +28617,80 @@ STDROMPICKEXT(puzzldrk, puzzldrk, neogeo)
 STD_ROM_FN(puzzldrk)
 
 struct BurnDriver BurnDrvPuzzldrk = {
-	"puzzldrk", "puzzledp", "neogeo", NULL, "2006",
+	"puzzldrk", "puzzldpr", "neogeo", NULL, "2006",
 	"Puzzle De Pon! R! (Korean Translation)\0", NULL, "Taito (Visco license)", "Neo Geo MVS",
 	L"\uD37C\uC990 \uB4DC \uD3F0! R! (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Puzzle De Pon! R! (Korean Translation)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_PUZZLE, 0,
 	NULL, puzzldrkRomInfo, puzzldrkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Samurai Shodown IV - Amakusa's Revenge / Samurai Spirits - Amakusa Kourin (AES Uncensored Hack)
+
+static struct BurnRomInfo samsho4uhRomDesc[] = {
+	{ "222-p1uh.p1",  0x100000, 0xcb12f321, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/* TC538200 */
+	{ "222-p2.sp2",   0x400000, 0xb023cd8b, 1 | BRF_ESS | BRF_PRG }, //  1 					/* TC5332205 */
+
+	{ "222-s1.s1",    0x020000, 0x8d3d3bf9, 2 | BRF_GRA },           //  2 Text layer tiles /* TC531000 */
+
+	{ "222-c1.c1",    0x400000, 0x68f2ed95, 3 | BRF_GRA },           //  3 Sprite data		/* TC5332205 */
+	{ "222-c2.c2",    0x400000, 0xa6e9aff0, 3 | BRF_GRA },           //  4 					/* TC5332205 */
+	{ "222-c3.c3",    0x400000, 0xc91b40f4, 3 | BRF_GRA },           //  5 					/* TC5332205 */
+	{ "222-c4.c4",    0x400000, 0x359510a4, 3 | BRF_GRA },           //  6 					/* TC5332205 */
+	{ "222-c5.c5",    0x400000, 0x9cfbb22d, 3 | BRF_GRA },           //  7 					/* TC5332205 */
+	{ "222-c6.c6",    0x400000, 0x685efc32, 3 | BRF_GRA },           //  8 					/* TC5332205 */
+	{ "222-c7.c7",    0x400000, 0xd0f86f0d, 3 | BRF_GRA },           //  9 					/* TC5332205 */
+	{ "222-c8.c8",    0x400000, 0xadfc50e3, 3 | BRF_GRA },           // 10 					/* TC5332205 */
+
+	{ "222-m1.m1",    0x020000, 0x7615bc1b, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/* TC531001 */
+
+	{ "222-v1.v1",    0x400000, 0x7d6ba95f, 5 | BRF_SND },           // 12 Sound data		/* TC5332204 */
+	{ "222-v2.v2",    0x400000, 0x6c33bb5d, 5 | BRF_SND },           // 13 					/* TC5332204 */
+	{ "222-v3.v3",    0x200000, 0x831ea8c0, 5 | BRF_SND },           // 14 					/* TC5316200 */
+};
+
+STDROMPICKEXT(samsho4uh, samsho4uh, neogeo)
+STD_ROM_FN(samsho4uh)
+
+struct BurnDriver BurnDrvSamSho4uh = {
+	"samsho4uh", "samsho4", "neogeo", NULL, "2024",
+	"Samurai Shodown IV - Amakusa's Revenge / Samurai Spirits - Amakusa Kourin (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Samurai Shodown IV - Amakusa's Revenge\0\u30B5\u30E0\u30E9\u30A4\u30B9\u30D4\u30EA\u30C3\u30C4 - \u5929\u8349\u964D\u81E8 (AES Uncensored Hack)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samsho4uhRomInfo, samsho4uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
+// Metal Slug 2 - Super Vehicle-001/II (AES Uncensored Hack)
+
+static struct BurnRomInfo mslug2uhRomDesc[] = {
+	{ "241-p1uh.p1",  0x100000, 0x97d70cd6, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "241-p2.sp2",   0x200000, 0x38883f44, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "241-s1.s1",    0x020000, 0xf3d32f0f, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "241-c1.c1",    0x800000, 0x394b5e0d, 3 | BRF_GRA },           //  3 Sprite data
+	{ "241-c2.c2",    0x800000, 0xe5806221, 3 | BRF_GRA },           //  4
+	{ "241-c3.c3",    0x800000, 0x9f6bfa6f, 3 | BRF_GRA },           //  5
+	{ "241-c4.c4",    0x800000, 0x7d3e306f, 3 | BRF_GRA },           //  6
+
+	{ "241-m1.m1",    0x020000, 0x94520ebd, 4 | BRF_ESS | BRF_PRG }, //  7 Z80 code
+
+	{ "241-v1.v1",    0x400000, 0x99ec20e8, 5 | BRF_SND },           //  8 Sound data
+	{ "241-v2.v2",    0x400000, 0xecb16799, 5 | BRF_SND },           //  9
+};
+
+STDROMPICKEXT(mslug2uh, mslug2uh, neogeo)
+STD_ROM_FN(mslug2uh)
+
+struct BurnDriver BurnDrvMSlug2uh = {
+	"mslug2uh", "mslug2", "neogeo", NULL, "2024",
+	"Metal Slug 2 - Super Vehicle-001/II (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_RUNGUN, FBF_MSLUG,
+	NULL, mslug2uhRomInfo, mslug2uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -28384,6 +28729,44 @@ struct BurnDriver BurnDrvKof98kr = {
 	L"\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '98 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The King of Fighters '98 (Korean Translation)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_KOF,
 	NULL, kof98krRomInfo, kof98krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// The King of Fighters '98 - The Slugfest / King of Fighters '98 - Dream Match Never Ends (AES Uncensored Hack)
+
+static struct BurnRomInfo kof98uhRomDesc[] = {
+	{ "242-p1uh.p1",  0x100000, 0xdeec68bd, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "242-p2.sp2",   0x400000, 0x980aba4c, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "242-s1.s1",    0x020000, 0x7f7b4805, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "242-c1.c1",    0x800000, 0xe564ecd6, 3 | BRF_GRA },           //  3 Sprite data
+	{ "242-c2.c2",    0x800000, 0xbd959b60, 3 | BRF_GRA },           //  4
+	{ "242-c3.c3",    0x800000, 0x22127b4f, 3 | BRF_GRA },           //  5
+	{ "242-c4.c4",    0x800000, 0x0b4fa044, 3 | BRF_GRA },           //  6
+	{ "242-c5.c5",    0x800000, 0x9d10bed3, 3 | BRF_GRA },           //  7
+	{ "242-c6.c6",    0x800000, 0xda07b6a2, 3 | BRF_GRA },           //  8
+	{ "242-c7.c7",    0x800000, 0xf6d7a38a, 3 | BRF_GRA },           //  9
+	{ "242-c8.c8",    0x800000, 0xc823e045, 3 | BRF_GRA },           // 10
+
+	{ "242-mg1.m1",   0x040000, 0x4e7a6b1b, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code
+
+	{ "242-v1.v1",    0x400000, 0xb9ea8051, 5 | BRF_SND },           // 12 Sound data
+	{ "242-v2.v2",    0x400000, 0xcc11106e, 5 | BRF_SND },           // 13
+	{ "242-v3.v3",    0x400000, 0x044ea4e1, 5 | BRF_SND },           // 14
+	{ "242-v4.v4",    0x400000, 0x7985ea30, 5 | BRF_SND },           // 15
+};
+
+STDROMPICKEXT(kof98uh, kof98uh, neogeo)
+STD_ROM_FN(kof98uh)
+
+struct BurnDriver BurnDrvKof98uh = {
+	"kof98uh", "kof98", "neogeo", NULL, "2024",
+	"The King of Fighters '98 - The Slugfest / King of Fighters '98 - Dream Match Never Ends (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof98uhRomInfo, kof98uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -28445,6 +28828,41 @@ struct BurnDriver BurnDrvFlipshtk = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Metal Slug X - Super Vehicle-001 (AES Uncensored Hack)
+
+static struct BurnRomInfo mslugxuhRomDesc[] = {
+	{ "250-p1uh.p1",  0x100000, 0x580e42bf, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "250-p2.ep1",   0x400000, 0x1fda2e12, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "250-s1.s1",    0x020000, 0xfb6f441d, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "250-c1.c1",    0x800000, 0x09a52c6f, 3 | BRF_GRA },           //  3 Sprite data
+	{ "250-c2.c2",    0x800000, 0x31679821, 3 | BRF_GRA },           //  4
+	{ "250-c3.c3",    0x800000, 0xfd602019, 3 | BRF_GRA },           //  5
+	{ "250-c4.c4",    0x800000, 0x31354513, 3 | BRF_GRA },           //  6
+	{ "250-c5.c5",    0x800000, 0xa4b56124, 3 | BRF_GRA },           //  7
+	{ "250-c6.c6",    0x800000, 0x83e3e69d, 3 | BRF_GRA },           //  8
+
+	{ "250-m1.m1",    0x020000, 0xfd42a842, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code
+
+	{ "250-v1.v1",    0x400000, 0xc79ede73, 5 | BRF_SND },           // 10 Sound data
+	{ "250-v2.v2",    0x400000, 0xea9aabe1, 5 | BRF_SND },           // 11
+	{ "250-v3.v3",    0x200000, 0x2ca65102, 5 | BRF_SND },           // 12
+};
+
+STDROMPICKEXT(mslugxuh, mslugxuh, neogeo)
+STD_ROM_FN(mslugxuh)
+
+struct BurnDriver BurnDrvMSlugxuh = {
+	"mslugxuh", "mslugx", "neogeo", NULL, "2024",
+	"Metal Slug X - Super Vehicle-001 (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_RUNGUN, FBF_MSLUG,
+	NULL, mslugxuhRomInfo, mslugxuhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	mslugxInit, NeoExit, NeoFrame, NeoRender, mslugxScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // The King of Fighters '99 - Millennium Battle (Korean Translation)
 
 static struct BurnRomInfo kof99krRomDesc[] = {
@@ -28478,6 +28896,78 @@ struct BurnDriver BurnDrvKof99kr = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42, GBF_VSFIGHT, FBF_KOF,
 	NULL, kof99krRomInfo, kof99krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// The King of Fighters '99 - Millennium Battle (AES Uncensored Hack)
+
+static struct BurnRomInfo kof99uhRomDesc[] = {
+	{ "152-p1uh.p1",  0x100000, 0xf7a9ad54, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "152-p2.sp2",   0x400000, 0x274ef47a, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "251-c1.c1",    0x800000, 0x0f9e93fe, 3 | BRF_GRA },           //  2 Sprite data
+	{ "251-c2.c2",    0x800000, 0xe71e2ea3, 3 | BRF_GRA },           //  3
+	{ "251-c3.c3",    0x800000, 0x238755d2, 3 | BRF_GRA },           //  4
+	{ "251-c4.c4",    0x800000, 0x438c8b22, 3 | BRF_GRA },           //  5
+	{ "251-c5.c5",    0x800000, 0x0b0abd0a, 3 | BRF_GRA },           //  6
+	{ "251-c6.c6",    0x800000, 0x65bbf281, 3 | BRF_GRA },           //  7
+	{ "251-c7.c7",    0x800000, 0xff65f62e, 3 | BRF_GRA },           //  8
+	{ "251-c8.c8",    0x800000, 0x8d921c68, 3 | BRF_GRA },           //  9
+
+	{ "251-m1.m1",    0x020000, 0x5e74539c, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
+
+	{ "251-v1.v1",    0x400000, 0xef2eecc8, 5 | BRF_SND },           // 11 Sound data
+	{ "251-v2.v2",    0x400000, 0x73e211ca, 5 | BRF_SND },           // 12
+	{ "251-v3.v3",    0x400000, 0x821901da, 5 | BRF_SND },           // 13
+	{ "251-v4.v4",    0x200000, 0xb49e6178, 5 | BRF_SND },           // 14
+};
+
+STDROMPICKEXT(kof99uh, kof99uh, neogeo)
+STD_ROM_FN(kof99uh)
+
+struct BurnDriver BurnDrvKof99uh = {
+	"kof99uh", "kof99", "neogeo", NULL, "2024",
+	"The King of Fighters '99 - Millennium Battle (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof99uhRomInfo, kof99uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Metal Slug 3 (AES Uncensored Hack)
+
+static struct BurnRomInfo mslug3uhRomDesc[] = {
+	{ "256-p1uh.p1",  0x100000, 0xf94cac7d, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "256-ph2.sp2",  0x400000, 0x1f3d8ce8, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "256-c1.c1",    0x800000, 0x5a79c34e, 3 | BRF_GRA },           //  2 Sprite data 	/ TC5364202
+	{ "256-c2.c2",    0x800000, 0x944c362c, 3 | BRF_GRA },           //  3 				/ TC5364202
+	{ "256-c3.c3",    0x800000, 0x6e69d36f, 3 | BRF_GRA },           //  4 				/ TC5364202
+	{ "256-c4.c4",    0x800000, 0xb755b4eb, 3 | BRF_GRA },           //  5 				/ TC5364202
+	{ "256-c5.c5",    0x800000, 0x7aacab47, 3 | BRF_GRA },           //  6 				/ TC5364202
+	{ "256-c6.c6",    0x800000, 0xc698fd5d, 3 | BRF_GRA },           //  7 				/ TC5364202
+	{ "256-c7.c7",    0x800000, 0xcfceddd2, 3 | BRF_GRA },           //  8 				/ TC5364202
+	{ "256-c8.c8",    0x800000, 0x4d9be34c, 3 | BRF_GRA },           //  9 				/ TC5364202
+
+	{ "256-m1.m1",    0x080000, 0xeaeec116, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code		/ mask rom TC534000
+
+	{ "256-v1.v1",    0x400000, 0xf2690241, 5 | BRF_SND },           // 11 Sound data	/ TC5332204
+	{ "256-v2.v2",    0x400000, 0x7e2a10bd, 5 | BRF_SND },           // 12 				/ TC5332204
+	{ "256-v3.v3",    0x400000, 0x0eaec17c, 5 | BRF_SND },           // 13 				/ TC5332204
+	{ "256-v4.v4",    0x400000, 0x9b4b22d4, 5 | BRF_SND },           // 14 				/ TC5332204
+};
+
+STDROMPICKEXT(mslug3uh, mslug3uh, neogeo)
+STD_ROM_FN(mslug3uh)
+
+struct BurnDriver BurnDrvMslug3uh = {
+	"mslug3uh", "mslug3", "neogeo", NULL, "2024",
+	"Metal Slug 3 (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42, GBF_RUNGUN, FBF_MSLUG,
+	NULL, mslug3uhRomInfo, mslug3uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoSMAExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
 
@@ -28515,4 +29005,176 @@ struct BurnDriver BurnDrvKof2kkr = {
 	NULL, kof2kkrRomInfo, kof2kkrRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// The King of Fighters 2000 (AES Uncensored Hack)
+
+static struct BurnRomInfo kof2kuhRomDesc[] = {
+	{ "257-p1uh.p1",  0x100000, 0x6065ff07, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "257-pg2.sp2",  0x400000, 0x693c2c5e, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "257-c1.c1",    0x800000, 0xcef1cdfa, 3 | BRF_GRA },           //  2 Sprite data
+	{ "257-c2.c2",    0x800000, 0xf7bf0003, 3 | BRF_GRA },           //  3
+	{ "257-c3.c3",    0x800000, 0x101e6560, 3 | BRF_GRA },           //  4
+	{ "257-c4.c4",    0x800000, 0xbd2fc1b1, 3 | BRF_GRA },           //  5
+	{ "257-c5.c5",    0x800000, 0x89775412, 3 | BRF_GRA },           //  6
+	{ "257-c6.c6",    0x800000, 0xfa7200d5, 3 | BRF_GRA },           //  7
+	{ "257-c7.c7",    0x800000, 0x7da11fe4, 3 | BRF_GRA },           //  8
+	{ "257-c8.c8",    0x800000, 0xb1afa60b, 3 | BRF_GRA },           //  9
+
+	{ "257-m1.m1",    0x040000, 0x4b749113, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
+
+	{ "257-v1.v1",    0x400000, 0x17cde847, 5 | BRF_SND },           // 11 Sound data
+	{ "257-v2.v2",    0x400000, 0x1afb20ff, 5 | BRF_SND },           // 12
+	{ "257-v3.v3",    0x400000, 0x4605036a, 5 | BRF_SND },           // 13
+	{ "257-v4.v4",    0x400000, 0x764bbd6b, 5 | BRF_SND },           // 14
+};
+
+STDROMPICKEXT(kof2kuh, kof2kuh, neogeo)
+STD_ROM_FN(kof2kuh)
+
+struct BurnDriver BurnDrvKof2kuh = {
+	"kof2kuh", "kof2000", "neogeo", NULL, "2024",
+	"The King of Fighters 2000 (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ALTERNATE_TEXT | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof2kuhRomInfo, kof2kuhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000,	304, 224, 4, 3
+};
+
+// The King of Fighters 2001 (AES Uncensored Hack)
+
+static struct BurnRomInfo kof2k1uhRomDesc[] = {
+	{ "262-p1uh.p1",           0x100000, 0xacd32422, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "262-pg2.sp2",           0x400000, 0x91eea062, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "262-c1-08-e0.c1",       0x800000, 0x99cc785a, 3 | BRF_GRA },     //  2 Sprite data
+	{ "262-c2-08-e0.c2",       0x800000, 0x50368cbf, 3 | BRF_GRA },     //  3
+	{ "262-c3-08-e0.c3",       0x800000, 0xfb14ff87, 3 | BRF_GRA },     //  4
+	{ "262-c4-08-e0.c4",       0x800000, 0x4397faf8, 3 | BRF_GRA },     //  5
+	{ "262-c5-08-e0.c5",       0x800000, 0x91f24be4, 3 | BRF_GRA },     //  6
+	{ "262-c6-08-e0.c6",       0x800000, 0xa31e4403, 3 | BRF_GRA },     //  7
+	{ "262-c7-08-e0.c7",       0x800000, 0x54d9d1ec, 3 | BRF_GRA },     //  8
+	{ "262-c8-08-e0.c8",       0x800000, 0x59289a6b, 3 | BRF_GRA },     //  9
+
+	{ "265-262-m1.m1",         0x040000, 0xa7f8119f, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
+
+	{ "262-v1-08-e0.v1",       0x400000, 0x83d49ecf, 5 | BRF_SND },     // 11 Sound data
+	{ "262-v2-08-e0.v2",       0x400000, 0x003f1843, 5 | BRF_SND },     // 12
+	{ "262-v3-08-e0.v3",       0x400000, 0x2ae38dbe, 5 | BRF_SND },     // 13
+	{ "262-v4-08-e0.v4",       0x400000, 0x26ec4dd9, 5 | BRF_SND },     // 14
+};
+
+STDROMPICKEXT(kof2k1uh, kof2k1uh, neogeo)
+STD_ROM_FN(kof2k1uh)
+
+struct BurnDriver BurnDrvKof2k1uh = {
+	"kof2k1uh", "kof2001", "neogeo", NULL, "2024",
+	"The King of Fighters 2001 (AES Uncensored Hack)\0", NULL, "Eolith / SNK", "Neo Geo AES",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof2k1uhRomInfo, kof2k1uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Metal Slug 4 (AES Uncensored Hack)
+
+static struct BurnRomInfo mslug4uhRomDesc[] = {
+	{ "263-p1uh.p1",  0x100000, 0x17acb0c2, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "263-ph2.sp2",  0x400000, 0xbc3ec89e, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "263-c1.c1",    0x800000, 0x84865f8a, 3 | BRF_GRA },           //  2 Sprite data
+	{ "263-c2.c2",    0x800000, 0x81df97f2, 3 | BRF_GRA },           //  3
+	{ "263-c3.c3",    0x800000, 0x1a343323, 3 | BRF_GRA },           //  4
+	{ "263-c4.c4",    0x800000, 0x942cfb44, 3 | BRF_GRA },           //  5
+	{ "263-c5.c5",    0x800000, 0xa748854f, 3 | BRF_GRA },           //  6
+	{ "263-c6.c6",    0x800000, 0x5c8ba116, 3 | BRF_GRA },           //  7
+
+	{ "263-m1.m1",    0x020000, 0x46ac8228, 4 | BRF_ESS | BRF_PRG }, //  8 Z80 code
+
+	{ "263-v1.v1",    0x800000, 0x01e9b9cd, 5 | BRF_SND },           //  9 Sound data
+	{ "263-v2.v2",    0x800000, 0x4ab2bf81, 5 | BRF_SND },           // 10
+};
+
+STDROMPICKEXT(mslug4uh, mslug4uh, neogeo)
+STD_ROM_FN(mslug4uh)
+
+struct BurnDriver BurnDrvMslug4uh = {
+	"mslug4uh", "mslug4", "neogeo", NULL, "2024",
+	"Metal Slug 4 (AES Uncensored Hack)\0", NULL, "Mega / Noise Factory / Playmore", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ENCRYPTED_M1, GBF_RUNGUN, FBF_MSLUG,
+	NULL, mslug4uhRomInfo, mslug4uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	mslug4Init, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000,	304, 224, 4, 3
+};
+
+// The King of Fighters 2002 (AES Uncensored Hack)
+
+static struct BurnRomInfo kof2k2uhRomDesc[] = {
+	{ "265-p1uh.p1",  0x100000, 0xfcd121a9, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "265-p2.sp2",   0x400000, 0x327266b8, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "265-c1.c1",    0x800000, 0x2b65a656, 3 | BRF_GRA },           //  2 Sprite data
+	{ "265-c2.c2",    0x800000, 0xadf18983, 3 | BRF_GRA },           //  3
+	{ "265-c3.c3",    0x800000, 0x875e9fd7, 3 | BRF_GRA },           //  4
+	{ "265-c4.c4",    0x800000, 0x2da13947, 3 | BRF_GRA },           //  5
+	{ "265-c5.c5",    0x800000, 0x61bd165d, 3 | BRF_GRA },           //  6
+	{ "265-c6.c6",    0x800000, 0x03fdd1eb, 3 | BRF_GRA },           //  7
+	{ "265-c7.c7",    0x800000, 0x1a2749d8, 3 | BRF_GRA },           //  8
+	{ "265-c8.c8",    0x800000, 0xab0bb549, 3 | BRF_GRA },           //  9
+
+	{ "265-m1.m1",    0x020000, 0x85aaa632, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
+
+	{ "265-v1.v1",    0x800000, 0x15e8f3f5, 5 | BRF_SND },           // 11 Sound data
+	{ "265-v2.v2",    0x800000, 0xda41d6f9, 5 | BRF_SND },           // 12
+};
+
+STDROMPICKEXT(kof2k2uh, kof2k2uh, neogeo)
+STD_ROM_FN(kof2k2uh)
+
+struct BurnDriver BurnDrvKof2k2uh = {
+	"kof2k2uh", "kof2002", "neogeo", NULL, "2024",
+	"The King of Fighters 2002 (AES Uncensored Hack)\0", NULL, "Eolith / Playmore", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof2k2uhRomInfo, kof2k2uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	kof2002Init, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000,	304, 224, 4, 3
+};
+
+// Samurai Shodown V / Samurai Spirits Zero (AES Uncensored Hack)
+
+static struct BurnRomInfo samsho5uhRomDesc[] = {
+	{ "270-p1uh.p1",  0x400000, 0xf61c5723, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "270-p2c.sp2",  0x400000, 0x943a6b1d, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "270-c1.c1",    0x800000, 0x14ffffac, 3 | BRF_GRA },           //  2 Sprite data
+	{ "270-c2.c2",    0x800000, 0x401f7299, 3 | BRF_GRA },           //  3
+	{ "270-c3.c3",    0x800000, 0x838f0260, 3 | BRF_GRA },           //  4
+	{ "270-c4.c4",    0x800000, 0x041560a5, 3 | BRF_GRA },           //  5
+	{ "270-c5.c5",    0x800000, 0xbd30b52d, 3 | BRF_GRA },           //  6
+	{ "270-c6.c6",    0x800000, 0x86a69c70, 3 | BRF_GRA },           //  7
+	{ "270-c7.c7",    0x800000, 0xd28fbc3c, 3 | BRF_GRA },           //  8
+	{ "270-c8.c8",    0x800000, 0x02c530a6, 3 | BRF_GRA },           //  9
+
+	{ "270-m1.m1",    0x080000, 0x49c9901a, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
+
+	{ "270-v1.v1",    0x800000, 0x62e434eb, 5 | BRF_SND },           // 11 Sound data
+	{ "270-v2.v2",    0x800000, 0x180f3c9a, 5 | BRF_SND },           // 12
+};
+
+STDROMPICKEXT(samsho5uh, samsho5uh, neogeo)
+STD_ROM_FN(samsho5uh)
+
+struct BurnDriver BurnDrvSamsho5uh = {
+	"samsho5uh", "samsho5", "neogeo", NULL, "2024",
+	"Samurai Shodown V / Samurai Spirits Zero (AES Uncensored Hack)\0", NULL, "Yuki Enterprise / SNK Playmore", "Neo Geo MVS",
+	L"Samurai Shodown V\0\u30B5\u30E0\u30E9\u30A4\u30B9\u30D4\u30EA\u30C3\u30C4\u96F6 (AES Uncensored Hack)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samsho5uhRomInfo, samsho5uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	samsho5Init, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000,	304, 224, 4, 3
 };
