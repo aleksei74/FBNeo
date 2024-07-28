@@ -2069,10 +2069,10 @@ STD_ROM_PICK(Cybotsam)
 STD_ROM_FN(Cybotsam)
 
 static struct BurnRomInfo DdsomRomDesc[] = {
-	{ "dd2e.03e",      0x080000, 0x449361af, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
-	{ "dd2e.04e",      0x080000, 0x5b7052b6, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
-	{ "dd2e.05e",      0x080000, 0x788d5f60, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
-	{ "dd2e.06e",      0x080000, 0xe0807e1e, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "dd2e.03e",      0x080000, 0x449361AF, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "dd2e.04e",      0x080000, 0x5B7052B6, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "dd2e.05e",      0x080000, 0x788D5F60, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "dd2e.06e",      0x080000, 0xE0807E1E, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 	{ "dd2e.07",       0x080000, 0xbb777a02, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 	{ "dd2e.08",       0x080000, 0x30970890, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 	{ "dd2e.09",       0x080000, 0x99e2194d, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
@@ -12152,7 +12152,7 @@ STD_ROM_PICK(Ninexxd)
 STD_ROM_FN(Ninexxd)
 
 static struct BurnRomInfo Nine44dRomDesc[] = {
-	{ "nffud.03",      0x080000, 0x28e8aae4, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "nffud.03",      0x080000, 0x28E8AAE4, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 	{ "nff.04",        0x080000, 0xdba1C66e, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 	{ "nffu.05",       0x080000, 0xea813eb7, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 
@@ -12753,19 +12753,19 @@ static struct BurnRomInfo MpangjdRomDesc[] = {
 	{ "mpnj-pnx.03",   0x080000, 0xdac63128, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 	{ "mpnj-pnx.04",   0x080000, 0xd0b2592b, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 
-	{ "mpn-simm.01c",  0x200000, 0x388db66b, CPS2_GFX_SIMM | BRF_GRA },
-	{ "mpn-simm.01d",  0x200000, 0xaff1b494, CPS2_GFX_SIMM | BRF_GRA },
-	{ "mpn-simm.01a",  0x200000, 0xa9c4857b, CPS2_GFX_SIMM | BRF_GRA },
-	{ "mpn-simm.01b",  0x200000, 0xf759df22, CPS2_GFX_SIMM | BRF_GRA },
-	{ "mpn-simm.03c",  0x200000, 0xdec6b720, CPS2_GFX_SIMM | BRF_GRA },
-	{ "mpn-simm.03d",  0x200000, 0xf8774c18, CPS2_GFX_SIMM | BRF_GRA },
-	{ "mpn-simm.03a",  0x200000, 0xc2aea4ec, CPS2_GFX_SIMM | BRF_GRA },
-	{ "mpn-simm.03b",  0x200000, 0x84d6dc33, CPS2_GFX_SIMM | BRF_GRA },
+	{ "mpn-simm.01c",  0x200000, 0x388DB66B, CPS2_GFX_SIMM | BRF_GRA },
+	{ "mpn-simm.01d",  0x200000, 0xAFF1B494, CPS2_GFX_SIMM | BRF_GRA },
+	{ "mpn-simm.01a",  0x200000, 0xA9C4857B, CPS2_GFX_SIMM | BRF_GRA },
+	{ "mpn-simm.01b",  0x200000, 0xF759DF22, CPS2_GFX_SIMM | BRF_GRA },
+	{ "mpn-simm.03c",  0x200000, 0xDEC6B720, CPS2_GFX_SIMM | BRF_GRA },
+	{ "mpn-simm.03d",  0x200000, 0xF8774C18, CPS2_GFX_SIMM | BRF_GRA },
+	{ "mpn-simm.03a",  0x200000, 0xC2AEA4EC, CPS2_GFX_SIMM | BRF_GRA },
+	{ "mpn-simm.03b",  0x200000, 0x84D6DC33, CPS2_GFX_SIMM | BRF_GRA },
 
-	{ "mpn.01",        0x020000, 0x90c7adb6, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
+	{ "mpn.01",        0x020000, 0x90C7ADB6, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
 
-	{ "mpn-simm.05a",  0x200000, 0x318a2e21, CPS2_QSND_SIMM | BRF_SND },
-	{ "mpn-simm.05b",  0x200000, 0x5462f4e8, CPS2_QSND_SIMM | BRF_SND },
+	{ "mpn-simm.05a",  0x200000, 0x318A2E21, CPS2_QSND_SIMM | BRF_SND },
+	{ "mpn-simm.05b",  0x200000, 0x5462F4E8, CPS2_QSND_SIMM | BRF_SND },
 	
 	{ "phoenix.key",   0x000014, 0x2cf772b0, CPS2_ENCRYPTION_KEY },
 };
@@ -14485,7 +14485,7 @@ struct BurnDriver BurnDrvCpsXmvsfu1d = {
 
 // other bootlegs
 
-// Final Fight: Anniversary Edition (CPS2 hardware)
+// Final Fight Anniversary Edition (CPS2 hardware)
 // Grego and Gnawtor
 static struct BurnRomInfo Ffightaec2RomDesc[] = {
 	{ "ff-23m.8h",     0x080000, 0xb598d599, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
