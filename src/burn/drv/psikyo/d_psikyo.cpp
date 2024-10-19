@@ -501,7 +501,7 @@ static struct BurnDIPInfo s1945DIPList[] = {
 	{0x15,	0x01, 0x80,	0x80, "Continue mode"				},
 
 	// DIP 2
-	{0,		0xFE, 0,	2,	  "Screen reverse"				},
+	{0,		0xFE, 0,	2,	  "Screen Reverse"				},
 	{0x16,	0x01, 0x01,	0x00, "Normal"						},
 	{0x16,	0x01, 0x01,	0x01, "Reverse"						},
 
@@ -581,7 +581,7 @@ static struct BurnDIPInfo tengaiDIPList[] = {
 	{0x15,	0x00, 0xFF, 0xFF, NULL							},
 
 	// DIP 2
-	{0,		0xFE, 0,	2, 	  "Screen reverse"				},
+	{0,		0xFE, 0,	2, 	  "Screen Reverse"				},
 	{0x16,	0x01, 0x01,	0x00, "Normal screen"				},
 	{0x16,	0x01, 0x01,	0x01, "Invert screen"				},
 
@@ -684,18 +684,6 @@ static struct BurnDIPInfo tengaijRegionDIPList[] = {
 };
 
 STDDIPINFOEXT(tengaij, tengai, tengaijRegion)
-
-static struct BurnDIPInfo tengaikRegionDIPList[] = {
-	// Defaults
-	{0x17,	0xFF, 0xFF,	0x00, NULL							},
-
-	// Region
-	{0,		0xFE, 0,	2,	  "Region"						},
-	{0x17,	0x01, 0xFF,	0x00, "Korea"						},
-	{0x17,	0x01, 0xFF,	0x0F, "World"						},
-};
-
-STDDIPINFOEXT(tengaik, tengai, tengaikRegion)
 
 // ----------------------------------------------------------------------------
 // CPU synchronisation
@@ -2587,115 +2575,6 @@ struct BurnDriver BurnDrvTengaij = {
 	L"\u6226\u56FD\u30D6\u30EC\u30FC\u30C9 - sengoku Ace episode II (Japan)\0Tengai (World)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_HORSHOOT, 0,
 	NULL, tengaijRomInfo, tengaijRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, tengaijDIPInfo,
-	TengaiInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
-	320, 224, 4, 3
-};
-
-
-//========================
-// Add Korean Translation
-//========================
-
-
-// Sengoku Ace (Korean Translation)
-
-static struct BurnRomInfo sngkacekRomDesc[] = {
-	{ "1-u127k.bin",  0x040000, 0xf78906ff, 1 | BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "2-u126k.bin",  0x040000, 0xe5a51908, 1 | BRF_ESS | BRF_PRG }, //  1
-
-	{ "u14k.bin",     0x200000, 0x460c0b15, 3 | BRF_GRA },			 //  2 Sprite data
-
-	{ "u11.bin",      0x040000, 0x11a04d91, 7 | BRF_GRA },			 //  3 Sprite LUT
-
-	{ "u34.bin",      0x100000, 0xe6a75bd8, 4 | BRF_GRA },			 //  4 Tile data
-	{ "u35k.bin",     0x100000, 0x6eb5b9c6, 4 | BRF_GRA },			 //  5
-
-	{ "3-u58.bin",    0x020000, 0x310f5c76, 2 | BRF_ESS | BRF_PRG }, //  6 CPU #1 code
-
-	{ "u68.bin",      0x100000, 0x9a7f6c34, 6 | BRF_SND },			 //  7 YM2610 (delta-t) ADPCM data
-};
-
-STD_ROM_PICK(sngkacek)
-STD_ROM_FN(sngkacek)
-
-struct BurnDriver BurnDrvSngkAcek = {
-	"sngkacek", "samuraia", NULL, NULL, "2023",
-	"Sengoku Ace (Korean Translation)\0", NULL, "Psikyo (Banpresto license)", "Psikyo 68EC020",
-	L"\uC804\uAD6D \uC5D0\uC774\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Sengoku Ace (Korean Translation)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, sngkacekRomInfo, sngkacekRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, sngkaceDIPInfo,
-	SamuraiaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
-	224, 320, 3, 4
-};
-
-
-// Gunbird (Korean Translation)
-
-static struct BurnRomInfo gunbirdkaRomDesc[] = {
-	{ "1k.u46",       0x040000, 0x8066b6f3, 1 | BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "2k.u39",       0x040000, 0x0a425ce0, 1 | BRF_ESS | BRF_PRG }, //  1
-
-	{ "u14k.bin",     0x200000, 0xe143090a, 3 | BRF_GRA },			 //  2 Sprite data
-	{ "u24.bin",      0x200000, 0x5e3ffc9d, 3 | BRF_GRA },			 //  3
-	{ "u15k.bin",     0x200000, 0xe5f6bfb6, 3 | BRF_GRA },			 //  4
-	{ "u25k.bin",     0x100000, 0xcf571ff8, 3 | BRF_GRA },			 //  5
-
-	{ "u3.bin",       0x040000, 0x0905aeb2, 7 | BRF_GRA },			 //  6 Sprite LUT
-
-	{ "u33.bin",      0x200000, 0x54494e6b, 4 | BRF_GRA },			 //  7 Tile data
-
-	{ "3.u71",        0x020000, 0x2168e4ba, 2 | BRF_ESS | BRF_PRG }, //  8 CPU #1 code
-
-	{ "u64.bin",      0x080000, 0xe187ed4f, 5 | BRF_SND },			 //  9 YM2610 ADPCM (delta-t) data
-
-	{ "u56.bin",      0x100000, 0x9e07104d, 6 | BRF_SND },			 // 10 YM2610 ADPCM data
-};
-
-STD_ROM_PICK(gunbirdka)
-STD_ROM_FN(gunbirdka)
-
-struct BurnDriver BurnDrvGunbirdka = {
-	"gunbirdka", "gunbird", NULL, NULL, "2022",
-	"Gunbird (Korean Translation)\0", NULL, "Psikyo", "Psikyo 68EC020",
-	L"\uAC74\uBC84\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Gunbird (Korean Translation)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
-	NULL, gunbirdkaRomInfo, gunbirdkaRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, gunbirdDIPInfo,
-	GunbirdInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
-	224, 320, 3, 4
-};
-
-
-// Sengoku Blade - Sengoku Ace episode II (Korean Translation)\0Tengai (World)
-
-static struct BurnRomInfo tengaikRomDesc[] = {
-	{ "2-u40k.bin",   0x080000, 0x279f7493, 1 | BRF_ESS | BRF_PRG }, //  0 CPU #0 code
-	{ "3-u41k.bin",   0x080000, 0x59fe486e, 1 | BRF_ESS | BRF_PRG }, //  1
-
-	{ "u20k.bin",     0x200000, 0x934a787a, 3 | BRF_GRA },			 //  2 Sprite data
-	{ "u22.bin",      0x200000, 0x8d21caee, 3 | BRF_GRA },			 //  3
-	{ "u21k.bin",     0x200000, 0x435669ca, 3 | BRF_GRA },			 //  4
-
-	{ "u1.bin",       0x040000, 0x681d7d55, 7 | BRF_GRA },			 //  5 Sprite LUT
-
-	{ "u34k.bin",     0x400000, 0x801fc802, 4 | BRF_GRA },			 //  6 Tile data
-
-	{ "1-u63.bin",    0x020000, 0x2025e387, 2 | BRF_ESS | BRF_PRG }, //  7 CPU #1 code
-
-	{ "u61.bin",      0x200000, 0xa63633c5, 6 | BRF_SND },			 //  8 PCM data
-	{ "u62.bin",      0x200000, 0x3ad0c357, 6 | BRF_SND },			 //  9
-
-	{ "4.u59",        0x001000, 0xe563b054, 0 | BRF_ESS | BRF_PRG | BRF_OPT },			 //	10 Mcu
-};
-
-STD_ROM_PICK(tengaik)
-STD_ROM_FN(tengaik)
-
-struct BurnDriver BurnDrvTengaik = {
-	"tengaik", "tengai", NULL, NULL, "2022",
-	"Sengoku Blade - Sengoku Ace episode II (Korean Translation)\0", NULL, "Psikyo", "Psikyo 68EC020",
-	L"\uC804\uAD6D \uBE14\uB808\uC774\uB4DC - \uC804\uAD6D \uC5D0\uC774\uC2A4 \uC5D0\uD53C\uC18C\uB4DC II (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Sengoku Blade - Sengoku Ace episode II (Korean Translation)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_HORSHOOT, 0,
-	NULL, tengaikRomInfo, tengaikRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, tengaikDIPInfo,
 	TengaiInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
 	320, 224, 4, 3
 };
