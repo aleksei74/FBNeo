@@ -717,3 +717,47 @@ struct BurnDriver BurnDrvGinganina = {
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	256, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Ginga Ninkyouden (Korean Translation)
+
+static struct BurnRomInfo ginganinkRomDesc[] = {
+	{ "gn_02.bin",	0x10000, 0x4a4e012f, 1 | BRF_PRG | BRF_ESS }, //  0 M68000 Code
+	{ "gn_01.bin",	0x10000, 0x30256fcb, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "gn_05.bin",	0x10000, 0xe76e10e7, 2 | BRF_PRG | BRF_ESS }, //  2 M6809 Code
+
+	{ "gn_15k.bin",	0x10000, 0xeba72bc2, 3 | BRF_GRA },           //  3 Background Tiles
+	{ "gn_14.bin",	0x10000, 0xe73fe668, 3 | BRF_GRA },           //  4
+
+	{ "gn_12.bin",	0x10000, 0xc134a1e9, 4 | BRF_GRA },           //  5 Foreground Tiles
+	{ "gn_13.bin",	0x10000, 0x1d3bec21, 4 | BRF_GRA },           //  6
+
+	{ "gn_10k.bin",	0x04000, 0x5d5ce06f, 5 | BRF_GRA },           //  7 Characters
+
+	{ "gn_06.bin",	0x20000, 0xbdc65835, 6 | BRF_GRA },           //  8 Sprites
+	{ "gn_07k.bin",	0x10000, 0xd12bae11, 6 | BRF_GRA },           //  9
+	{ "gn_08.bin",	0x10000, 0xf7c73c18, 6 | BRF_GRA },           // 10
+	{ "gn_09.bin",	0x10000, 0xa5e07c3b, 6 | BRF_GRA },           // 11
+
+	{ "gn_11.bin",	0x08000, 0xf0d0e605, 7 | BRF_GRA },           // 12 Background Tilemap
+
+	{ "gn_04.bin",	0x10000, 0x0ed9133b, 8 | BRF_SND },           // 13 Y8950 Samples
+	{ "gn_03.bin",	0x10000, 0xf1ba222c, 8 | BRF_SND },           // 14
+};
+
+STD_ROM_PICK(ginganink)
+STD_ROM_FN(ginganink)
+
+struct BurnDriver BurnDrvGinganink = {
+	"ginganink", "ginganin", NULL, NULL, "1987",
+	"Ginga Ninkyouden (Korean Translation)\0", NULL, "Jaleco", "Miscellaneous",
+	L"\uC740\uD558\uC784\uD611\uC804 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Ginga NinkyouDen (Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
+	NULL, ginganinkRomInfo, ginganinkRomName, NULL, NULL, NULL, NULL, GinganinInputInfo, GinganinDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	256, 224, 4, 3
+};
