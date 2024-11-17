@@ -61,7 +61,7 @@ Don't expect things to work properly if you didn't build valid romsets, and don'
 
 ### Step 1: Obtaining an XML DAT
 
-You can download the dat files for the latest version of the core from the [dats](https://github.com/libretro/FBNeo/tree/master/dats/) directory. Note that some devices (Nintendo 3DS) are running a "light" build with fewer supported games due to memory limitation, the dat files for that build are available from the [light](https://github.com/libretro/FBNeo/tree/master/dats/light/) subdirectory.
+You can download the dat files for the latest version of the core from the [dats](https://github.com/libretro/FBNeo/tree/master/dats/) directory.
 
 ### Step 2: Gathering the ingredients
 
@@ -116,7 +116,7 @@ The following "device type" also exist, but they won't be compatible with every 
 
 The following device types are mostly WIP, they haven't been thoroughly tested and might contain major bugs (please report them) :
 
-* **6-Panel** : assuming you are using a 6-button arcade panel and followed the "YXL as top row and BAR as bottom row" mapping recommendation, it will use R as your 3rd button and Y as your 4th button for anything that isn't a 6-button vsfighting game, note that some users might be more comfortable with Classic/Modern's BAYX's assignment for 4-buttons systems like neogeo.
+* **6-Panel** : assuming you are using a 6-button arcade panel and followed the "YXL as top row and BAR as bottom row" mapping recommendation, it will map the top row then the bottom row as a general rule (with some exceptions), note that some users might be more comfortable with Classic/Modern's BAYX's assignment for 4-buttons systems like neogeo.
 * **Touchscreen** : a variant of the "Pointer" device type meant for mobile devices, touchscreen "tap events" are used for gameplay, "Start" and "Coin" are still assigned to your retropad overlay.
 
 ## Emulating consoles and computers
