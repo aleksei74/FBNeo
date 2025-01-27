@@ -796,3 +796,36 @@ struct BurnDriver BurnDrvSpool3i = {
 	Drv2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, &BurnRecalc, 0x200,
 	256, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Pocket Gal (Korean Translation)
+
+static struct BurnRomInfo pcktgalkRomDesc[] = {
+	{ "eb04.j7",		0x10000, 0x8215d60d, 1 | BRF_PRG | BRF_ESS }, //  0 M6502 #0 Code
+
+	{ "eb03.f2",		0x10000, 0xcb029b02, 2 | BRF_PRG | BRF_ESS }, //  1 DECO 222 Encrypted CPU
+
+	{ "eb01k.d11",		0x10000, 0x3b9f8e29, 3 | BRF_GRA },           //  2 Background Tiles
+	{ "eb02.d12",		0x10000, 0xa9dcd339, 3 | BRF_GRA },           //  3
+
+	{ "eb00.a1",		0x10000, 0x6c1a14a8, 4 | BRF_GRA },           //  4 Sprites
+
+	{ "eb05.k14",		0x00200, 0x3b6198cb, 5 | BRF_GRA },           //  5 Color PROMs
+	{ "eb06.k15",		0x00200, 0x1fbd4b59, 5 | BRF_GRA },           //  6
+};
+
+STD_ROM_PICK(pcktgalk)
+STD_ROM_FN(pcktgalk)
+
+struct BurnDriver BurnDrvPcktgalk = {
+	"pcktgalk", "pcktgal", NULL, NULL, "1987",
+	"Pocket Gal (Korean Translation)\0", NULL, "Data East Corporation", "Miscellaneous",
+	L"\uD3EC\uCF13 \uAC08 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Pocket Gal (Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_DATAEAST, GBF_SPORTSMISC, 0,
+	NULL, pcktgalkRomInfo, pcktgalkRomName, NULL, NULL, NULL, NULL, PcktgalInputInfo, PcktgalDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &BurnRecalc, 0x200,
+	256, 224, 4, 3
+};

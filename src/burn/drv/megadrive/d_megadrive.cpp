@@ -19054,7 +19054,7 @@ struct BurnDriver BurnDrvmd_rockman = {
 	"md_rockman", "md_megaman", NULL, NULL, "1994",
 	"Rockman Mega World (Japan)\0", NULL, "Capcom", "Sega Megadrive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_PLATFORM, 0,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_EEPROM, GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_rockmanRomInfo, md_rockmanRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
@@ -19072,7 +19072,7 @@ struct BurnDriver BurnDrvmd_rockman1 = {
 	"md_rockman1", "md_megaman", NULL, NULL, "1994",
 	"Rockman Mega World (Japan, Alt)\0", NULL, "Capcom", "Sega Megadrive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_EEPROM, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM, 0,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_EEPROM, GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_rockman1RomInfo, md_rockman1RomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
@@ -47017,7 +47017,7 @@ struct BurnDriver BurnDrvmd_uwol = {
 
 // Kolobok ~ Pyramid (Russia) (Unl)
 static struct BurnRomInfo md_kolobokRomDesc[] = {
-	{ "Kolobok - Pyramid ((201x)(Kudos).bin", 0x020000, 0xc4c55bab, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Kolobok - Pyramid (201x)(Kudos).bin", 0x020000, 0xc4c55bab, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_kolobok)
@@ -56284,3 +56284,461 @@ struct BurnDriver BurnDrvmd_tkzs = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+//============================================================
+//  Add Korean Translation
+//============================================================
+
+// Alisia Dragoon (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/216/
+static struct BurnRomInfo md_alisiadkRomDesc[] = {
+	{ "Alisia Dragoon (Korean Translation)(1992)(Game Arts).bin", 0x180000, 0x8221762d, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_alisiadk)
+STD_ROM_FN(md_alisiadk)
+
+struct BurnDriver BurnDrvmd_alisiadk = {
+	"md_alisiadk", "md_alisiad", NULL, NULL, "2013",
+	"Alisia Dragoon (Hack, Korean Translation)\0", NULL, "Game Arts", "Sega Megadrive",
+	L"\uC54C\uB9AC\uC2DC\uC544 \uB4DC\uB77C\uAD70 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Alisia Dragoon (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_alisiadkRomInfo, md_alisiadkRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Contra - The Hard Corps (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/223/
+static struct BurnRomInfo md_contrakRomDesc[] = {
+	{ "Contra - The Hard Corps (Korean Translation)(1994)(Konami).bin", 0x300000, 0xa634974f, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_contrak)
+STD_ROM_FN(md_contrak)
+
+struct BurnDriver BurnDrvmd_contrak = {
+	"md_contrak", "md_contra", NULL, NULL, "2013",
+	"Contra - The Hard Corps (Hack, Korean Translation)\0", NULL, "Konami", "Sega Megadrive",
+	L"\uD63C\uB450\uB77C - \uB354 \uD558\uB4DC\uCF54\uC5B4 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Contra - The Hard Corps (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 2, HARDWARE_SEGA_MEGADRIVE, GBF_RUNGUN | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_contrakRomInfo, md_contrakRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// El Viento (Hack, Korean Translation)
+// Source : http://nsm53p.tistory.com/366
+static struct BurnRomInfo md_elvientokRomDesc[] = {
+	{ "el viento (korean translation).bin", 0x100000, 0x5326ba55, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_elvientok)
+STD_ROM_FN(md_elvientok)
+
+struct BurnDriver BurnDrvmd_elvientok = {
+	"md_elvientok", "md_elviento", NULL, NULL, "2009",
+	"El Viento (Hack, Korean Translation)\0", NULL, "Wolf Team", "Sega Megadrive",
+	L"\uC5D8 \uBE44\uC5D4\uD1A0 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0El Viento (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_RUNGUN | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_elvientokRomInfo, md_elvientokRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Elemental Master (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/218/
+static struct BurnRomInfo md_elemastkRomDesc[] = {
+	{ "elemental master (korean translation).bin", 0x100000, 0x777327a0, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_elemastk)
+STD_ROM_FN(md_elemastk)
+
+struct BurnDriver BurnDrvmd_elemastk = {
+	"md_elemastk", "md_elemast", NULL, NULL, "2013",
+	"Elemental Master (Hack, Korean Translation)\0", NULL, "Technosoft", "Sega Megadrive",
+	L"\uC5D8\uB9AC\uBA58\uD0C8 \uB9C8\uC2A4\uD130 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Elemental Master (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_VERSHOOT, 0,
+	MegadriveGetZipName, md_elemastkRomInfo, md_elemastkRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Exile - Toki no Hazama e (Hack, Korean Translation)
+// Source : https://blog.naver.com/kkitty5425/221216185135
+static struct BurnRomInfo md_exilekRomDesc[] = {
+	{ "exile - toki no hazama e (korean translation).bin", 0x100000, 0xc00d63f2, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_exilek)
+STD_ROM_FN(md_exilek)
+
+struct BurnDriver BurnDrvmd_exilek = {
+	"md_exilek", "md_exile", NULL, NULL, "2018",
+	"Exile - Toki no Hazama e (Hack, Korean Translation)\0", NULL, "Riot", "Sega Megadrive",
+	L"\uC5D1\uC790\uC77C - \uC2DC\uAC04\uC758 \uD2C8\uC0C8 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Exile - Toki no Hazama e (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_RPG, 0,
+	MegadriveGetZipName, md_exilekRomInfo, md_exilekRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// GleyLancer (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/204/
+static struct BurnRomInfo md_gleylanckRomDesc[] = {
+	{ "Advanced Busterhawk Gleylancer (Korean Translation)(1992)(Masaya - NCS Corp.).bin", 0x200000, 0x570ab2f6, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_gleylanck)
+STD_ROM_FN(md_gleylanck)
+
+struct BurnDriver BurnDrvmd_gleylanck = {
+	"md_gleylanck", "md_gleylanc", NULL, NULL, "2013",
+	"GleyLancer (Hack, Korean Translation)\0", NULL, "Masaya - NCS Corp.", "Sega Megadrive",
+	L"\uAE00\uB808\uC774 \uB79C\uC11C (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0GleyLancer (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_HORSHOOT, 0,
+	MegadriveGetZipName, md_gleylanckRomInfo, md_gleylanckRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Gunstar Heroes (Hack, Korean Translation)
+// Source : http://blog.naver.com/passion_pay/221071290170
+static struct BurnRomInfo md_gunstarkRomDesc[] = {
+	{ "gunstar heroes (korean translation).bin", 0x200000, 0x558b7747, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_gunstark)
+STD_ROM_FN(md_gunstark)
+
+struct BurnDriver BurnDrvmd_gunstark = {
+	"md_gunstark", "md_gunstar", NULL, NULL, "2017",
+	"Gunstar Heroes (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uAC74\uC2A4\uD0C0 \uD788\uC5B4\uB85C\uC988 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Gunstar Heroes (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 2, HARDWARE_SEGA_MEGADRIVE, GBF_RUNGUN | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_gunstarkRomInfo, md_gunstarkRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Honoo no Toukyuuji - Dodge Danpei (Hack, Korean Translation)
+static struct BurnRomInfo md_ddanpeikRomDesc[] = {
+	{ "Honoo no Toukyuuji - Dodge Danpei (Korean Translation).bin", 0x080000, 0x471c59fe, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_ddanpeik)
+STD_ROM_FN(md_ddanpeik)
+
+struct BurnDriver BurnDrvmd_ddanpeik = {
+	"md_ddanpeik", "md_ddanpei", NULL, NULL, "1992",
+	"Honoo no Toukyuuji - Dodge Danpei (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uBD88\uAF43\uC758 \uD22C\uAD6C\uC544 - \uB3D7\uC9C0\uD0C4\uD3C9 / \uD53C\uAD6C\uC655 \uD1B5\uD0A4 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Honoo no Toukyuuji - Dodge Danpei (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_EEPROM, GBF_SPORTSMISC, 0,
+	MegadriveGetZipName, md_ddanpeikRomInfo, md_ddanpeikRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Landstalker - Koutei no Zaihou (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/205/
+static struct BurnRomInfo md_landstlkkRomDesc[] = {
+	{ "landstalker - koutei no zaihou (korean translation).bin", 0x260000, 0xe6540237, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_landstlkk)
+STD_ROM_FN(md_landstlkk)
+
+struct BurnDriver BurnDrvmd_landstlkk = {
+	"md_landstlkk", "md_landstlk", NULL, NULL, "2013",
+	"Landstalker - Koutei no Zaihou (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uB79C\uB4DC\uC2A4\uD1A0\uCEE4 - \uD669\uC81C\uC758 \uC7AC\uBCF4 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Landstalker - Koutei no Zaihou (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM | HARDWARE_SEGA_MEGADRIVE_SRAM_10000, GBF_PLATFORM | GBF_RPG, 0,
+	MegadriveGetZipName, md_landstlkkRomInfo, md_landstlkkRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Mugen Senshi Valis (Hack, Korean Translation)
+// Source : http://nsm53p.tistory.com/220
+static struct BurnRomInfo md_valiskRomDesc[] = {
+	{ "Mugen Senshi Valis (Korean Translation)(1991)(Telenet Japan).bin", 0x100000, 0x3c1c1e94, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_valisk)
+STD_ROM_FN(md_valisk)
+
+struct BurnDriver BurnDrvmd_valisk = {
+	"md_valisk", "md_valis", NULL, NULL, "2009",
+	"Mugen Senshi Valis (Hack, Korean Translation)\0", NULL, "Riot", "Sega Megadrive",
+	L"\uBABD\uD658\uC804\uC0AC \uBC14\uB9AC\uC2A4 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Mugen Senshi Valis (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_valiskRomInfo, md_valiskRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Musha Aleste - Full Metal Fighter Ellinor (Hack, Korean Translation)
+// Source : http://nsm53p.tistory.com/319
+static struct BurnRomInfo md_mushakRomDesc[] = {
+	{ "musha aleste - full metal fighter ellinor (korean translation).bin", 0x080000, 0xa0656a48, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_mushak)
+STD_ROM_FN(md_mushak)
+
+struct BurnDriver BurnDrvmd_mushak = {
+	"md_mushak", "md_musha", NULL, NULL, "2017",
+	"Musha Aleste - Full Metal Fighter Ellinor (Hack, Korean Translation)\0", NULL, "Toaplan", "Sega Megadrive",
+	L"\uBB34\uC790 \uC54C\uB808\uC2A4\uD130 - \uD480 \uBA54\uD0C8 \uD30C\uC774\uD130 \uC5D8\uB9AC\uB178\uC5B4 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Musha Aleste - Full Metal Fighter Ellinor (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_VERSHOOT, 0,
+	MegadriveGetZipName, md_mushakRomInfo, md_mushakRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Phantasy Star - Sennenki no Owari ni (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/222/
+static struct BurnRomInfo md_pstar4kRomDesc[] = {
+	{ "phantasy star - sennenki no owari ni (korean translation).bin", 0x400000, 0x360e046a, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_pstar4k)
+STD_ROM_FN(md_pstar4k)
+
+struct BurnDriver BurnDrvmd_pstar4k = {
+	"md_pstar4k", "md_pstar4", NULL, NULL, "2014",
+	"Phantasy Star - Sennenki no Owari ni (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uD310\uD0C0\uC9C0 \uC2A4\uD0C0 - \uCC9C\uB144\uAE30\uC758 \uB05D\uC5D0 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Phantasy Star - Sennenki no Owari ni (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_RPG, 0,
+	MegadriveGetZipName, md_pstar4kRomInfo, md_pstar4kRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Phantasy Star II - Kaerazaru Toki no Owari ni (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/221/
+static struct BurnRomInfo md_pstar2kRomDesc[] = {
+	{ "Phantasy Star II - Kaerazaru Toki no Owari ni (Korean Translation)(1989)(Sega).bin", 0x180000, 0x49ca9651, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_pstar2k)
+STD_ROM_FN(md_pstar2k)
+
+struct BurnDriver BurnDrvmd_pstar2k = {
+	"md_pstar2k", "md_pstar2", NULL, NULL, "2013",
+	"Phantasy Star II - Kaerazaru Toki no Owari ni (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uD310\uD0C0\uC9C0 \uC2A4\uD0C0 II - \uB3CC\uC544\uC624\uC9C0 \uC54A\uC744 \uC2DC\uAC04\uC758 \uB05D\uC5D0\uC11C (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Phantasy Star II - Kaerazaru Toki no Owari ni (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_RPG, 0,
+	MegadriveGetZipName, md_pstar2kRomInfo, md_pstar2kRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// SD Valis (Hack, Korean Translation)
+// Source : http://nsm53p.tistory.com/347
+static struct BurnRomInfo md_sdvaliskRomDesc[] = {
+	{ "SD Valis (Korean Translation)(1992)(Laser Soft).bin", 0x080000, 0x85a3c219, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_sdvalisk)
+STD_ROM_FN(md_sdvalisk)
+
+struct BurnDriver BurnDrvmd_sdvalisk = {
+	"md_sdvalisk", "md_sydvalis", NULL, NULL, "2009",
+	"SD Valis (Hack, Korean Translation)\0", NULL, "Laser Soft", "Sega Megadrive",
+	L"SD \uBC14\uB9AC\uC2A4 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0SD Valis (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_RUNGUN | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_sdvaliskRomInfo, md_sdvaliskRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Shining and the Darkness (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/210/
+static struct BurnRomInfo md_shindarkkRomDesc[] = {
+	{ "shining and the darkness (korean translation).bin", 0x200000, 0xb7194909, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_shindarkk)
+STD_ROM_FN(md_shindarkk)
+
+struct BurnDriver BurnDrvmd_shindarkk = {
+	"md_shindarkk", "md_shindark", NULL, NULL, "2013",
+	"Shining and the Darkness (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uC0E4\uC774\uB2DD \uC564 \uB354 \uB2E4\uD06C\uB2C8\uC2A4 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Shining and the Darkness (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_RPG, 0,
+	MegadriveGetZipName, md_shindarkkRomInfo, md_shindarkkRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Shining Force - Kamigami no Isan (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/211/
+static struct BurnRomInfo md_shinfrcekRomDesc[] = {
+	{ "shining force - kamigami no isan (korean translation).bin", 0x200000, 0xf8822813, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_shinfrcek)
+STD_ROM_FN(md_shinfrcek)
+
+struct BurnDriver BurnDrvmd_shinfrcek = {
+	"md_shinfrcek", "md_shinfrce", NULL, NULL, "2013",
+	"Shining Force - Kamigami no Isan (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uC0E4\uC774\uB2DD \uD3EC\uC2A4 - \uC2E0\uB4E4\uC758 \uC720\uC0B0 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Shining Force - Kamigami no Isan (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_RPG, 0,
+	MegadriveGetZipName, md_shinfrcekRomInfo, md_shinfrcekRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Shining Force II - Koe no Fuuin (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/212/
+static struct BurnRomInfo md_shinfrc2kRomDesc[] = {
+	{ "Shining Force II - Koe no Fuuin (Korean Translation)(1993)(Sega).bin", 0x300000, 0x8ece9f4f, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_shinfrc2k)
+STD_ROM_FN(md_shinfrc2k)
+
+struct BurnDriver BurnDrvmd_shinfrc2k = {
+	"md_shinfrc2k", "md_shinfrc2", NULL, NULL, "2013",
+	"Shining Force II - Koe no Fuuin (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uC0E4\uC774\uB2DD \uD3EC\uC2A4 II - \uACE0\uB300\uC758 \uBD09\uC778 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Shining Force II - Koe no Fuuin (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_RPG, 0,
+	MegadriveGetZipName, md_shinfrc2kRomInfo, md_shinfrc2kRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Story of Thor, The - Hikari o Tsugumono (Hack, Korean Translation)
+// Source : http://chocotimes.tistory.com/25
+static struct BurnRomInfo md_thork2RomDesc[] = {
+	{ "story of thor, the - hikari o tsugumono (korean translation).bin", 0x300000, 0x8d22f9a7, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_thork2)
+STD_ROM_FN(md_thork2)
+
+struct BurnDriver BurnDrvmd_thork2 = {
+	"md_thork2", "md_thor", NULL, NULL, "2015",
+	"Story of Thor, The - Hikari o Tsugumono (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uB354 \uC2A4\uD1A0\uB9AC \uC624\uBE0C \uB3C4\uC5B4 - \uBE5B\uC744 \uC787\uB294 \uC790 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Story of Thor, The - Hikari o Tsugumono (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_ACTION | GBF_ADV, 0,
+	MegadriveGetZipName, md_thork2RomInfo, md_thork2RomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Super Fantasy Zone (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/214/
+static struct BurnRomInfo md_sfzonekRomDesc[] = {
+	{ "super fantasy zone (korean translation).bin", 0x100000, 0x50d17067, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_sfzonek)
+STD_ROM_FN(md_sfzonek)
+
+struct BurnDriver BurnDrvmd_sfzonek = {
+	"md_sfzonek", "md_sfzone", NULL, NULL, "2013",
+	"Super Fantasy Zone (Hack, Korean Translation)\0", NULL, "Sunsoft", "Sega Megadrive",
+	L"\uC288\uD37C \uD310\uD0C0\uC9C0 \uC874 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Super Fantasy Zone (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_HORSHOOT, 0,
+	MegadriveGetZipName, md_sfzonekRomInfo, md_sfzonekRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// The Super Shinobi II (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/213/
+static struct BurnRomInfo md_supshin2kRomDesc[] = {
+	{ "super shinobi ii, the (korean translation).bin", 0x180000, 0x59286027, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_supshin2k)
+STD_ROM_FN(md_supshin2k)
+
+struct BurnDriver BurnDrvmd_supshin2k = {
+	"md_supshin2k", "md_shinobi3", NULL, NULL, "2013",
+	"The Super Shinobi II (Hack, Korean Translation)\0", NULL, "Sega", "Sega Megadrive",
+	L"\uB354 \uC288\uD37C \uC2DC\uB178\uBE44 II (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The Super Shinobi II (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_SCRFIGHT, 0,
+	MegadriveGetZipName, md_supshin2kRomInfo, md_supshin2kRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Twinkle Tale (Hack, Korean Translation)
+// Source : https://www.hangulogame.com/post/patch/md/220/
+static struct BurnRomInfo md_twinkletkRomDesc[] = {
+	{ "twinkle tale (korean translation).bin", 0x100000, 0x7a388959, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_twinkletk)
+STD_ROM_FN(md_twinkletk)
+
+struct BurnDriver BurnDrvmd_twinkletk = {
+	"md_twinkletk", "md_twinklet", NULL, NULL, "2013",
+	"Twinkle Tale (Hack, Korean Translation)\0", NULL, "Toyo Recording Co.", "Sega Megadrive",
+	L"\uD2B8\uC719\uD074 \uD14C\uC77C (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Twinkle Tale (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_RUNGUN, 0,
+	MegadriveGetZipName, md_twinkletkRomInfo, md_twinkletkRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Valis III (Hack, Korean Translation)
+// Source : http://nsm53p.tistory.com/27
+static struct BurnRomInfo md_valis3kRomDesc[] = {
+	{ "Valis III (Korean Translation)(1991)(Telenet Japan).bin", 0x100000, 0x47d4050a, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_valis3k)
+STD_ROM_FN(md_valis3k)
+
+struct BurnDriver BurnDrvmd_valis3k = {
+	"md_valis3k", "md_valis3", NULL, NULL, "2008",
+	"Valis III (Hack, Korean Translation)\0", NULL, "Telenet Japan", "Sega Megadrive",
+	L"\uBC14\uB9AC\uC2A4 III (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Valis III (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_valis3kRomInfo, md_valis3kRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Immortal, The (Hack, Korean Translation)
+// Source : https://cafe.naver.com/hansicgu/16876
+static struct BurnRomInfo md_immortalkRomDesc[] = {
+	{ "immortal, the (korean translation).bin", 0x200000, 0xae94c9f1, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_immortalk)
+STD_ROM_FN(md_immortalk)
+
+struct BurnDriver BurnDrvmd_immortalk = {
+	"md_immortalk", "md_immortal", NULL, NULL, "2011",
+	"Immortal, The (Hack, Korean Translation)\0", NULL, "Electronic Arts Victor", "Sega Megadrive",
+	L"\uB354 \uC774\uBAA8\uD0C8 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The Immortal (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ACTION | GBF_RPG, 0,
+	MegadriveGetZipName, md_immortalkRomInfo, md_immortalkRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Ys - Wanderers from Ys (Hack, Korean Translation)
+// Source : http://nsm53p.tistory.com/591
+static struct BurnRomInfo md_ys3kRomDesc[] = {
+	{ "ys - wanderers from ys (korean translation).bin", 0x100000, 0xf31b6a61, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_ys3k)
+STD_ROM_FN(md_ys3k)
+
+struct BurnDriver BurnDrvmd_ys3k = {
+	"md_ys3k", "md_ys3", NULL, NULL, "2013",
+	"Ys - Wanderers from Ys (Hack, Korean Translation)\0", NULL, "Nihon Falcom", "Sega Megadrive",
+	L"\uC774\uC2A4 - \uC6D0\uB354\uB7EC\uC2A4 \uD504\uB86C \uC774\uC2A4 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Ys - Wanderers from Ys (Hack, Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_ACTION | GBF_RPG, 0,
+	MegadriveGetZipName, md_ys3kRomInfo, md_ys3kRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};

@@ -1106,7 +1106,7 @@ STD_ROM_FN(deathsml)
 struct BurnDriver BurnDrvDeathsml = {
 	"deathsml", NULL, NULL, NULL, "2007",
 	"Deathsmiles (2007/10/09 MASTER VER)\0", NULL, "Cave (AMI license)", "CA017",
-	L"Deathsmiles\0\uc730\ub930\ub930\ua430\ueb30\uba30 (2007/10/09 MASTER VER)\0", NULL, NULL, NULL,
+	L"Deathsmiles\0\u30C7\u30B9\u30B9\u30DE\u30A4\u30EB\u30BA (2007/10/09 MASTER VER)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_CV1000, GBF_HORSHOOT, 0,
 	NULL, deathsmlRomInfo, deathsmlRomName, NULL, NULL, NULL, NULL, Cv1kInputInfo, Cv1kDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x10000,
@@ -1356,7 +1356,7 @@ STD_ROM_FN(dsmbl)
 struct BurnDriver BurnDrvDsmbl = {
 	"dsmbl", NULL, NULL, NULL, "2008",
 	"Deathsmiles MegaBlack Label (2008/10/06 MEGABLACK LABEL VER)\0", NULL, "Cave (AMI license)", "CA017B",
-	NULL, NULL, NULL, NULL,
+	L"Deathsmiles MegaBlack Label\0\u30C7\u30B9\u30B9\u30DE\u30A4\u30EB\u30BA \u30E1\u30AC\u30D6\u30E9\u30C3\u30AF\u30EC\u30FC\u30D9\u30EB (2008/10/06 MEGABLACK LABEL VER)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_CV1000, GBF_HORSHOOT, 0,
 	NULL, dsmblRomInfo, dsmblRomName, NULL, NULL, NULL, NULL, Cv1kInputInfo, Cv1kDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x10000,
