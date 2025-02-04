@@ -8710,6 +8710,7 @@ DRV		BurnDrvmd_ddanpei;
 DRV		BurnDrvpce_ddanpei;
 DRV		BurnDrvHook1v4;
 DRV		BurnDrvHook6h;
+DRV		BurnDrvHookjyds;
 DRV		BurnDrvHookjy;
 DRV		BurnDrvgg_hook;
 DRV		BurnDrvmd_hook;
@@ -8718,6 +8719,7 @@ DRV		BurnDrvHookbo;
 DRV		BurnDrvmd_hooks;
 DRV		BurnDrvHooknx2;
 DRV		BurnDrvHooknx;
+DRV		BurnDrvHookdj;
 DRV		BurnDrvHookj;
 DRV		BurnDrvsnes_Hookj;
 DRV		BurnDrvHookk;
@@ -8727,6 +8729,7 @@ DRV		BurnDrvHookpls;
 DRV		BurnDrvHookpj;
 DRV		BurnDrvHookdszz;
 DRV		BurnDrvHooksw;
+DRV		BurnDrvHooksw2;
 DRV		BurnDrvHookgs2;
 DRV		BurnDrvHookgs;
 DRV		BurnDrvHooku;
@@ -31792,6 +31795,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvpce_ddanpei,		// Honoo no Toukyuuji - Dodge Danpei (Japan)
 	&BurnDrvHook1v4,			// Hook (1v4, Hack)
 	&BurnDrvHook6h,				// Hook (6th Emperor, Hack)
+	&BurnDrvHookjyds,			// Hook (Elite Competition, Hack)
 	&BurnDrvHookjy,				// Hook (Elite, Hack)
 	&BurnDrvgg_hook,			// Hook (Euro)
 	&BurnDrvmd_hook,			// Hook (Euro)
@@ -31800,6 +31804,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_hooks,			// Hook (Hack, Spanish, v2.0)
 	&BurnDrvHooknx2,			// Hook (Hook's Reversal II, Hack)
 	&BurnDrvHooknx,				// Hook (Hook's Reversal, Hack)
+	&BurnDrvHookdj,				// Hook (Item, Hack)
 	&BurnDrvHookj,				// Hook (Japan)
 	&BurnDrvsnes_Hookj,			// Hook (Japan)
 	&BurnDrvHookk,				// Hook (Korean Translation)
@@ -31809,6 +31814,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvHookpj,				// Hook (POK KAI, Hack)
 	&BurnDrvHookdszz,			// Hook (Summit War, Hack)
 	&BurnDrvHooksw,				// Hook (SW, Hack)
+	&BurnDrvHooksw2,			// Hook (SW2, Hack)
 	&BurnDrvHookgs2,			// Hook (The Expendables II, Hack)
 	&BurnDrvHookgs,				// Hook (The Expendables, Hack)
 	&BurnDrvHooku,				// Hook (US)
@@ -54810,6 +54816,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "pce_ddanpei", "pce/d_pce.cpp"},
 	{ "hook1v4", "irem/d_m92.cpp"},
 	{ "hook6h", "irem/d_m92.cpp"},
+	{ "hookjyds", "irem/d_m92.cpp"},
 	{ "hookjy", "irem/d_m92.cpp"},
 	{ "gg_hook", "sms/d_sms.cpp"},
 	{ "md_hook", "megadrive/d_megadrive.cpp"},
@@ -54818,6 +54825,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_hooks", "megadrive/d_megadrive.cpp"},
 	{ "hooknx2", "irem/d_m92.cpp"},
 	{ "hooknx", "irem/d_m92.cpp"},
+	{ "hookdj", "irem/d_m92.cpp"},
 	{ "hookj", "irem/d_m92.cpp"},
 	{ "snes_hookj", "snes/d_snes.cpp"},
 	{ "hookk", "irem/d_m92.cpp"},
@@ -54827,6 +54835,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "hookpj", "irem/d_m92.cpp"},
 	{ "hookdszz", "irem/d_m92.cpp"},
 	{ "hooksw", "irem/d_m92.cpp"},
+	{ "hooksw2", "irem/d_m92.cpp"},
 	{ "hookgs2", "irem/d_m92.cpp"},
 	{ "hookgs", "irem/d_m92.cpp"},
 	{ "hooku", "irem/d_m92.cpp"},
