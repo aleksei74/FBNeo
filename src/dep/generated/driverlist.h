@@ -4348,9 +4348,6 @@ DRV		BurnDrvmd_dahnagb;
 DRV		BurnDrvmd_dahnams;
 DRV		BurnDrvmd_dahnam;
 DRV		BurnDrvMSX_daidasso;
-DRV		BurnDrvCpsDaimakaib;
-DRV		BurnDrvCpsDaimakair;
-DRV		BurnDrvCpsDaimakai;
 DRV		BurnDrvCpsDaimakaik;
 DRV		BurnDrvmd_daimakai;
 DRV		BurnDrvnes_daimeiro;
@@ -20248,7 +20245,6 @@ DRV		BurnDrvCpsKodh;
 DRV		BurnDrvCpsKodja;
 DRV		BurnDrvCpsKodj;
 DRV		BurnDrvCpsKodk;
-DRV		BurnDrvCpsKodda;
 DRV		BurnDrvCpsKodsr;
 DRV		BurnDrvCpsKodly;
 DRV		BurnDrvCpsKodu;
@@ -27454,9 +27450,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_dahnams,			// Dahna Megami Tanjou (Hack, Spanish)
 	&BurnDrvmd_dahnam,			// Dahna Megami Tanjou (Japan)
 	&BurnDrvMSX_daidasso,		// Dai Dassou (Japan)
-	&BurnDrvCpsDaimakaib,		// Dai Makai-Mura (bootleg, Japan)
-	&BurnDrvCpsDaimakair,		// Dai Makai-Mura (Japan Resale Ver.)
-	&BurnDrvCpsDaimakai,		// Dai Makai-Mura (Japan)
 	&BurnDrvCpsDaimakaik,		// Dai Makai-Mura (Korean Translation)
 	&BurnDrvmd_daimakai,		// Dai Makaimura (Japan)
 	&BurnDrvnes_daimeiro,		// Dai Meiro: Meikyuu no Tatsujin (Japan)
@@ -43354,7 +43347,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvCpsKodja,			// The King of Dragons (Japan 910805, B-Board 89625B-1)
 	&BurnDrvCpsKodj,			// The King of Dragons (Japan 910805, B-Board 90629B-3)
 	&BurnDrvCpsKodk,			// The King of Dragons (Korean Translation 910805, B-Board 90629B-3)
-	&BurnDrvCpsKodda,			// The King of Dragons (Phoenix bootleg, 910731 etc)
 	&BurnDrvCpsKodsr,			// The King of Dragons (Remix Special, Hack)
 	&BurnDrvCpsKodly,			// The King of Dragons (Tough Plus, Hack)
 	&BurnDrvCpsKodu,			// The King of Dragons (USA 910910)
@@ -50530,9 +50522,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_dahnams", "megadrive/d_megadrive.cpp"},
 	{ "md_dahnam", "megadrive/d_megadrive.cpp"},
 	{ "msx_daidasso", "msx/d_msx.cpp"},
-	{ "daimakaib", "capcom/d_cps1.cpp"},
-	{ "daimakair", "capcom/d_cps1.cpp"},
-	{ "daimakai", "capcom/d_cps1.cpp"},
 	{ "daimakaik", "capcom/d_cps1.cpp"},
 	{ "md_daimakai", "megadrive/d_megadrive.cpp"},
 	{ "nes_daimeiro", "nes/d_nes.cpp"},
@@ -66292,7 +66281,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "kodja", "capcom/d_cps1.cpp"},
 	{ "kodj", "capcom/d_cps1.cpp"},
 	{ "kodk", "capcom/d_cps1.cpp"},
-	{ "kodda", "capcom/d_cps1.cpp"},
 	{ "kodsr", "capcom/d_cps1.cpp"},
 	{ "kodly", "capcom/d_cps1.cpp"},
 	{ "kodu", "capcom/d_cps1.cpp"},
