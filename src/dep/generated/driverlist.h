@@ -22227,7 +22227,6 @@ DRV		BurnDrvWboy3;
 DRV		BurnDrvWboy5;
 DRV		BurnDrvcv_wonderboy;
 DRV		BurnDrvWboyblt;
-DRV		BurnDrvWbmlkb;
 DRV		BurnDrvgg_wboydtrp;
 DRV		BurnDrvWbdeluxe;
 #if defined FBNEO_DEBUG
@@ -22272,6 +22271,7 @@ DRV		BurnDrvWbmlvc;
 DRV		BurnDrvWbmljb;
 DRV		BurnDrvWbml;
 DRV		BurnDrvWbmljo;
+DRV		BurnDrvWbmlkb;
 DRV		BurnDrvWondl96;
 DRV		BurnDrvWlstar;
 DRV		BurnDrvmd_wondlib;
@@ -45333,7 +45333,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvWboy5,				// Wonder Boy (set 5, bootleg)
 	&BurnDrvcv_wonderboy,		// Wonder Boy (SGM) (HB)
 	&BurnDrvWboyblt,			// Wonder Boy (Tecfri bootleg)
-	&BurnDrvWbmlkb,				// Wonder Boy - Monster Land (Korean Translation bootleg)
 	&BurnDrvgg_wboydtrp,		// Wonder Boy - The Dragon's Trap (Euro)
 	&BurnDrvWbdeluxe,			// Wonder Boy Deluxe
 #if defined FBNEO_DEBUG
@@ -45378,6 +45377,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvWbmljb,				// Wonder Boy: Monster Land (Japan bootleg)
 	&BurnDrvWbml,				// Wonder Boy: Monster Land (Japan New Ver., MC-8123, 317-0043)
 	&BurnDrvWbmljo,				// Wonder Boy: Monster Land (Japan Old Ver., MC-8123, 317-0043)
+	&BurnDrvWbmlkb,				// Wonder Boy: Monster Land (Korean Translation bootleg)
 	&BurnDrvWondl96,			// Wonder League '96 (Korea)
 	&BurnDrvWlstar,				// Wonder League Star - Sok-Magicball Fighting (Korea)
 	&BurnDrvmd_wondlib,			// Wonder Library (Japan) [no comment, NOT WORKING]
@@ -68241,7 +68241,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "wboy5", "sega/d_sys1.cpp"},
 	{ "cv_wonderboy", "coleco/d_coleco.cpp"},
 	{ "wboyblt", "sega/d_sys1.cpp"},
-	{ "wbmlkb", "sega/d_sys1.cpp"},
 	{ "gg_wboydtrp", "sms/d_sms.cpp"},
 	{ "wbdeluxe", "sega/d_sys1.cpp"},
 	{ "wb3bbl", "sega/d_sys16b.cpp"},
@@ -68284,6 +68283,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "wbmljb", "sega/d_sys1.cpp"},
 	{ "wbml", "sega/d_sys1.cpp"},
 	{ "wbmljo", "sega/d_sys1.cpp"},
+	{ "wbmlkb", "sega/d_sys1.cpp"},
 	{ "wondl96", "pst90s/d_tumbleb.cpp"},
 	{ "wlstar", "pst90s/d_tumbleb.cpp"},
 	{ "md_wondlib", "megadrive/d_megadrive.cpp"},

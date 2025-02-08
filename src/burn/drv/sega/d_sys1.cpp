@@ -8018,7 +8018,7 @@ STD_ROM_FN(wbmlkb)
 
 struct BurnDriver BurnDrvWbmlkb = {
 	"wbmlkb", "wbml", NULL, NULL, "1987",
-	"Wonder Boy - Monster Land (Korean Translation bootleg)\0", NULL, "bootleg", "System 2",
+	"Wonder Boy: Monster Land (Korean Translation bootleg)\0", NULL, "bootleg", "System 2",
 	L"\uC6D0\uB354 \uBCF4\uC774 - \uBAAC\uC2A4\uD130 \uB79C\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED \uBCF5\uC81C\uD310)\0Wonder Boy - Monster Land (Korean Translation bootleg)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_SEGA_SYSTEM1, GBF_PLATFORM, 0,
 	NULL, wbmlkbRomInfo, wbmlkbRomName, NULL, NULL, NULL, NULL, MyheroInputInfo, WbmlDIPInfo,
