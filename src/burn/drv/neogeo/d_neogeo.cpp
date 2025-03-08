@@ -60,6 +60,7 @@ static struct BurnInputInfo neogeoInputList[] = {
 
 	{"Fake Dip 1",	BIT_DIPSWITCH,  &VerSwitcher,	"dip"},				// 1F
 	{"Fake Dip 2",	BIT_DIPSWITCH,	&NeoUniHW,		"dip"},				// 20
+	{"Fake Dip 3",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"},				// 21
 };
 
 STDINPUTINFO(neogeo)
@@ -103,6 +104,8 @@ static struct BurnInputInfo neoMVSInputList[] = {
 
 	{"Debug Dip 1",	BIT_DIPSWITCH,	NeoDebugDip + 0,"dip"},				// 1C
 	{"Debug Dip 2",	BIT_DIPSWITCH,	NeoDebugDip + 1,"dip"},				// 1D
+
+	{"Fake Dip 1",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"}				// 1E
 };
 
 STDINPUTINFO(neoMVS)
@@ -140,6 +143,7 @@ static struct BurnInputInfo neoForceAESInputList[] = {
 	{"Slots",		BIT_DIPSWITCH,	&nNeoNumSlots,	"dip"       },      // 18
 
 	{"Fake Dip 1",	BIT_DIPSWITCH,	&VerSwitcher,	"dip"       },      // 19
+	{"Fake Dip 2",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"       },      // 20
 };
 
 STDINPUTINFO(neoForceAES)
@@ -149,10 +153,10 @@ static struct BurnDIPInfo ms5pcbDIPList[] = {
 	{0x19,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x86, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x86, NULL}, // System
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	// DIP 1
 	{0,		0xFE, 0,	2,	  "Setting mode"},
@@ -194,6 +198,12 @@ static struct BurnDIPInfo ms5pcbDIPList[] = {
 	{0x02,	0x00, 0x30,	0x00, NULL},
 	{0x02,	0x02, 0x03,	0x03, "Japan"},
 	{0x02,	0x00, 0x30,	0x00, NULL},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"},
+	{0x08,	0x01, 0x03,	0x00, "Auto"},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"},
+	{0x08,	0x01, 0x03,	0x02, "Visible"},
 };
 
 STDDIPINFO(ms5pcb)
@@ -203,10 +213,10 @@ static struct BurnDIPInfo svcpcbDIPList[] = {
 	{0x19,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x86, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x86, NULL}, // System
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	// DIP 1
 	{0,		0xFE, 0,	2,	  "Setting mode"},
@@ -248,6 +258,12 @@ static struct BurnDIPInfo svcpcbDIPList[] = {
 	{0x02,	0x00, 0x30,	0x00, NULL},
 	{0x02,	0x02, 0x03,	0x03, "Japan"},
 	{0x02,	0x00, 0x30,	0x00, NULL},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"},
+	{0x08,	0x01, 0x03,	0x00, "Auto"},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"},
+	{0x08,	0x01, 0x03,	0x02, "Visible"},
 };
 
 STDDIPINFO(svcpcb)
@@ -257,10 +273,10 @@ static struct BurnDIPInfo kf2k3pcbDIPList[] = {
 	{0x19,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x86, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x86, NULL}, // System
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	// DIP 1
 	{0,		0xFE, 0,	2,	  "Setting mode"},
@@ -295,6 +311,12 @@ static struct BurnDIPInfo kf2k3pcbDIPList[] = {
 	{0,		0xFE, 0,	2,	  "Stop mode"},
 	{0x00,	0x01, 0x80,	0x00, "Off"},
 	{0x00,	0x01, 0x80,	0x80, "On"},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"},
+	{0x08,	0x01, 0x03,	0x00, "Auto"},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"},
+	{0x08,	0x01, 0x03,	0x02, "Visible"},
 };
 
 STDDIPINFO(kf2k3pcb)
@@ -329,6 +351,8 @@ static struct BurnInputInfo neoCDInputList[] = {
 
 	{"System",		BIT_DIPSWITCH,	&NeoSystem,		"dip"},				// 16
 	{"BIOS",		BIT_DIPSWITCH,	&NeoCDBios,		"dip"},				// 17
+
+	{"Fake Dip 1",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"},				// 18
 };
 
 STDINPUTINFO(neoCD)
@@ -378,6 +402,7 @@ static struct BurnInputInfo neopaddleInputList[] = {
 
 	{"Fake Dip 1",	BIT_DIPSWITCH,  &VerSwitcher,	"dip"},				// 21
 	{"Fake Dip 2",	BIT_DIPSWITCH,	&NeoUniHW,		"dip"},				// 22
+	{"Fake Dip 3",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"},				// 23
 };
 
 STDINPUTINFO(neopaddle)
@@ -414,6 +439,7 @@ static struct BurnInputInfo neotrackballInputList[] = {
 
 	{"Fake Dip 1",	BIT_DIPSWITCH,  &VerSwitcher,	"dip"			},	// 15
 	{"Fake Dip 2",	BIT_DIPSWITCH,	&NeoUniHW,		"dip"			},	// 16
+	{"Fake Dip 3",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"			},	// 17
 };
 
 STDINPUTINFO(neotrackball)
@@ -491,6 +517,7 @@ static struct BurnInputInfo neodualInputList[] = {
 
 	{"Fake Dip 1",	BIT_DIPSWITCH,  &VerSwitcher,	"dip"},				// 37
 	{"Fake Dip 2",	BIT_DIPSWITCH,	&NeoUniHW,		"dip"},				// 38
+	{"Fake Dip 3",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"},				// 39
 };
 
 STDINPUTINFO(neodual)
@@ -556,6 +583,7 @@ static struct BurnInputInfo neomahjongInputList[] = {
 
 	{"Fake Dip 1",	BIT_DIPSWITCH,  &VerSwitcher,	"dip"},				// 32
 	{"Fake Dip 2",	BIT_DIPSWITCH,	&NeoUniHW,		"dip"},				// 33
+	{"Fake Dip 3",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"},				// 34
 };
 
 STDINPUTINFO(neomahjong)
@@ -602,6 +630,7 @@ static struct BurnInputInfo vlinerInputList[] = {
 
 	{"Fake Dip 1",	BIT_DIPSWITCH,  &VerSwitcher,	"dip"},
 	{"Fake Dip 2",	BIT_DIPSWITCH,	&NeoUniHW,		"dip"},
+	{"Fake Dip 3",	BIT_DIPSWITCH,	&NeoOverscan,	"dip"},
 };
 
 STDINPUTINFO(vliner)
@@ -611,12 +640,12 @@ static struct BurnDIPInfo neodefaultDIPList[] = {
 	{0x19,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x80, NULL},
-	{0x03,	0xFF, 0xFF,	0x01, NULL},
-	{0x07,	0xFF, 0xFF,	0x00, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x80, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x01, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Autofire"},
 	{0x00,	0x01, 0x04,	0x00, "Off"},
@@ -628,12 +657,12 @@ static struct BurnDIPInfo neoaesdefaultDIPList[] = {
 	{0x19,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x8f, NULL},  // aes_jpn
-	{0x03,	0xFF, 0xFF,	0x02, NULL},
-	{0x07,	0xFF, 0xFF,	0x00, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x8f, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x02, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Autofire"},
 	{0x00,	0x01, 0x04,	0x00, "Off"},
@@ -645,12 +674,12 @@ static struct BurnDIPInfo neousadefaultDIPList[] = {
 	{0x19,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x83, NULL},
-	{0x03,	0xFF, 0xFF,	0x02, NULL},
-	{0x07,	0xFF, 0xFF,	0x00, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x83, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x02, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Autofire"},
 	{0x00,	0x01, 0x04,	0x00, "Off"},
@@ -659,19 +688,19 @@ static struct BurnDIPInfo neousadefaultDIPList[] = {
 
 static struct BurnDIPInfo neojpndefaultDIPList[] = {
 	// Offset
-	{0x19,	0xF0, 0x00,	0x00, NULL       },
+	{0x19,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL       },
-	{0x01,	0xFF, 0x7F,	0x00, NULL       },
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x88, NULL       },
-	{0x03,	0xFF, 0xFF,	0x02, NULL       },
-	{0x07,	0xFF, 0xFF,	0x00, NULL       },
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x88, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x02, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
-	{0,		0xFE, 0,	2,	  "Autofire" },
-	{0x00,	0x01, 0x04,	0x00, "Off"      },
-	{0x00,	0x01, 0x04,	0x04, "On"       },
+	{0,		0xFE, 0,	2,	  "Autofire"},
+	{0x00,	0x01, 0x04,	0x00, "Off"},
+	{0x00,	0x01, 0x04,	0x04, "On"},
 };
 
 static struct BurnDIPInfo neounidefaultDIPList[] = {
@@ -679,12 +708,12 @@ static struct BurnDIPInfo neounidefaultDIPList[] = {
 	{0x19,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x8f, NULL},
-	{0x03,	0xFF, 0xFF,	0x02, NULL},
-	{0x07,	0xFF, 0xFF,	0x00, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x8f, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x02, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Autofire"},
 	{0x00,	0x01, 0x04,	0x00, "Off"},
@@ -696,12 +725,12 @@ static struct BurnDIPInfo neopaddleDIPList[] = {
 	{0x1B,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x80, NULL},
-	{0x03,	0xFF, 0xFF,	0x01, NULL},
-	{0x07,	0xFF, 0xFF,	0x00, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x80, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x01, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 };
 
 static struct BurnDIPInfo neodualDIPList[] = {
@@ -709,12 +738,12 @@ static struct BurnDIPInfo neodualDIPList[] = {
 	{0x31,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x80, NULL},
-	{0x03,	0xFF, 0xFF,	0x01, NULL},
-	{0x07,	0xFF, 0xFF,	0x00, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x80, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x01, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Autofire"},
 	{0x00,	0x01, 0x04,	0x00, "Off"},
@@ -726,12 +755,12 @@ static struct BurnDIPInfo neomahjongDIPList[] = {
 	{0x2C,	0xF0, 0x00,	0x00, NULL},
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL},
-	{0x01,	0xFF, 0x7F,	0x00, NULL},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x80, NULL},
-	{0x03,	0xFF, 0xFF,	0x01, NULL},
-	{0x07,	0xFF, 0xFF,	0x00, NULL},
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x80, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x01, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Mahjong control panel"},
 	{0x00,	0x01, 0x04,	0x00, "Off"},
@@ -824,6 +853,12 @@ static struct BurnDIPInfo neogeoDIPList[] = {
 	{0,    0xFE, 0,    2,    "Unibios mode"								},
 	{0x07, 0x01, 0x01, 0x00, "MVS"										},
 	{0x07, 0x01, 0x01, 0x01, "AES"										},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"						},
+	{0x08,	0x01, 0x03,	0x00, "Auto"									},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"									},
+	{0x08,	0x01, 0x03,	0x02, "Visible"									},
 };
 
 STDDIPINFOEXT(neogeo,     neodefault,    neogeo)
@@ -884,7 +919,8 @@ static struct BurnDIPInfo neoKOFDIPList[] = {
 
 static struct BurnDIPInfo neoFakeDIPList[] = {
 	// default
-	{0x02,	0xFF, 0xFF,	0x80, NULL},
+	{0x02,	0xFF, 0xFF,	0x80, NULL}, // DIP 1
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
 
 	// Fake DIPs
 	// BIOS
@@ -937,6 +973,12 @@ static struct BurnDIPInfo neoFakeDIPList[] = {
 	{0,    0xFE, 0,    2,    "Unibios mode"								},
 	{0x07, 0x01, 0x01, 0x00, "MVS"										},
 	{0x07, 0x01, 0x01, 0x01, "AES"										},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"						},
+	{0x08,	0x01, 0x03,	0x00, "Auto"									},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"									},
+	{0x08,	0x01, 0x03,	0x02, "Visible"									},
 };
 
 STDDIPINFOEXT(neoMVS, neoKOF, neoFake)
@@ -945,8 +987,9 @@ static struct BurnDIPInfo neoCDDIPList[] = {
 
 	DIP_OFFSET(0x16)
 
-	{0x00,	0xFF, 0xFF,	0x01, NULL								},
-	{0x01,	0xFF, 0xFF,	0x00, NULL								},
+	{0x00,	0xFF, 0xFF,	0x01, NULL								}, // System
+	{0x01,	0xFF, 0xFF,	0x00, NULL								}, // BIOS
+	{0x02,	0xFF, 0xFF,	0x00, NULL								}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	4,	  "Region"							},
 	{0x00,	0x01, 0x03,	0x00, "Japan"							},
@@ -954,14 +997,21 @@ static struct BurnDIPInfo neoCDDIPList[] = {
 	{0x00,	0x01, 0x03,	0x02, "Europe"							},
 	{0x00,	0x01, 0x03,	0x03, "Portugese"						},
 
-	{0,		0xFD, 0,	3,    "BIOS"							},
+	{0,		0xFD, 0,	4,    "BIOS"							},
 	{0x01,	0x01, 0x03,	0x00, "Neo Geo CDZ"						},
-	{0x01,	0x01, 0x03,	0x01, "Universe BIOS (Hack, Ver. 3.3)"	},
-	{0x01,	0x01, 0x03,	0x02, "Universe BIOS (Hack, Ver. 3.2)"	},
+	{0x01,	0x01, 0x03,	0x01, "CDZ BIOS (SMKDAN 0.7b DEC 2010)"	},
+	{0x01,	0x01, 0x03,	0x02, "Universe BIOS (Hack, Ver. 3.3)"	},
+	{0x01,	0x01, 0x03,	0x03, "Universe BIOS (Hack, Ver. 3.2)"	},
 
 	{0,		0xFD, 0,	2,    "CD Loading Speed"				},
 	{0x01,	0x01, 0x40,	0x40, "Normal"							},
 	{0x01,	0x01, 0x40,	0x00, "Super Speed"						},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"				},
+	{0x02,	0x01, 0x03,	0x00, "Auto"							},
+	{0x02,	0x01, 0x03,	0x01, "Cropped"							},
+	{0x02,	0x01, 0x03,	0x02, "Visible"							},
 };
 
 STDDIPINFO(neoCD)
@@ -970,10 +1020,10 @@ static struct BurnDIPInfo neotrackballDIPList[] = {
 	DIP_OFFSET(0x0F)
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL										},
-	{0x01,	0xFF, 0x7F,	0x00, NULL										},
-	// Fake DIPs
-	{0x02,	0xFF, 0xFF,	0x86, NULL										},
+	{0x00,	0xFF, 0xFF,	0x00, NULL										}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL										}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x86, NULL										}, // System
+	{0x08,	0xFF, 0xFF,	0x00, NULL										}, // Fake DIP (Overscan)
 
 	// DIP 1
 	{0,		0xFE, 0,	2,	  "Setting mode"							},
@@ -1041,6 +1091,12 @@ static struct BurnDIPInfo neotrackballDIPList[] = {
 	{0,    0xFE, 0,    2,    "Unibios mode"								},
 	{0x07, 0x01, 0x01, 0x00, "MVS"										},
 	{0x07, 0x01, 0x01, 0x01, "AES"										},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"						},
+	{0x08,	0x01, 0x03,	0x00, "Auto"									},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"									},
+	{0x08,	0x01, 0x03,	0x02, "Visible"									},
 };
 
 STDDIPINFO(neotrackball)
@@ -1054,6 +1110,7 @@ static struct BurnDIPInfo neoForceAESDIPList[] = {
 	{0x01,	0xFF, 0x7F,	0x00, NULL              }, // DIP 2
 	{0x02,	0xFF, 0xFF,	0x8f, NULL              }, // System [AES Japan] [Memory card = Writable]
 	{0x03,	0xFF, 0xFF,	0x03, NULL              }, // Slots [3]
+	{0x05,	0xFF, 0xFF,	0x00, NULL              }, // Fake DIP (Overscan)
 
 	// DIP 1
 	{0,		0xFE, 0,	2,	  "Autofire"        },
@@ -1077,6 +1134,12 @@ static struct BurnDIPInfo neoForceAESDIPList[] = {
 	{0,		0xFD, 0,	2,	  "New card type"   },
 	{0x02,	0x01, 0x40,	0x40, "1 Megabit"       },
 	{0x02,	0x01, 0x40,	0x00, "Normal"          },
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"},
+	{0x05,	0x01, 0x03,	0x00, "Auto"},
+	{0x05,	0x01, 0x03,	0x01, "Cropped"},
+	{0x05,	0x01, 0x03,	0x02, "Visible"},
 };
 
 STDDIPINFO(neoForceAES)
@@ -1085,10 +1148,11 @@ static struct BurnDIPInfo neoForceMVSDIPList[] = {
 	DIP_OFFSET(0x19)
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL										},
-	{0x01,	0xFF, 0x7F,	0x00, NULL										},
-	{0x02,	0xFF, 0xFF,	0x80, NULL										},
-	{0x03,	0xFF, 0xFF,	0x01, NULL										},
+	{0x00,	0xFF, 0xFF,	0x00, NULL										}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL										}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x80, NULL										}, // System
+	{0x03,	0xFF, 0xFF,	0x01, NULL										}, // Slots
+	{0x08,	0xFF, 0xFF,	0x00, NULL										}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Autofire"								},
 	{0x00,	0x01, 0x04,	0x00, "Off"										},
@@ -1163,6 +1227,12 @@ static struct BurnDIPInfo neoForceMVSDIPList[] = {
 	{0,    0xFE, 0,    2,    "Unibios mode"								},
 	{0x07, 0x01, 0x01, 0x00, "MVS"										},
 	{0x07, 0x01, 0x01, 0x01, "AES"										},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"},
+	{0x08,	0x01, 0x03,	0x00, "Auto"},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"},
+	{0x08,	0x01, 0x03,	0x02, "Visible"},
 };
 
 STDDIPINFO(neoForceMVS)
@@ -1171,10 +1241,11 @@ static struct BurnDIPInfo ngdefaultDIPList[] = {
 	DIP_OFFSET(0x19)
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL										},
-	{0x01,	0xFF, 0x7F,	0x00, NULL										},
-	{0x02,	0xFF, 0xFF,	0x80, NULL										},
-	{0x03,	0xFF, 0xFF,	0x01, NULL										},
+	{0x00,	0xFF, 0xFF,	0x00, NULL										}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL										}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x80, NULL										}, // System
+	{0x03,	0xFF, 0xFF,	0x01, NULL										}, // Slots
+	{0x08,	0xFF, 0xFF,	0x00, NULL										}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Autofire"								},
 	{0x00,	0x01, 0x04,	0x00, "Off"										},
@@ -1265,16 +1336,23 @@ static struct BurnDIPInfo ngdefaultDIPList[] = {
 	{0,    0xFE, 0,    2,    "Unibios mode"								},
 	{0x07, 0x01, 0x01, 0x00, "MVS"										},
 	{0x07, 0x01, 0x01, 0x01, "AES"										},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"						},
+	{0x08,	0x01, 0x03,	0x00, "Auto"									},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"									},
+	{0x08,	0x01, 0x03,	0x02, "Visible"									},
 };
 
 static struct BurnDIPInfo aesdefaultDIPList[] = {
 	DIP_OFFSET(0x19)
 
 	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL										},
-	{0x01,	0xFF, 0x7F,	0x00, NULL										},
-	{0x02,	0xFF, 0xFF,	0x8F, NULL										},
-	{0x03,	0xFF, 0xFF,	0x01, NULL										},
+	{0x00,	0xFF, 0xFF,	0x00, NULL										}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL										}, // DIP 1
+	{0x02,	0xFF, 0xFF,	0x8F, NULL										}, // System
+	{0x03,	0xFF, 0xFF,	0x01, NULL										}, // Slots
+	{0x08,	0xFF, 0xFF,	0x00, NULL										}, // Fake DIP (Overscan)
 
 	{0,		0xFE, 0,	2,	  "Autofire"								},
 	{0x00,	0x01, 0x04,	0x00, "Off"										},
@@ -1365,6 +1443,12 @@ static struct BurnDIPInfo aesdefaultDIPList[] = {
 	{0,    0xFE, 0,    2,    "Unibios mode"								},
 	{0x07, 0x01, 0x01, 0x00, "MVS"										},
 	{0x07, 0x01, 0x01, 0x01, "AES"										},
+
+	// Overscan
+	{0,		0xFE, 0,	3,	  "Overscan"						},
+	{0x08,	0x01, 0x03,	0x00, "Auto"									},
+	{0x08,	0x01, 0x03,	0x01, "Cropped"									},
+	{0x08,	0x01, 0x03,	0x02, "Visible"									},
 };
 
 static struct BurnDIPInfo mslug3xDIPList[] = {
@@ -1855,6 +1939,7 @@ struct BurnDriver BurnDrvNeoGeoMV4F = {
 
 static struct BurnRomInfo neocdzRomDesc[] = {
 	{ "neocd.bin",            0x080000, 0xdf9de490, BRF_ESS | BRF_PRG | BRF_BIOS           },
+	{ "neocd_sz.rom",         0x080000, 0x42f6b6c4, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_OPT }, // by SMKDan!
 	{ "uni-bioscd33.rom",     0x080000, 0xff3abc59, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_OPT }, // by razoola!
 	{ "uni-bioscd32.rom",     0x080000, 0x0ffb3127, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_OPT }, // also by razoola!
 	{ "",                     0x000000, 0x00000000, 0                                      }, // spacer woman, she just wants to love you
@@ -2021,8 +2106,9 @@ static INT32 NeoSMAInit(void (*pInitCallback)(), pSekWriteWordHandler pBankswitc
 	INT32 nRet = NeoInit();
 
 	// If IPS_NOT_PROTECT, the data between PROM+0x700000 ~ 0x900000 is redundant, and the data of nIpsMemExpLen[PRG1_ROM] will be isolated.
+	// Expansion bytes larger than 5M should be moved after 5M.
 	if ((0 == nRet) && (nIpsDrvDefine & IPS_NOT_PROTECT) && (nIpsMemExpLen[PRG1_ROM] > 0)) {
-		memmove(Neo68KROMActive + 0x700000, Neo68KROMActive + 0x900000, nIpsMemExpLen[PRG1_ROM]);
+		memmove(Neo68KROMActive + 0x500000, Neo68KROMActive + 0x900000, nIpsMemExpLen[PRG1_ROM]);
 	}
 
 	return nRet;
@@ -8133,7 +8219,7 @@ struct BurnDriver BurnDrvMslug3h = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42, GBF_RUNGUN, FBF_MSLUG,
 	NULL, mslug3hRomInfo, mslug3hRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	NeoInit, NeoSMAExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
 
@@ -18790,11 +18876,11 @@ struct BurnDriver BurnDrvMslugxcq = {
 
 // Metal Slug X - Super Vehicle-001 (Legend with Infinite Firepower, Hack)
 // Modified by AKS
-// GOTVG 20241223
+// GOTVG 20250213
 
 static struct BurnRomInfo mslugxcqiRomDesc[] = {
-	{ "250-p1cqi.p1",	0x100000, 0x03bb5d5c, 1 | BRF_ESS | BRF_PRG },
-	{ "250-p2cqi.ep1",	0x400000, 0xe61c8983, 1 | BRF_ESS | BRF_PRG },
+	{ "250-p1cqi.p1",	0x100000, 0xf1cd0db7, 1 | BRF_ESS | BRF_PRG },
+	{ "250-p2cqi.ep1",	0x400000, 0xab4cd88e, 1 | BRF_ESS | BRF_PRG },
 
 	{ "250-s1sc.s1",	0x020000, 0x03bce893, 2 | BRF_GRA },
 
@@ -18813,7 +18899,7 @@ STDROMPICKEXT(mslugxcqi, mslugxcqi, neogeo)
 STD_ROM_FN(mslugxcqi)
 
 struct BurnDriver BurnDrvMslugxfs = {
-	"mslugxcqi", "mslugx", "neogeo", NULL, "2024",
+	"mslugxcqi", "mslugx", "neogeo", NULL, "2025",
 	"Metal Slug X - Super Vehicle-001 (Legend with Infinite Firepower, Hack)\0", NULL, "hack", "Neo Geo MVS",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_RUNGUN, FBF_MSLUG,
@@ -19493,11 +19579,11 @@ struct BurnDriver BurnDrvMslug3cqi = {
 
 // Metal Slug 3 (Legend TD, Hack)
 // Modified by AKS
-// GOTVG 20241229
+// GOTVG 20250213
 
 static struct BurnRomInfo mslug3cqtRomDesc[] = {
 	{ "256-p1cqt.p1",	0x100000, 0x9a40066b, 1 | BRF_ESS | BRF_PRG },
-	{ "256-p2cqt.sp2",	0x600000, 0xf3ac11ef, 1 | BRF_ESS | BRF_PRG },
+	{ "256-p2cqt.sp2",	0x600000, 0x517ccf74, 1 | BRF_ESS | BRF_PRG },
 
 	MSLUG3_DECRYPTED_SPR1
 	MSLUG3_DECRYPTED_SPR2
@@ -19514,7 +19600,7 @@ STDROMPICKEXT(mslug3cqt, mslug3cqt, neogeo)
 STD_ROM_FN(mslug3cqt)
 
 struct BurnDriver BurnDrvMslug3cqt = {
-	"mslug3cqt", "mslug3", "neogeo", NULL, "2024",
+	"mslug3cqt", "mslug3", "neogeo", NULL, "2025",
 	"Metal Slug 3 (Legend TD, Hack)\0", NULL, "hack", "Neo Geo MVS",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_RUNGUN, FBF_MSLUG,
@@ -26566,6 +26652,52 @@ struct BurnDriver BurnDrvBeast = {
 };
 
 
+// Neo 2048 (HB)
+// Release by Nicole Caroline Branagan
+// https://github.com/nicolebranagan/neo2048
+
+static struct BurnRomInfo neo2048RomDesc[] = {
+	{ "neo2048.p1",		0x000bde, 0xa1039bdb, 1 | BRF_ESS | BRF_PRG },  //  0 68K Code
+
+	{ "fixlayer.s1",	0x020000, 0xd1e4c798, 2 | BRF_GRA },            //  1 Text data
+
+	{ "logo.c1",		0x100000, 0x479543cf, 3 | BRF_GRA },            //  2 Sprite data
+	{ "logo.c2",		0x100000, 0x1f6431d5, 3 | BRF_GRA },            //  3
+	{ "sprites.c1",		0x000c00, 0xef3e848e, 0 | BRF_GRA },            //  4
+	{ "sprites.c2",		0x000c00, 0x933b4e8f, 0 | BRF_GRA },            //  5
+
+	{ "sounddriver.m1",	0x010000, 0x6e363bd2, 4 | BRF_ESS | BRF_PRG },  //  6 Z80 code
+
+	{ "adpcma.v1",		0x00e200, 0xdba56bf0, 5 | BRF_SND },            //  7 Sound data
+};
+
+STDROMPICKEXT(neo2048, neo2048, neogeo)
+STD_ROM_FN(neo2048)
+
+static void neo2048Callback()
+{
+	BurnLoadRom(NeoSpriteROM[nNeoActiveSlot] + 0x100000, 4, 2);
+	BurnLoadRom(NeoSpriteROM[nNeoActiveSlot] + 0x100001, 5, 2);
+}
+
+static INT32 neo2048Init()
+{
+	NeoCallbackActive->pInitialise = neo2048Callback;
+
+	return NeoInit();
+}
+
+struct BurnDriver BurnDrvNeo2048 = {
+	"neo2048", NULL, "neogeo", NULL, "2021",
+	"Neo 2048 (HB)\0", NULL, "Nicole Express", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_PUZZLE, 0,
+	NULL, neo2048RomInfo, neo2048RomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	neo2048Init, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000,	304, 224, 4, 3
+};
+
+
 // Neo 2500 Demo
 
 static struct BurnRomInfo neo2500RomDesc[] = {
@@ -27362,6 +27494,42 @@ struct BurnDriver BurnDrvNeogalaga = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW | BDF_DEMO, 1, HARDWARE_SNK_NEOGEO, GBF_MISC, 0,
 	NULL, neogalagaRomInfo, neogalagaRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000,	304, 224, 4, 3
+};
+
+
+// Shadow Gangs Zero (Kick Demo Ver: 2.0)
+// https://www.kickstarter.com/projects/jkmcorp/shadow-gangs-zero
+// The game would be accompanied by a black screen that made my finger move to F3 ... It's hard to tell.
+
+static struct BurnRomInfo sgzRomDesc[] = {
+	{ "shadowgangs-p1.bin",  0x100000, 0x825d0989, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "shadowgangs-p2.bin",  0x100000, 0x3d1f0314, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "shadowgangs-s1.bin",  0x020000, 0x2E4238D1, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "shadowgangs-c1.bin",  0x200000, 0x7679fe24, 3 | BRF_GRA },           //  3 Sprite data
+	{ "shadowgangs-c2.bin",  0x200000, 0x5374cdad, 3 | BRF_GRA },           //  4
+
+	{ "shadowgangs-m1.bin",  0x020000, 0x11c56b34, 4 | BRF_ESS | BRF_PRG }, //  5 Z80 code
+
+	{ "shadowgangs-v1.bin",  0x200000, 0x8928bcf2, 5 | BRF_SND },           //  6 Sound data
+#if 0
+	// All filled with 0.
+	{ "shadowgangs-v2.bin",  0x200000, 0x8d89877e, 5 | BRF_SND },           //  7
+#endif
+};
+
+STDROMPICKEXT(sgz, sgz, neogeo)
+STD_ROM_FN(sgz)
+
+struct BurnDriver BurnDrvSgz = {
+	"sgz", NULL, "neogeo", NULL, "2024",
+	"Shadow Gangs Zero (Kick Demo Ver: 2.0)\0", NULL, "kickstarter", "Neo Geo MVS",
+	L"Shadow Gangs Zero (Kick Demo Ver: 2.0)\0\u5f71\u306e\u30ae\u30e3\u30f3\u30b0 ZERO\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_DEMO, 1, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
+	NULL, sgzRomInfo, sgzRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000,	304, 224, 4, 3
 };
