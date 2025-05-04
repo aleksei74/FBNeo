@@ -795,7 +795,7 @@ static int AppInit()
 
 	bNumlockStatus = SetNumLock(false);
 
-	CreateIconsCache();
+	CreateDrvIconsCache();
 
 	return 0;
 }
@@ -803,13 +803,13 @@ static int AppInit()
 static int AppExit()
 {
 	UnloadDrvIcons();
-	DestroyIconsCache();
+	DestroyDrvIconsCache();
 
 	SetNumLock(bNumlockStatus);
 
 	DrvExit();						// Make sure any game driver is exitted
 	FreeROMInfo();
-	FreeSubDirsInfo();
+	DestroySubDir();
 	MediaExit();
 	BurnLibExit();					// Exit the Burn library
 

@@ -347,10 +347,11 @@ extern bool bIconsOnlyParents;
 extern int nIconsSize, nIconsSizeXY, nIconsYDiff;
 extern bool bGameInfoOpen;
 extern bool bIconsByHardwares;
-extern bool bCacheWait;
 
-void CreateIconsCache();
-void DestroyIconsCache();
+extern HICON* pIconsCache;
+
+void CreateDrvIconsCache();
+void DestroyDrvIconsCache();
 
 void LoadDrvIcons();
 void UnloadDrvIcons();
@@ -372,13 +373,13 @@ extern bool bRDListScanSub;
 INT32 RomDataManagerInit();
 
 // cona.cpp
-typedef struct {
+struct SubDirInfo {
 	TCHAR   BaseDir[MAX_PATH];
 	TCHAR** SubDirs;
 	UINT32  nCount;
-} ThreadParams;
+};
 
-extern ThreadParams _ThreadParams[DIRS_MAX];
+extern SubDirInfo _SubDirInfo[DIRS_MAX];
 
 extern int nIniVersion;
 
@@ -389,7 +390,8 @@ struct VidPresetDataVer { int nWidth; int nHeight; };
 extern struct VidPresetDataVer VidPresetVer[4];
 
 INT32 LookupSubDirThreads();
-void FreeSubDirsInfo();
+void SubDirThreadExit();
+void DestroySubDir();
 int ConfigAppLoad();
 int ConfigAppSave();
 

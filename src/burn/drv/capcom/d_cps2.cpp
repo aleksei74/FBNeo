@@ -13358,7 +13358,7 @@ static struct BurnRomInfo Sf2primeRomDesc[] = {
 	{ "sf2pr.10",		0x080000, 0x504bf849, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
 #endif
 
-	{ "sf2pr.13m",		0x800000, 0xa48a99a4, CPS2_GFX | BRF_GRA },
+	{ "sf2pr.13m",		0x800000, 0xf48a99a4, CPS2_GFX | BRF_GRA },
 	{ "sf2pr.15m",		0x800000, 0xabf5f4b2, CPS2_GFX | BRF_GRA },
 	{ "sf2pr.17m",		0x800000, 0x87dd1b40, CPS2_GFX | BRF_GRA },
 	{ "sf2pr.19m",		0x800000, 0xb3395339, CPS2_GFX | BRF_GRA },
@@ -14815,7 +14815,7 @@ struct BurnDriver BurnDrvCpsHsf2app = {
 
 struct BurnDriver BurnDrvCpsSf2prime = {
 	"sf2prime", "hsf2", NULL, NULL, "2025",
-	"Street Fighter II': Prime (Ver 0.45, Hack)\0", NULL, "Zero800", "CPS2",
+	"Street Fighter II': Prime (Ver 0.50, Hack)\0", NULL, "Zero800", "CPS2",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_SF,
 	NULL, Sf2primeRomInfo, Sf2primeRomName, NULL, NULL, NULL, NULL, Cps2FightingInputInfo, NULL,

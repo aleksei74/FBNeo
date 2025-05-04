@@ -1638,25 +1638,31 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 			bDrvSaveAll = !bDrvSaveAll;
 			break;
 
+		case MENU_INTSCALE:
+			bVidCorrectAspect = 1;
+			bVidIntegerScale = 1;
+			bVidFullStretch = 0;
+			POST_INITIALISE_MESSAGE;
+			break;
+
 		case MENU_NOSTRETCH:
 			bVidCorrectAspect = 0;
 			bVidFullStretch = 0;
+			bVidIntegerScale = 0;
 			POST_INITIALISE_MESSAGE;
 			break;
 
 		case MENU_STRETCH:
 			bVidFullStretch = true;
-			if (bVidFullStretch) {
-				bVidCorrectAspect = 0;
-			}
+			bVidCorrectAspect = 0;
+			bVidIntegerScale = 0;
 			POST_INITIALISE_MESSAGE;
 			break;
 
 		case MENU_ASPECT:
 			bVidCorrectAspect = true;
-			if (bVidCorrectAspect) {
-				bVidFullStretch = 0;
-			}
+			bVidFullStretch = 0;
+			bVidIntegerScale = 0;
 			POST_INITIALISE_MESSAGE;
 			break;
 
@@ -2466,7 +2472,7 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 
 		case MENU_ENABLEICONS: {
 			bEnableIcons = !bEnableIcons;
-			if (bEnableIcons) CreateIconsCache();
+			CreateDrvIconsCache();
 			break;
 		}
 
@@ -2478,22 +2484,19 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 
 		case MENU_ICONS_SIZE_16: {
 			nIconsSize = ICON_16x16;
-			DestroyIconsCache();
-			CreateIconsCache();
+			CreateDrvIconsCache();
 			break;
 		}
 
 		case MENU_ICONS_SIZE_24: {
 			nIconsSize = ICON_24x24;
-			DestroyIconsCache();
-			CreateIconsCache();
+			CreateDrvIconsCache();
 			break;
 		}
 
 		case MENU_ICONS_SIZE_32: {
 			nIconsSize = ICON_32x32;
-			DestroyIconsCache();
-			CreateIconsCache();
+			CreateDrvIconsCache();
 			break;
 		}
 
@@ -2510,7 +2513,7 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 		}
 
 		case MENU_ICONS_REFRESH: {
-			LoadDrvIcons();
+			CreateDrvIconsCache();
 			break;
 		}
 
