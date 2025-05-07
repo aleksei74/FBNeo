@@ -990,9 +990,10 @@ static void UpdatePreviousGameList()
 	}
 
 	switch (nRecentIdenticalTo) {
-		case -1: // game was not in recents list, add it to the top
+		case -1:
+			// game was not in recents list, add it to the top
 			for (int i = 1; i < SHOW_PREV_GAMES; i++) {
-				_tcscpy(szPrevGames[i], szPrevGames[i - 1]);
+				_tcscpy(szPrevGames[i], szTmp[i - 1]);
 			}
 			_tcscpy(szPrevGames[0], BurnDrvGetText(DRV_NAME));
 			break;
