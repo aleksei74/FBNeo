@@ -2269,6 +2269,10 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 			POST_INITIALISE_MESSAGE;
 			break;
 
+		case MENU_ADAPTIVEPOPUP:
+			bAdaptivepopup = !bAdaptivepopup;
+			break;
+
 		case MENU_NOCHANGENUMLOCK:
 			bNoChangeNumLock = !bNoChangeNumLock;
 			break;
@@ -3750,11 +3754,13 @@ int ScrnTitle()
 
 	// Create window title
 	if (bDrvOkay) {
+		int nGetTextFlags = (nLoadMenuShowY & (1<<31)) ? DRV_ASCIIONLY : 0; // (1<<31) ASCIIONLY from sel.cpp...
+
 		TCHAR* pszPosition = szText;
-		TCHAR* pszName = BurnDrvGetText(DRV_FULLNAME);
+		TCHAR* pszName = BurnDrvGetText(DRV_FULLNAME | nGetTextFlags);
 
 		pszPosition += _sntprintf(szText, 1024, _T(APP_TITLE) _T( " v%.20s") _T(SEPERATOR_1) _T("%s"), szAppBurnVer, pszName);
-		while ((pszName = BurnDrvGetText(DRV_NEXTNAME | DRV_FULLNAME)) != NULL) {
+		while ((pszName = BurnDrvGetText(DRV_NEXTNAME | DRV_FULLNAME | nGetTextFlags)) != NULL) {
 			if (pszPosition + _tcslen(pszName) - 1024 > szText) {
 				break;
 			}
