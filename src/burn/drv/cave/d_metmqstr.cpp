@@ -820,3 +820,40 @@ struct BurnDriver BurnDrvnmaster = {
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	&CaveRecalcPalette, 0x8000, 384, 240, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+static struct BurnRomInfo nmasterkRomDesc[] = {
+	{ "bp947a_n.u25", 0x080000, 0x748cc514, BRF_ESS | BRF_PRG }, //  0 CPU #0 code
+	{ "bp947a.u28",   0x080000, 0x8c55decf, BRF_ESS | BRF_PRG }, //  1
+	{ "bp947a.u29",   0x080000, 0xcf0f3f3b, BRF_ESS | BRF_PRG }, //  2
+
+	{ "bp947a.u20",   0x040000, 0xa4a36170, BRF_ESS | BRF_PRG }, //  3 Z80 Code
+
+	{ "bp947a.u49",   0x200000, 0x09749531, BRF_GRA },	     //  4 Sprite data
+	{ "bp947a.u50",   0x200000, 0x19cea8b2, BRF_GRA },	     //  5
+	{ "bp947a.u51",   0x200000, 0xc19bed67, BRF_GRA },	     //  6
+	{ "bp947a.u52",   0x200000, 0x70c64875, BRF_GRA },	     //  7
+
+	{ "bp947a.u48",   0x200000, 0x04ff6a3d, BRF_GRA },			 //  8 Layer 0 Tile data
+	{ "bp947ak.u47",  0x200000, 0xa7323cd2, BRF_GRA },			 //  9 Layer 2 Tile data
+	{ "bp947a.u46",   0x200000, 0x0f9c906e, BRF_GRA },			 //  10 Layer 2 Tile data
+
+	{ "bp947a.u42",   0x200000, 0x2ce8ff2a, BRF_SND },			 //  11 MSM6295 #1 ADPCM data
+	{ "bp947a.u37",   0x200000, 0xc3077c8f, BRF_SND },			 //  12 MSM6295 #2 ADPCM data
+};
+
+STD_ROM_PICK(nmasterk)
+STD_ROM_FN(nmasterk)
+
+struct BurnDriver BurnDrvnmasterk = {
+	"nmasterk", "metmqstr", NULL, NULL, "1995",
+	"Oni - The Ninja Master (Korean Translation)\0", NULL, "Banpresto / Pandorabox", "Cave",
+	L"\uC624\uB2C8\ - \uB354 \uB2CC\uC790 \uB9C8\uC2A4\uD130 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Oni - The Ninja Master (Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_Z80, GBF_VSFIGHT, 0,
+	NULL, nmasterkRomInfo, nmasterkRomName, NULL, NULL, NULL, NULL, metmqstrInputInfo, NULL,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
+	&CaveRecalcPalette, 0x8000, 384, 240, 4, 3
+};

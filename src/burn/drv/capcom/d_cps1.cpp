@@ -1545,31 +1545,31 @@ STDINPUTINFO(Sf2ceuabl)
 
 static struct BurnInputInfo SfzchInputList[] =
 {
-	{"P1 Pause"         , BIT_DIGITAL  , CpsInp018+2, "p1 coin"   },
+	{"P1 Pause"            , BIT_DIGITAL  , CpsInp018+2, "p1 pause"  },
 	{"P1 Start"         , BIT_DIGITAL  , CpsInp018+4, "p1 start"  },
 	{"P1 Up"            , BIT_DIGITAL  , CpsInp001+3, "p1 up"     },
 	{"P1 Down"          , BIT_DIGITAL  , CpsInp001+2, "p1 down"   },
 	{"P1 Left"          , BIT_DIGITAL  , CpsInp001+1, "p1 left"   },
 	{"P1 Right"         , BIT_DIGITAL  , CpsInp001+0, "p1 right"  },
-	{"P1 Weak Punch"    , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
-	{"P1 Medium Punch"  , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
-	{"P1 Strong Punch"  , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
-	{"P1 Weak Kick"     , BIT_DIGITAL  , CpsInp001+7, "p1 fire 4" },
-	{"P1 Medium Kick"   , BIT_DIGITAL  , CpsInp018+0, "p1 fire 5" },
-	{"P1 Strong Kick"   , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
+	{"P1 Weak Punch (L)"   , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
+	{"P1 Medium Punch (X)" , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
+	{"P1 Strong Punch (R)" , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
+	{"P1 Weak Kick (Y)"    , BIT_DIGITAL  , CpsInp001+7, "p1 fire 4" },
+	{"P1 Medium Kick (B)"  , BIT_DIGITAL  , CpsInp018+0, "p1 fire 5" },
+	{"P1 Strong Kick (A)"  , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
 
-	{"P2 Pause"         , BIT_DIGITAL  , CpsInp018+3, "p2 coin"   },
+	{"P2 Pause"            , BIT_DIGITAL  , CpsInp018+3, "p2 pause"  },
 	{"P2 Start"         , BIT_DIGITAL  , CpsInp018+5, "p2 start"  },
 	{"P2 Up"            , BIT_DIGITAL  , CpsInp000+3, "p2 up"     },
 	{"P2 Down"          , BIT_DIGITAL  , CpsInp000+2, "p2 down"   },
 	{"P2 Left"          , BIT_DIGITAL  , CpsInp000+1, "p2 left"   },
 	{"P2 Right"         , BIT_DIGITAL  , CpsInp000+0, "p2 right"  },
-	{"P2 Weak Punch"    , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
-	{"P2 Medium Punch"  , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
-	{"P2 Strong Punch"  , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
-	{"P2 Weak Kick"     , BIT_DIGITAL  , CpsInp000+7, "p2 fire 4" },
-	{"P2 Medium Kick"   , BIT_DIGITAL  , CpsInp018+1, "p2 fire 5" },
-	{"P2 Strong Kick"   , BIT_DIGITAL  , CpsInp018+7, "p2 fire 6" },
+	{"P2 Weak Punch (L)"   , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
+	{"P2 Medium Punch (X)" , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
+	{"P2 Strong Punch (R)" , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
+	{"P2 Weak Kick (Y)"    , BIT_DIGITAL  , CpsInp000+7, "p2 fire 4" },
+	{"P2 Medium Kick (B)"  , BIT_DIGITAL  , CpsInp018+1, "p2 fire 5" },
+	{"P2 Strong Kick (A)"  , BIT_DIGITAL  , CpsInp018+7, "p2 fire 6" },
 
 	{"Reset"            , BIT_DIGITAL  , &CpsReset  , "reset"     },
 };
@@ -1843,31 +1843,31 @@ STDINPUTINFO(Wof)
 
 static struct BurnInputInfo WofchInputList[] =
 {
-	{"P1 Pause"         , BIT_DIGITAL  , CpsInp018+2, "p1 coin"   },
+	{"P1 Pause"         , BIT_DIGITAL  , CpsInp018+2, "p1 pause"  },
 	{"P1 Start"         , BIT_DIGITAL  , CpsInp018+4, "p1 start"  },
 	{"P1 Up"            , BIT_DIGITAL  , CpsInp001+3, "p1 up"     },
 	{"P1 Down"          , BIT_DIGITAL  , CpsInp001+2, "p1 down"   },
 	{"P1 Left"          , BIT_DIGITAL  , CpsInp001+1, "p1 left"   },
 	{"P1 Right"         , BIT_DIGITAL  , CpsInp001+0, "p1 right"  },
-	{"P1 Attack"        , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
-	{"P1 Jump"          , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
-	{"P1 Fire"          , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
-	{"P1 Fire 4"        , BIT_DIGITAL  , CpsInp001+7, "p1 fire 4" },
-	{"P1 Fire 5"        , BIT_DIGITAL  , CpsInp018+0, "p1 fire 5" },
-	{"P1 Fire 6"        , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
+	{"P1 Attack (L)"    , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
+	{"P1 Jump (X)"      , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
+	{"P1 Special (R)"   , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
+	{"P1 Fire 4 (Y)"    , BIT_DIGITAL  , CpsInp001+7, "p1 fire 4" },
+	{"P1 Fire 5 (B)"    , BIT_DIGITAL  , CpsInp018+0, "p1 fire 5" },
+	{"P1 Fire 6 (A)"    , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
 
-	{"P2 Pause"         , BIT_DIGITAL  , CpsInp018+3, "p2 coin"   },
+	{"P2 Pause"         , BIT_DIGITAL  , CpsInp018+3, "p2 pause"  },
 	{"P2 Start"         , BIT_DIGITAL  , CpsInp018+5, "p2 start"  },
 	{"P2 Up"            , BIT_DIGITAL  , CpsInp000+3, "p2 up"     },
 	{"P2 Down"          , BIT_DIGITAL  , CpsInp000+2, "p2 down"   },
 	{"P2 Left"          , BIT_DIGITAL  , CpsInp000+1, "p2 left"   },
 	{"P2 Right"         , BIT_DIGITAL  , CpsInp000+0, "p2 right"  },
-	{"P2 Attack"        , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
-	{"P2 Jump"          , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
-	{"P2 Fire"          , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
-	{"P2 Fire 4"        , BIT_DIGITAL  , CpsInp000+7, "p2 fire 4" },
-	{"P2 Fire 5"        , BIT_DIGITAL  , CpsInp018+1, "p2 fire 5" },
-	{"P2 Fire 6"        , BIT_DIGITAL  , CpsInp018+7, "p2 fire 6" },
+	{"P2 Attack (L)"    , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
+	{"P2 Jump (X)"      , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
+	{"P2 Special (R)"   , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
+	{"P2 Fire 4 (Y)"    , BIT_DIGITAL  , CpsInp000+7, "p2 fire 4" },
+	{"P2 Fire 5 (B)"    , BIT_DIGITAL  , CpsInp018+1, "p2 fire 5" },
+	{"P2 Fire 6 (A)"    , BIT_DIGITAL  , CpsInp018+7, "p2 fire 6" },
 
 	{"Reset"            , BIT_DIGITAL  , &CpsReset,   "reset"     },
 };
@@ -2282,23 +2282,23 @@ STDINPUTINFOEXT(FfightVS,		Ffight,		VerSwitch  )
 #define CPS1_DIFFICULTY_1(dipval) \
 	{0   , 0xfe, 0   , 8   , "Difficulty"               }, \
 	{dipval, 0x01, 0x07, 0x00, "1 (Easiest)"            }, \
-	{dipval, 0x01, 0x07, 0x01, "2"                      }, \
-	{dipval, 0x01, 0x07, 0x02, "3"                      }, \
+	{dipval, 0x01, 0x07, 0x01, "2 (Easier)"             }, \
+	{dipval, 0x01, 0x07, 0x02, "3 (Easy)"               }, \
 	{dipval, 0x01, 0x07, 0x03, "4 (Normal)"             }, \
-	{dipval, 0x01, 0x07, 0x04, "5"                      }, \
-	{dipval, 0x01, 0x07, 0x05, "6"                      }, \
-	{dipval, 0x01, 0x07, 0x06, "7"                      }, \
+	{dipval, 0x01, 0x07, 0x04, "5 (Medium)"             }, \
+	{dipval, 0x01, 0x07, 0x05, "6 (Hard)"               }, \
+	{dipval, 0x01, 0x07, 0x06, "7 (Harder)"             }, \
 	{dipval, 0x01, 0x07, 0x07, "8 (Hardest)"            },
 	
 #define CPS1_DIFFICULTY_2(dipval) \
 	{0   , 0xfe, 0   , 8   , "Difficulty"               }, \
 	{dipval, 0x01, 0x07, 0x03, "1 (Easiest)"            }, \
-	{dipval, 0x01, 0x07, 0x02, "2"                      }, \
-	{dipval, 0x01, 0x07, 0x01, "3"                      }, \
+	{dipval, 0x01, 0x07, 0x02, "2 (Easier)"             }, \
+	{dipval, 0x01, 0x07, 0x01, "3 (Easy)"               }, \
 	{dipval, 0x01, 0x07, 0x00, "4 (Normal)"             }, \
-	{dipval, 0x01, 0x07, 0x04, "5"                      }, \
-	{dipval, 0x01, 0x07, 0x05, "6"                      }, \
-	{dipval, 0x01, 0x07, 0x06, "7"                      }, \
+	{dipval, 0x01, 0x07, 0x04, "5 (Medium)"             }, \
+	{dipval, 0x01, 0x07, 0x05, "6 (Hard)"               }, \
+	{dipval, 0x01, 0x07, 0x06, "7 (Harder)"             }, \
 	{dipval, 0x01, 0x07, 0x07, "8 (Hardest)"            },
 
 static struct BurnDIPInfo NTFODIPList[]=
@@ -17404,6 +17404,26 @@ static const struct GameConfig ConfigTable[] =
 	{ "sfzech"        , CPS_B_21_DEF, mapper_SFZ63B, 0, NULL                },
 	{ "sfzhch"        , CPS_B_21_DEF, mapper_SFZ63B, 0, NULL                },
 
+	// Add Korean Translation
+	{ "area88ka"      , CPS_B_11    , mapper_AR22B , 0, NULL                },
+	{ "area88kb"      , CPS_B_11    , mapper_AR22B , 0, NULL                },
+	{ "captcommk"     , CPS_B_21_BT3, mapper_CC63B , 0, NULL                },
+	{ "daimakaik"     , CPS_B_01    , mapper_DM22A , 0, NULL                },
+	{ "dinok"         , CPS_B_21_QS2, mapper_CD63B , 0, dino_decode         },
+	{ "ffightk4"      , CPS_B_05    , mapper_S224B , 0, NULL                },
+	{ "ffightaek"     , CPS_B_21_DEF, mapper_S224B , 0, NULL                },
+	{ "knightsk"      , CPS_B_21_BT4, mapper_KR63B , 0, NULL                },
+	{ "kodk"          , CPS_B_21_BT2, mapper_KD29B , 0, NULL                },
+	{ "punisherk"     , CPS_B_21_QS3, mapper_PS63B , 0, punisher_decode     },
+	{ "rockmank"      , CPS_B_21_DEF, mapper_RCM63B, 0, NULL                },
+	{ "striderk"      , CPS_B_01    , mapper_ST22B , 1, NULL                },
+	{ "sfzchk"        , CPS_B_21_DEF, mapper_sfzch , 0, NULL                },
+	{ "wofk"          , CPS_B_21_QS1, mapper_TK263B, 0, wof_decode          },
+	{ "wofk103"       , CPS_B_21_QS1, mapper_TK263B, 0, wof_decode          },
+	{ "wofchk"        , CPS_B_21_DEF, mapper_sfzch , 0, wof_decode          },
+	{ "wofchku"       , CPS_B_21_DEF, mapper_sfzch , 0, wof_decode          },
+	{ "wonder3k"      , CPS_B_21_BT1, mapper_RT22B , 0, NULL                },
+
 	{ 0               , 0           , 0            , 0, 0                   }
 };
 
@@ -29184,6 +29204,898 @@ struct BurnDriver BurnDrvCpsPunishdw = {
 #undef PUNISHER_MISC
 
 #include "d_kenseim.h"
+
+//========================
+// Add Korean Translation
+//========================
+
+static struct BurnRomInfo Area88kaRomDesc[] = {
+	{ "ark_36.12f",    0x020000, 0x1456a612, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_42.12h",    0x020000, 0x9c41ba64, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_37.13f",    0x020000, 0xab132921, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_43.13h",    0x020000, 0xaa9f3209, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_34.10f",    0x020000, 0x862d6acd, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_40.10h",    0x020000, 0xeedaafc6, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_35.11f",    0x020000, 0x55469d7f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_41.11h",    0x020000, 0xfea09ed5, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+
+	{ "arka_09.4b",    0x020000, 0x1312e2bc, BRF_GRA | CPS1_TILES },
+	{ "arka_01.4a",    0x020000, 0xc2c5e0e4, BRF_GRA | CPS1_TILES },
+	{ "arka_13.9b",    0x020000, 0x7e7b1a9e, BRF_GRA | CPS1_TILES },
+	{ "arka_05.9a",    0x020000, 0x270b5d8b, BRF_GRA | CPS1_TILES },
+	{ "arka_24.5e",    0x020000, 0x545776e7, BRF_GRA | CPS1_TILES },
+	{ "arka_17.5c",    0x020000, 0xf06abca4, BRF_GRA | CPS1_TILES },
+	{ "arka_38.8h",    0x020000, 0x74a60ba6, BRF_GRA | CPS1_TILES },
+	{ "arka_32.8f",    0x020000, 0x1e277ddb, BRF_GRA | CPS1_TILES },
+	{ "arka_10.5b",    0x020000, 0xcae95f23, BRF_GRA | CPS1_TILES },
+	{ "arka_02.5a",    0x020000, 0x372cb9ba, BRF_GRA | CPS1_TILES },
+	{ "arka_14.10b",   0x020000, 0xb64f66ac, BRF_GRA | CPS1_TILES },
+	{ "arka_06.10a",   0x020000, 0x424f6874, BRF_GRA | CPS1_TILES },
+	{ "arka_25.7e",    0x020000, 0x6be261bd, BRF_GRA | CPS1_TILES },
+	{ "arka_18.7c",    0x020000, 0xb1f8c0be, BRF_GRA | CPS1_TILES },
+	{ "arka_39.9h",    0x020000, 0xea9d99c5, BRF_GRA | CPS1_TILES },
+	{ "arka_33.9f",    0x020000, 0x04873733, BRF_GRA | CPS1_TILES },
+
+	{ "ar_23.13c",     0x010000, 0xf3dd1367, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "ar_30.12e",     0x020000, 0x584b43a9, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "ar22b.1a",      0x000117, 0xf1db9030, BRF_OPT },	// b-board PLDs
+	{ "lwio.12c",      0x000117, 0xad52b90c, BRF_OPT },
+};
+
+STD_ROM_PICK(Area88ka)
+STD_ROM_FN(Area88ka)
+
+static struct BurnRomInfo Area88kbRomDesc[] = {
+	{ "ark_36.12f",    0x020000, 0x1456a612, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_42.12h",    0x020000, 0x9c41ba64, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_37.13f",    0x020000, 0xab132921, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_43.13h",    0x020000, 0xaa9f3209, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_34.10f",    0x020000, 0x862d6acd, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_40.10h",    0x020000, 0xeedaafc6, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_35.11f",    0x020000, 0x55469d7f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ark_41.11h",    0x020000, 0xfea09ed5, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+
+	{ "arkb_09.4b",    0x020000, 0x1312e2bc, BRF_GRA | CPS1_TILES },
+	{ "arkb_01.4a",    0x020000, 0xc2c5e0e4, BRF_GRA | CPS1_TILES },
+	{ "arkb_13.9b",    0x020000, 0x7e7b1a9e, BRF_GRA | CPS1_TILES },
+	{ "arkb_05.9a",    0x020000, 0x270b5d8b, BRF_GRA | CPS1_TILES },
+	{ "arkb_24.5e",    0x020000, 0x545776e7, BRF_GRA | CPS1_TILES },
+	{ "arkb_17.5c",    0x020000, 0xf06abca4, BRF_GRA | CPS1_TILES },
+	{ "arkb_38.8h",    0x020000, 0x74a60ba6, BRF_GRA | CPS1_TILES },
+	{ "arkb_32.8f",    0x020000, 0x1e277ddb, BRF_GRA | CPS1_TILES },
+	{ "arkb_10.5b",    0x020000, 0x4bf765fe, BRF_GRA | CPS1_TILES },
+	{ "arkb_02.5a",    0x020000, 0xbccaad4c, BRF_GRA | CPS1_TILES },
+	{ "arkb_14.10b",   0x020000, 0xa2cf621b, BRF_GRA | CPS1_TILES },
+	{ "arkb_06.10a",   0x020000, 0x8f079805, BRF_GRA | CPS1_TILES },
+	{ "arkb_25.7e",    0x020000, 0x10a179bf, BRF_GRA | CPS1_TILES },
+	{ "arkb_18.7c",    0x020000, 0x8fd8f843, BRF_GRA | CPS1_TILES },
+	{ "arkb_39.9h",    0x020000, 0xbd3a33a8, BRF_GRA | CPS1_TILES },
+	{ "arkb_33.9f",    0x020000, 0x1ff1031f, BRF_GRA | CPS1_TILES },
+
+	{ "ar_23.13c",     0x010000, 0xf3dd1367, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "ar_30.12e",     0x020000, 0x584b43a9, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "ar22b.1a",      0x000117, 0xf1db9030, BRF_OPT },	// b-board PLDs
+	{ "lwio.12c",      0x000117, 0xad52b90c, BRF_OPT },
+};
+
+STD_ROM_PICK(Area88kb)
+STD_ROM_FN(Area88kb)
+
+static struct BurnRomInfo CaptcommkRomDesc[] = {
+	{ "ccj_23f.8f",    0x080000, 0x5b482b62, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "cck_22f.7f",    0x080000, 0x216fe8e9, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "cck_24f.9e",    0x020000, 0x6856b740, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "cck_28f.9f",    0x020000, 0xb5ec9706, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+
+	{ "cc_01.3a",      0x080000, 0x7261d8ba, BRF_GRA | CPS1_TILES },
+	{ "cc_02.4a",      0x080000, 0x6a60f949, BRF_GRA | CPS1_TILES },
+	{ "cc_03.5a",      0x080000, 0x00637302, BRF_GRA | CPS1_TILES },
+	{ "cc_04.6a",      0x080000, 0xcc87cf61, BRF_GRA | CPS1_TILES },
+	{ "cck_05.7a",     0x080000, 0xedb5ac44, BRF_GRA | CPS1_TILES },
+	{ "cck_06.8a",     0x080000, 0x93000eec, BRF_GRA | CPS1_TILES },
+	{ "cck_07.9a",     0x080000, 0xc9add6f8, BRF_GRA | CPS1_TILES },
+	{ "cck_08.10a",    0x080000, 0x58327041, BRF_GRA | CPS1_TILES },
+
+	{ "ccj_09.12a",    0x010000, 0x698e8b58, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "ccj_18.11c",    0x020000, 0x6de2c2db, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "ccj_19.12c",    0x020000, 0xb99091ae, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "cc63b.1a",      0x000117, 0xcae8f0f9, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "ccprg1.11d",    0x000117, 0xe1c225c4, BRF_OPT },
+	{ "ioc1.ic7",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "c632.ic1",      0x000117, 0x0fbd9270, BRF_OPT },
+};
+
+STD_ROM_PICK(Captcommk)
+STD_ROM_FN(Captcommk)
+
+static struct BurnRomInfo DaimakaikRomDesc[] = {
+	{ "dmk_38.12f",    0x020000, 0xc970babe, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "dmk_39.12h",    0x020000, 0x5441a3e1, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "dmk_40.13f",    0x020000, 0x0d559369, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "dmk_41.13h",    0x020000, 0x9a5eae6f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "dm_33.10f",     0x020000, 0x384d60c4, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "dm_34.10h",     0x020000, 0x19abe30f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "dm_35.11f",     0x020000, 0xc04b85c8, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "dm_36.11h",     0x020000, 0x89be83de, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+
+	{ "dmk_02.4b",     0x020000, 0x9b7a9e4d, BRF_GRA | CPS1_TILES },
+	{ "dmk_01.4a",     0x020000, 0xebc2dfb2, BRF_GRA | CPS1_TILES },
+	{ "dmk_10.9b",     0x020000, 0xb8dafc20, BRF_GRA | CPS1_TILES },
+	{ "dmk_09.9a",     0x020000, 0xb3f98a6a, BRF_GRA | CPS1_TILES },
+	{ "dmk_18.5e",     0x020000, 0x0a42999c, BRF_GRA | CPS1_TILES },
+	{ "dmk_17.5c",     0x020000, 0xb7256b2c, BRF_GRA | CPS1_TILES },
+	{ "dmk_30.8h",     0x020000, 0xa3eedd72, BRF_GRA | CPS1_TILES },
+	{ "dmk_29.8f",     0x020000, 0x3399a259, BRF_GRA | CPS1_TILES },
+	{ "dm_04.5b",      0x020000, 0xa4f4f8f0, BRF_GRA | CPS1_TILES },
+	{ "dm_03.5a",      0x020000, 0xb1033e62, BRF_GRA | CPS1_TILES },
+	{ "dm_12.10b",     0x020000, 0x10fdd76a, BRF_GRA | CPS1_TILES },
+	{ "dm_11.10a",     0x020000, 0x9040cb04, BRF_GRA | CPS1_TILES },
+	{ "dm_20.7e",      0x020000, 0x281d0b3e, BRF_GRA | CPS1_TILES },
+	{ "dm_19.7c",      0x020000, 0x2623b52f, BRF_GRA | CPS1_TILES },
+	{ "dm_32.9h",      0x020000, 0x99692344, BRF_GRA | CPS1_TILES },
+	{ "dm_31.9f",      0x020000, 0x54acb729, BRF_GRA | CPS1_TILES },
+	{ "dmk_06.7b",     0x010000, 0xa156a133, BRF_GRA | CPS1_TILES },
+	{ "dmk_05.7a",     0x010000, 0xaf5235c1, BRF_GRA | CPS1_TILES },
+	{ "dmk_14.11b",    0x010000, 0x973eece6, BRF_GRA | CPS1_TILES },
+	{ "dmk_13.11a",    0x010000, 0x03824bc9, BRF_GRA | CPS1_TILES },
+	{ "dmk_22.8e",     0x010000, 0x7c0ea715, BRF_GRA | CPS1_TILES },
+	{ "dmk_21.8c",     0x010000, 0xd3c0ca93, BRF_GRA | CPS1_TILES },
+	{ "dmk_26.10e",    0x010000, 0x2379a091, BRF_GRA | CPS1_TILES },
+	{ "dmk_25.10c",    0x010000, 0x2ec40b73, BRF_GRA | CPS1_TILES },
+	{ "dm_08.8b",      0x010000, 0xbcc0f28c, BRF_GRA | CPS1_TILES },
+	{ "dm_07.8a",      0x010000, 0x2a40166a, BRF_GRA | CPS1_TILES },
+	{ "dm_16.12b",     0x010000, 0x20f85c03, BRF_GRA | CPS1_TILES },
+	{ "dm_15.12a",     0x010000, 0x8426144b, BRF_GRA | CPS1_TILES },
+	{ "dm_24.9e",      0x010000, 0xda088d61, BRF_GRA | CPS1_TILES },
+	{ "dm_23.9c",      0x010000, 0x17e11df0, BRF_GRA | CPS1_TILES },
+	{ "dm_28.11e",     0x010000, 0xf187ba1c, BRF_GRA | CPS1_TILES },
+	{ "dm_27.11c",     0x010000, 0x29f79c78, BRF_GRA | CPS1_TILES },
+
+	{ "37.13c",        0x010000, 0x3692f6e5, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	A_BOARD_PLDS
+
+	{ "dm22a.1a",      0x000117, 0xd4776116, BRF_OPT }, // b-board PLDs
+	{ "lwio.12c",      0x000117, 0xad52b90c, BRF_OPT },
+};
+
+STD_ROM_PICK(Daimakaik)
+STD_ROM_FN(Daimakaik)
+
+static struct BurnRomInfo DinokRomDesc[] = {
+	{ "cdk_23.8f",     0x080000, 0xaf7439b1, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "cdk_22.7f",     0x080000, 0xc72930bc, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "cdk_21.6f",     0x080000, 0x7a7a0517, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "cdk-1m.3a",     0x080000, 0x2403ca3a, BRF_GRA | CPS1_TILES },
+	{ "cdk-3m.5a",     0x080000, 0x39728396, BRF_GRA | CPS1_TILES },
+	{ "cdk-2m.4a",     0x080000, 0xa06fcf00, BRF_GRA | CPS1_TILES },
+	{ "cdk-4m.6a",     0x080000, 0x364d861a, BRF_GRA | CPS1_TILES },
+	{ "cd-5m.7a",      0x080000, 0x470befee, BRF_GRA | CPS1_TILES },
+	{ "cd-7m.9a",      0x080000, 0x22bfb7a3, BRF_GRA | CPS1_TILES },
+	{ "cd-6m.8a",      0x080000, 0xe7599ac4, BRF_GRA | CPS1_TILES },
+	{ "cd-8m.10a",     0x080000, 0x211b4b15, BRF_GRA | CPS1_TILES },
+
+	{ "cd_q.5k",       0x020000, 0x605fdb0b, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "cd-q1.1k",      0x080000, 0x60927775, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "cd-q2.2k",      0x080000, 0x770f4c47, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "cd-q3.3k",      0x080000, 0x2f273ffc, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "cd-q4.4k",      0x080000, 0x2c67821d, BRF_SND | CPS1_QSOUND_SAMPLES },
+
+	A_BOARD_QSOUND_PLDS
+
+	{ "cd63b.1a",      0x000117, 0xef72e902, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",     0x000117, 0x31793da7, BRF_OPT },
+	{ "ioc1.ic1",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "d7l1.7l",       0x000117, 0x27b7410d, BRF_OPT },	// d-board PLDs
+	{ "d8l1.8l",       0x000117, 0x539fc7da, BRF_OPT },
+	{ "d9k2.9k",       0x000117, 0xcd85a156, BRF_OPT },
+	{ "d10f1.10f",     0x000117, 0x6619c494, BRF_OPT },
+};
+
+STD_ROM_PICK(Dinok)
+STD_ROM_FN(Dinok)
+
+static struct BurnRomInfo Ffightk4RomDesc[] = {
+	{ "ff_36.12f",     0x020000, 0xed988977, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ffj_42.12h",    0x020000, 0x07bf1c21, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ffk_37.13f",    0x020000, 0x0144e630, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ffk_43.13h",    0x020000, 0x793b4caf, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ff_34.10f",     0x020000, 0x0c8dc3fc, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ffj_40.10h",    0x020000, 0x8075bab9, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ff_35.11f",     0x020000, 0x4a934121, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "ffj_41.11h",    0x020000, 0x2af68154, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+
+	{ "ff_09.4b",      0x020000, 0x5b116d0d, BRF_GRA | CPS1_TILES },
+	{ "ff_01.4a",      0x020000, 0x815b1797, BRF_GRA | CPS1_TILES },
+	{ "ff_13.9b",      0x020000, 0x8721a7da, BRF_GRA | CPS1_TILES },
+	{ "ff_05.9a",      0x020000, 0xd0fcd4b5, BRF_GRA | CPS1_TILES },
+	{ "ff_24.5e",      0x020000, 0xa1ab607a, BRF_GRA | CPS1_TILES },
+	{ "ff_17.5c",      0x020000, 0x2dc18cf4, BRF_GRA | CPS1_TILES },
+	{ "ffj_38.8h",     0x020000, 0x6535a57f, BRF_GRA | CPS1_TILES }, // == ff_38.8h 
+	{ "ff_32.8f",      0x020000, 0xc8bc4a57, BRF_GRA | CPS1_TILES },
+	{ "ffk_10.5b",     0x020000, 0xaef14517, BRF_GRA | CPS1_TILES },
+	{ "ffk_02.5a",     0x020000, 0xaf04aff3, BRF_GRA | CPS1_TILES },
+	{ "ffk_14.10b",    0x020000, 0x401628be, BRF_GRA | CPS1_TILES },
+	{ "ffk_06.10a",    0x020000, 0xa70601f2, BRF_GRA | CPS1_TILES },
+	{ "ffk_25.7e",     0x020000, 0xa23a56b7, BRF_GRA | CPS1_TILES },
+	{ "ffk_18.7c",     0x020000, 0x430b873e, BRF_GRA | CPS1_TILES },
+	{ "ffk_39.9h",     0x020000, 0xde2e0dc8, BRF_GRA | CPS1_TILES }, // == ff_39.9h
+	{ "ffk_33.9f",     0x020000, 0xc8770bb7, BRF_GRA | CPS1_TILES },
+
+	{ "ff_23.13b",     0x010000, 0xb8367eb5, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "ff_30.12c",     0x020000, 0x375c66e7, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "ff_31.13c",     0x020000, 0x1ef137f9, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "s222b.1a",      0x000117, 0x6d86b45e, BRF_OPT }, // b-board PLDs
+	{ "lwio.12e",      0x000117, 0xad52b90c, BRF_OPT },
+};
+
+STD_ROM_PICK(Ffightk4)
+STD_ROM_FN(Ffightk4)
+
+static struct BurnRomInfo FfightaekRomDesc[] = {
+	{ "ffk-23m.8h",    0x080000, 0x5fef82dd, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "ff-22m.7h",     0x080000, 0xcbdd8689, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "ffk-5m.7a",     0x080000, 0x99781f70, BRF_GRA | CPS1_TILES },
+	{ "ffk-7m.9a",     0x080000, 0x898726d4, BRF_GRA | CPS1_TILES },
+	{ "ffk-1m.3a",     0x080000, 0xdd9785ce, BRF_GRA | CPS1_TILES },
+	{ "ffk-3m.5a",     0x080000, 0x0c1c90a6, BRF_GRA | CPS1_TILES },
+
+	{ "ff_09.12b",     0x010000, 0xb8367eb5, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "ff_18.11c",     0x020000, 0x375c66e7, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "ff_19.12c",     0x020000, 0x1ef137f9, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "s224bn.1a",     0x000117, 0x31367e94, BRF_OPT },	// b-board PLDs / GAL16V8
+	{ "iob1.11e",      0x000117, 0x3abc0700, BRF_OPT },
+};
+
+STD_ROM_PICK(Ffightaek)
+STD_ROM_FN(Ffightaek)
+
+static struct BurnRomInfo KnightskRomDesc[] = {
+	{ "krk_23.8f",     0x080000, 0xba6ba819, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "kr_22.7f",      0x080000, 0xd0b671a9, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "kr_01.3a",      0x080000, 0x9e36c1a4, BRF_GRA | CPS1_TILES },
+	{ "kr_02.4a",      0x080000, 0xc5832cae, BRF_GRA | CPS1_TILES },
+	{ "kr_03.5a",      0x080000, 0xf095be2d, BRF_GRA | CPS1_TILES },
+	{ "kr_04.6a",      0x080000, 0x179dfd96, BRF_GRA | CPS1_TILES },
+	{ "krk_05.7a",     0x080000, 0x54c19345, BRF_GRA | CPS1_TILES },
+	{ "krk_06.8a",     0x080000, 0xb5339fdc, BRF_GRA | CPS1_TILES },
+	{ "krk_07.9a",     0x080000, 0x4983b7aa, BRF_GRA | CPS1_TILES },
+	{ "krk_08.10a",    0x080000, 0x897bac6a, BRF_GRA | CPS1_TILES },
+
+	{ "kr_09.12a",     0x010000, 0x5e44d9ee, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "kr_18.11c",     0x020000, 0xda69d15f, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "kr_19.12c",     0x020000, 0xbfc654e9, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "kr63b.1a",      0x000117, 0xfd5b6522, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",     0x000117, 0x31793da7, BRF_OPT },
+	{ "ioc1.ic7",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "c632.ic1",      0x000117, 0x0fbd9270, BRF_OPT },
+};
+
+STD_ROM_PICK(Knightsk)
+STD_ROM_FN(Knightsk)
+
+static struct BurnRomInfo KodkRomDesc[] = {
+	{ "kdk_30a.11e",   0x020000, 0xdccccf4f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "kdk_37a.11f",   0x020000, 0x1cb9a149, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "kdk_31a.12e",   0x020000, 0x622dd533, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "kdk_38a.12f",   0x020000, 0x4cb36b59, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "kdk_33.6f",     0x080000, 0x260f5607, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "kd_06.8a",      0x080000, 0xe45b8701, BRF_GRA | CPS1_TILES },
+	{ "kd_08.10a",     0x080000, 0xa7750322, BRF_GRA | CPS1_TILES },
+	{ "kd_05.7a",      0x080000, 0x5f74bf78, BRF_GRA | CPS1_TILES },
+	{ "kd_07.9a",      0x080000, 0x5e5303bf, BRF_GRA | CPS1_TILES },
+	{ "kdk_15.8c",     0x080000, 0x1cc076e1, BRF_GRA | CPS1_TILES },
+	{ "kdk_17.10c",    0x080000, 0xefa0ffa3, BRF_GRA | CPS1_TILES },
+	{ "kdk_14.7c",     0x080000, 0x93004816, BRF_GRA | CPS1_TILES },
+	{ "kdk_16.9c",     0x080000, 0x970e58a8, BRF_GRA | CPS1_TILES },
+
+	{ "kd_09.12a",     0x010000, 0xbac6ec26, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "kd_18.11c",     0x020000, 0x4c63181d, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "kd_19.12c",     0x020000, 0x92941b80, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "kd29b.1a",      0x000117, 0x6b892f82, BRF_OPT }, // b-board PLDs
+	{ "iob1.11d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "ioc1.ic7",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "c632.ic1",      0x000117, 0x0fbd9270, BRF_OPT },
+};
+
+STD_ROM_PICK(Kodk)
+STD_ROM_FN(Kodk)
+
+static struct BurnRomInfo PunisherkRomDesc[] = {
+	{ "psj_23.8f",     0x080000, 0x6b2fda52, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "psk_22.7f",     0x080000, 0x439b2bcf, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "psj_21.6f",     0x080000, 0x8affa5a9, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "psk_01.3a",     0x080000, 0x055de2d5, BRF_GRA | CPS1_TILES },
+	{ "psk_02.4a",     0x080000, 0x21bfedd1, BRF_GRA | CPS1_TILES },
+	{ "psk_03.5a",     0x080000, 0x161076aa, BRF_GRA | CPS1_TILES },
+	{ "psk_04.6a",     0x080000, 0x4047dd12, BRF_GRA | CPS1_TILES },
+	{ "ps_05.7a",      0x080000, 0xc54ea839, BRF_GRA | CPS1_TILES },
+	{ "ps_06.8a",      0x080000, 0x04c5acbd, BRF_GRA | CPS1_TILES },
+	{ "ps_07.9a",      0x080000, 0xa544f4cc, BRF_GRA | CPS1_TILES },
+	{ "ps_08.10a",     0x080000, 0x8f02f436, BRF_GRA | CPS1_TILES },
+
+	{ "ps_q.5k",       0x020000, 0x49ff4446, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "ps-q1.1k",      0x080000, 0x31fd8726, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "ps-q2.2k",      0x080000, 0x980a9eef, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "ps-q3.3k",      0x080000, 0x0dd44491, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "ps-q4.4k",      0x080000, 0xbed42f03, BRF_SND | CPS1_QSOUND_SAMPLES },
+
+	A_BOARD_QSOUND_PLDS
+
+	{ "ps63b.1a",      0x000117, 0x03a758b0, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",     0x000117, 0x31793da7, BRF_OPT },
+	{ "ioc1.ic1",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "d7l1.7l",       0x000117, 0x27b7410d, BRF_OPT },	// d-board PLDs
+	{ "d8l1.8l",       0x000117, 0x539fc7da, BRF_OPT },
+	{ "d9k2.9k",       0x000117, 0xcd85a156, BRF_OPT },
+	{ "d10f1.10f",     0x000117, 0x6619c494, BRF_OPT },
+};
+
+STD_ROM_PICK(Punisherk)
+STD_ROM_FN(Punisherk)
+
+static struct BurnRomInfo RockmankRomDesc[] = {
+	{ "rcmk_23.8f",    0x080000, 0xcb60d510, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "rcmk_22.7f",    0x080000, 0xee2b97ff, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "rcm_21a.6f",    0x080000, 0x517ccde2, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "rcmk_01.3a",    0x080000, 0x4c736693, BRF_GRA | CPS1_TILES },
+	{ "rcmk_02.4a",    0x080000, 0xab0ef46b, BRF_GRA | CPS1_TILES },
+	{ "rcmk_03.5a",    0x080000, 0x144d9090, BRF_GRA | CPS1_TILES },
+	{ "rcmk_04.6a",    0x080000, 0x6ba5999b, BRF_GRA | CPS1_TILES },
+	{ "rcm_05.7a",     0x080000, 0x5dd131fd, BRF_GRA | CPS1_TILES },
+	{ "rcm_06.8a",     0x080000, 0xf0faf813, BRF_GRA | CPS1_TILES },
+	{ "rcm_07.9a",     0x080000, 0x826de013, BRF_GRA | CPS1_TILES },
+	{ "rcm_08.10a",    0x080000, 0xfbff64cf, BRF_GRA | CPS1_TILES },
+	{ "rcmk_10.3c",    0x080000, 0x4cb36768, BRF_GRA | CPS1_TILES },
+	{ "rcmk_11.4c",    0x080000, 0x955c63e4, BRF_GRA | CPS1_TILES },
+	{ "rcmk_12.5c",    0x080000, 0xd62c851f, BRF_GRA | CPS1_TILES },
+	{ "rcmk_13.6c",    0x080000, 0x278d0ea3, BRF_GRA | CPS1_TILES },
+	{ "rcm_14.7c",     0x080000, 0x303be3bd, BRF_GRA | CPS1_TILES },
+	{ "rcm_15.8c",     0x080000, 0x4f2d372f, BRF_GRA | CPS1_TILES },
+	{ "rcm_16.9c",     0x080000, 0x93d97fde, BRF_GRA | CPS1_TILES },
+	{ "rcm_17.10c",    0x080000, 0x92371042, BRF_GRA | CPS1_TILES },
+
+	{ "rcm_09.12a",    0x020000, 0x9632d6ef, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "rcm_18.11c",    0x020000, 0x80f1f8aa, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "rcm_19.12c",    0x020000, 0xf257dbe1, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "rcm63b.1a",     0x000117, 0x84acd494, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",     0x000117, 0x31793da7, BRF_OPT },
+	{ "ioc1.ic7",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "c632.ic1",      0x000117, 0x0fbd9270, BRF_OPT },
+};
+
+STD_ROM_PICK(Rockmank)
+STD_ROM_FN(Rockmank)
+
+static struct BurnRomInfo StriderkRomDesc[] = {
+	{ "sthk_36.12f",   0x020000, 0x81928ddd, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sthk_42.12h",   0x020000, 0x52c23218, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sth_37.13f",    0x020000, 0x80e8877d, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sth_43.13h",    0x020000, 0x6b3fa466, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sth_34.10f",    0x020000, 0xbea770b5, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sth_40.10h",    0x020000, 0x43b922dc, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sth_35.11f",    0x020000, 0x5cc429da, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sth_41.11h",    0x020000, 0x50af457f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+
+	{ "sth_09.4b",     0x020000, 0x1ef6bfbd, BRF_GRA | CPS1_TILES },
+	{ "sth_01.4a",     0x020000, 0x1e21b0c1, BRF_GRA | CPS1_TILES },
+	{ "sth_13.9b",     0x020000, 0x063263ae, BRF_GRA | CPS1_TILES },
+	{ "sth_05.9a",     0x020000, 0xec9f8714, BRF_GRA | CPS1_TILES },
+	{ "sth_24.5e",     0x020000, 0x6356f4d2, BRF_GRA | CPS1_TILES },
+	{ "sth_17.5c",     0x020000, 0xb4f73d86, BRF_GRA | CPS1_TILES },
+	{ "sth_38.8h",     0x020000, 0xee5abfc2, BRF_GRA | CPS1_TILES },
+	{ "sth_32.8f",     0x020000, 0x44a206a3, BRF_GRA | CPS1_TILES },
+	{ "sthk_10.5b",    0x020000, 0xaf00a9b9, BRF_GRA | CPS1_TILES },
+	{ "sthk_02.5a",    0x020000, 0x103497e2, BRF_GRA | CPS1_TILES },
+	{ "sthk_14.10b",   0x020000, 0x4ebd5d3d, BRF_GRA | CPS1_TILES },
+	{ "sthk_06.10a",   0x020000, 0xf270f2bc, BRF_GRA | CPS1_TILES },
+	{ "sthk_25.7e",    0x020000, 0x75eb8837, BRF_GRA | CPS1_TILES },
+	{ "sthk_18.7c",    0x020000, 0x8f64e7c3, BRF_GRA | CPS1_TILES },
+	{ "sthk_39.9h",    0x020000, 0xed440709, BRF_GRA | CPS1_TILES },
+	{ "sthk_33.9f",    0x020000, 0x288e8a0b, BRF_GRA | CPS1_TILES },
+	{ "sthk_11.7b",    0x020000, 0x37538690, BRF_GRA | CPS1_TILES },
+	{ "sthk_03.7a",    0x020000, 0x68bf93b1, BRF_GRA | CPS1_TILES },
+	{ "sthk_15.11b",   0x020000, 0xa36d5e5f, BRF_GRA | CPS1_TILES },
+	{ "sthk_07.11a",   0x020000, 0x1c903837, BRF_GRA | CPS1_TILES },
+	{ "sthk_26.8e",    0x020000, 0x23a87d6c, BRF_GRA | CPS1_TILES },
+	{ "sthk_19.8c",    0x020000, 0xb0b71658, BRF_GRA | CPS1_TILES },
+	{ "sthk_28.10e",   0x020000, 0x0863374a, BRF_GRA | CPS1_TILES },
+	{ "sthk_21.10c",   0x020000, 0xc8acbfdc, BRF_GRA | CPS1_TILES },
+	{ "sth_12.8b",     0x020000, 0xf670a477, BRF_GRA | CPS1_TILES },
+	{ "sth_04.8a",     0x020000, 0x853d3e01, BRF_GRA | CPS1_TILES },
+	{ "sth_16.12b",    0x020000, 0x4092019f, BRF_GRA | CPS1_TILES },
+	{ "sth_08.12a",    0x020000, 0x2ce9b4c7, BRF_GRA | CPS1_TILES },
+	{ "sth_27.9e",     0x020000, 0xf82c88d9, BRF_GRA | CPS1_TILES },
+	{ "sth_20.9c",     0x020000, 0xeb584dd4, BRF_GRA | CPS1_TILES },
+	{ "sth_29.11e",    0x020000, 0x34ae2997, BRF_GRA | CPS1_TILES },
+	{ "sth_22.11c",    0x020000, 0x78dd9c48, BRF_GRA | CPS1_TILES },
+
+	{ "sth_23.13c",    0x010000, 0x2ed403bc, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "sth_30.12e",    0x020000, 0x4386bc80, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "sth_31.13e",    0x020000, 0x444536d7, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "st22b.1a",      0x000117, 0x68fecc55, BRF_OPT },	// b-board PLDs
+	{ "lwio.12c",      0x000117, 0xad52b90c, BRF_OPT },
+};
+
+STD_ROM_PICK(Striderk)
+STD_ROM_FN(Striderk)
+
+static struct BurnRomInfo SfzchkRomDesc[] = {
+	{ "sfzchk23",      0x080000, 0x827e7b8f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "sfza22",        0x080000, 0x8d9b2480, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "sfzch21",       0x080000, 0x5435225d, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "sfza20",        0x080000, 0x806e8f38, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "sfz_01.3a",     0x080000, 0x0dd53e62, BRF_GRA | CPS1_TILES },
+	{ "sfz_02.4a",     0x080000, 0x94c31e3f, BRF_GRA | CPS1_TILES },
+	{ "sfz_03.5a",     0x080000, 0x9584ac85, BRF_GRA | CPS1_TILES },
+	{ "sfz_04.6a",     0x080000, 0xb983624c, BRF_GRA | CPS1_TILES },
+	{ "sfz_05.7a",     0x080000, 0x2b47b645, BRF_GRA | CPS1_TILES },
+	{ "sfz_06.8a",     0x080000, 0x74fd9fb1, BRF_GRA | CPS1_TILES },
+	{ "sfz_07.9a",     0x080000, 0xbb2c734d, BRF_GRA | CPS1_TILES },
+	{ "sfz_08.10a",    0x080000, 0x454f7868, BRF_GRA | CPS1_TILES },
+	{ "sfz_10.3c",     0x080000, 0x2a7d675e, BRF_GRA | CPS1_TILES },
+	{ "sfz_11.4c",     0x080000, 0xe35546c8, BRF_GRA | CPS1_TILES },
+	{ "sfz_12.5c",     0x080000, 0xf122693a, BRF_GRA | CPS1_TILES },
+	{ "sfz_13.6c",     0x080000, 0x7cf942c8, BRF_GRA | CPS1_TILES },
+	{ "sfzk_14.7c",    0x080000, 0x95e0cf7e, BRF_GRA | CPS1_TILES },
+	{ "sfzk_15.8c",    0x080000, 0xb3dea987, BRF_GRA | CPS1_TILES },
+	{ "sfzk_16.9c",    0x080000, 0x323b32ca, BRF_GRA | CPS1_TILES },
+	{ "sfzk_17.10c",   0x080000, 0x9b3c2d26, BRF_GRA | CPS1_TILES },
+
+	{ "sfz_09.12a",    0x010000, 0xc772628b, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "sfz_18.11c",    0x020000, 0x61022b2d, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "sfz_19.12c",    0x020000, 0x3b5886d5, BRF_SND | CPS1_OKIM6295_SAMPLES },
+};
+
+STD_ROM_PICK(Sfzchk)
+STD_ROM_FN(Sfzchk)
+
+static struct BurnRomInfo WofkRomDesc[] = {
+	{ "tk2k_23c.8f",   0x080000, 0x6fe5e13d, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "tk2k_22c.7f",   0x080000, 0xa3b900c1, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "tk2_01.3a",     0x080000, 0x0d9cb9bf, BRF_GRA | CPS1_TILES },
+	{ "tk2_02.4a",     0x080000, 0x45227027, BRF_GRA | CPS1_TILES },
+	{ "tk2_03.5a",     0x080000, 0xc5ca2460, BRF_GRA | CPS1_TILES },
+	{ "tk2_04.6a",     0x080000, 0xe349551c, BRF_GRA | CPS1_TILES },
+	{ "tk2k_05.7a",    0x080000, 0xd83780f8, BRF_GRA | CPS1_TILES },
+	{ "tk2k_06.8a",    0x080000, 0x4b499b49, BRF_GRA | CPS1_TILES },
+	{ "tk2k_07.9a",    0x080000, 0x0885d2b2, BRF_GRA | CPS1_TILES },
+	{ "tk2k_08.10a",   0x080000, 0x5575812d, BRF_GRA | CPS1_TILES },
+
+	{ "tk2_qa.5k",     0x020000, 0xc9183a0d, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "tk2-q1.1k",     0x080000, 0x611268cf, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q2.2k",     0x080000, 0x20f55ca9, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q3.3k",     0x080000, 0xbfcf6f52, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q4.4k",     0x080000, 0x36642e88, BRF_SND | CPS1_QSOUND_SAMPLES },
+
+	A_BOARD_QSOUND_PLDS
+
+	{ "tk263b.1a",     0x000117, 0xc4b0349b, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",     0x000117, 0x31793da7, BRF_OPT },
+
+	{ "ioc1.ic1",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+
+	{ "d7l1.7l",       0x000117, 0x27b7410d, BRF_OPT },	// d-board PLDs
+	{ "d8l1.8l",       0x000117, 0x539fc7da, BRF_OPT },
+	{ "d9k1.9k",       0x000117, 0x6c35c805, BRF_OPT },
+	{ "d10f1.10f",     0x000117, 0x6619c494, BRF_OPT },
+};
+
+STD_ROM_PICK(Wofk)
+STD_ROM_FN(Wofk)
+
+static struct BurnRomInfo Wofk103RomDesc[] = {
+	{ "tk2k_23m.8f",   0x080000, 0x997ea67a, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "tk2k_22m.7f",   0x080000, 0x81db14c1, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "tk2_01.3a",     0x080000, 0x0d9cb9bf, BRF_GRA | CPS1_TILES },
+	{ "tk2_02.4a",     0x080000, 0x45227027, BRF_GRA | CPS1_TILES },
+	{ "tk2_03.5a",     0x080000, 0xc5ca2460, BRF_GRA | CPS1_TILES },
+	{ "tk2_04.6a",     0x080000, 0xe349551c, BRF_GRA | CPS1_TILES },
+	{ "tk2k_05.7a",    0x080000, 0xd83780f8, BRF_GRA | CPS1_TILES },
+	{ "tk2k_06.8a",    0x080000, 0x4b499b49, BRF_GRA | CPS1_TILES },
+	{ "tk2k_07.9a",    0x080000, 0x0885d2b2, BRF_GRA | CPS1_TILES },
+	{ "tk2k_08.10a",   0x080000, 0x5575812d, BRF_GRA | CPS1_TILES },
+
+	{ "tk2_qa.5k",     0x020000, 0xc9183a0d, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "tk2-q1.1k",     0x080000, 0x611268cf, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q2.2k",     0x080000, 0x20f55ca9, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q3.3k",     0x080000, 0xbfcf6f52, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q4.4k",     0x080000, 0x36642e88, BRF_SND | CPS1_QSOUND_SAMPLES },
+
+	A_BOARD_QSOUND_PLDS
+
+	{ "tk263b.1a",     0x000117, 0xc4b0349b, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",     0x000117, 0x31793da7, BRF_OPT },
+
+	{ "ioc1.ic1",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+
+	{ "d7l1.7l",       0x000117, 0x27b7410d, BRF_OPT },	// d-board PLDs
+	{ "d8l1.8l",       0x000117, 0x539fc7da, BRF_OPT },
+	{ "d9k1.9k",       0x000117, 0x6c35c805, BRF_OPT },
+	{ "d10f1.10f",     0x000117, 0x6619c494, BRF_OPT },
+};
+
+STD_ROM_PICK(Wofk103)
+STD_ROM_FN(Wofk103)
+
+static struct BurnRomInfo WofchkRomDesc[] = {
+	{ "tk2k=ch=_23.8f",  0x080000, 0x3da9a19b, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "tk2k=ch=_22.7f",  0x080000, 0x183097c0, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "tk2-1m.3a",       0x080000, 0x0d9cb9bf, BRF_GRA | CPS1_TILES },
+	{ "tk2-3m.5a",       0x080000, 0x45227027, BRF_GRA | CPS1_TILES },
+	{ "tk2-2m.4a",       0x080000, 0xc5ca2460, BRF_GRA | CPS1_TILES },
+	{ "tk2-4m.6a",       0x080000, 0xe349551c, BRF_GRA | CPS1_TILES },
+	{ "tk2k=ch=_05.7a",  0x080000, 0xd83780f8, BRF_GRA | CPS1_TILES },
+	{ "tk2k=ch=_06.8a",  0x080000, 0x4b499b49, BRF_GRA | CPS1_TILES },
+	{ "tk2k=ch=_07.9a",  0x080000, 0x131382f5, BRF_GRA | CPS1_TILES }, // 1 byte different from wofj, pcb verified
+	{ "tk2k=ch=_08.10a", 0x080000, 0x5575812d, BRF_GRA | CPS1_TILES },
+
+	{ "tk2_qa.5k",       0x020000, 0xc9183a0d, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "tk2-q1.1k",       0x080000, 0x611268cf, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q2.2k",       0x080000, 0x20f55ca9, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q3.3k",       0x080000, 0xbfcf6f52, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q4.4k",       0x080000, 0x36642e88, BRF_SND | CPS1_QSOUND_SAMPLES },
+
+	{ "buf1",            0x000117, 0xeb122de7, BRF_OPT }, // a-board PLDs
+	{ "ioa1",            0x000117, 0x59c7ee3b, BRF_OPT },
+	{ "prg2",            0x000117, 0x4386879a, BRF_OPT },
+	{ "rom1",            0x000117, 0x41dc73b9, BRF_OPT },
+	{ "sou1",            0x000117, 0x84f4b2fe, BRF_OPT },
+
+	{ "tk263b.1a",       0x000117, 0xc4b0349b, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",        0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",       0x000117, 0x31793da7, BRF_OPT },
+
+	{ "ioc1.ic7",        0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "c632.ic1",        0x000117, 0x0fbd9270, BRF_OPT },
+
+	{ "d7l1.7l",         0x000117, 0x27b7410d, BRF_OPT },	// d-board PLDs
+	{ "d8l1.8l",         0x000117, 0x539fc7da, BRF_OPT },
+	{ "d9k1.9k",         0x000117, 0x6c35c805, BRF_OPT },
+	{ "d10f1.10f",       0x000117, 0x6619c494, BRF_OPT },
+};
+
+STD_ROM_PICK(Wofchk)
+STD_ROM_FN(Wofchk)
+
+static struct BurnRomInfo WofchkuRomDesc[] = {
+	{ "tk2ku=ch=_23.8f", 0x080000, 0x586c541f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "tk2ku=ch=_22.7f", 0x080000, 0x1a4a3459, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "tk2-1m.3a",       0x080000, 0x0d9cb9bf, BRF_GRA | CPS1_TILES },
+	{ "tk2-3m.5a",       0x080000, 0x45227027, BRF_GRA | CPS1_TILES },
+	{ "tk2-2m.4a",       0x080000, 0xc5ca2460, BRF_GRA | CPS1_TILES },
+	{ "tk2-4m.6a",       0x080000, 0xe349551c, BRF_GRA | CPS1_TILES },
+	{ "tk2k=ch=_05.7a",  0x080000, 0xd83780f8, BRF_GRA | CPS1_TILES },
+	{ "tk2k=ch=_06.8a",  0x080000, 0x4b499b49, BRF_GRA | CPS1_TILES },
+	{ "tk2k=ch=_07.9a",  0x080000, 0x131382f5, BRF_GRA | CPS1_TILES }, // 1 byte different from wofj, pcb verified
+	{ "tk2k=ch=_08.10a", 0x080000, 0x5575812d, BRF_GRA | CPS1_TILES },
+
+	{ "tk2_qa.5k",       0x020000, 0xc9183a0d, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "tk2-q1.1k",       0x080000, 0x611268cf, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q2.2k",       0x080000, 0x20f55ca9, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q3.3k",       0x080000, 0xbfcf6f52, BRF_SND | CPS1_QSOUND_SAMPLES },
+	{ "tk2-q4.4k",       0x080000, 0x36642e88, BRF_SND | CPS1_QSOUND_SAMPLES },
+
+	{ "buf1",            0x000117, 0xeb122de7, BRF_OPT }, // a-board PLDs
+	{ "ioa1",            0x000117, 0x59c7ee3b, BRF_OPT },
+	{ "prg2",            0x000117, 0x4386879a, BRF_OPT },
+	{ "rom1",            0x000117, 0x41dc73b9, BRF_OPT },
+	{ "sou1",            0x000117, 0x84f4b2fe, BRF_OPT },
+
+	{ "tk263b.1a",       0x000117, 0xc4b0349b, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",        0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",       0x000117, 0x31793da7, BRF_OPT },
+
+	{ "ioc1.ic7",        0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "c632.ic1",        0x000117, 0x0fbd9270, BRF_OPT },
+
+	{ "d7l1.7l",         0x000117, 0x27b7410d, BRF_OPT },	// d-board PLDs
+	{ "d8l1.8l",         0x000117, 0x539fc7da, BRF_OPT },
+	{ "d9k1.9k",         0x000117, 0x6c35c805, BRF_OPT },
+	{ "d10f1.10f",       0x000117, 0x6619c494, BRF_OPT },
+};
+
+STD_ROM_PICK(Wofchku)
+STD_ROM_FN(Wofchku)
+
+static struct BurnRomInfo Wonder3kRomDesc[] = {
+	{ "rtk_36.12f",    0x020000, 0x4108a93d, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "rtk_42.12h",    0x020000, 0x8ded6817, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "rtj_37.13f",    0x020000, 0xa1f677b0, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "rtj_43.13h",    0x020000, 0x85337a47, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "rt_34.10f",     0x020000, 0x054137c8, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "rt_40.10h",     0x020000, 0x7264cb1b, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "rtk_35.11f",    0x020000, 0x775fc4ab, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "rtk_41.11h",    0x020000, 0x766b6e71, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+
+	{ "rt_09.4b",      0x020000, 0x2c40e480, BRF_GRA | CPS1_TILES },
+	{ "rt_01.4a",      0x020000, 0x3e11f8cd, BRF_GRA | CPS1_TILES },
+	{ "rt_13.9b",      0x020000, 0x51009117, BRF_GRA | CPS1_TILES },
+	{ "rt_05.9a",      0x020000, 0x283fd470, BRF_GRA | CPS1_TILES },
+	{ "rt_24.5e",      0x020000, 0xee4484ce, BRF_GRA | CPS1_TILES },
+	{ "rt_17.5c",      0x020000, 0xe5dcddeb, BRF_GRA | CPS1_TILES },
+	{ "rt_38.8h",      0x020000, 0xb2940c2d, BRF_GRA | CPS1_TILES },
+	{ "rt_32.8f",      0x020000, 0x08e2b758, BRF_GRA | CPS1_TILES },
+	{ "rtk_10.5b",     0x020000, 0x145c18ec, BRF_GRA | CPS1_TILES },
+	{ "rtk_02.5a",     0x020000, 0x8f4f9085, BRF_GRA | CPS1_TILES },
+	{ "rtk_14.10b",    0x020000, 0xb65c4013, BRF_GRA | CPS1_TILES },
+	{ "rtk_06.10a",    0x020000, 0x5c3939f2, BRF_GRA | CPS1_TILES },
+	{ "rtk_25.7e",     0x020000, 0xe61d6f49, BRF_GRA | CPS1_TILES },
+	{ "rtk_18.7c",     0x020000, 0xbdaabcc5, BRF_GRA | CPS1_TILES },
+	{ "rtk_39.9h",     0x020000, 0x0072e467, BRF_GRA | CPS1_TILES },
+	{ "rtk_33.9f",     0x020000, 0x53f5a1b2, BRF_GRA | CPS1_TILES },
+	{ "rt_11.7b",      0x020000, 0x04f3c298, BRF_GRA | CPS1_TILES },
+	{ "rt_03.7a",      0x020000, 0x98087e08, BRF_GRA | CPS1_TILES },
+	{ "rt_15.11b",     0x020000, 0xb6aba565, BRF_GRA | CPS1_TILES },
+	{ "rt_07.11a",     0x020000, 0xc62defa1, BRF_GRA | CPS1_TILES },
+	{ "rt_26.8e",      0x020000, 0x532f542e, BRF_GRA | CPS1_TILES },
+	{ "rt_19.8c",      0x020000, 0x1f0f72bd, BRF_GRA | CPS1_TILES },
+	{ "rt_28.10e",     0x020000, 0x6064e499, BRF_GRA | CPS1_TILES },
+	{ "rt_21.10c",     0x020000, 0x20012ddc, BRF_GRA | CPS1_TILES },
+	{ "rtk_12.8b",     0x020000, 0xc8dd949f, BRF_GRA | CPS1_TILES },
+	{ "rtk_04.8a",     0x020000, 0xf3e74fe0, BRF_GRA | CPS1_TILES },
+	{ "rtk_16.12b",    0x020000, 0x84652367, BRF_GRA | CPS1_TILES },
+	{ "rtk_08.12a",    0x020000, 0xe4440a80, BRF_GRA | CPS1_TILES },
+	{ "rtk_27.9e",     0x020000, 0xf52bf93d, BRF_GRA | CPS1_TILES },
+	{ "rtk_20.9c",     0x020000, 0x6865c879, BRF_GRA | CPS1_TILES },
+	{ "rtk_29.11e",    0x020000, 0xe3113df5, BRF_GRA | CPS1_TILES },
+	{ "rtk_22.11c",    0x020000, 0xaa0780bd, BRF_GRA | CPS1_TILES },
+
+	{ "rt_23.13b",     0x010000, 0xabfca165, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "rt_30.12c",     0x020000, 0x26b211ab, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "rt_31.13c",     0x020000, 0xdbe64ad0, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "rt22b.1a",      0x000117, 0x89560d6a, BRF_OPT },	// b-board PLDs
+	{ "iob1.12e",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "ioc1.ic1",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+};
+
+STD_ROM_PICK(Wonder3k)
+STD_ROM_FN(Wonder3k)
+
+struct BurnDriver BurnDrvCpsArea88ka = {
+	"area88ka", "unsquad", NULL, NULL, "2023",
+	"Area 88 (Korean Translation, Type A)\0", NULL, "Daipro / Capcom", "CPS1",
+	L"\uC5D0\uC5B4\uB9AC\uC5B4 88 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, A \uD615\uC2DD)\0Area 88 (Korean Translation, Type A)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_HORSHOOT, 0,
+	NULL, Area88kaRomInfo, Area88kaRomName, NULL, NULL, NULL, NULL, UnsquadInputInfo, UnsquadDIPInfo,
+	DrvInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsArea88kb = {
+	"area88kb", "unsquad", NULL, NULL, "2023",
+	"Area 88 (Korean Translation, Type B)\0", NULL, "Daipro / Capcom", "CPS1",
+	L"\uC9C0\uC625\uC758 \uC678\uC778\uBD80\uB300 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, B \uD615\uC2DD)\0Area 88 (Korean Translation, Type B)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_HORSHOOT, 0,
+	NULL, Area88kbRomInfo, Area88kbRomName, NULL, NULL, NULL, NULL, UnsquadInputInfo, UnsquadDIPInfo,
+	DrvInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsCaptcommk = {
+	"captcommk", "captcomm", NULL, NULL, "2023",
+	"Captain Commando (Korean Translation 911202)\0", NULL, "Capcom", "CPS1",
+	L"\uCEA1\uD2F4 \uCF54\uB9CC\uB3C4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 911202)\0Captain Commando (Korean Translation 911202)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
+	NULL, CaptcommkRomInfo, CaptcommkRomName, NULL, NULL, NULL, NULL, CaptcommInputInfo, CaptcommDIPInfo,
+	Cps1RasterInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsDaimakaik = {
+	"daimakaik", "ghouls", NULL, NULL, "2021",
+	"Dai Makai-Mura (Korean Translation)\0", NULL, "Capcom", "CPS1",
+	L"\uB300\uB9C8\uACC4\uCD0C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Dai Makai-Mura (Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_RUNGUN, 0,
+	NULL, DaimakaikRomInfo, DaimakaikRomName, NULL, NULL, NULL, NULL, GhoulsInputInfo, DaimakaiDIPInfo,
+	DaimakaiInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsDinok = {
+	"dinok", "dino", NULL, NULL, "2023",
+	"Cadillacs and Dinosaurs (Korean Translation 930223)\0", NULL, "Capcom", "CPS1 / QSound",
+	L"\uCE90\uB51C\uB77D \uC564 \uB2E4\uC774\uB178\uC18C\uC5B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 930223)\0Cadillacs and Dinosaurs (Korean Translation 930223)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
+	NULL, DinokRomInfo, DinokRomName, NULL, NULL, NULL, NULL, DinoInputInfo, DinoDIPInfo,
+	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsFfightk4 = {
+	"ffightk4", "ffight", NULL, NULL, "2021",
+	"Final Fight (Korean Translation 900613)\0", NULL, "Capcom", "CPS1",
+	L"\uD30C\uC774\uB110 \uD30C\uC774\uD2B8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 900613)\0Final Fight (Korean Translation 900613)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
+	NULL, Ffightk4RomInfo, Ffightk4RomName, NULL, NULL, NULL, NULL, FfightInputInfo, FfightDIPInfo,
+	DrvInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsFfightaek = {
+	"ffightaek", "ffight", NULL, NULL, "2021",
+	"Final Fight 30th Anniversary Edition (Korean Translation)\0", NULL, "hack", "CPS1",
+	L"\uD30C\uC774\uB110 \uD30C\uC774\uD2B8 30\uC8FC\uB144 \uAE30\uB150\uD310 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Final Fight 30th Anniversary Edition (Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 3, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
+	NULL, FfightaekRomInfo, FfightaekRomName, NULL, NULL, NULL, NULL, FfightaeInputInfo, FfightaeDIPInfo,
+	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsKnightsk = {
+	"knightsk", "knights", NULL, NULL, "2023",
+	"Knights of the Round (Korean Translation 911127, B-Board 91634B-2)\0", NULL, "Capcom", "CPS1",
+	L"\uB098\uC774\uCE20 \uC624\uBE0C \uB354 \uB77C\uC6B4\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 911127, B-Board 91634B-2)\0Knights of the Round (Korean Translation 911127, B-Board 91634B-2)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
+	NULL, KnightskRomInfo, KnightskRomName, NULL, NULL, NULL, NULL, KnightsInputInfo, KnightsDIPInfo,
+	DrvInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsKodk = {
+	"kodk", "kod", NULL, NULL, "2023",
+	"The King of Dragons (Korean Translation 910805, B-Board 90629B-3)\0", NULL, "Capcom", "CPS1",
+	L"\uB354 \uD0B9 \uC624\uBE0C \uB4DC\uB798\uACE4\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 910805, B-Board 90629B-3)\0The King of Dragons (Korean Translation 910805, B-Board 90629B-3)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
+	NULL, KodkRomInfo, KodkRomName, NULL, NULL, NULL, NULL, KodInputInfo, KodDIPInfo,
+	Cps1RasterInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsPunisherk = {
+	"punisherk", "punisher", NULL, NULL, "2021",
+	"The Punisher (Korean Translation 930422)\0", NULL, "Capcom", "CPS1 / QSound",
+	L"\uB354 \uD37C\uB2C8\uC154 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 930422)\0The Punisher (Korean Translation 930422)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
+	NULL, PunisherkRomInfo, PunisherkRomName, NULL, NULL, NULL, NULL, PunisherInputInfo, PunisherDIPInfo,
+	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsRockmank = {
+	"rockmank", "megaman", NULL, NULL, "2023",
+	"Rockman: The Power Battle (CPS1, Korean Translation 950922)\0", NULL, "Capcom", "CPS1",
+	L"\uB85D\uB9E8: \uB354 \uD30C\uC6CC \uBC30\uD2C0 (CPS1, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 950922)\0Rockman: The Power Battle (CPS1, Korean Translation 950922)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_VSFIGHT, 0,
+	NULL, RockmankRomInfo, RockmankRomName, NULL, NULL, NULL, NULL, MegamanInputInfo, RockmanjDIPInfo,
+	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsStriderk = {
+	"striderk", "strider", NULL, NULL, "2021",
+	"Strider Hiryu (Korean Translation)\0", NULL, "Capcom", "CPS1",
+	L"\uC2A4\uD2B8\uB77C\uC774\uB354 \uBE44\uB8E1 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Strider Hiryu (Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_PLATFORM, 0,
+	NULL, StriderkRomInfo, StriderkRomName, NULL, NULL, NULL, NULL, StriderInputInfo, StriderDIPInfo,
+	StriderjInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsSfzchk = {
+	"sfzchk", "sfzch", NULL, NULL, "2021",
+	"Street Fighter Zero (CPS Changer, Korean Translation 951020)\0", NULL, "Capcom", "CPS Changer",
+	L"\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 951020)\0Street Fighter Zero (CPS Changer, Korean Translation 951020)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_CAPCOM_CPSCHANGER, GBF_VSFIGHT, FBF_SF,
+	NULL, SfzchkRomInfo, SfzchkRomName, NULL, NULL, NULL, NULL, SfzchInputInfo, NULL,
+	SfzchInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsWofk = {
+	"wofk", "wof", NULL, NULL, "2023",
+	"Tenchi wo Kurau II: Sekiheki no Tatakai (Korean Translation 921031)\0", NULL, "Capcom", "CPS1 / QSound",
+	L"\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031)\0Tenchi wo Kurau II: Sekiheki no Tatakai (Korean Translation 921031)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
+	NULL, WofkRomInfo, WofkRomName, NULL, NULL, NULL, NULL, WofInputInfo, WofDIPInfo,
+	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsWofk103 = {
+	"wofk103", "wof", NULL, NULL, "2023",
+	"Tenchi wo Kurau II: Counter Attack of Mei Sisters (Korean Translation 921031, Hack)\0", NULL, "Capcom", "CPS1 / QSound",
+	L"\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uBA54\uC774 \uC790\uB9E4\uC758 \uC5ED\uC2B5 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031, \uD575)\0Tenchi wo Kurau II: Counter Attack of Mei Sisters (Korean Translation 921031, Hack)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
+	NULL, Wofk103RomInfo, Wofk103RomName, NULL, NULL, NULL, NULL, WofInputInfo, WofDIPInfo,
+	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsWofchk = {
+	"wofchk", "wofch", NULL, NULL, "2023",
+	"Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031)\0", NULL, "Capcom", "CPS Changer",
+	L"\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031)\0Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 3, HARDWARE_CAPCOM_CPSCHANGER, GBF_SCRFIGHT, 0,
+	NULL, WofchkRomInfo, WofchkRomName, NULL, NULL, NULL, NULL, WofchInputInfo, NULL,
+	WofchInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsWofchku = {
+	"wofchku", "wofch", NULL, NULL, "2023",
+	"Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031, Unlock Ura Mode)\0", NULL, "Capcom", "CPS Changer",
+	L"\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031, \uC6B0\uB77C \uBAA8\uB4DC \uC801\uC6A9)\0Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031, Unlock Ura Mode)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 3, HARDWARE_CAPCOM_CPSCHANGER, GBF_SCRFIGHT, 0,
+	NULL, WofchkuRomInfo, WofchkuRomName, NULL, NULL, NULL, NULL, WofchInputInfo, NULL,
+	WofchInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsWonder3k = {
+	"wonder3k", "3wonders", NULL, NULL, "2023",
+	"Wonder 3 (Korean Translation 910520)\0", NULL, "Capcom", "CPS1",
+	L"\uC6D0\uB354 3 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 910520)\0Wonder 3 (Korean Translation 910520)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_MINIGAMES, 0,
+	NULL, Wonder3kRomInfo, Wonder3kRomName, NULL, NULL, NULL, NULL, ThreeWondersInputInfo, ThreeWondersDIPInfo,
+	Cps1RasterInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
 
 #undef A_BOARD_PLDS
 #undef A_BOARD_QSOUND_PLDS

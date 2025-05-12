@@ -1245,7 +1245,7 @@ struct BurnDriver BurnDrvPwrinst2j = {
 
 struct BurnDriver BurnDrvPwrinst2k = {
 	"pwrinst2k", "pwrinst2", NULL, NULL, "1994",
-	"Power instinct 2 (Korea, ver. 94/04/08)\0", NULL, "Atlus", "Cave",
+	"Power Instinct 2 (Korea, Ver. 94.04.08)\0", NULL, "Atlus", "Cave",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_Z80, GBF_VSFIGHT, FBF_PWRINST,
 	NULL, pwrinst2kRomInfo, pwrinst2kRomName, NULL, NULL, NULL, NULL, pwrinst2InputInfo, NULL,

@@ -1148,3 +1148,51 @@ struct BurnDriver BurnDrvBlkdrgonb = {
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	256, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Black Dragon (Korean Translation)
+
+static struct BurnRomInfo blkdrgnkRomDesc[] = {
+	{ "bd_01k.5e",		0x08000, 0xe713b486, 1 | BRF_PRG | BRF_ESS }, //  0 - Z80 #0 Code
+	{ "bd_02.6e",		0x10000, 0x7d39c26f, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "bd_03.8e",		0x10000, 0xd1bf3757, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "bd_04.9e",		0x10000, 0x4d1d6680, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "bd_05.10e",		0x10000, 0xc8d0c45e, 1 | BRF_PRG | BRF_ESS }, //  4
+
+	{ "bd_06.1l",		0x08000, 0x2cf54274, 2 | BRF_PRG | BRF_ESS }, //  5 - Z80 #0 Code
+
+	{ "bd_15k.2n",		0x08000, 0x3b432217, 3 | BRF_GRA },           //  6 - Characters
+
+	{ "bd_12.5b",		0x10000, 0x22d0a4b0, 4 | BRF_GRA },           //  7 - Background Tiles
+	{ "bd_11.4b",		0x10000, 0xc8b5fc52, 4 | BRF_GRA },           //  8
+	{ "bd_14.9b",		0x10000, 0x9498c378, 4 | BRF_GRA },           //  9
+	{ "bd_13.8b",		0x10000, 0x5b0df8ce, 4 | BRF_GRA },           // 10
+
+	{ "bd_08.5a",		0x10000, 0xe2f17438, 5 | BRF_GRA },           // 11 - Sprites
+	{ "bd_07.4a",		0x10000, 0x5fccbd27, 5 | BRF_GRA },           // 12
+	{ "bd_10.9a",		0x10000, 0xfc33ccc6, 5 | BRF_GRA },           // 13
+	{ "bd_09.8a",		0x10000, 0xf449de01, 5 | BRF_GRA },           // 14
+
+	{ "bd01.8j",		0x00100, 0x29b459e5, 6 | BRF_OPT },           // 15 - Proms (not used)
+	{ "bd02.9j",		0x00100, 0x8b741e66, 6 | BRF_OPT },           // 16
+	{ "bd03.11k",		0x00100, 0x27201c75, 6 | BRF_OPT },           // 17
+	{ "bd04.11l",		0x00100, 0xe5490b68, 6 | BRF_OPT },           // 18
+	
+	{ "bd.6k",  		0x01000, 0xac7d14f1, 7 | BRF_PRG },           // 19 I8751 Mcu Code
+};
+
+STD_ROM_PICK(blkdrgnk)
+STD_ROM_FN(blkdrgnk)
+
+struct BurnDriver BurnDrvBlkdrgnk = {
+	"blkdrgnk", "blktiger", NULL, NULL, "1987",
+	"Black Dragon (Korean Translation)\0", NULL, "Capcom", "Miscellaneous",
+	L"\uBE14\uB799 \uB4DC\uB798\uACE4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Black Dragon (Korean Translation)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_PLATFORM | GBF_RUNGUN, 0,
+	NULL, blkdrgnkRomInfo, blkdrgnkRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	DrvInitMCU, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	256, 224, 4, 3
+};
