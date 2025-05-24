@@ -538,7 +538,7 @@ static UINT32 RDGetCps1RomsType(const TCHAR* pszDrvName, const TCHAR* pszMask, c
 		nBaseType = BRF_PRG;
 	}
 	else
-	if (0 == _tcsicmp(pszMask, _T("Tiles")) || 0 == _tcsicmp(pszMask, _T("Extras")) || 0 == _tcsicmp(pszMask, _T("PRG2"))) {
+	if (0 == _tcsicmp(pszMask, _T("Tiles")) || 0 == _tcsicmp(pszMask, _T("Extras")) || 0 == _tcsicmp(pszMask, _T("GRA2"))) {
 		nMinIdx = CPS1_EXTRA_TILES_SF2EBBL_400000, nMaxIdx = CPS1_EXTRA_TILES_SF2MKOT_400000;
 		nBaseType = BRF_GRA;
 	}
@@ -638,7 +638,7 @@ static UINT32 RDGetCps2RomsType(const TCHAR* pszDrvName, const TCHAR* pszMask)
 
 static UINT32 RDGetCps3RomsType(const TCHAR* pszMask)
 {
-	if (0 == _tcsicmp(pszMask, _T("Bios")) || 0 == _tcsicmp(pszMask, _T("BIOS"))) {
+	if (0 == _tcsicmp(pszMask, _T("Bios"))) {
 		return (BRF_ESS | BRF_BIOS);
 	}
 	else
@@ -649,6 +649,7 @@ static UINT32 RDGetCps3RomsType(const TCHAR* pszMask)
 	if (0 == _tcsicmp(pszMask, _T("Graphics")) || 0 == _tcsicmp(pszMask, _T("GRA1"))) {
 		return BRF_GRA;
 	}
+	return 0;
 }
 
 static INT32 RDGetPgmRomsType(const TCHAR* pszDrvName, const TCHAR* pszMask)
@@ -804,7 +805,7 @@ static UINT32 RDSetRomsType(const TCHAR* pszDrvName, const TCHAR* pszMask, const
 	}
 }
 
-static TCHAR* _strqtoken(TCHAR* s, const TCHAR* delims)
+TCHAR* _strqtoken(TCHAR* s, const TCHAR* delims)
 {
 	static TCHAR* prev_str = NULL;
 	TCHAR* token = NULL;
@@ -1009,7 +1010,7 @@ static TCHAR* Utf16beToUtf16le(const TCHAR* pszDatFile)
 
 	fseek(fpInFile, 2, SEEK_SET);
 
-	// Generate date file name (UTF16LE_YYYYMMDD.dat)
+	// Generate date file name (UTF16LE%Y%m%d.tmp)
 	time_t now = time(NULL);
 	struct tm* local = localtime(&now);
 	_tcsftime(szUtf16leFile, sizeof(szUtf16leFile), _T("UTF16LE%Y%m%d.tmp"), local);
@@ -1086,8 +1087,6 @@ static bool StrToUint(const TCHAR* str, UINT32* result) {
 static INT32 LoadRomdata()
 {
 	EncodingType nType = DetectEncoding(szRomdataName);
-	if (ENCODING_ERROR == nType) return -1;
-
 	const TCHAR* pszReadMode = NULL;
 
 	switch (nType) {
@@ -1100,18 +1099,18 @@ static INT32 LoadRomdata()
 			pszReadMode = _T("rt, ccs=UTF-8");
 			break;
 		}
-
 		case ENCODING_UTF16_LE: {
 			pszReadMode = _T("rt, ccs=UTF-16LE");
 			break;
 		}
-
 		case ENCODING_UTF16_BE: {
 			const TCHAR* pszConvert = Utf16beToUtf16le(szRomdataName);
 			if (NULL == pszConvert) return -1;
 			pszReadMode = _T("rt, ccs=UTF-16LE");
 			break;
 		}
+		default:
+			return -1;
 	}
 
 	RDI.nDescCount = -1;					// Failed
@@ -1273,8 +1272,6 @@ static INT32 LoadRomdata()
 char* RomdataGetDrvName()
 {
 	EncodingType nType = DetectEncoding(szRomdataName);
-	if (ENCODING_ERROR == nType) return NULL;
-
 	const TCHAR* pszReadMode = NULL;
 
 	switch (nType) {
@@ -1287,18 +1284,18 @@ char* RomdataGetDrvName()
 			pszReadMode = _T("rt, ccs=UTF-8");
 			break;
 		}
-
 		case ENCODING_UTF16_LE: {
 			pszReadMode = _T("rt, ccs=UTF-16LE");
 			break;
 		}
-
 		case ENCODING_UTF16_BE: {
 			const TCHAR* pszConvert = Utf16beToUtf16le(szRomdataName);
 			if (NULL == pszConvert) return NULL;
 			pszReadMode = _T("rt, ccs=UTF-16LE");
 			break;
 		}
+		default:
+			return NULL;
 	}
 
 	FILE* fp = _tfopen(szRomdataName, pszReadMode);
@@ -1336,7 +1333,7 @@ INT32 RomDataCheck(const TCHAR* pszDatFile)
 		return -1;
 	}
 	if (!FileExists(pszDatFile)) {
-		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s"), pszDatFile);
+		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), pszDatFile);
 		FBAPopupAddText(PUF_TEXT_DEFAULT, MAKEINTRESOURCE(IDS_ERR_LOAD_NODATA));
 		FBAPopupDisplay(PUF_TYPE_ERROR);
 		return -2;
@@ -1349,7 +1346,7 @@ INT32 RomDataCheck(const TCHAR* pszDatFile)
 	const UINT32 nOldDrvSel = nBurnDrvActive;	// Backup nBurnDrvActive
 
 	char* szDrvName = RomdataGetDrvName();
-	nBurnDrvActive = BurnDrvGetIndex(szDrvName);
+	nBurnDrvActive  = BurnDrvGetIndex(szDrvName);
 
 	INT32 nRet = 0;
 	if (NULL == szDrvName)    nRet = -3;
@@ -1359,7 +1356,7 @@ INT32 RomDataCheck(const TCHAR* pszDatFile)
 		memset(szRomdataName, 0, sizeof(szRomdataName));
 		_tcscpy(szRomdataName, szBackup);
 		nBurnDrvActive = nOldDrvSel;
-		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s\n\n"), pszDatFile);
+		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), pszDatFile);
 		UINT32 nStrId = (-3 == nRet) ? IDS_ERR_NO_DRIVER_SELECTED : IDS_ERR_DRIVER_NOT_EXIST;
 		FBAPopupAddText(PUF_TEXT_DEFAULT, MAKEINTRESOURCE(nStrId));
 		FBAPopupDisplay(PUF_TYPE_ERROR);
@@ -1386,7 +1383,7 @@ INT32 RomDataCheck(const TCHAR* pszDatFile)
 static DatListInfo* RomdataGetListInfo(const TCHAR* pszDatFile)
 {
 	EncodingType nType = DetectEncoding(pszDatFile);
-	if (ENCODING_ERROR == nType) return NULL;
+	if (NULL == pszDatFile) return NULL;
 
 	memset(szRomdataName, 0, sizeof(szRomdataName));
 	_tcscpy(szRomdataName, pszDatFile);
@@ -1413,6 +1410,8 @@ static DatListInfo* RomdataGetListInfo(const TCHAR* pszDatFile)
 			pszReadMode = _T("rt, ccs=UTF-16LE");
 			break;
 		}
+		default:
+			return NULL;
 	}
 
 	FILE* fp = _tfopen(szRomdataName, pszReadMode);
@@ -1439,8 +1438,8 @@ static DatListInfo* RomdataGetListInfo(const TCHAR* pszDatFile)
 			if (0 == _tcsicmp(_T("ZipName"), pszLabel) || 0 == _tcsicmp(_T("RomName"), pszLabel)) {	// Romset
 				pszInfo = _strqtoken(NULL, DELIM_TOKENS_NAME);
 				if (NULL == pszInfo) {						// No romset specified
-					FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s\n\n"), pszDatFile);
-					FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s:?\n\n"), pszLabel);
+					FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), pszDatFile);
+					FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s:?\n\n"),   FBALoadStringEx(hAppInst, IDS_ROMDATA_ROMSET,  true));
 					FBAPopupAddText(PUF_TEXT_DEFAULT, MAKEINTRESOURCE(IDS_ERR_LOAD_NOTFOUND), _T("ROM"));
 					FBAPopupDisplay(PUF_TYPE_ERROR);
 
@@ -1453,8 +1452,8 @@ static DatListInfo* RomdataGetListInfo(const TCHAR* pszDatFile)
 			if (0 == _tcsicmp(_T("DrvName"), pszLabel) || 0 == _tcsicmp(_T("Parent"), pszLabel)) {	// Driver
 				pszInfo = _strqtoken(NULL, DELIM_TOKENS_NAME);
 				if (NULL == pszInfo) {						// No driver specified
-					FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s\n\n"), pszDatFile);
-					FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s:?\n\n"), pszLabel);
+					FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), pszDatFile);
+					FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s:?\n\n"),   FBALoadStringEx(hAppInst, IDS_ROMDATA_DRIVER,  true));
 					FBAPopupAddText(PUF_TEXT_DEFAULT, MAKEINTRESOURCE(IDS_ERR_NO_DRIVER_SELECTED));
 					FBAPopupDisplay(PUF_TYPE_ERROR);
 
@@ -1468,8 +1467,8 @@ static DatListInfo* RomdataGetListInfo(const TCHAR* pszDatFile)
 					UINT32 nOldDrvSel = nBurnDrvActive;		// Backup
 					nBurnDrvActive = BurnDrvGetIndex(TCHARToANSI(pDatListInfo->szDrvName, NULL, 0));
 					if (-1 == nBurnDrvActive) {
-						FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s\n\n"), pszDatFile);
-						FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), pszLabel, pDatListInfo->szDrvName);
+						FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), pszDatFile);
+						FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DRIVER,  true), pDatListInfo->szDrvName);
 						FBAPopupAddText(PUF_TEXT_DEFAULT, MAKEINTRESOURCE(IDS_ERR_DRIVER_NOT_EXIST));
 						FBAPopupDisplay(PUF_TYPE_ERROR);
 
@@ -1585,24 +1584,43 @@ static INT32 RomdataAddListItem(TCHAR* pszDatFile)
 	LVITEM lvi;
 	memset(&lvi, 0, sizeof(LVITEM));
 
-	// Dat path
+	// Full name
 	lvi.iImage     = FindHardwareIconIndex(pDatListInfo->szDrvName);
 	lvi.iItem      = ListView_GetItemCount(hRDListView);
 	lvi.mask       = LVIF_TEXT | LVIF_IMAGE;
-	lvi.cchTextMax = MAX_PATH;
-	lvi.pszText    = pszDatFile;
+	lvi.cchTextMax = 1024;
+	lvi.pszText    = pDatListInfo->szFullName;
 
 	INT32 nItem = ListView_InsertItem(hRDListView, &lvi);
 
+	ListView_SetItem(hRDListView, &lvi);
+
 	// Romset
 	memset(&lvi, 0, sizeof(LVITEM));
-
 	lvi.iSubItem   = 1;
 	lvi.iItem      = nItem;
 	lvi.cchTextMax = 100;
 	lvi.mask       = LVIF_TEXT | LVIF_IMAGE;
 	lvi.pszText    = pDatListInfo->szRomSet;
+	ListView_SetItem(hRDListView, &lvi);
 
+	// Driver
+	memset(&lvi, 0, sizeof(LVITEM));
+	lvi.iSubItem   = 2;
+	lvi.iItem      = nItem;
+	lvi.cchTextMax = 100;
+	lvi.mask       = LVIF_TEXT | LVIF_IMAGE;
+	lvi.pszText    = pDatListInfo->szDrvName;
+	ListView_SetItem(hRDListView, &lvi);
+
+
+	// Dat path
+	memset(&lvi, 0, sizeof(LVITEM));
+	lvi.iSubItem   = 3;
+	lvi.iItem      = nItem;
+	lvi.cchTextMax = MAX_PATH;
+	lvi.mask       = LVIF_TEXT | LVIF_IMAGE;
+	lvi.pszText    = pszDatFile;
 	ListView_SetItem(hRDListView, &lvi);
 
 	free(pDatListInfo); pDatListInfo = NULL;
@@ -1696,13 +1714,21 @@ static void RomDataInitListView()
 	memset(&LvCol, 0, sizeof(LvCol));
 	LvCol.mask = LVCF_TEXT | LVCF_WIDTH | LVCF_SUBITEM;
 
-	LvCol.cx       = 415;
-	LvCol.pszText  = FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true);
+	LvCol.cx       = 317;
+	LvCol.pszText  = FBALoadStringEx(hAppInst, IDS_ROMDATA_FULLNAME, true);
 	SendMessage(hRDListView, LVM_INSERTCOLUMN, 0, (LPARAM)&LvCol);
 
 	LvCol.cx       = 100;
 	LvCol.pszText  = FBALoadStringEx(hAppInst, IDS_ROMDATA_ROMSET, true);
 	SendMessage(hRDListView, LVM_INSERTCOLUMN, 1, (LPARAM)&LvCol);
+
+	LvCol.cx       = 100;
+	LvCol.pszText  = FBALoadStringEx(hAppInst, IDS_ROMDATA_DRIVER, true);
+	SendMessage(hRDListView, LVM_INSERTCOLUMN, 2, (LPARAM)&LvCol);
+
+	LvCol.cx       = 0;
+	LvCol.pszText  = FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true);
+	SendMessage(hRDListView, LVM_INSERTCOLUMN, 3, (LPARAM)&LvCol);
 
 	sort_direction = SORT_ASCENDING; // dink
 }
@@ -1828,7 +1854,7 @@ static void RomDataClearList()
 	RomDataShowPreview(hRDMgrWnd, _T(""), IDC_ROMDATA_TITLE,   IDC_ROMDATA_TITLE_FRAME,    0, 0);
 	RomDataShowPreview(hRDMgrWnd, _T(""), IDC_ROMDATA_PREVIEW, IDC_ROMDATA_PREVIEW_FRAME,  0, 0);
 
-	SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTGAME),     _T(""));
+	SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDATPATH),     _T(""));
 	SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDRIVER),   _T(""));
 	SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTHARDWARE), _T(""));
 
@@ -1880,6 +1906,7 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 		InitCommonControlsEx(&icc);
 
 		hRDListView   = GetDlgItem(hDlg, IDC_ROMDATA_LIST);
+		ListView_SetExtendedListViewStyle(hRDListView, LVS_EX_FULLROWSELECT);
 
 		RomDataInitListView();
 		HardwareIconListInit();
@@ -1892,11 +1919,11 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 		RomDataShowPreview(hRDMgrWnd, _T(""), IDC_ROMDATA_TITLE,   IDC_ROMDATA_TITLE_FRAME,    0, 0);
 		RomDataShowPreview(hRDMgrWnd, _T(""), IDC_ROMDATA_PREVIEW, IDC_ROMDATA_PREVIEW_FRAME,  0, 0);
 
-		SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTGAME),     _T(""));
+		SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDATPATH),  _T(""));
 		SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDRIVER),   _T(""));
 		SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTHARDWARE), _T(""));
 
-		CheckDlgButton(hRDMgrWnd, IDC_ROMDATA_SSUBDIR_CHECK, bRDListScanSub ? BST_CHECKED : BST_UNCHECKED);
+		CheckDlgButton(hRDMgrWnd, IDC_ROMDATA_SUBDIR_CHECK, bRDListScanSub ? BST_CHECKED : BST_UNCHECKED);
 
 		TreeView_SetItemHeight(hRDListView, 40);
 
@@ -1917,10 +1944,10 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 	}
 
 	if (Msg == WM_CTLCOLORSTATIC) {
-		if ((HWND)lParam == GetDlgItem(hRDMgrWnd, IDC_ROMDATA_LABELGAME))     return (INT_PTR)hWhiteBGBrush;
+		if ((HWND)lParam == GetDlgItem(hRDMgrWnd, IDC_ROMDATA_LABELDAT))      return (INT_PTR)hWhiteBGBrush;
 		if ((HWND)lParam == GetDlgItem(hRDMgrWnd, IDC_ROMDATA_LABELDRIVER))   return (INT_PTR)hWhiteBGBrush;
 		if ((HWND)lParam == GetDlgItem(hRDMgrWnd, IDC_ROMDATA_LABELHARDWARE)) return (INT_PTR)hWhiteBGBrush;
-		if ((HWND)lParam == GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTGAME))      return (INT_PTR)hWhiteBGBrush;
+		if ((HWND)lParam == GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDATPATH))   return (INT_PTR)hWhiteBGBrush;
 		if ((HWND)lParam == GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDRIVER))    return (INT_PTR)hWhiteBGBrush;
 		if ((HWND)lParam == GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTHARDWARE))  return (INT_PTR)hWhiteBGBrush;
 	}
@@ -1937,46 +1964,44 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 
 			TCHAR szSelDat[MAX_PATH] = { 0 };
 
-			nSelItem = pNMLV->iItem;
+			nSelItem = SendMessage(hRDListView, LVM_GETNEXTITEM, -1, LVNI_SELECTED);
 
-			LVITEM LvItem;
-			memset(&LvItem, 0, sizeof(LvItem));
+			if (-1 != nSelItem) {
+				LVITEM LvItem     = { 0 };
+				LvItem.iSubItem   = 3;	// Dat Path column
+				LvItem.pszText    = szSelDat;
+				LvItem.cchTextMax = sizeof(szSelDat);
 
-			LvItem.iItem      = nSelItem;
-			LvItem.mask       = LVIF_TEXT;
-			LvItem.iSubItem   = 0;											// Dat Path column
-			LvItem.pszText    = szSelDat;
-			LvItem.cchTextMax = sizeof(szSelDat);
+				SendMessage(hRDListView, LVM_GETITEMTEXT, (WPARAM)nSelItem, (LPARAM)&LvItem);
 
-			SendMessage(hRDListView, LVM_GETITEMTEXT, (WPARAM)nSelItem, (LPARAM)&LvItem);
+				SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDATPATH),  _T(""));
+				SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDRIVER),   _T(""));
+				SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTHARDWARE), _T(""));
 
-			SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTGAME),     _T(""));
-			SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDRIVER),   _T(""));
-			SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTHARDWARE), _T(""));
+				DatListInfo* pDatListInfo = RomdataGetListInfo(szSelDat);
+				if (NULL != pDatListInfo) {
+					SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDATPATH),  szSelDat);
+					SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDRIVER),   pDatListInfo->szDrvName);
+					SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTHARDWARE), pDatListInfo->szHardware);
 
-			DatListInfo* pDatListInfo = RomdataGetListInfo(szSelDat);
-			if (NULL != pDatListInfo) {
-				SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTGAME),     pDatListInfo->szFullName);
-				SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTDRIVER),   pDatListInfo->szDrvName);
-				SetWindowText(GetDlgItem(hRDMgrWnd, IDC_ROMDATA_TEXTHARDWARE), pDatListInfo->szHardware);
+					_stprintf(szCover, _T("%s%s.png"), szAppTitlesPath, pDatListInfo->szRomSet);
+					if (!FileExists(szCover))
+						_stprintf(szCover, _T("%s%s.png"), szAppTitlesPath, pDatListInfo->szDrvName);
+					if (!FileExists(szCover))
+						szCover[0] = 0;
 
-				_stprintf(szCover, _T("%s%s.png"), szAppTitlesPath, pDatListInfo->szRomSet);
-				if (!FileExists(szCover))
-					_stprintf(szCover, _T("%s%s.png"), szAppTitlesPath, pDatListInfo->szDrvName);
-				if (!FileExists(szCover))
-					szCover[0] = 0;
+					RomDataShowPreview(hRDMgrWnd, szCover, IDC_ROMDATA_TITLE, IDC_ROMDATA_TITLE_FRAME, 0, 0);
 
-				RomDataShowPreview(hRDMgrWnd, szCover, IDC_ROMDATA_TITLE, IDC_ROMDATA_TITLE_FRAME, 0, 0);
+					_stprintf(szCover, _T("%s%s.png"), szAppPreviewsPath, pDatListInfo->szRomSet);
+					if (!FileExists(szCover))
+						_stprintf(szCover, _T("%s%s.png"), szAppPreviewsPath, pDatListInfo->szDrvName);
+					if (!FileExists(szCover))
+						szCover[0] = 0;
 
-				_stprintf(szCover, _T("%s%s.png"), szAppPreviewsPath, pDatListInfo->szRomSet);
-				if (!FileExists(szCover))
-					_stprintf(szCover, _T("%s%s.png"), szAppPreviewsPath, pDatListInfo->szDrvName);
-				if (!FileExists(szCover))
-					szCover[0] = 0;
+					RomDataShowPreview(hRDMgrWnd, szCover, IDC_ROMDATA_PREVIEW, IDC_ROMDATA_PREVIEW_FRAME, 0, 0);
 
-				RomDataShowPreview(hRDMgrWnd, szCover, IDC_ROMDATA_PREVIEW, IDC_ROMDATA_PREVIEW_FRAME, 0, 0);
-
-				free(pDatListInfo); pDatListInfo = NULL;
+					free(pDatListInfo); pDatListInfo = NULL;
+				}
 			}
 		}
 
@@ -1989,13 +2014,10 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 		// Double Click
 		if (pNMLV->hdr.code == NM_DBLCLK && pNMLV->hdr.idFrom == IDC_ROMDATA_LIST) {
 			if (nSelItem >= 0) {
-				LVITEM LvItem;
-				memset(&LvItem,       0, sizeof(LvItem));
 				memset(szRomdataName, 0, sizeof(szRomdataName));
 
-				LvItem.iItem      = nSelItem;
-				LvItem.mask       = LVIF_TEXT;
-				LvItem.iSubItem   = 0;										// Dat path column
+				LVITEM LvItem     = { 0 };
+				LvItem.iSubItem   = 3;	// Dat path column
 				LvItem.pszText    = szRomdataName;
 				LvItem.cchTextMax = sizeof(szRomdataName);
 
@@ -2005,7 +2027,7 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 					RomDataManagerExit();
 					EndDialog(hDlg, 0);
 
-					DrvInit(BurnDrvGetIndex(RomdataGetDrvName()), true);	// Init the game driver
+					DrvInit(BurnDrvGetIndex(RomdataGetDrvName()), true);
 					MenuEnableItems();
 					bAltPause = 0;
 					if (bVidAutoSwitchFull) {
@@ -2025,13 +2047,10 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 			if (nCtrlID == IDC_ROMDATA_TITLE) {
 				if (nSelItem >= 0) {
 					TCHAR szSelDat[MAX_PATH] = { 0 };
-					LVITEM LvItem;
-					memset(&LvItem, 0, sizeof(LvItem));
 
-					LvItem.iItem = nSelItem;
-					LvItem.mask = LVIF_TEXT;
-					LvItem.iSubItem = 0;									// Dat path column
-					LvItem.pszText = szSelDat;
+					LVITEM LvItem     = { 0 };
+					LvItem.iSubItem   = 3;	// Dat path column
+					LvItem.pszText    = szSelDat;
 					LvItem.cchTextMax = sizeof(szSelDat);
 
 					SendMessage(hRDListView, LVM_GETITEMTEXT, (WPARAM)nSelItem, (LPARAM)&LvItem);
@@ -2058,13 +2077,10 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 			if (nCtrlID == IDC_ROMDATA_PREVIEW) {
 				if (nSelItem >= 0) {
 					TCHAR szSelDat[MAX_PATH] = { 0 };
-					LVITEM LvItem;
-					memset(&LvItem, 0, sizeof(LvItem));
 
-					LvItem.iItem = nSelItem;
-					LvItem.mask = LVIF_TEXT;
-					LvItem.iSubItem = 0;							// Dat path column
-					LvItem.pszText = szSelDat;
+					LVITEM LvItem     = { 0 };
+					LvItem.iSubItem   = 3;	// Dat path column
+					LvItem.pszText    = szSelDat;
 					LvItem.cchTextMax = sizeof(szSelDat);
 
 					SendMessage(hRDListView, LVM_GETITEMTEXT, (WPARAM)nSelItem, (LPARAM)&LvItem);
@@ -2099,14 +2115,11 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 			switch (nCtrlID) {
 				case IDC_ROMDATA_PLAY_BUTTON: {
 					if (nSelItem >= 0) {
-						LVITEM LvItem;
-						memset(&LvItem, 0, sizeof(LvItem));
 						memset(szRomdataName, 0, sizeof(szRomdataName));
 
-						LvItem.iItem = nSelItem;
-						LvItem.mask = LVIF_TEXT;
-						LvItem.iSubItem = 0;										// Dat path column
-						LvItem.pszText = szRomdataName;
+						LVITEM LvItem     = { 0 };
+						LvItem.iSubItem   = 3;	// Dat path column
+						LvItem.pszText    = szRomdataName;
 						LvItem.cchTextMax = sizeof(szRomdataName);
 
 						SendMessage(hRDListView, LVM_GETITEMTEXT, (WPARAM)nSelItem, (LPARAM)&LvItem);
@@ -2135,7 +2148,7 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 					break;
 				}
 
-				case IDC_ROMDATA_SEL_DIR_BUTTON: {
+				case IDC_ROMDATA_SELDIR_BUTTON: {
 					RomDataClearList();
 					SupportDirCreateTab(IDC_SUPPORTDIR_EDIT25, hRDMgrWnd);
 					RomdataListFindDats(szAppRomdataPath);
@@ -2143,8 +2156,8 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 					break;
 				}
 
-				case IDC_ROMDATA_SSUBDIR_CHECK: {
-					bRDListScanSub = (BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_ROMDATA_SSUBDIR_CHECK));
+				case IDC_ROMDATA_SUBDIR_CHECK: {
+					bRDListScanSub = (BST_CHECKED == IsDlgButtonChecked(hDlg, IDC_ROMDATA_SUBDIR_CHECK));
 					RomDataClearList();
 					RomdataListFindDats(szAppRomdataPath);
 					SetFocus(hRDListView);

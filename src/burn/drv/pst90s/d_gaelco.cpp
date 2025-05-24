@@ -1311,17 +1311,17 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 // PCB silkscreened REF.901112 
 
 static struct BurnRomInfo bigkarnkRomDesc[] = {
-	{ "d16",		0x40000, 0x44fb9c73, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "d19",		0x40000, 0xff79dfdd, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "d16",		0x40000, 0x44fb9c73, 1 | BRF_PRG | BRF_ESS },  //  0 68k Code
+	{ "d19",		0x40000, 0xff79dfdd, 1 | BRF_PRG | BRF_ESS },  //  1
 
-	{ "h5",			0x80000, 0x20e239ff, 2 | BRF_GRA },           //  2 Tiles and Sprites
-	{ "h10",		0x80000, 0xab442855, 2 | BRF_GRA },           //  3
-	{ "h8",			0x80000, 0x83dce5a3, 2 | BRF_GRA },           //  4
-	{ "h6",			0x80000, 0x24e84b24, 2 | BRF_GRA },           //  5
+	{ "h5",			0x80000, 0x20e239ff, 2 | BRF_GRA },            //  2 Tiles and Sprites
+	{ "h10",		0x80000, 0xab442855, 2 | BRF_GRA },            //  3
+	{ "h8",			0x80000, 0x83dce5a3, 2 | BRF_GRA },            //  4
+	{ "h6",			0x80000, 0x24e84b24, 2 | BRF_GRA },            //  5
 
-	{ "d1",			0x40000, 0x26444ad1, 3 | BRF_SND },           //  6 M6295 Samples
+	{ "d1",			0x40000, 0x26444ad1, 3 | BRF_SND },            //  6 M6295 Samples
 
-	{ "d5",			0x10000, 0x3b73b9c5, 4 | BRF_PRG | BRF_ESS }, //  7 M6809 Code
+	{ "d5",			0x10000, 0x3b73b9c5, 4 | BRF_PRG | BRF_ESS },  //  7 M6809 Code
 	
 	{ "bigkarnak_gal16v8.d6",  0x00117, 0x587fe895, 5 | BRF_OPT }, //  8 plds
 	{ "bigkarnak_gal20v8.d21", 0x00157, 0x0dcb286e, 5 | BRF_OPT }, //  9
@@ -1336,6 +1336,39 @@ struct BurnDriver BurnDrvBigkarnk = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_POST90S, GBF_PLATFORM | GBF_SCRFIGHT, 0,
 	NULL, bigkarnkRomInfo, bigkarnkRomName, NULL, NULL, NULL, NULL, BigkarnkInputInfo, BigkarnkDIPInfo,
+	BigkarnkInit, DrvExit, BigkarnkFrame, BigkarnkDraw, DrvScan, &DrvRecalc, 0x400,
+	320, 240, 4, 3
+};
+
+
+// Big Karnak (ver. 1.0, checksum 1e38b94)
+
+static struct BurnRomInfo bigkarnkaRomDesc[] = {
+	{ "16_20_27c020.bin",			0x40000, 0x3e5d33d9, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "20_19_27c020.bin",			0x40000, 0x508fd6a1, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "karnak_h5_23c4000.bin",		0x80000, 0x20e239ff, 2 | BRF_GRA },           //  2 Tiles and Sprites
+	{ "h10",						0x80000, 0xab442855, 2 | BRF_GRA },           //  3
+	{ "h8",							0x80000, 0x83dce5a3, 2 | BRF_GRA },           //  4
+	{ "h6",							0x80000, 0x24e84b24, 2 | BRF_GRA },           //  5
+
+	{ "gaelco_1_karnak_27c020.bin",	0x40000, 0x26444ad1, 3 | BRF_SND },           //  6 M6295 Samples
+
+	{ "gaelco_2_karnak_27512.bin",	0x10000, 0x3b73b9c5, 4 | BRF_PRG | BRF_ESS }, //  7 M6809 Code
+	
+	{ "gal16v8.bin",  				0x00117, 0xd5ed5985, 5 | BRF_OPT }, 		  //  8 plds
+	{ "f0_gal16v8.bin", 			0x00117, 0xa733f0de, 5 | BRF_OPT }, 		  //  9
+};
+
+STD_ROM_PICK(bigkarnka)
+STD_ROM_FN(bigkarnka)
+
+struct BurnDriver BurnDrvBigkarnka = {
+	"bigkarnka", "bigkarnk", NULL, NULL, "1991",
+	"Big Karnak (ver. 1.0, checksum 1e38b94)\0", NULL, "Gaelco", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_POST90S, GBF_PLATFORM | GBF_SCRFIGHT, 0,
+	NULL, bigkarnkaRomInfo, bigkarnkaRomName, NULL, NULL, NULL, NULL, BigkarnkInputInfo, BigkarnkDIPInfo,
 	BigkarnkInit, DrvExit, BigkarnkFrame, BigkarnkDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };
@@ -1569,6 +1602,39 @@ struct BurnDriver BurnDrvSquash = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_SPORTSMISC, 0,
 	NULL, squashRomInfo, squashRomName, NULL, NULL, NULL, NULL, DrvInputInfo, SquashDIPInfo,
+	SquashInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
+	320, 240, 4, 3
+};
+
+
+// Squash (USA, ver. 1.1, checksum 015b6f8a)
+
+static struct BurnRomInfo squashaRomDesc[] = {
+	{ "sq_p_0_27c010.bin",	0x20000, 0x275e20e7, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "sq_p_1_27c010.bin",	0x20000, 0x077cc291, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "squash_c-12.c12",	0x80000, 0x5c440645, 2 | BRF_GRA },           //  2 Tiles and Sprites
+	{ "squash.c11",			0x80000, 0x9e19694d, 2 | BRF_GRA },           //  3
+	{ "squash_c-10.c10",	0x80000, 0x892a035c, 2 | BRF_GRA },           //  4
+	{ "squash_c-9.c9",		0x80000, 0x0bb91c69, 2 | BRF_GRA },           //  5 
+
+	{ "squash_sound.bin",	0x80000, 0xa1b9651b, 3 | BRF_SND },           //  6 M6295 Samples
+	
+	{ "squashv1_gal16v8.f2",	0x00117, 0xd5ed5985, 4 | BRF_OPT },       //  7 plds
+	{ "squashv1_gal16v8.j16",	0x00117, 0xfe78b903, 4 | BRF_OPT },       //  8
+	{ "squashv1_gal20v8.d21",	0x00157, 0xa715e392, 4 | BRF_OPT },       //  9
+	{ "squashv1_gal20v8.h11",	0x00157, 0x51e34bc2, 4 | BRF_OPT },       // 10
+};
+
+STD_ROM_PICK(squasha)
+STD_ROM_FN(squasha)
+
+struct BurnDriver BurnDrvSquasha = {
+	"squasha", "squash", NULL, NULL, "1992",
+	"Squash (USA, ver. 1.1, checksum 015b6f8a)\0", NULL, "Gaelco", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_SPORTSMISC, 0,
+	NULL, squashaRomInfo, squashaRomName, NULL, NULL, NULL, NULL, DrvInputInfo, SquashDIPInfo,
 	SquashInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,
 	320, 240, 4, 3
 };
