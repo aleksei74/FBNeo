@@ -119,8 +119,6 @@
 #define TAITO_CCHIP_BIOS									34
 #define TAITO_CCHIP_EEPROM									35
 
-
-
 struct DatListInfo {
 	TCHAR szRomSet[100];
 	TCHAR szFullName[1024];
@@ -177,7 +175,8 @@ static HWND hRDMgrWnd   = NULL;
 static HWND hRDListView = NULL;
 static HWND hRdCoverDlg = NULL;
 
-static TCHAR szCover[MAX_PATH] = { 0 };
+static TCHAR szCover[MAX_PATH]      = { 0 };
+static TCHAR szBackupDat[MAX_PATH]  = { 0 };
 
 
 static struct HardwareIcon IconTable[] =
@@ -1325,6 +1324,210 @@ char* RomdataGetDrvName()
 	return NULL;
 }
 
+TCHAR* RomdataGetZipName(const TCHAR* pszFileName)
+{
+	EncodingType nType = DetectEncoding(pszFileName);
+	const TCHAR* pszReadMode = NULL;
+
+	switch (nType) {
+	case ENCODING_ANSI: {
+		pszReadMode = _T("rt");
+		break;
+	}
+	case ENCODING_UTF8:
+	case ENCODING_UTF8_BOM: {
+		pszReadMode = _T("rt, ccs=UTF-8");
+		break;
+	}
+	case ENCODING_UTF16_LE: {
+		pszReadMode = _T("rt, ccs=UTF-16LE");
+		break;
+	}
+	case ENCODING_UTF16_BE: {
+		const TCHAR* pszConvert = Utf16beToUtf16le(pszFileName);
+		if (NULL == pszConvert) return NULL;
+		pszReadMode = _T("rt, ccs=UTF-16LE");
+		break;
+	}
+	default:
+		return NULL;
+	}
+
+	FILE* fp = _tfopen(pszFileName, pszReadMode);
+	if (NULL == fp) return NULL;
+
+	TCHAR szBuf[MAX_PATH] = { 0 };
+	TCHAR* pszBuf = NULL, * pszLabel = NULL, * pszInfo = NULL;
+
+	while (!feof(fp)) {
+		if (_fgetts(szBuf, MAX_PATH, fp) != NULL) {
+			pszBuf = szBuf;
+
+			pszLabel = _strqtoken(pszBuf, DELIM_TOKENS_NAME);
+			if (NULL == pszLabel) continue;
+			if ((_T('/') == pszLabel[0]) && (_T('/') == pszLabel[1])) continue;
+
+			if (0 == _tcsicmp(_T("ZipName"), pszLabel) || 0 == _tcsicmp(_T("RomName"), pszLabel)) {
+				pszInfo = _strqtoken(NULL, DELIM_TOKENS_NAME);
+				if (NULL == pszInfo) break;	// No romset specified
+				fclose(fp);
+				TCHAR szRet[100] = { 0 };
+				return _tcscpy(szRet, pszInfo);
+			}
+		}
+	}
+	fclose(fp);
+
+	return NULL;
+}
+
+TCHAR* RomdataGetDrvName(const TCHAR* pszFileName)
+{
+	EncodingType nType = DetectEncoding(pszFileName);
+	const TCHAR* pszReadMode = NULL;
+
+	switch (nType) {
+	case ENCODING_ANSI: {
+		pszReadMode = _T("rt");
+		break;
+	}
+	case ENCODING_UTF8:
+	case ENCODING_UTF8_BOM: {
+		pszReadMode = _T("rt, ccs=UTF-8");
+		break;
+	}
+	case ENCODING_UTF16_LE: {
+		pszReadMode = _T("rt, ccs=UTF-16LE");
+		break;
+	}
+	case ENCODING_UTF16_BE: {
+		const TCHAR* pszConvert = Utf16beToUtf16le(pszFileName);
+		if (NULL == pszConvert) return NULL;
+		pszReadMode = _T("rt, ccs=UTF-16LE");
+		break;
+	}
+	default:
+		return NULL;
+	}
+
+	FILE* fp = _tfopen(pszFileName, pszReadMode);
+	if (NULL == fp) return NULL;
+
+	TCHAR szBuf[MAX_PATH] = { 0 };
+	TCHAR* pszBuf = NULL, * pszLabel = NULL, * pszInfo = NULL;
+
+	while (!feof(fp)) {
+		if (_fgetts(szBuf, MAX_PATH, fp) != NULL) {
+			pszBuf = szBuf;
+
+			pszLabel = _strqtoken(pszBuf, DELIM_TOKENS_NAME);
+			if (NULL == pszLabel) continue;
+			if ((_T('/') == pszLabel[0]) && (_T('/') == pszLabel[1])) continue;
+
+			if (0 == _tcsicmp(_T("DrvName"), pszLabel) || 0 == _tcsicmp(_T("Parent"), pszLabel)) {
+				pszInfo = _strqtoken(NULL, DELIM_TOKENS_NAME);
+				if (NULL == pszInfo) break;	// No romset specified
+				fclose(fp);
+				TCHAR szRet[100] = { 0 };
+				return _tcscpy(szRet, pszInfo);
+			}
+		}
+	}
+	fclose(fp);
+
+	return NULL;
+}
+
+// It is recommended to save and restore the state of nBurnDrvActive before and after the call
+INT32 RomdataGetDrvIndex(const TCHAR* pszDrvName)
+{
+	for (INT32 nDrvIndex = 0; nDrvIndex < nBurnDrvCount; nDrvIndex++) {
+		nBurnDrvActive = nDrvIndex;
+		if ((0 == _tcscmp(pszDrvName, BurnDrvGetText(DRV_NAME))) && (!(BurnDrvGetFlags() & BDF_BOARDROM))) {
+			return nDrvIndex;
+		}
+	}
+	return -1;
+}
+
+TCHAR* RomdataGetFullName(const TCHAR* pszFileName)
+{
+	EncodingType nType = DetectEncoding(pszFileName);
+	const TCHAR* pszReadMode = NULL;
+
+	switch (nType) {
+	case ENCODING_ANSI: {
+		pszReadMode = _T("rt");
+		break;
+	}
+	case ENCODING_UTF8:
+	case ENCODING_UTF8_BOM: {
+		pszReadMode = _T("rt, ccs=UTF-8");
+		break;
+	}
+	case ENCODING_UTF16_LE: {
+		pszReadMode = _T("rt, ccs=UTF-16LE");
+		break;
+	}
+	case ENCODING_UTF16_BE: {
+		const TCHAR* pszConvert = Utf16beToUtf16le(pszFileName);
+		if (NULL == pszConvert) return NULL;
+		pszReadMode = _T("rt, ccs=UTF-16LE");
+		break;
+	}
+	default:
+		return NULL;
+	}
+
+	FILE* fp = _tfopen(pszFileName, pszReadMode);
+	if (NULL == fp) return NULL;
+
+	TCHAR szBuf[MAX_PATH] = { 0 };
+	TCHAR* pszBuf = NULL, * pszLabel = NULL, * pszInfo = NULL;
+
+	while (!feof(fp)) {
+		if (_fgetts(szBuf, MAX_PATH, fp) != NULL) {
+			pszBuf = szBuf;
+
+			pszLabel = _strqtoken(pszBuf, DELIM_TOKENS_NAME);
+			if (NULL == pszLabel) continue;
+			if ((_T('/') == pszLabel[0]) && (_T('/') == pszLabel[1])) continue;
+
+			if (0 == _tcsicmp(_T("FullName"), pszLabel) || 0 == _tcsicmp(_T("Game"), pszLabel)) {
+				TCHAR szMerger[260] = { 0 };
+				INT32 nAdd = 0;
+				while (NULL != (pszInfo = _strqtoken(NULL, DELIM_TOKENS_NAME))) {
+					_stprintf(szMerger + nAdd, _T("%s "), pszInfo);
+					nAdd = _tcslen(szMerger);
+				}
+				szMerger[nAdd - 1] = _T('\0');
+				return szMerger;
+			}
+		}
+	}
+	fclose(fp);
+
+	return NULL;
+}
+
+static INT32 RomsetDuplicateName(const TCHAR* pszFileName)
+{
+	bool RDMode = (NULL != pDataRomDesc);
+	if (RDMode) return -2;
+
+	TCHAR* pszZipName = RomdataGetZipName(pszFileName);
+	if (NULL == pszZipName) return -3;
+/*
+	return:	-1 is success
+	0 ~ N	The name is duplicated
+	-1		Not in the list of drivers
+	-2		RomData mode
+	-3		No results were found in the Dat file
+*/
+	return BurnDrvGetIndex(TCHARToANSI(pszZipName, NULL, 0));
+}
+
+// Checking in RomData mode is strictly prohibited
 INT32 RomDataCheck(const TCHAR* pszDatFile)
 {
 	if (NULL == pszDatFile) {
@@ -1332,60 +1535,81 @@ INT32 RomDataCheck(const TCHAR* pszDatFile)
 		FBAPopupDisplay(PUF_TYPE_ERROR);
 		return -1;
 	}
-	if (!FileExists(pszDatFile)) {
-		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), pszDatFile);
+
+	TCHAR szDatFile[MAX_PATH] = { 0 };
+	_tcscpy(szDatFile, pszDatFile);
+
+	if (!FileExists(szDatFile)) {
+		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), szDatFile);
 		FBAPopupAddText(PUF_TEXT_DEFAULT, MAKEINTRESOURCE(IDS_ERR_LOAD_NODATA));
 		FBAPopupDisplay(PUF_TYPE_ERROR);
 		return -2;
 	}
 
-	TCHAR szBackup[MAX_PATH] = { 0 };
-	_tcscpy(szBackup, szRomdataName);			// Backup szRomdataName
-	_tcscpy(szRomdataName, pszDatFile);
-
-	const UINT32 nOldDrvSel = nBurnDrvActive;	// Backup nBurnDrvActive
-
-	char* szDrvName = RomdataGetDrvName();
-	nBurnDrvActive  = BurnDrvGetIndex(szDrvName);
-
 	INT32 nRet = 0;
-	if (NULL == szDrvName)    nRet = -3;
-	if (-1 == nBurnDrvActive) nRet = -4;
+	const TCHAR* pszDrvName = RomdataGetDrvName(szDatFile);
+	if (NULL == pszDrvName) nRet -3;
+
+	TCHAR szDrvName[100] = { 0 };
+	_tcscpy(szDrvName, pszDrvName);
+
+	const INT32 nDrvIdx = BurnDrvGetIndex(TCHARToANSI(szDrvName, NULL, 0));
+	if (-1 == nDrvIdx)      nRet -4;
+
 
 	if (nRet < 0) {
-		memset(szRomdataName, 0, sizeof(szRomdataName));
-		_tcscpy(szRomdataName, szBackup);
-		nBurnDrvActive = nOldDrvSel;
-		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), pszDatFile);
+		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), szDatFile);
 		UINT32 nStrId = (-3 == nRet) ? IDS_ERR_NO_DRIVER_SELECTED : IDS_ERR_DRIVER_NOT_EXIST;
 		FBAPopupAddText(PUF_TEXT_DEFAULT, MAKEINTRESOURCE(nStrId));
 		FBAPopupDisplay(PUF_TYPE_ERROR);
 		return nRet;
 	}
 
-	RomDataInit();								// Replace DrvName##RomDesc
-	nRet = BzipOpen(1);
+	nRet = RomsetDuplicateName(szDatFile);
+	if (nRet >= 0) {
+		FBAPopupAddText(PUF_TEXT_DEFAULT, _T("%s: %s\n\n"), FBALoadStringEx(hAppInst, IDS_ROMDATA_DATPATH, true), szDatFile);
+		FBAPopupAddText(PUF_TEXT_DEFAULT, MAKEINTRESOURCE(IDS_ERR_ROMSET_DUPLICATE));
+		FBAPopupDisplay(PUF_TYPE_ERROR);
+		return -5;
+	}
+/*
+	-2 and -3 should have no chance of being detected and are reserved for now
+*/
+	if (-2 == nRet) {
+		return -6;								// RomData mode
+	}
+	if (-3 == nRet) {
+		return -7;								// No romset specified,
+	}
 
-	if (1 == nRet) {
+/*
+	Now we're going to go into RomData mode and check the integrity of the Romset
+	Exit RomData mode as soon as the check is complete
+*/
+	TCHAR szBackup[MAX_PATH] = { 0 };
+	_tcscpy(szBackup, szRomdataName);			// Backup szRomdataName
+	_tcscpy(szRomdataName, szDatFile);
+	RomDataInit();								// Replace DrvName##RomDesc
+	const UINT32 nOldDrvSel = nBurnDrvActive;	// Backup nBurnDrvActive
+	nBurnDrvActive = nDrvIdx;					// Required nBurnDrvActive
+	nRet = BzipOpen(1);
+	if (1 == nRet) {							// ROMs error report
 		BzipClose();
 		BzipOpen(0);
 		FBAPopupDisplay(PUF_TYPE_ERROR);
 	}
-
 	BzipClose();
-	RomDataExit();								// Restore DrvName##RomDesc
 	nBurnDrvActive = nOldDrvSel;				// Restore nBurnDrvActive
-	_tcscpy(szRomdataName, szBackup);
+	RomDataExit();								// Restore DrvName##RomDesc
+	_tcscpy(szRomdataName, szBackup);			// Restore szRomdataName
 
-	return nRet;
+	return (0 == nRet) ? nDrvIdx : nRet;
 }
 
 static DatListInfo* RomdataGetListInfo(const TCHAR* pszDatFile)
 {
 	EncodingType nType = DetectEncoding(pszDatFile);
 	if (NULL == pszDatFile) return NULL;
-
-	memset(szRomdataName, 0, sizeof(szRomdataName));
 	_tcscpy(szRomdataName, pszDatFile);
 
 	const TCHAR* pszReadMode = NULL;
@@ -1676,6 +1900,56 @@ static void RomdataListFindDats(const TCHAR* dirPath)
 	FindClose(hFind);
 }
 
+bool FindZipNameFromDats(const TCHAR* dirPath, const char* pszZipName, TCHAR* pszFindDat)
+{
+	if (IS_STRING_EMPTY(dirPath)) return false;
+	if (NULL == pszZipName)       return false;
+
+	char szBuf[100] = { 0 };
+	strcpy(szBuf, pszZipName);
+
+	TCHAR searchPath[MAX_PATH] = { 0 };
+
+	const TCHAR* szFormatA = ends_with_slash(dirPath) ? _T("%s*") : _T("%s\\*.*");
+	const TCHAR* szFormatB = ends_with_slash(dirPath) ? _T("%s%s") : _T("%s\\%s");
+
+	_stprintf(searchPath, szFormatA, dirPath);
+
+	WIN32_FIND_DATA findFileData;
+	HANDLE hFind = FindFirstFile(searchPath, &findFileData);
+	if (INVALID_HANDLE_VALUE == hFind) return false;
+
+	do {
+		if (0 == _tcscmp(findFileData.cFileName, _T(".")) || 0 == _tcscmp(findFileData.cFileName, _T("..")))
+			continue;
+		// like: c:\1st_dir + '\' + 2nd_dir + '\' + "1.dat" + '\0' = 8 chars
+		if ((_tcslen(dirPath) + _tcslen(findFileData.cFileName)) > (MAX_PATH - 8))
+			continue;
+
+		TCHAR szFullPath[MAX_PATH] = { 0 };
+		_stprintf(szFullPath, szFormatB, dirPath, findFileData.cFileName);
+
+		if (findFileData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+			if (bRDListScanSub)
+				FindZipNameFromDats(szFullPath, szBuf, pszFindDat);
+		} else {
+			if (NULL == pszFindDat) return false;
+			if (IsFileExt(findFileData.cFileName, _T(".dat"))){
+				const TCHAR* pszBuf = RomdataGetZipName(szFullPath);
+				if (NULL == pszBuf) continue;
+				if (0 == strcmp(szBuf, TCHARToANSI(pszBuf, NULL, 0))) {
+					_tcscpy(pszFindDat, szFullPath);
+					FindClose(hFind);
+					return true;
+				}
+			}
+		}
+	} while (FindNextFile(hFind, &findFileData));
+
+	FindClose(hFind);
+	return false;
+}
+
 #undef IS_STRING_EMPTY
 
 static INT32 CALLBACK ListViewCompareFunc(LPARAM lParam1, LPARAM lParam2, LPARAM lParamSort)
@@ -1888,6 +2162,11 @@ static void RomdataCoverInit()
 
 static void RomDataManagerExit()
 {
+	if (FileExists(szBackupDat)) {
+		_tcscpy(szRomdataName, szBackupDat);
+		memset(szBackupDat, 0, sizeof(szBackupDat));
+		RomDataInit();
+	}
 	RomDataClearList();
 	DestroyHardwareIconList();
 	DeleteObject(hWhiteBGBrush);
@@ -2014,28 +2293,18 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 		// Double Click
 		if (pNMLV->hdr.code == NM_DBLCLK && pNMLV->hdr.idFrom == IDC_ROMDATA_LIST) {
 			if (nSelItem >= 0) {
-				memset(szRomdataName, 0, sizeof(szRomdataName));
+				TCHAR szSelDat[MAX_PATH] = { 0 };
 
 				LVITEM LvItem     = { 0 };
 				LvItem.iSubItem   = 3;	// Dat path column
-				LvItem.pszText    = szRomdataName;
-				LvItem.cchTextMax = sizeof(szRomdataName);
+				LvItem.pszText    = szSelDat;
+				LvItem.cchTextMax = sizeof(szSelDat);
 
 				SendMessage(hRDListView, LVM_GETITEMTEXT, (WPARAM)nSelItem, (LPARAM)&LvItem);
 
-				if (0 == RomDataCheck(szRomdataName)) {
-					RomDataManagerExit();
-					EndDialog(hDlg, 0);
-
-					DrvInit(BurnDrvGetIndex(RomdataGetDrvName()), true);
-					MenuEnableItems();
-					bAltPause = 0;
-					if (bVidAutoSwitchFull) {
-						nVidFullscreen = 1;
-						POST_INITIALISE_MESSAGE;
-					}
-					POST_INITIALISE_MESSAGE;
-				}
+				RomDataManagerExit();
+				EndDialog(hDlg, 0);
+				RomDataLoadDriver(szSelDat);
 			}
 		}
 	}
@@ -2115,28 +2384,18 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 			switch (nCtrlID) {
 				case IDC_ROMDATA_PLAY_BUTTON: {
 					if (nSelItem >= 0) {
-						memset(szRomdataName, 0, sizeof(szRomdataName));
+						TCHAR szSelDat[MAX_PATH] = { 0 };
 
 						LVITEM LvItem     = { 0 };
 						LvItem.iSubItem   = 3;	// Dat path column
-						LvItem.pszText    = szRomdataName;
-						LvItem.cchTextMax = sizeof(szRomdataName);
+						LvItem.pszText    = szSelDat;
+						LvItem.cchTextMax = sizeof(szSelDat);
 
 						SendMessage(hRDListView, LVM_GETITEMTEXT, (WPARAM)nSelItem, (LPARAM)&LvItem);
 
-						if (0 == RomDataCheck(szRomdataName)) {
-							RomDataManagerExit();
-							EndDialog(hDlg, 0);
-
-							DrvInit(BurnDrvGetIndex(RomdataGetDrvName()), true);	// Init the game driver
-							MenuEnableItems();
-							bAltPause = 0;
-							if (bVidAutoSwitchFull) {
-								nVidFullscreen = 1;
-								POST_INITIALISE_MESSAGE;
-							}
-							POST_INITIALISE_MESSAGE;
-						}
+						RomDataManagerExit();
+						EndDialog(hDlg, 0);
+						RomDataLoadDriver(szSelDat);
 					}
 					break;
 				}
@@ -2177,5 +2436,11 @@ static INT_PTR CALLBACK RomDataManagerProc(HWND hDlg, UINT Msg, WPARAM wParam, L
 
 INT32 RomDataManagerInit()
 {
+	if (NULL != pDataRomDesc) {
+		memset(szBackupDat, 0, sizeof(szBackupDat));
+		_tcscpy(szBackupDat, szRomdataName);
+		RomDataExit();
+	}
+
 	return FBADialogBox(hAppInst, MAKEINTRESOURCE(IDD_ROMDATA_MANAGER), hScrnWnd, (DLGPROC)RomDataManagerProc);
 }
