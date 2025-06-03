@@ -266,7 +266,6 @@ DRV		BurnDrvMSX_aceofaces;
 DRV		BurnDrvsms_aceoface;
 DRV		BurnDrvsnes_Aceneraej;
 DRV		BurnDrvsms_acreflux;
-DRV		BurnDrvsnes_Acmeanimfact;
 DRV		BurnSpecAcolyte;
 DRV		BurnSpecAcolyte2;
 DRV		BurnDrvsnes_Acromission;
@@ -23730,7 +23729,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsms_aceoface,		// Ace of Aces (Euro)
 	&BurnDrvsnes_Aceneraej,		// Ace wo Nerae! (Japan)
 	&BurnDrvsms_acreflux,		// Acid Reflux (HB, v1.1)
-	&BurnDrvsnes_Acmeanimfact,	// ACME Animation Factory (USA)
 	&BurnSpecAcolyte,			// Acolyte (48K) (HB)
 	&BurnSpecAcolyte2,			// Acolyte 2 - The Quest for Celeste (128K) (HB)
 	&BurnDrvsnes_Acromission,	// Acrobat Mission (Japan)
@@ -47194,7 +47192,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sms_aceoface", "sms/d_sms.cpp"},
 	{ "snes_aceneraej", "snes/d_snes.cpp"},
 	{ "sms_acreflux", "sms/d_sms.cpp"},
-	{ "snes_acmeanimfact", "snes/d_snes.cpp"},
 	{ "spec_acolyte", "spectrum/d_spectrum.cpp"},
 	{ "spec_acolyte2", "spectrum/d_spectrum.cpp"},
 	{ "snes_acromission", "snes/d_snes.cpp"},
