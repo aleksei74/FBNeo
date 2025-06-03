@@ -16292,6 +16292,9 @@ struct BurnDriver BurnDrvCpsPfghtsc = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_SF,
 	NULL, PfghtscRomInfo, PfghtscRomName, NULL, NULL, NULL, NULL, SgemfInputInfo, NULL,
+	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
 
 //========================
 // Add Korean Translation
