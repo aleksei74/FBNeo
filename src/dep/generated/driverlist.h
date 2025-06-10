@@ -12923,16 +12923,19 @@ DRV		BurnSpecMsnampac;
 DRV		BurnDrvmspacmat;
 DRV		BurnDrvmspacmanbg;
 DRV		BurnDrvmspacmanbg2;
+DRV		BurnDrvmspacmanbgc;
 DRV		BurnSpecmspacman;
 DRV		BurnDrvmspacmbe;
 DRV		BurnDrvmspacmab;
 DRV		BurnDrvmspacmab2;
 DRV		BurnDrvmspacmab3;
+DRV		BurnDrvmspacmab4;
 DRV		BurnDrvMspacmane;
 DRV		BurnDrvMspacmane2;
 DRV		BurnDrvsms_mspacman;
 DRV		BurnDrvmd_mspacman;
 DRV		BurnDrvmd_mspacmans;
+DRV		BurnDrvmspacmanbi;
 DRV		BurnDrvmspacmanlai;
 DRV		BurnDrvmspacmbmc;
 DRV		BurnDrvmspacmap;
@@ -18810,6 +18813,7 @@ DRV		BurnDrvCpsSf2tlonc;
 #if defined FBNEO_DEBUG
 DRV		BurnDrvCpsSf2tlonc2;	// no comment
 #endif
+DRV		BurnDrvCpsSf2ceda;
 DRV		BurnDrvCpsSf2ceua;
 DRV		BurnDrvCpsSf2ceub;
 DRV		BurnDrvCpsSf2ceuc;
@@ -36519,16 +36523,19 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmspacmat,			// Ms. Pac Attack
 	&BurnDrvmspacmanbg,			// Ms. Pac-Man ('Made in Greece' bootleg, set 1)
 	&BurnDrvmspacmanbg2,		// Ms. Pac-Man ('Made in Greece' bootleg, set 2)
+	&BurnDrvmspacmanbgc,		// Ms. Pac-Man ('Made in Greece' Enavi bootleg)
 	&BurnSpecmspacman,			// Ms. Pac-Man (48K)
 	&BurnDrvmspacmbe,			// Ms. Pac-Man (bootleg, encrypted)
 	&BurnDrvmspacmab,			// Ms. Pac-Man (bootleg, set 1)
 	&BurnDrvmspacmab2,			// Ms. Pac-Man (bootleg, set 2)
 	&BurnDrvmspacmab3,			// Ms. Pac-Man (bootleg, set 3)
+	&BurnDrvmspacmab4,			// Ms. Pac-Man (bootleg, set 4)
 	&BurnDrvMspacmane,			// Ms. Pac-Man (Elmac bootleg, earlier)
 	&BurnDrvMspacmane2,			// Ms. Pac-Man (Elmac bootleg, later)
 	&BurnDrvsms_mspacman,		// Ms. Pac-Man (Euro, Brazil)
 	&BurnDrvmd_mspacman,		// Ms. Pac-Man (Euro, USA)
 	&BurnDrvmd_mspacmans,		// Ms. Pac-Man (Hack, Spanish v1.1)
+	&BurnDrvmspacmanbi,			// Ms. Pac-Man (Impeuropex bootleg)
 	&BurnDrvmspacmanlai,		// Ms. Pac-Man (Leisure and Allied bootleg)
 	&BurnDrvmspacmbmc,			// Ms. Pac-Man (Marti Colls bootleg)
 	&BurnDrvmspacmap,			// Ms. Pac-Man (Patched)
@@ -42406,6 +42413,7 @@ static struct BurnDriver* pDriver[] = {
 #if defined FBNEO_DEBUG
 	&BurnDrvCpsSf2tlonc2,		// Street Fighter II': Champion Edition (Tu Long, Chinese bootleg, set 3, alternate dump) [no comment]
 #endif
+	&BurnDrvCpsSf2ceda,			// Street Fighter II': Champion Edition (unknown hack)
 	&BurnDrvCpsSf2ceua,			// Street Fighter II': Champion Edition (USA 920313)
 	&BurnDrvCpsSf2ceub,			// Street Fighter II': Champion Edition (USA 920513)
 	&BurnDrvCpsSf2ceuc,			// Street Fighter II': Champion Edition (USA 920803)
@@ -60015,16 +60023,19 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "mspacmat", "pre90s/d_pacman.cpp"},
 	{ "mspacmanbg", "pre90s/d_pacman.cpp"},
 	{ "mspacmanbg2", "pre90s/d_pacman.cpp"},
+	{ "mspacmanbgc", "pre90s/d_pacman.cpp"},
 	{ "spec_mspacman", "spectrum/d_spectrum.cpp"},
 	{ "mspacmbe", "pre90s/d_pacman.cpp"},
 	{ "mspacmab", "pre90s/d_pacman.cpp"},
 	{ "mspacmab2", "pre90s/d_pacman.cpp"},
 	{ "mspacmab3", "pre90s/d_pacman.cpp"},
+	{ "mspacmab4", "pre90s/d_pacman.cpp"},
 	{ "mspacmane", "pre90s/d_pacman.cpp"},
 	{ "mspacmane2", "pre90s/d_pacman.cpp"},
 	{ "sms_mspacman", "sms/d_sms.cpp"},
 	{ "md_mspacman", "megadrive/d_megadrive.cpp"},
 	{ "md_mspacmans", "megadrive/d_megadrive.cpp"},
+	{ "mspacmanbi", "pre90s/d_pacman.cpp"},
 	{ "mspacmanlai", "pre90s/d_pacman.cpp"},
 	{ "mspacmbmc", "pre90s/d_pacman.cpp"},
 	{ "mspacmap", "pre90s/d_pacman.cpp"},
@@ -65848,6 +65859,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sf2tlonb2", "capcom/d_cps1.cpp"},
 	{ "sf2tlonc", "capcom/d_cps1.cpp"},
 	{ "sf2tlonc2", "capcom/d_cps1.cpp"},
+	{ "sf2ceda", "capcom/d_cps1.cpp"},
 	{ "sf2ceua", "capcom/d_cps1.cpp"},
 	{ "sf2ceub", "capcom/d_cps1.cpp"},
 	{ "sf2ceuc", "capcom/d_cps1.cpp"},
