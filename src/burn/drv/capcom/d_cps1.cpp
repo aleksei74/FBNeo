@@ -1546,11 +1546,11 @@ STDINPUTINFO(Sf2ceuabl)
 static struct BurnInputInfo SfzchInputList[] =
 {
 	{"P1 Pause"            , BIT_DIGITAL  , CpsInp018+2, "p1 pause"  },
-	{"P1 Start"         , BIT_DIGITAL  , CpsInp018+4, "p1 start"  },
-	{"P1 Up"            , BIT_DIGITAL  , CpsInp001+3, "p1 up"     },
-	{"P1 Down"          , BIT_DIGITAL  , CpsInp001+2, "p1 down"   },
-	{"P1 Left"          , BIT_DIGITAL  , CpsInp001+1, "p1 left"   },
-	{"P1 Right"         , BIT_DIGITAL  , CpsInp001+0, "p1 right"  },
+	{"P1 Start"            , BIT_DIGITAL  , CpsInp018+4, "p1 start"  },
+	{"P1 Up"               , BIT_DIGITAL  , CpsInp001+3, "p1 up"     },
+	{"P1 Down"             , BIT_DIGITAL  , CpsInp001+2, "p1 down"   },
+	{"P1 Left"             , BIT_DIGITAL  , CpsInp001+1, "p1 left"   },
+	{"P1 Right"            , BIT_DIGITAL  , CpsInp001+0, "p1 right"  },
 	{"P1 Weak Punch (L)"   , BIT_DIGITAL  , CpsInp001+4, "p1 fire 1" },
 	{"P1 Medium Punch (X)" , BIT_DIGITAL  , CpsInp001+5, "p1 fire 2" },
 	{"P1 Strong Punch (R)" , BIT_DIGITAL  , CpsInp001+6, "p1 fire 3" },
@@ -1559,11 +1559,11 @@ static struct BurnInputInfo SfzchInputList[] =
 	{"P1 Strong Kick (A)"  , BIT_DIGITAL  , CpsInp018+6, "p1 fire 6" },
 
 	{"P2 Pause"            , BIT_DIGITAL  , CpsInp018+3, "p2 pause"  },
-	{"P2 Start"         , BIT_DIGITAL  , CpsInp018+5, "p2 start"  },
-	{"P2 Up"            , BIT_DIGITAL  , CpsInp000+3, "p2 up"     },
-	{"P2 Down"          , BIT_DIGITAL  , CpsInp000+2, "p2 down"   },
-	{"P2 Left"          , BIT_DIGITAL  , CpsInp000+1, "p2 left"   },
-	{"P2 Right"         , BIT_DIGITAL  , CpsInp000+0, "p2 right"  },
+	{"P2 Start"            , BIT_DIGITAL  , CpsInp018+5, "p2 start"  },
+	{"P2 Up"               , BIT_DIGITAL  , CpsInp000+3, "p2 up"     },
+	{"P2 Down"             , BIT_DIGITAL  , CpsInp000+2, "p2 down"   },
+	{"P2 Left"             , BIT_DIGITAL  , CpsInp000+1, "p2 left"   },
+	{"P2 Right"            , BIT_DIGITAL  , CpsInp000+0, "p2 right"  },
 	{"P2 Weak Punch (L)"   , BIT_DIGITAL  , CpsInp000+4, "p2 fire 1" },
 	{"P2 Medium Punch (X)" , BIT_DIGITAL  , CpsInp000+5, "p2 fire 2" },
 	{"P2 Strong Punch (R)" , BIT_DIGITAL  , CpsInp000+6, "p2 fire 3" },
@@ -30174,7 +30174,7 @@ STD_ROM_FN(Wonder3k)
 struct BurnDriver BurnDrvCpsArea88ka = {
 	"area88ka", "unsquad", NULL, NULL, "2023",
 	"Area 88 (Korean Translation, Type A)\0", NULL, "Daipro / Capcom", "CPS1",
-	L"\uC5D0\uC5B4\uB9AC\uC5B4 88 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, A \uD615\uC2DD)\0Area 88 (Korean Translation, Type A)\0", NULL, NULL, NULL,
+	L"Area 88 (Korean Translation, Type A)\0\uC5D0\uC5B4\uB9AC\uC5B4 88 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, A \uD615\uC2DD)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_HORSHOOT, 0,
 	NULL, Area88kaRomInfo, Area88kaRomName, NULL, NULL, NULL, NULL, UnsquadInputInfo, UnsquadDIPInfo,
 	DrvInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30184,7 +30184,7 @@ struct BurnDriver BurnDrvCpsArea88ka = {
 struct BurnDriver BurnDrvCpsArea88kb = {
 	"area88kb", "unsquad", NULL, NULL, "2023",
 	"Area 88 (Korean Translation, Type B)\0", NULL, "Daipro / Capcom", "CPS1",
-	L"\uC9C0\uC625\uC758 \uC678\uC778\uBD80\uB300 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, B \uD615\uC2DD)\0Area 88 (Korean Translation, Type B)\0", NULL, NULL, NULL,
+	L"Area 88 (Korean Translation, Type B)\0\uC9C0\uC625\uC758 \uC678\uC778\uBD80\uB300 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, B \uD615\uC2DD)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_HORSHOOT, 0,
 	NULL, Area88kbRomInfo, Area88kbRomName, NULL, NULL, NULL, NULL, UnsquadInputInfo, UnsquadDIPInfo,
 	DrvInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30194,7 +30194,7 @@ struct BurnDriver BurnDrvCpsArea88kb = {
 struct BurnDriver BurnDrvCpsCaptcommk = {
 	"captcommk", "captcomm", NULL, NULL, "2023",
 	"Captain Commando (Korean Translation 911202)\0", NULL, "Capcom", "CPS1",
-	L"\uCEA1\uD2F4 \uCF54\uB9CC\uB3C4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 911202)\0Captain Commando (Korean Translation 911202)\0", NULL, NULL, NULL,
+	L"Captain Commando (Korean Translation 911202)\0\uCEA1\uD2F4 \uCF54\uB9CC\uB3C4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 911202)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
 	NULL, CaptcommkRomInfo, CaptcommkRomName, NULL, NULL, NULL, NULL, CaptcommInputInfo, CaptcommDIPInfo,
 	Cps1RasterInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30204,7 +30204,7 @@ struct BurnDriver BurnDrvCpsCaptcommk = {
 struct BurnDriver BurnDrvCpsDaimakaik = {
 	"daimakaik", "ghouls", NULL, NULL, "2021",
 	"Dai Makai-Mura (Korean Translation)\0", NULL, "Capcom", "CPS1",
-	L"\uB300\uB9C8\uACC4\uCD0C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Dai Makai-Mura (Korean Translation)\0", NULL, NULL, NULL,
+	L"Dai Makai-Mura (Korean Translation)\0\uB300\uB9C8\uACC4\uCD0C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_RUNGUN, 0,
 	NULL, DaimakaikRomInfo, DaimakaikRomName, NULL, NULL, NULL, NULL, GhoulsInputInfo, DaimakaiDIPInfo,
 	DaimakaiInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30214,7 +30214,7 @@ struct BurnDriver BurnDrvCpsDaimakaik = {
 struct BurnDriver BurnDrvCpsDinok = {
 	"dinok", "dino", NULL, NULL, "2023",
 	"Cadillacs and Dinosaurs (Korean Translation 930223)\0", NULL, "Capcom", "CPS1 / QSound",
-	L"\uCE90\uB51C\uB77D \uC564 \uB2E4\uC774\uB178\uC18C\uC5B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 930223)\0Cadillacs and Dinosaurs (Korean Translation 930223)\0", NULL, NULL, NULL,
+	L"Cadillacs and Dinosaurs (Korean Translation 930223)\0\uCE90\uB51C\uB77D \uC564 \uB2E4\uC774\uB178\uC18C\uC5B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 930223)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
 	NULL, DinokRomInfo, DinokRomName, NULL, NULL, NULL, NULL, DinoInputInfo, DinoDIPInfo,
 	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30224,7 +30224,7 @@ struct BurnDriver BurnDrvCpsDinok = {
 struct BurnDriver BurnDrvCpsFfightk4 = {
 	"ffightk4", "ffight", NULL, NULL, "2021",
 	"Final Fight (Korean Translation 900613)\0", NULL, "Capcom", "CPS1",
-	L"\uD30C\uC774\uB110 \uD30C\uC774\uD2B8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 900613)\0Final Fight (Korean Translation 900613)\0", NULL, NULL, NULL,
+	L"Final Fight (Korean Translation 900613)\0\uD30C\uC774\uB110 \uD30C\uC774\uD2B8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 900613)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
 	NULL, Ffightk4RomInfo, Ffightk4RomName, NULL, NULL, NULL, NULL, FfightInputInfo, FfightDIPInfo,
 	DrvInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30234,7 +30234,7 @@ struct BurnDriver BurnDrvCpsFfightk4 = {
 struct BurnDriver BurnDrvCpsFfightaek = {
 	"ffightaek", "ffight", NULL, NULL, "2021",
 	"Final Fight 30th Anniversary Edition (Korean Translation)\0", NULL, "hack", "CPS1",
-	L"\uD30C\uC774\uB110 \uD30C\uC774\uD2B8 30\uC8FC\uB144 \uAE30\uB150\uD310 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Final Fight 30th Anniversary Edition (Korean Translation)\0", NULL, NULL, NULL,
+	L"Final Fight 30th Anniversary Edition (Korean Translation)\0\uD30C\uC774\uB110 \uD30C\uC774\uD2B8 30\uC8FC\uB144 \uAE30\uB150\uD310 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 3, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
 	NULL, FfightaekRomInfo, FfightaekRomName, NULL, NULL, NULL, NULL, FfightaeInputInfo, FfightaeDIPInfo,
 	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30244,7 +30244,7 @@ struct BurnDriver BurnDrvCpsFfightaek = {
 struct BurnDriver BurnDrvCpsKnightsk = {
 	"knightsk", "knights", NULL, NULL, "2023",
 	"Knights of the Round (Korean Translation 911127, B-Board 91634B-2)\0", NULL, "Capcom", "CPS1",
-	L"\uB098\uC774\uCE20 \uC624\uBE0C \uB354 \uB77C\uC6B4\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 911127, B-Board 91634B-2)\0Knights of the Round (Korean Translation 911127, B-Board 91634B-2)\0", NULL, NULL, NULL,
+	L"Knights of the Round (Korean Translation 911127, B-Board 91634B-2)\0\uB098\uC774\uCE20 \uC624\uBE0C \uB354 \uB77C\uC6B4\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 911127, B-Board 91634B-2)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
 	NULL, KnightskRomInfo, KnightskRomName, NULL, NULL, NULL, NULL, KnightsInputInfo, KnightsDIPInfo,
 	DrvInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30254,7 +30254,7 @@ struct BurnDriver BurnDrvCpsKnightsk = {
 struct BurnDriver BurnDrvCpsKodk = {
 	"kodk", "kod", NULL, NULL, "2023",
 	"The King of Dragons (Korean Translation 910805, B-Board 90629B-3)\0", NULL, "Capcom", "CPS1",
-	L"\uB354 \uD0B9 \uC624\uBE0C \uB4DC\uB798\uACE4\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 910805, B-Board 90629B-3)\0The King of Dragons (Korean Translation 910805, B-Board 90629B-3)\0", NULL, NULL, NULL,
+	L"The King of Dragons (Korean Translation 910805, B-Board 90629B-3)\0\uB354 \uD0B9 \uC624\uBE0C \uB4DC\uB798\uACE4\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 910805, B-Board 90629B-3)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1, GBF_SCRFIGHT, 0,
 	NULL, KodkRomInfo, KodkRomName, NULL, NULL, NULL, NULL, KodInputInfo, KodDIPInfo,
 	Cps1RasterInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30264,7 +30264,7 @@ struct BurnDriver BurnDrvCpsKodk = {
 struct BurnDriver BurnDrvCpsPunisherk = {
 	"punisherk", "punisher", NULL, NULL, "2021",
 	"The Punisher (Korean Translation 930422)\0", NULL, "Capcom", "CPS1 / QSound",
-	L"\uB354 \uD37C\uB2C8\uC154 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 930422)\0The Punisher (Korean Translation 930422)\0", NULL, NULL, NULL,
+	L"The Punisher (Korean Translation 930422)\0\uB354 \uD37C\uB2C8\uC154 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 930422)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
 	NULL, PunisherkRomInfo, PunisherkRomName, NULL, NULL, NULL, NULL, PunisherInputInfo, PunisherDIPInfo,
 	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30274,7 +30274,7 @@ struct BurnDriver BurnDrvCpsPunisherk = {
 struct BurnDriver BurnDrvCpsRockmank = {
 	"rockmank", "megaman", NULL, NULL, "2023",
 	"Rockman: The Power Battle (CPS1, Korean Translation 950922)\0", NULL, "Capcom", "CPS1",
-	L"\uB85D\uB9E8: \uB354 \uD30C\uC6CC \uBC30\uD2C0 (CPS1, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 950922)\0Rockman: The Power Battle (CPS1, Korean Translation 950922)\0", NULL, NULL, NULL,
+	L"Rockman: The Power Battle (CPS1, Korean Translation 950922)\0\uB85D\uB9E8: \uB354 \uD30C\uC6CC \uBC30\uD2C0 (CPS1, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 950922)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_VSFIGHT, 0,
 	NULL, RockmankRomInfo, RockmankRomName, NULL, NULL, NULL, NULL, MegamanInputInfo, RockmanjDIPInfo,
 	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30284,7 +30284,7 @@ struct BurnDriver BurnDrvCpsRockmank = {
 struct BurnDriver BurnDrvCpsStriderk = {
 	"striderk", "strider", NULL, NULL, "2021",
 	"Strider Hiryu (Korean Translation)\0", NULL, "Capcom", "CPS1",
-	L"\uC2A4\uD2B8\uB77C\uC774\uB354 \uBE44\uB8E1 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Strider Hiryu (Korean Translation)\0", NULL, NULL, NULL,
+	L"Strider Hiryu (Korean Translation)\0\uC2A4\uD2B8\uB77C\uC774\uB354 \uBE44\uB8E1 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_PLATFORM, 0,
 	NULL, StriderkRomInfo, StriderkRomName, NULL, NULL, NULL, NULL, StriderInputInfo, StriderDIPInfo,
 	StriderjInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30294,7 +30294,7 @@ struct BurnDriver BurnDrvCpsStriderk = {
 struct BurnDriver BurnDrvCpsSfzchk = {
 	"sfzchk", "sfzch", NULL, NULL, "2021",
 	"Street Fighter Zero (CPS Changer, Korean Translation 951020)\0", NULL, "Capcom", "CPS Changer",
-	L"\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 951020)\0Street Fighter Zero (CPS Changer, Korean Translation 951020)\0", NULL, NULL, NULL,
+	L"Street Fighter Zero (CPS Changer, Korean Translation 951020)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 951020)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_CAPCOM_CPSCHANGER, GBF_VSFIGHT, FBF_SF,
 	NULL, SfzchkRomInfo, SfzchkRomName, NULL, NULL, NULL, NULL, SfzchInputInfo, NULL,
 	SfzchInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30304,7 +30304,7 @@ struct BurnDriver BurnDrvCpsSfzchk = {
 struct BurnDriver BurnDrvCpsWofk = {
 	"wofk", "wof", NULL, NULL, "2023",
 	"Tenchi wo Kurau II: Sekiheki no Tatakai (Korean Translation 921031)\0", NULL, "Capcom", "CPS1 / QSound",
-	L"\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031)\0Tenchi wo Kurau II: Sekiheki no Tatakai (Korean Translation 921031)\0", NULL, NULL, NULL,
+	L"Tenchi wo Kurau II: Sekiheki no Tatakai (Korean Translation 921031)\0\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
 	NULL, WofkRomInfo, WofkRomName, NULL, NULL, NULL, NULL, WofInputInfo, WofDIPInfo,
 	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30314,7 +30314,7 @@ struct BurnDriver BurnDrvCpsWofk = {
 struct BurnDriver BurnDrvCpsWofk103 = {
 	"wofk103", "wof", NULL, NULL, "2023",
 	"Tenchi wo Kurau II: Counter Attack of Mei Sisters (Korean Translation 921031, Hack)\0", NULL, "Capcom", "CPS1 / QSound",
-	L"\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uBA54\uC774 \uC790\uB9E4\uC758 \uC5ED\uC2B5 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031, \uD575)\0Tenchi wo Kurau II: Counter Attack of Mei Sisters (Korean Translation 921031, Hack)\0", NULL, NULL, NULL,
+	L"Tenchi wo Kurau II: Counter Attack of Mei Sisters (Korean Translation 921031, Hack)\0\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uBA54\uC774 \uC790\uB9E4\uC758 \uC5ED\uC2B5 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031, \uD575)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
 	NULL, Wofk103RomInfo, Wofk103RomName, NULL, NULL, NULL, NULL, WofInputInfo, WofDIPInfo,
 	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30324,7 +30324,7 @@ struct BurnDriver BurnDrvCpsWofk103 = {
 struct BurnDriver BurnDrvCpsWofchk = {
 	"wofchk", "wofch", NULL, NULL, "2023",
 	"Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031)\0", NULL, "Capcom", "CPS Changer",
-	L"\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031)\0Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031)\0", NULL, NULL, NULL,
+	L"Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031)\0\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 3, HARDWARE_CAPCOM_CPSCHANGER, GBF_SCRFIGHT, 0,
 	NULL, WofchkRomInfo, WofchkRomName, NULL, NULL, NULL, NULL, WofchInputInfo, NULL,
 	WofchInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30334,7 +30334,7 @@ struct BurnDriver BurnDrvCpsWofchk = {
 struct BurnDriver BurnDrvCpsWofchku = {
 	"wofchku", "wofch", NULL, NULL, "2023",
 	"Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031, Unlock Ura Mode)\0", NULL, "Capcom", "CPS Changer",
-	L"\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031, \uC6B0\uB77C \uBAA8\uB4DC \uC801\uC6A9)\0Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031, Unlock Ura Mode)\0", NULL, NULL, NULL,
+	L"Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031, Unlock Ura Mode)\0\uCC9C\uC9C0\uB97C \uBA39\uB2E4 II: \uC801\uBCBD\uC758 \uC804\uD22C (CPS \uCCB4\uC778\uC800, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED 921031, \uC6B0\uB77C \uBAA8\uB4DC \uC801\uC6A9)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 3, HARDWARE_CAPCOM_CPSCHANGER, GBF_SCRFIGHT, 0,
 	NULL, WofchkuRomInfo, WofchkuRomName, NULL, NULL, NULL, NULL, WofchInputInfo, NULL,
 	WofchInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
@@ -30344,7 +30344,7 @@ struct BurnDriver BurnDrvCpsWofchku = {
 struct BurnDriver BurnDrvCpsWonder3k = {
 	"wonder3k", "3wonders", NULL, NULL, "2023",
 	"Wonder 3 (Korean Translation 910520)\0", NULL, "Capcom", "CPS1",
-	L"\uC6D0\uB354 3 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 910520)\0Wonder 3 (Korean Translation 910520)\0", NULL, NULL, NULL,
+	L"Wonder 3 (Korean Translation 910520)\0\uC6D0\uB354 3 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 910520)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_MINIGAMES, 0,
 	NULL, Wonder3kRomInfo, Wonder3kRomName, NULL, NULL, NULL, NULL, ThreeWondersInputInfo, ThreeWondersDIPInfo,
 	Cps1RasterInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,

@@ -823,7 +823,7 @@ STD_ROM_FN(pcktgalk)
 struct BurnDriver BurnDrvPcktgalk = {
 	"pcktgalk", "pcktgal", NULL, NULL, "1987",
 	"Pocket Gal (Korean Translation)\0", NULL, "Data East Corporation", "Miscellaneous",
-	L"\uD3EC\uCF13 \uAC08 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Pocket Gal (Korean Translation)\0", NULL, NULL, NULL,
+	L"Pocket Gal (Korean Translation)\0\uD3EC\uCF13 \uAC08 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_DATAEAST, GBF_SPORTSMISC, 0,
 	NULL, pcktgalkRomInfo, pcktgalkRomName, NULL, NULL, NULL, NULL, PcktgalInputInfo, PcktgalDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &BurnRecalc, 0x200,

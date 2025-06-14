@@ -755,7 +755,7 @@ STD_ROM_FN(ginganink)
 struct BurnDriver BurnDrvGinganink = {
 	"ginganink", "ginganin", NULL, NULL, "1987",
 	"Ginga Ninkyouden (Korean Translation)\0", NULL, "Jaleco", "Miscellaneous",
-	L"\uC740\uD558\uC784\uD611\uC804 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Ginga NinkyouDen (Korean Translation)\0", NULL, NULL, NULL,
+	L"Ginga NinkyouDen (Korean Translation)\0\uC740\uD558\uC784\uD611\uC804 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM, 0,
 	NULL, ginganinkRomInfo, ginganinkRomName, NULL, NULL, NULL, NULL, GinganinInputInfo, GinganinDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,

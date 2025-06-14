@@ -2621,7 +2621,7 @@ STD_ROM_FN(sngkacek)
 struct BurnDriver BurnDrvSngkAcek = {
 	"sngkacek", "samuraia", NULL, NULL, "2023",
 	"Sengoku Ace (Korean Translation)\0", NULL, "Psikyo (Banpresto license)", "Psikyo 68EC020",
-	L"\uC804\uAD6D \uC5D0\uC774\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Sengoku Ace (Korean Translation)\0", NULL, NULL, NULL,
+	L"Sengoku Ace (Korean Translation)\0\uC804\uAD6D \uC5D0\uC774\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
 	NULL, sngkacekRomInfo, sngkacekRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, sngkaceDIPInfo,
 	SamuraiaInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
@@ -2657,7 +2657,7 @@ STD_ROM_FN(gunbirdka)
 struct BurnDriver BurnDrvGunbirdka = {
 	"gunbirdka", "gunbird", NULL, NULL, "2022",
 	"Gunbird (Korean Translation)\0", NULL, "Psikyo", "Psikyo 68EC020",
-	L"\uAC74\uBC84\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Gunbird (Korean Translation)\0", NULL, NULL, NULL,
+	L"Gunbird (Korean Translation)\0\uAC74\uBC84\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
 	NULL, gunbirdkaRomInfo, gunbirdkaRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, gunbirdDIPInfo,
 	GunbirdInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,
@@ -2693,7 +2693,7 @@ STD_ROM_FN(tengaik)
 struct BurnDriver BurnDrvTengaik = {
 	"tengaik", "tengai", NULL, NULL, "2022",
 	"Sengoku Blade - Sengoku Ace episode II (Korean Translation)\0", NULL, "Psikyo", "Psikyo 68EC020",
-	L"\uC804\uAD6D \uBE14\uB808\uC774\uB4DC - \uC804\uAD6D \uC5D0\uC774\uC2A4 \uC5D0\uD53C\uC18C\uB4DC II (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Sengoku Blade - Sengoku Ace episode II (Korean Translation)\0", NULL, NULL, NULL,
+	L"Sengoku Blade - Sengoku Ace episode II (Korean Translation)\0\uC804\uAD6D \uBE14\uB808\uC774\uB4DC - \uC804\uAD6D \uC5D0\uC774\uC2A4 \uC5D0\uD53C\uC18C\uB4DC II (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_HORSHOOT, 0,
 	NULL, tengaikRomInfo, tengaikRomName, NULL, NULL, NULL, NULL, gunbirdInputInfo, tengaikDIPInfo,
 	TengaiInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &PsikyoRecalcPalette, 0x1000,

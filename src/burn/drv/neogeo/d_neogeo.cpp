@@ -768,6 +768,23 @@ static struct BurnDIPInfo neomahjongDIPList[] = {
 	{0x00,	0x01, 0x04,	0x04, "On"},
 };
 
+static struct BurnDIPInfo neokoreanDIPList[] = {
+	// Offset
+	{0x19,	0xF0, 0x00,	0x00, NULL},
+
+	// Defaults
+	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
+	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
+	{0x02,	0xFF, 0xFF,	0x88, NULL}, // System
+	{0x03,	0xFF, 0xFF,	0x01, NULL}, // Slots
+	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
+	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
+
+	{0,		0xFE, 0,	2,	  "Autofire"},
+	{0x00,	0x01, 0x04,	0x00, "Off"},
+	{0x00,	0x01, 0x04,	0x04, "On"},
+};
+
 static struct BurnDIPInfo neogeoDIPList[] = {
 	// DIP 1
 	{0,		0xFE, 0,	2,	  "Setting mode"},
@@ -866,6 +883,7 @@ STDDIPINFOEXT(neogeo,     neodefault,    neogeo)
 STDDIPINFOEXT(neopaddle,  neopaddle,     neogeo)
 STDDIPINFOEXT(neodual,    neodual,       neogeo)
 STDDIPINFOEXT(neomahjong, neomahjong,    neogeo)
+STDDIPINFOEXT(neogeokor,  neokorean,     neogeo)
 STDDIPINFOEXT(neogeousa,  neousadefault, neogeo)
 STDDIPINFOEXT(neogeojpn,  neojpndefault, neogeo)
 STDDIPINFOEXT(neoaes,     neoaesdefault, neogeo)
@@ -15862,7 +15880,7 @@ struct BurnDriver BurnDrvKf2k1pla = {
 	NULL, kf2k1plaRomInfo, kf2k1plaRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	kf2k1plaInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000,	304, 224, 4, 3
-}; 
+};
 
 
 // The King of Fighters 2001 Boss Hack (bootleg / hack)
@@ -29369,11 +29387,46 @@ STD_ROM_FN(aofk)
 struct BurnDriver BurnDrvAofk = {
 	"aofk", "aof", "neogeo", NULL, "2016",
 	"Art of Fighting (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uC6A9\uD638\uC758 \uAD8C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Art of Fighting (Korean Translation)\0", NULL, NULL, NULL,
+	L"Art of Fighting (Korean Translation)\0\uC6A9\uD638\uC758 \uAD8C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPC, GBF_VSFIGHT, 0,
-	NULL, aofkRomInfo, aofkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, aofkRomInfo, aofkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// Samurai Shodown / Samurai Spirits (Korean Translation)
+/* MVS VERSION */
+
+static struct BurnRomInfo samshokRomDesc[] = {
+	{ "045-p1k.p1",   0x100000, 0xe4686f1d, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
+	{ "045-pg2.sp2",  0x100000, 0x46745b94, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC534200
+
+	{ "045-s1k.s1",   0x020000, 0x70282472, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "045-c1k.c1",   0x200000, 0x72707aee, 3 | BRF_GRA },           //  3 Sprite data 		/ TC5316200
+	{ "045-c2k.c2",   0x200000, 0xa66a2cbc, 3 | BRF_GRA },           //  4 					/ TC5316200
+	{ "045-c3k.c3",   0x200000, 0x2f9c0120, 3 | BRF_GRA },           //  5 					/ TC5316200
+	{ "045-c4k.c4",   0x200000, 0x5eb6e658, 3 | BRF_GRA },           //  6 					/ TC5316200
+	{ "045-c51.c5",   0x100000, 0x81932894, 3 | BRF_GRA },           //  7 					/ TC538200
+	{ "045-c61.c6",   0x100000, 0xbe30612e, 3 | BRF_GRA },           //  8 					/ TC538200
+
+	{ "045-m1.m1",    0x020000, 0x95170640, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code 		/ TC531001
+
+	{ "045-v1.v1",    0x200000, 0x37f78a9b, 5 | BRF_SND },           // 10 Sound data 		/ TC5316200
+	{ "045-v2.v2",    0x200000, 0x568b20cf, 5 | BRF_SND },           // 11 					/ TC5316200
+};
+
+STDROMPICKEXT(samshok, samshok, neogeo)
+STD_ROM_FN(samshok)
+
+struct BurnDriver BurnDrvSamShok = {
+	"samshok", "samsho", "neogeo", NULL, "2025",
+	"Samurai Shodown / Samurai Spirits (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Samurai Shodown / Samurai Spirits (Korean Translation)\0\uC0AC\uBB34\uB77C\uC774 \uC1FC\uB2E4\uC6B4 / \uC0AC\uBB34\uB77C\uC774 \uC2A4\uD53C\uB9AC\uCE20 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samshokRomInfo, samshokRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
 };
 
 // Samurai Shodown / Samurai Spirits (AES Uncensored Hack)
@@ -29440,9 +29493,9 @@ STD_ROM_FN(kof94kr)
 struct BurnDriver BurnDrvKof94kr = {
 	"kof94kr", "kof94", "neogeo", NULL, "2006",
 	"The King of Fighters '94 (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '94 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The King of Fighters '94 (Korean Translation)\0", NULL, NULL, NULL,
+	L"The King of Fighters '94 (Korean Translation)\0\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '94 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_VSFIGHT, FBF_KOF,
-	NULL, kof94krRomInfo, kof94krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, kof94krRomInfo, kof94krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -29546,9 +29599,9 @@ STD_ROM_FN(wjammerk)
 struct BurnDriver BurnDrvwJammerk = {
 	"wjammerk", "wjammers", "neogeo", NULL, "2005",
 	"Windjammers / Flying Power Disc (Korean Translation)\0", NULL, "Data East Corporation", "Neo Geo MVS",
-	L"\uC708\uB4DC\uC7AC\uBA38\uC988 / \uD50C\uB77C\uC789 \uD30C\uC6CC \uB514\uC2A4\uD06C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Windjammers / Flying Power Disc (Korean Translation)\0", NULL, NULL, NULL,
+	L"Windjammers / Flying Power Disc (Korean Translation)\0\uC708\uB4DC\uC7AC\uBA38\uC988 / \uD50C\uB77C\uC789 \uD30C\uC6CC \uB514\uC2A4\uD06C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SPORTSMISC, 0,
-	NULL, wjammerkRomInfo, wjammerkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, wjammerkRomInfo, wjammerkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -29621,9 +29674,9 @@ STD_ROM_FN(kof95kr)
 struct BurnDriver BurnDrvKof95kr = {
 	"kof95kr", "kof95", "neogeo", NULL, "2005",
 	"The King of Fighters '95 (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '95 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The King of Fighters '95 (Korean Translation)\0", NULL, NULL, NULL,
+	L"The King of Fighters '95 (Korean Translation)\0\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '95 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_VSFIGHT, FBF_KOF,
-	NULL, kof95krRomInfo, kof95krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, kof95krRomInfo, kof95krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -29789,9 +29842,9 @@ STD_ROM_FN(puzzldpk)
 struct BurnDriver BurnDrvPuzzldpk = {
 	"puzzldpk", "puzzledp", "neogeo", NULL, "2006",
 	"Puzzle De Pon! (Korean Translation)\0", NULL, "Taito (Visco license)", "Neo Geo MVS",
-	L"\uD37C\uC990 \uB4DC \uD3F0! (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Puzzle De Pon! (Korean Translation)\0", NULL, NULL, NULL,
+	L"Puzzle De Pon! (Korean Translation)\0\uD37C\uC990 \uB4DC \uD3F0! (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_PUZZLE, 0,
-	NULL, puzzldpkRomInfo, puzzldpkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, puzzldpkRomInfo, puzzldpkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -29826,9 +29879,9 @@ STD_ROM_FN(kof96kr)
 struct BurnDriver BurnDrvKof96kr = {
 	"kof96kr", "kof96", "neogeo", NULL, "2006",
 	"The King of Fighters '96 (Korean Translation)\0", NULL, "SNK", "Neo Geo AES",
-	L"\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '96 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The King of Fighters '96 (Korean Translation)\0", NULL, NULL, NULL,
+	L"The King of Fighters '96 (Korean Translation)\0\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '96 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO,  GBF_VSFIGHT, FBF_KOF,
-	NULL, kof96krRomInfo, kof96krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, kof96krRomInfo, kof96krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -29935,9 +29988,9 @@ STD_ROM_FN(kof97kr)
 struct BurnDriver BurnDrvKof97kr = {
 	"kof97kr", "kof97", "neogeo", NULL, "2005",
 	"The King of Fighters '97 (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '97 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The King of Fighters '97 (Korean Translation)\0", NULL, NULL, NULL,
+	L"The King of Fighters '97 (Korean Translation)\0\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '97 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_KOF,
-	NULL, kof97krRomInfo, kof97krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, kof97krRomInfo, kof97krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -29998,9 +30051,9 @@ STD_ROM_FN(puzzldrk)
 struct BurnDriver BurnDrvPuzzldrk = {
 	"puzzldrk", "puzzldpr", "neogeo", NULL, "2006",
 	"Puzzle De Pon! R! (Korean Translation)\0", NULL, "Taito (Visco license)", "Neo Geo MVS",
-	L"\uD37C\uC990 \uB4DC \uD3F0! R! (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Puzzle De Pon! R! (Korean Translation)\0", NULL, NULL, NULL,
+	L"Puzzle De Pon! R! (Korean Translation)\0\uD37C\uC990 \uB4DC \uD3F0! R! (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_PUZZLE, 0,
-	NULL, puzzldrkRomInfo, puzzldrkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, puzzldrkRomInfo, puzzldrkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -30104,9 +30157,9 @@ STD_ROM_FN(kof98kr)
 struct BurnDriver BurnDrvKof98kr = {
 	"kof98kr", "kof98", "neogeo", NULL, "2006",
 	"The King of Fighters '98 (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '98 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The King of Fighters '98 (Korean Translation)\0", NULL, NULL, NULL,
+	L"The King of Fighters '98 (Korean Translation)\0\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '98 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_KOF,
-	NULL, kof98krRomInfo, kof98krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, kof98krRomInfo, kof98krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -30207,9 +30260,9 @@ STD_ROM_FN(neocu98k)
 struct BurnDriver BurnDrvNeocu98k = {
 	"neocu98k", "neocup98", "neogeo", NULL, "2006",
 	"Neo-Geo Cup '98 - The Road to the Victory (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uB124\uC624-\uC9C0\uC624 \uCEF5 '98 - \uB354 \uB85C\uB4DC \uD22C \uB354 \uBE45\uD1A0\uB9AC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Neo-Geo Cup '98 - The Road to the Victory (Korean Translation)\0", NULL, NULL, NULL,
+	L"Neo-Geo Cup '98 - The Road to the Victory (Korean Translation)\0\uB124\uC624-\uC9C0\uC624 \uCEF5 '98 - \uB354 \uB85C\uB4DC \uD22C \uB354 \uBE45\uD1A0\uB9AC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_SPORTSFOOTBALL, 0,
-	NULL, neocu98kRomInfo, neocu98kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, neocu98kRomInfo, neocu98kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
 };
@@ -30235,9 +30288,9 @@ STD_ROM_FN(flipshtk)
 struct BurnDriver BurnDrvFlipshtk = {
 	"flipshtk", "flipshot", "neogeo", NULL, "2005",
 	"Battle Flip Shot (Korean Translation)\0", NULL, "Visco", "Neo Geo MVS",
-	L"\uBC30\uD2C0 \uD50C\uB9BD \uC0F7 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Battle Flip Shot (Korean Translation)\0", NULL, NULL, NULL,
+	L"Battle Flip Shot (Korean Translation)\0\uBC30\uD2C0 \uD50C\uB9BD \uC0F7 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_BALLPADDLE, 0,
-	NULL, flipshtkRomInfo, flipshtkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, flipshtkRomInfo, flipshtkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -30306,9 +30359,9 @@ STD_ROM_FN(kof99kr)
 struct BurnDriver BurnDrvKof99kr = {
 	"kof99kr", "kof99", "neogeo", NULL, "2006",
 	"The King of Fighters '99 - Millennium Battle (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '99 - \uBC00\uB808\uB2C8\uC5C4 \uBC30\uD2C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The King of Fighters '99 - Millennium Battle (Korean Translation)\0", NULL, NULL, NULL,
+	L"The King of Fighters '99 - Millennium Battle (Korean Translation)\0\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 '99 - \uBC00\uB808\uB2C8\uC5C4 \uBC30\uD2C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42, GBF_VSFIGHT, FBF_KOF,
-	NULL, kof99krRomInfo, kof99krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, kof99krRomInfo, kof99krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -30414,9 +30467,9 @@ STD_ROM_FN(kof2kkr)
 struct BurnDriver BurnDrvKof2kkr = {
 	"kof2kkr", "kof2000", "neogeo", NULL, "2010",
 	"The King of Fighters 2000 (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 2000 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0The King of Fighters 2000 (Korean Translation)\0", NULL, NULL, NULL,
+	L"The King of Fighters 2000 (Korean Translation)\0\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 2000 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ALTERNATE_TEXT | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_KOF,
-	NULL, kof2kkrRomInfo, kof2kkrRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, kof2kkrRomInfo, kof2kkrRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };

@@ -5056,7 +5056,7 @@ STD_ROM_FN(hookk)
 struct BurnDriver BurnDrvHookk = {
 	"hookk", "hook", NULL, NULL, "1992",
 	"Hook (Korean Translation)\0", NULL, "Irem", "Irem M92",
-	L"\uD6C4\uD06C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Hook (Korean Translation)\0", NULL, NULL, NULL,
+	L"Hook (Korean Translation)\0\uD6C4\uD06C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_IREM_M92, GBF_SCRFIGHT, 0,
 	NULL, hookkRomInfo, hookkRomName, NULL, NULL, NULL, NULL, p4CommonInputInfo, HookDIPInfo,
 	hookInit, DrvExit, DrvFrame, DrvReDraw, DrvScan, &bRecalcPalette, 0x800,
@@ -5100,7 +5100,7 @@ STD_ROM_FN(uccopsk)
 struct BurnDriver BurnDrvUccopsk = {
 	"uccopsk", "uccops", NULL, NULL, "2021",
 	"Undercover Cops (Korean Translation)\0", NULL, "Irem", "Irem M92",
-	L"\uC5B8\uB354\uCEE4\uBC84 \uCE85\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Undercover Cops (Korean Translation)\0", NULL, NULL, NULL,
+	L"Undercover Cops (Korean Translation)\0\uC5B8\uB354\uCEE4\uBC84 \uCE85\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_IREM_M92, GBF_SCRFIGHT, 0,
 	NULL, uccopskRomInfo, uccopskRomName, NULL, NULL, NULL, NULL, p3CommonInputInfo, UccopsDIPInfo,
 	uccopsInit, DrvExit, DrvFrame, DrvReDraw, DrvScan, &bRecalcPalette, 0x800,
@@ -5144,7 +5144,7 @@ STD_ROM_FN(leaguemk)
 struct BurnDriver BurnDrvLeaguemk = {
 	"leaguemk", "nbbatman", NULL, NULL, "2021",
 	"Yakyuu Kakutou League-Man (Korean Translation)\0", NULL, "Irem", "Irem M92",
-	L"\uC57C\uAD6C\uACA9\uD22C \uB9AC\uADF8\uB9E8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Yakyuu Kakutou League-Man (Korean Translation)\0", NULL, NULL, NULL,
+	L"Yakyuu Kakutou League-Man (Korean Translation)\0\uC57C\uAD6C\uACA9\uD22C \uB9AC\uADF8\uB9E8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_IREM_M92, GBF_SCRFIGHT, 0,
 	NULL, leaguemkRomInfo, leaguemkRomName, NULL, NULL, NULL, NULL, nbbatmanInputInfo, NbbatmanDIPInfo,
 	nbbatmanInit, DrvExit, DrvFrame, DrvReDraw, DrvScan, &bRecalcPalette, 0x800,

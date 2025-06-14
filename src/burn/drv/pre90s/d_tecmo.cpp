@@ -1899,7 +1899,7 @@ STD_ROM_FN(rygark)
 struct BurnDriver BurnDrvRygark = {
 	"rygark", "rygar", NULL, NULL, "1986",
 	"Argus no Senshi (Korean Translation)\0", NULL, "Tecmo", "Miscellaneous",
-	L"\uC544\uB974\uACE0\uC2A4\uC758 \uC804\uC0AC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Argus no Senshi (Korean Translation)\0", NULL, NULL, NULL,
+	L"Argus no Senshi (Korean Translation)\0\uC544\uB974\uACE0\uC2A4\uC758 \uC804\uC0AC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_PLATFORM | GBF_RUNGUN, 0,
 	NULL, rygarkRomInfo, rygarkRomName, NULL, NULL, NULL, NULL, RygarInputInfo, RygarDIPInfo,
 	RygarInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,

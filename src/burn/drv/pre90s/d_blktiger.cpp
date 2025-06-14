@@ -1190,7 +1190,7 @@ STD_ROM_FN(blkdrgnk)
 struct BurnDriver BurnDrvBlkdrgnk = {
 	"blkdrgnk", "blktiger", NULL, NULL, "1987",
 	"Black Dragon (Korean Translation)\0", NULL, "Capcom", "Miscellaneous",
-	L"\uBE14\uB799 \uB4DC\uB798\uACE4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Black Dragon (Korean Translation)\0", NULL, NULL, NULL,
+	L"Black Dragon (Korean Translation)\0\uBE14\uB799 \uB4DC\uB798\uACE4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_PLATFORM | GBF_RUNGUN, 0,
 	NULL, blkdrgnkRomInfo, blkdrgnkRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
 	DrvInitMCU, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x400,

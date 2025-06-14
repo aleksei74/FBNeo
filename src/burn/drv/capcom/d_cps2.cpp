@@ -16329,7 +16329,7 @@ STD_ROM_FN(Avspk)
 struct BurnDriver BurnDrvCpsAvspk = {
 	"avspk", "avsp", NULL, NULL, "2022",
 	"Alien vs. Predator (Korean Translation 940520)\0", NULL, "Capcom", "CPS2",
-	L"\uC5D0\uC774\uB9AC\uC5B8 vs. \uD504\uB808\uB370\uD130 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 940520)\0Alien vs. Predator (Korean Translation 940520)\0", NULL, NULL, NULL,
+	L"Alien vs. Predator (Korean Translation 940520)\0\uC5D0\uC774\uB9AC\uC5B8 vs. \uD504\uB808\uB370\uD130 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 940520)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS2, GBF_SCRFIGHT, 0,
 	NULL, AvspkRomInfo, AvspkRomName, NULL, NULL, NULL, NULL, AvspInputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16362,7 +16362,7 @@ STD_ROM_FN(Csclubk)
 struct BurnDriver BurnDrvCpsCsclubk = {
 	"csclubk", "csclub", NULL, NULL, "2022",
 	"Capcom Sports Club (Korean Translation 970722)\0", NULL, "Capcom", "CPS2",
-	L"\uCEA1\uCF64 \uC2A4\uD3EC\uCE20 \uD074\uB7FD (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970722)\0Capcom Sports Club (Korean Translation 970722)\0", NULL, NULL, NULL,
+	L"Capcom Sports Club (Korean Translation 970722)\0\uCEA1\uCF64 \uC2A4\uD3EC\uCE20 \uD074\uB7FD (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970722)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_SPORTSMISC, 0,
 	NULL, CsclubkRomInfo, CsclubkRomName, NULL, NULL, NULL, NULL, CsclubInputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16399,7 +16399,7 @@ STD_ROM_FN(Ddtodk)
 struct BurnDriver BurnDrvCpsDdtodk = {
 	"ddtodk", "ddtod", NULL, NULL, "2023",
 	"Dungeons & Dragons: Tower of Doom (Korean Translation 940412)\0", NULL, "Capcom", "CPS2",
-	L"\uB358\uC804\uC2A4 & \uB4DC\uB798\uACE4\uC2A4: \uD0C0\uC6CC \uC624\uBE0C \uB460 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 940412)\0Dungeons & Dragons: Tower of Doom (Korean Translation 940412)\0", NULL, NULL, NULL,
+	L"Dungeons & Dragons: Tower of Doom (Korean Translation 940412)\0\uB358\uC804\uC2A4 & \uB4DC\uB798\uACE4\uC2A4: \uD0C0\uC6CC \uC624\uBE0C \uB460 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 940412)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_CAPCOM_CPS2, GBF_SCRFIGHT, 0,
 	NULL, DdtodkRomInfo, DdtodkRomName, NULL, NULL, NULL, NULL, DdtodInputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16440,7 +16440,7 @@ STD_ROM_FN(Ddsomk)
 struct BurnDriver BurnDrvCpsDdsomk = {
 	"ddsomk", "ddsom", NULL, NULL, "2023",
 	"Dungeons & Dragons: Shadow Over Mystara (Korean Translation 960619)\0", NULL, "Capcom", "CPS2",
-	L"\uB358\uC804\uC2A4 & \uB4DC\uB798\uACE4\uC2A4: \uC100\uB3C4\uC6B0 \uC624\uBC84 \uBBF8\uC2A4\uD0C0\uB77C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960619)\0Dungeons & Dragons: Shadow Over Mystara (Korean Translation 960619)\0", NULL, NULL, NULL,
+	L"Dungeons & Dragons: Shadow Over Mystara (Korean Translation 960619)\0\uB358\uC804\uC2A4 & \uB4DC\uB798\uACE4\uC2A4: \uC100\uB3C4\uC6B0 \uC624\uBC84 \uBBF8\uC2A4\uD0C0\uB77C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960619)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_CAPCOM_CPS2, GBF_SCRFIGHT, 0,
 	NULL, DdsomkRomInfo, DdsomkRomName, NULL, NULL, NULL, NULL, DdsomInputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16481,7 +16481,7 @@ STD_ROM_FN(Ddsomkd)
 struct BurnDriver BurnDrvCpsDdsomkd = {
 	"ddsomkd", "ddsom", NULL, NULL, "2022",
 	"Dungeons & Dragons: Shadow Over Mystara (Korean Translation 960619 Phoenix Edition) (bootleg)\0", NULL, "bootleg", "CPS2",
-	L"\uB358\uC804\uC2A4 & \uB4DC\uB798\uACE4\uC2A4: \uC100\uB3C4\uC6B0 \uC624\uBC84 \uBBF8\uC2A4\uD0C0\uB77C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960619 \uD53C\uB2C9\uC2A4 \uC5D0\uB514\uC158) (\uBCF5\uC81C\uD488)\0Dungeons & Dragons: Shadow Over Mystara (Korean Translation 960619 Phoenix Edition) (bootleg)\0", NULL, NULL, NULL,
+	L"Dungeons & Dragons: Shadow Over Mystara (Korean Translation 960619 Phoenix Edition) (bootleg)\0\uB358\uC804\uC2A4 & \uB4DC\uB798\uACE4\uC2A4: \uC100\uB3C4\uC6B0 \uC624\uBC84 \uBBF8\uC2A4\uD0C0\uB77C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960619 \uD53C\uB2C9\uC2A4 \uC5D0\uB514\uC158) (\uBCF5\uC81C\uD488)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_CAPCOM_CPS2, GBF_SCRFIGHT, 0,
 	NULL, DdsomkdRomInfo, DdsomkdRomName, NULL, NULL, NULL, NULL, DdsomInputInfo, NULL,
 	PhoenixInit, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16514,7 +16514,7 @@ STD_ROM_FN(Ffightaec2k)
 struct BurnDriver BurnDrvCpsFfightaec2k = {
 	"ffightaec2k", "ffightaec2", NULL, NULL, "2022",
 	"Final Fight: Anniversary Edition (CPS2 hardware, Korean Translation)\0", NULL, "bootleg", "CPS2",
-	L"\uD30C\uC774\uB110 \uD30C\uC774\uD2B8: \uAE30\uB150\uD310 (CPS2 \uD558\uB4DC\uC6E8\uC5B4, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Final Fight: Anniversary Edition (CPS2 hardware, Korean Translation)\0", NULL, NULL, NULL,
+	L"Final Fight: Anniversary Edition (CPS2 hardware, Korean Translation)\0\uD30C\uC774\uB110 \uD30C\uC774\uD2B8: \uAE30\uB150\uD310 (CPS2 \uD558\uB4DC\uC6E8\uC5B4, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_CAPCOM_CPS2, GBF_SCRFIGHT, 0,
 	NULL, Ffightaec2kRomInfo, Ffightaec2kRomName, NULL, NULL, NULL, NULL, Ffightaec2InputInfo, NULL,
 	PhoenixInit, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16552,7 +16552,7 @@ STD_ROM_FN(Pfghtk)
 struct BurnDriver BurnDrvCpsPfghtk = {
 	"pfghtk", "sgemf", NULL, NULL, "2023",
 	"Pocket Fighter (Korean Translation 970904)\0", NULL, "Capcom", "CPS2",
-	L"\uD3EC\uCF13 \uD30C\uC774\uD130 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970904)\0Pocket Fighter (Korean Translation 970904)\0", NULL, NULL, NULL,
+	L"Pocket Fighter (Korean Translation 970904)\0\uD3EC\uCF13 \uD30C\uC774\uD130 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970904)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_SF,
 	NULL, PfghtkRomInfo, PfghtkRomName, NULL, NULL, NULL, NULL, SgemfInputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16585,7 +16585,7 @@ STD_ROM_FN(Sfzk)
 struct BurnDriver BurnDrvCpsSfzk = {
 	"sfzk", "sfa", NULL, NULL, "2021",
 	"Street Fighter Zero (Korean Translation 950727)\0", NULL, "Capcom", "CPS2",
-	L"\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 950727)\0Street Fighter Zero (Korean Translation 950727)\0", NULL, NULL, NULL,
+	L"Street Fighter Zero (Korean Translation 950727)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 950727)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_SF,
 	NULL, SfzkRomInfo, SfzkRomName, NULL, NULL, NULL, NULL, Cps2FightingInputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16624,7 +16624,7 @@ STD_ROM_FN(Sfz2k)
 struct BurnDriver BurnDrvCpsSfz2k = {
 	"sfz2k", "sfa2", NULL, NULL, "2021",
 	"Street Fighter Zero 2 (Korean Translation 960430)\0", NULL, "Capcom", "CPS2",
-	L"\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C 2 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960430)\0Street Fighter Zero 2 (Korean Translation 960430)\0", NULL, NULL, NULL,
+	L"Street Fighter Zero 2 (Korean Translation 960430)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C 2 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960430)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_SF,
 	NULL, Sfz2kRomInfo, Sfz2kRomName, NULL, NULL, NULL, NULL, Cps2FightingInputInfo, NULL,
 	Sfa2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16663,7 +16663,7 @@ STD_ROM_FN(Sfz2alk)
 struct BurnDriver BurnDrvCpsSfz2alk = {
 	"sfz2alk", "sfz2al", NULL, NULL, "2021",
 	"Street Fighter Zero 2 Alpha (Korean Translation 960805)\0", NULL, "Capcom", "CPS2",
-	L"\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C 2 \uC54C\uD30C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960805)\0Street Fighter Zero 2 Alpha (Korean Translation 960805)\0", NULL, NULL, NULL,
+	L"Street Fighter Zero 2 Alpha (Korean Translation 960805)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 \uC81C\uB85C 2 \uC54C\uD30C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960805)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_SF,
 	NULL, Sfz2alkRomInfo, Sfz2alkRomName, NULL, NULL, NULL, NULL, Cps2FightingInputInfo, NULL,
 	Sfa2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16712,7 +16712,7 @@ STD_ROM_FN(Rmancp2k)
 struct BurnDriver BurnDrvCpsRmancp2k = {
 	"rmancp2k", "megaman", NULL, NULL, "2022",
 	"Rockman: The Power Battle (Korean Translation 950922)\0", NULL, "Capcom", "CPS2",
-	L"\uB85D\uB9E8: \uB354 \uD30C\uC6CC \uBC30\uD2C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 950922)\0Rockman: The Power Battle (Korean Translation 950922)\0", NULL, NULL, NULL,
+	L"Rockman: The Power Battle (Korean Translation 950922)\0\uB85D\uB9E8: \uB354 \uD30C\uC6CC \uBC30\uD2C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 950922)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, 0,
 	NULL, Rmancp2kRomInfo, Rmancp2kRomName, NULL, NULL, NULL, NULL, Mmancp2uInputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16744,7 +16744,7 @@ STD_ROM_FN(Rockman2k)
 struct BurnDriver BurnDrvCpsRockman2k = {
 	"rockman2k", "megaman2", NULL, NULL, "2022",
 	"Rockman 2: The Power Fighters (Korean Translation 960708)\0", NULL, "Capcom", "CPS2",
-	L"\uB85D\uB9E8 2: \uB354 \uD30C\uC6CC \uD30C\uC774\uD130\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960708)\0Rockman 2: The Power Fighters (Korean Translation 960708)\0", NULL, NULL, NULL,
+	L"Rockman 2: The Power Fighters (Korean Translation 960708)\0\uB85D\uB9E8 2: \uB354 \uD30C\uC6CC \uD30C\uC774\uD130\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960708)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, 0,
 	NULL, Rockman2kRomInfo, Rockman2kRomName, NULL, NULL, NULL, NULL, Megaman2InputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
@@ -16775,7 +16775,7 @@ STD_ROM_FN(Spf2xk)
 struct BurnDriver BurnDrvCpsSpf2xk = {
 	"spf2xk", "spf2t", NULL, NULL, "2024",
 	"Super Puzzle Fighter II X (Korean Translation 960531)\0", NULL, "Capcom", "CPS2",
-	L"\uC288\uD37C \uD37C\uC990 \uD30C\uC774\uD130 II X (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960531)\0Super Puzzle Fighter II X (Korean Translation 960531)\0", NULL, NULL, NULL,
+	L"Super Puzzle Fighter II X (Korean Translation 960531)\0\uC288\uD37C \uD37C\uC990 \uD30C\uC774\uD130 II X (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960531)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_PUZZLE, FBF_SF,
 	NULL, Spf2xkRomInfo, Spf2xkRomName, NULL, NULL, NULL, NULL, Spf2tInputInfo, NULL,
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
