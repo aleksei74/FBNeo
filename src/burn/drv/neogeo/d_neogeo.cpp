@@ -29398,7 +29398,7 @@ struct BurnDriver BurnDrvAofk = {
 /* MVS VERSION */
 
 static struct BurnRomInfo samshokRomDesc[] = {
-	{ "045-p1k.p1",   0x100000, 0xe4686f1d, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
+	{ "045-p1k.p1",   0x100000, 0xcd1f7dce, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
 	{ "045-pg2.sp2",  0x100000, 0x46745b94, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC534200
 
 	{ "045-s1k.s1",   0x020000, 0x70282472, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
