@@ -29464,6 +29464,44 @@ struct BurnDriver BurnDrvSamShouh = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Top Hunter - Roddy & Cathy (Korean Translation)
+
+static struct BurnRomInfo tophuntrkRomDesc[] = {
+	{ "046-p1k.p1",   0x100000, 0x76506c27, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ mask rom TC538200
+	{ "046-p2.sp2",   0x100000, 0xf182cb3e, 1 | BRF_ESS | BRF_PRG }, //  1 					/ mask rom TC538200
+
+	{ "046-s1.s1",    0x020000, 0x14b01d7b, 2 | BRF_GRA },           //  2 Text layer tiles / mask rom TC531000
+
+	{ "046-c1.c1",    0x100000, 0xfa720a4a, 3 | BRF_GRA },           //  3 Sprite data 		/ mask rom TC538200
+	{ "046-c2.c2",    0x100000, 0xc900c205, 3 | BRF_GRA },           //  4 					/ mask rom TC538200
+	{ "046-c3.c3",    0x100000, 0x880e3c25, 3 | BRF_GRA },           //  5 					/ mask rom TC538200
+	{ "046-c4.c4",    0x100000, 0x7a2248aa, 3 | BRF_GRA },           //  6 					/ mask rom TC538200
+	{ "046-c5.c5",    0x100000, 0x4b735e45, 3 | BRF_GRA },           //  7 					/ mask rom TC538200
+	{ "046-c6.c6",    0x100000, 0x273171df, 3 | BRF_GRA },           //  8 					/ mask rom TC538200
+	{ "046-c7k.c7",   0x100000, 0xe0d37cb8, 3 | BRF_GRA },           //  9 					/ mask rom TC538200
+	{ "046-c8k.c8",   0x100000, 0xa3d7ad03, 3 | BRF_GRA },           // 10 					/ mask rom TC538200
+
+	{ "046-m1.m1",    0x020000, 0x3f84bb9f, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code 		/ mask rom TC531001
+
+	{ "046-v1.v1",    0x100000, 0xc1f9c2db, 5 | BRF_SND },           // 12 Sound data 		/ mask rom TC538200
+	{ "046-v2.v2",    0x100000, 0x56254a64, 5 | BRF_SND },           // 13 					/ mask rom TC538200
+	{ "046-v3.v3",    0x100000, 0x58113fb1, 5 | BRF_SND },           // 14 					/ mask rom TC538200
+	{ "046-v4.v4",    0x100000, 0x4f54c187, 5 | BRF_SND },           // 15 					/ mask rom TC538200
+};
+
+STDROMPICKEXT(tophuntrk, tophuntrk, neogeo)
+STD_ROM_FN(tophuntrk)
+
+struct BurnDriver BurnDrvTophntrk = {
+	"tophuntrk", "tophuntr", "neogeo", NULL, "2006",
+	"Top Hunter - Roddy & Cathy (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Top Hunter - Roddy & Cathy (Korean Translation)\0\uD0D1 \uD5CC\uD130 - \uB85C\uB514 & \uCE90\uC2DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
+	NULL, tophuntrkRomInfo, tophuntrkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 // The King of Fighters '94 (Korean Translation)
 
 static struct BurnRomInfo kof94krRomDesc[] = {
