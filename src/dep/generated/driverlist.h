@@ -19487,7 +19487,6 @@ DRV		BurnDrvsnes_Sconflict;
 DRV		BurnDrvnes_supercontrac;
 DRV		BurnDrvScontra;
 DRV		BurnDrvScontraa;
-DRV		BurnDrvnes_scontra;
 DRV		BurnDrvScontraj;
 DRV		BurnDrvnes_supercontra;
 DRV		BurnDrvcv_suprtest;
@@ -43269,7 +43268,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_supercontrac,	// Super Contra (Hack, Chinese)
 	&BurnDrvScontra,			// Super Contra (set 1)
 	&BurnDrvScontraa,			// Super Contra (set 2)
-	&BurnDrvnes_scontra,		// Super Contra - Alien no Gyakusyuu (Japan)
 	&BurnDrvScontraj,			// Super Contra: Alien no Gyakushuu (Japan)
 	&BurnDrvnes_supercontra,	// Super Contra: Alien no Gyakusyuu (Japan)
 	&BurnDrvcv_suprtest,		// Super Controller Test Cartridge
@@ -66883,7 +66881,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_supercontrac", "nes/d_nes.cpp"},
 	{ "scontra", "konami/d_thunderx.cpp"},
 	{ "scontraa", "konami/d_thunderx.cpp"},
-	{ "nes_scontra", "nes/d_nes.cpp"},
 	{ "scontraj", "konami/d_thunderx.cpp"},
 	{ "nes_supercontra", "nes/d_nes.cpp"},
 	{ "cv_suprtest", "coleco/d_coleco.cpp"},
