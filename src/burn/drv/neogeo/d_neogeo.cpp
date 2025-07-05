@@ -30059,6 +30059,40 @@ struct BurnDriver BurnDrvRbffspecuh = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Waku Waku 7 (Korean Translation)
+
+static struct BurnRomInfo wakuwak7kRomDesc[] = {
+	{ "225-p1k.p1",   0x100000, 0xa631da44, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "225-p2k.sp2",  0x200000, 0x0f84e4e8, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "225-s1k.s1",   0x020000, 0xc077e289, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "225-c1k.c1",   0x400000, 0xfd8a892d, 3 | BRF_GRA },           //  3 Sprite data
+	{ "225-c2k.c2",   0x400000, 0x76899f2e, 3 | BRF_GRA },           //  4
+	{ "225-c3.c3",    0x400000, 0xaf0897c0, 3 | BRF_GRA },           //  5
+	{ "225-c4.c4",    0x400000, 0x4c66527a, 3 | BRF_GRA },           //  6
+	{ "225-c5k.c5",   0x400000, 0x1c42614f, 3 | BRF_GRA },           //  7
+	{ "225-c6k.c6",   0x400000, 0x062e56e7, 3 | BRF_GRA },           //  8
+
+	{ "225-m1.m1",    0x020000, 0x0634bba6, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code
+
+	{ "225-v1.v1",    0x400000, 0x6195c6b4, 5 | BRF_SND },           // 10 Sound data
+	{ "225-v2.v2",    0x400000, 0x6159c5fe, 5 | BRF_SND },           // 11
+};
+
+STDROMPICKEXT(wakuwak7k, wakuwak7k, neogeo)
+STD_ROM_FN(wakuwak7k)
+
+struct BurnDriver BurnDrvWakuwak7k = {
+	"wakuwak7k", "wakuwak7", "neogeo", NULL, "2025",
+	"Waku Waku 7 (Korean Translation)\0", NULL, "Sunsoft", "Neo Geo MVS",
+	L"Waku Waku 7 (Korean Translation)\0\uC640\uCFE0 \uC640\uCFE0 7 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
+	NULL, wakuwak7kRomInfo, wakuwak7kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // The King of Fighters '97 (Korean Translation)
 
 static struct BurnRomInfo kof97krRomDesc[] = {
