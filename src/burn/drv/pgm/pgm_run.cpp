@@ -13,7 +13,7 @@ UINT8 PgmBtn2[8] = {0,0,0,0,0,0,0,0};
 UINT8 PgmInput[9] = {0,0,0,0,0,0,0,0,0};
 UINT8 PgmReset = 0;
 static HoldCoin<4> hold_coin;
-static ClearOpposite<2, UINT8> clear_opposite;
+static ClearOpposite<4, UINT8> clear_opposite;
 
 INT32 nPGM68KROMLen = 0;
 INT32 nPGMTileROMLen = 0;
@@ -1101,7 +1101,7 @@ INT32 pgmFrame()
 
 		// clear opposites
 		for (INT32 i = 0; i < 4; i++) {
-			clear_opposite.check(i, PgmInput[i], 0x06, 0x18);
+			clear_opposite.check(i, PgmInput[i], 0x06, 0x18, nSocd[i]);
 		}
 
 		hold_coin.check(0, PgmInput[4], 1, 7);
