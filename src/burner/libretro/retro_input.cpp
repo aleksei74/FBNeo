@@ -2069,6 +2069,27 @@ static INT32 GameInpSpecialOne(struct GameInp* pgi, INT32 nPlayer, char* szb, ch
 		}
 	}
 
+	// Street Fighter Zero (CPS Changer, Japan 951020)
+	// Street Fighter Zero (CPS Changer, Korea 040820)
+	// Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Japan 921031)
+	// Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031)
+	// Tenchi wo Kurau II: Sekiheki no Tatakai (CPS Changer, Korean Translation 921031, Unlock Ura Mode)
+	if ((parentrom && strcmp(parentrom, "sfzch") == 0) ||
+		(drvname && strcmp(drvname, "sfzch") == 0) ||
+		(parentrom && strcmp(parentrom, "sfzchk") == 0) ||
+		(drvname && strcmp(drvname, "sfzchk") == 0) ||
+		(parentrom && strcmp(parentrom, "wofch") == 0) ||
+		(drvname && strcmp(drvname, "wofch") == 0) ||
+		(parentrom && strcmp(parentrom, "wofchk") == 0) ||
+		(drvname && strcmp(drvname, "wofchk") == 0) ||
+		(parentrom && strcmp(parentrom, "wofchku") == 0) ||
+		(drvname && strcmp(drvname, "wofchku") == 0)
+	) {
+		if (strcmp("Pause", description) == 0) {
+			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_JOYPAD_SELECT, description);
+		}
+	}
+
 	// Caliber 50
 	// Time Soldiers
 	if ((parentrom && strcmp(parentrom, "calibr50") == 0) ||

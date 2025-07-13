@@ -23148,6 +23148,7 @@ DRV		BurnDrvmd_whj;
 DRV		BurnDrvsnes_Whj;
 DRV		BurnDrvmd_whjp3;
 DRV		BurnDrvmd_whjp2;
+DRV		BurnDrvWh1k;
 DRV		BurnDrvWh1ha;
 DRV		BurnDrvmd_wh;
 DRV		BurnDrvsnes_Whu;
@@ -46989,6 +46990,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Whj,			// World Heroes (Japan)
 	&BurnDrvmd_whjp3,			// World Heroes (Japan, Prototype, 19940415)
 	&BurnDrvmd_whjp2,			// World Heroes (Japan, Prototype, 19940420-B)
+	&BurnDrvWh1k,				// World Heroes (Korean Translation)
 	&BurnDrvWh1ha,				// World Heroes (set 3)
 	&BurnDrvmd_wh,				// World Heroes (USA)
 	&BurnDrvsnes_Whu,			// World Heroes (USA)
@@ -70622,6 +70624,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_whj", "snes/d_snes.cpp"},
 	{ "md_whjp3", "megadrive/d_megadrive.cpp"},
 	{ "md_whjp2", "megadrive/d_megadrive.cpp"},
+	{ "wh1k", "neogeo/d_neogeo.cpp"},
 	{ "wh1ha", "neogeo/d_neogeo.cpp"},
 	{ "md_wh", "megadrive/d_megadrive.cpp"},
 	{ "snes_whu", "snes/d_snes.cpp"},

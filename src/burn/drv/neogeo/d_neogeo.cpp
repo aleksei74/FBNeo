@@ -29456,17 +29456,16 @@ struct BurnDriver BurnDrvAofk = {
 };
 
 // Samurai Shodown / Samurai Spirits (Korean Translation)
-/* MVS VERSION */
 
 static struct BurnRomInfo samshokRomDesc[] = {
-	{ "045-p1k.p1",   0x100000, 0xcd1f7dce, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
-	{ "045-pg2.sp2",  0x100000, 0x46745b94, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC534200
+	{ "045-p1k.p1",   0x100000, 0xd8c7290a, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
+	{ "045-p2k.sp2",  0x100000, 0x25e6504b, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC534200
 
-	{ "045-s1k.s1",   0x020000, 0x70282472, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+	{ "045-s1k.s1",   0x020000, 0x94ad7e6a, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
 
-	{ "045-c1k.c1",   0x200000, 0x72707aee, 3 | BRF_GRA },           //  3 Sprite data 		/ TC5316200
-	{ "045-c2k.c2",   0x200000, 0xa66a2cbc, 3 | BRF_GRA },           //  4 					/ TC5316200
-	{ "045-c3k.c3",   0x200000, 0x2f9c0120, 3 | BRF_GRA },           //  5 					/ TC5316200
+	{ "045-c1k.c1",   0x200000, 0xae698b97, 3 | BRF_GRA },           //  3 Sprite data 		/ TC5316200
+	{ "045-c2k.c2",   0x200000, 0x90b35620, 3 | BRF_GRA },           //  4 					/ TC5316200
+	{ "045-c3k.c3",   0x200000, 0x9ed86900, 3 | BRF_GRA },           //  5 					/ TC5316200
 	{ "045-c4k.c4",   0x200000, 0x5eb6e658, 3 | BRF_GRA },           //  6 					/ TC5316200
 	{ "045-c51.c5",   0x100000, 0x81932894, 3 | BRF_GRA },           //  7 					/ TC538200
 	{ "045-c61.c6",   0x100000, 0xbe30612e, 3 | BRF_GRA },           //  8 					/ TC538200
@@ -29559,6 +29558,38 @@ struct BurnDriver BurnDrvTophntrk = {
 	L"Top Hunter - Roddy & Cathy (Korean Translation)\0\uD0D1 \uD5CC\uD130 - \uB85C\uB514 & \uCE90\uC2DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
 	NULL, tophuntrkRomInfo, tophuntrkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
+// World Heroes (Korean Translation)
+
+static struct BurnRomInfo wh1kRomDesc[] = {
+	{ "053-eprk.p1",  0x080000, 0xfa3dfcd9, 1 | BRF_ESS | BRF_PRG }, //  0 68K code / D27C400
+	{ "053-epr.p2",   0x080000, 0x0e33e8a3, 1 | BRF_ESS | BRF_PRG }, //  1 			/ D27C400
+
+	{ "053-s1k.s1",   0x020000, 0x7a3f5069, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "053-c1k.c1",   0x200000, 0x8024c506, 3 | BRF_GRA },           //  3 Sprite data
+	{ "053-c2k.c2",   0x200000, 0x7165d8cf, 3 | BRF_GRA },           //  4
+	{ "053-c3.c3",    0x100000, 0x0dd64965, 3 | BRF_GRA },           //  5
+	{ "053-c4.c4",    0x100000, 0x9270d954, 3 | BRF_GRA },           //  6
+
+	{ "053-m1.m1",    0x020000, 0x1bd9d04b, 4 | BRF_ESS | BRF_PRG }, //  7 Z80 code / TC54H1000
+
+	{ "053-v2.v2",    0x200000, 0xa68df485, 5 | BRF_SND },           //  8 Sound data
+	{ "053-v4.v4",    0x100000, 0x7bea8f66, 5 | BRF_SND },           //  9
+};
+
+STDROMPICKEXT(wh1k, wh1k, neogeo)
+STD_ROM_FN(wh1k)
+
+struct BurnDriver BurnDrvWh1k = {
+	"wh1k", "wh1", "neogeo", NULL, "2025",
+	"World Heroes (Korean Translation)\0", NULL, "Alpha Denshi Co.", "Neo Geo MVS",
+	L"World Heroes (Korean Translation)\0\uC6D4\uB4DC \uD788\uC5B4\uB85C\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPC, GBF_VSFIGHT, 0,
+	NULL, wh1kRomInfo, wh1kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
 };

@@ -213,7 +213,7 @@ static struct retro_core_option_v2_definition var_fbneo_diagnostic_input = {
 		{ "Hold Select + L + R", NULL },
 		{ NULL,                  NULL },
 	},
-	"Hold Start"
+	"Select + L + R"
 };
 static struct retro_core_option_v2_definition var_fbneo_hiscores = {
 	"fbneo-hiscores",
