@@ -11558,6 +11558,7 @@ DRV		BurnDrvMSX_magtreea;
 DRV		BurnDrvsg1k_magtree;
 DRV		BurnDrvMagicbal;
 DRV		BurnDrvnes_magician;
+DRV		BurnDrvMaglordk;
 DRV		BurnDrvMaglordh;
 DRV		BurnDrvMaglord;
 DRV		BurnDrvmd_magist16;
@@ -34067,7 +34068,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecKane,				// Kane (48K)
 	&BurnDrvKangarooa,			// Kangaroo (Atari)
 	&BurnDrvKangaroob,			// Kangaroo (bootleg)
-	&BurnDrvKangarool,			// Kangaroo (loewen-Automaten)
+	&BurnDrvKangarool,			// Kangaroo (Löwen-Automaten)
 	&BurnDrvKangaroo,			// Kangaroo
 	&BurnDrvnes_kanshnagkannotogots,// Kanshakudama Nage Kantarou no Toukaidou Gojuusan-tsugi (Japan)
 	&BurnDrvnes_karakkendenmuslo,// Karakuri Kengou Den Musashi Lord - Karakuribito Hashiru (Japan)
@@ -35449,6 +35450,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsg1k_magtree,		// Magical Tree (Taiwan)
 	&BurnDrvMagicbal,			// Magicball Fighting (Korea)
 	&BurnDrvnes_magician,		// Magician (USA)
+	&BurnDrvMaglordk,			// Magician Lord (Korean Translation)
 	&BurnDrvMaglordh,			// Magician Lord (NGH-005)
 	&BurnDrvMaglord,			// Magician Lord (NGM-005)
 	&BurnDrvmd_magist16,		// Magistr 16 (Russia) [no comment, NOT WORKING]
@@ -59248,6 +59250,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sg1k_magtree", "sg1000/d_sg1000.cpp"},
 	{ "magicbal", "pst90s/d_tumbleb.cpp"},
 	{ "nes_magician", "nes/d_nes.cpp"},
+	{ "maglordk", "neogeo/d_neogeo.cpp"},
 	{ "maglordh", "neogeo/d_neogeo.cpp"},
 	{ "maglord", "neogeo/d_neogeo.cpp"},
 	{ "md_magist16", "megadrive/d_megadrive.cpp"},
