@@ -26,6 +26,7 @@
 	#include <wchar.h>
 	#include <string>
 #endif
+
 #include "streams/file_stream_transforms.h"
 
 extern int kNetGame;

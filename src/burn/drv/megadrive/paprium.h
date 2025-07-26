@@ -1055,14 +1055,15 @@ static void paprium_init()
 	if (!samples_buffer)
 		samples_buffer = (INT16*)BurnMalloc(0x1000 * 2 * 2);
 
-	INT32 load_all_samples = MegadriveDIP[2] & 1;
+	INT32 on_demand_samples = MegadriveDIP[2] & 1;
 
-#if !defined BUILD_X64_EXE
+#if !defined BUILD_X64_EXE && !defined __LIBRETRO__
 	// 32bit process can't handle it
-	load_all_samples = 0;
+	// libretro is a more complex case so let's not enable that limitation for now
+	on_demand_samples = 1;
 #endif
 
-	BurnSampleInit(0 + (load_all_samples ? 0x8000 : 0)); // setting nostore / load on demand via dip
+	BurnSampleInit(0 + (on_demand_samples ? 0x8000 : 0)); // setting nostore / load on demand via dip
 
 	paprium_map();
 }
