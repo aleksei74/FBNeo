@@ -17554,8 +17554,8 @@ DRV		BurnDrvmd_shinfrc2p4;
 DRV		BurnDrvmd_shinfrc2p3;
 DRV		BurnDrvmd_shinfrc2u;
 DRV		BurnDrvmd_shinfrc2p1;
-DRV		BurnDrvmd_shinfrc2c;
 DRV		BurnDrvmd_shinfrc2k;
+DRV		BurnDrvmd_shinfrc2c;
 DRV		BurnDrvmd_shinfrc2j;
 DRV		BurnDrvgg_shinfrc2;
 DRV		BurnDrvgg_shinfrc2p2;
@@ -18587,6 +18587,7 @@ DRV		BurnDrvSpidermi;
 DRV		BurnSpecSpidermanco;
 DRV		BurnSpecSpikeintransylvania;
 DRV		BurnSpecSpikerbt;
+DRV		BurnDrvSpinmastk;
 DRV		BurnDrvSpinmast;
 DRV		BurnDrvpce_spinpair;
 DRV		BurnDrvSpinlbrkj;
@@ -41520,7 +41521,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_shinfrce,		// Shining Force (USA)
 	&BurnDrvmd_shinfrcep,		// Shining Force (USA, Prototype)
 	&BurnDrvmd_shinfrcek,		// Shining Force - Kamigami no Isan (Hack, Korean Translation)
-	&BurnDrvmd_shinfrcej,		// Shining Force - Kamigami no Isan (Japan)
 	&BurnDrvgg_shinfrgfe,		// Shining Force Gaiden - Final Conflict (Hack, English)
 	&BurnDrvgg_shinfrg2,		// Shining Force Gaiden II: Jashin no Kakusei (Japan)
 	&BurnDrvgg_shinfrcg,		// Shining Force Gaiden: Ensei, Jashin no Kuni e (Japan)
@@ -41532,9 +41532,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_shinfrc2p3,		// Shining Force II (Prototype, Earlier)
 	&BurnDrvmd_shinfrc2u,		// Shining Force II (USA)
 	&BurnDrvmd_shinfrc2p1,		// Shining Force II (USA, Prototype)
-	&BurnDrvmd_shinfrc2c,		// Shining Force II - Koe no Fuuin (Hack, Chinese v2)
 	&BurnDrvmd_shinfrc2k,		// Shining Force II - Koe no Fuuin (Hack, Korean Translation)
-	&BurnDrvmd_shinfrc2j,		// Shining Force II - Koe no Fuuin (Japan)
+	&BurnDrvmd_shinfrc2c,		// Shining Force II: Koe no Fuuin (Hack, Chinese v2)
+	&BurnDrvmd_shinfrc2j,		// Shining Force II: Koe no Fuuin (Japan)
 	&BurnDrvgg_shinfrc2,		// Shining Force II: The Sword of Hajya (Euro, USA)
 	&BurnDrvgg_shinfrc2p2,		// Shining Force II: The Sword of Hajya (Prototype, 19940627)
 	&BurnDrvgg_shinfrc2p1,		// Shining Force II: The Sword of Hajya (Prototype, 19940708)
@@ -41544,6 +41544,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_shindarkbr,		// Shining in the Darkness (Brazil)
 	&BurnDrvmd_shindark,		// Shining in the Darkness (Euro, USA)
 	&BurnDrvmd_shindarkk,		// Shining in the Darkness (Hack, Korean Translation)
+	&BurnDrvmd_shindarkttc,		// Shining in the Darkness (Hack, Traditional Chinese)
 	&BurnDrvmd_shindarkj,		// Shining in the Darkness (Japan)
 	&BurnDrvmd_shinfrc2t,		// Shining Tactics Absolute Final Edition (Hack)
 	&BurnDrvngpc_evolutnj,		// Shinki Sekai Evolution - Hateshinai Dungeon (Japan)
@@ -42564,6 +42565,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecSpidermanco,		// Spiderman: La Ciudad a Oscuras (Spanish) (128K) (HB)
 	&BurnSpecSpikeintransylvania,// Spike in Transylvania (128K)
 	&BurnSpecSpikerbt,			// Spiker - Basic Training (128K) (HB)
+	&BurnDrvSpinmastk,			// Spin Master / Miracle Adventure (Korean Translation)
 	&BurnDrvSpinmast,			// Spin Master / Miracle Adventure
 	&BurnDrvpce_spinpair,		// Spin Pair (Japan)
 	&BurnDrvSpinlbrkj,			// Spinal Breakers (Japan)
@@ -65359,7 +65361,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_shinfrce", "megadrive/d_megadrive.cpp"},
 	{ "md_shinfrcep", "megadrive/d_megadrive.cpp"},
 	{ "md_shinfrcek", "megadrive/d_megadrive.cpp"},
-	{ "md_shinfrcej", "megadrive/d_megadrive.cpp"},
 	{ "gg_shinfrgfe", "sms/d_sms.cpp"},
 	{ "gg_shinfrg2", "sms/d_sms.cpp"},
 	{ "gg_shinfrcg", "sms/d_sms.cpp"},
@@ -65371,8 +65372,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_shinfrc2p3", "megadrive/d_megadrive.cpp"},
 	{ "md_shinfrc2u", "megadrive/d_megadrive.cpp"},
 	{ "md_shinfrc2p1", "megadrive/d_megadrive.cpp"},
-	{ "md_shinfrc2c", "megadrive/d_megadrive.cpp"},
 	{ "md_shinfrc2k", "megadrive/d_megadrive.cpp"},
+	{ "md_shinfrc2c", "megadrive/d_megadrive.cpp"},
 	{ "md_shinfrc2j", "megadrive/d_megadrive.cpp"},
 	{ "gg_shinfrc2", "sms/d_sms.cpp"},
 	{ "gg_shinfrc2p2", "sms/d_sms.cpp"},
@@ -66394,6 +66395,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_spidermanco", "spectrum/d_spectrum.cpp"},
 	{ "spec_spikeintransylvania", "spectrum/d_spectrum.cpp"},
 	{ "spec_spikerbt", "spectrum/d_spectrum.cpp"},
+	{ "spinmastk", "neogeo/d_neogeo.cpp"},
 	{ "spinmast", "neogeo/d_neogeo.cpp"},
 	{ "pce_spinpair", "pce/d_pce.cpp"},
 	{ "spinlbrkj", "pst90s/d_aerofgt.cpp"},
@@ -66766,7 +66768,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_thorjp", "megadrive/d_megadrive.cpp"},
 	{ "md_thork", "megadrive/d_megadrive.cpp"},
 	{ "md_thorp1", "megadrive/d_megadrive.cpp"},
-	{ "md_thorc", "megadrive/d_megadrive.cpp"},
 	{ "md_thork2", "megadrive/d_megadrive.cpp"},
 	{ "md_thorj", "megadrive/d_megadrive.cpp"},
 	{ "md_thorpt", "megadrive/d_megadrive.cpp"},

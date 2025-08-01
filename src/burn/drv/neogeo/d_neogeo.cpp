@@ -29701,6 +29701,41 @@ struct BurnDriver BurnDrvKof94uh = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Spin Master / Miracle Adventure (Korean Translation)
+
+static struct BurnRomInfo spinmastkRomDesc[] = {
+	{ "062-p1k.p1",   0x100000, 0x0eb162e8, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ mask rom TC538200
+	{ "062-p2.sp2",   0x100000, 0xf025ab77, 1 | BRF_ESS | BRF_PRG }, //  1 					/ mask rom TC538200
+
+	{ "062-s1k.s1",   0x020000, 0x652fc659, 2 | BRF_GRA },           //  2 Text layer tiles / mask rom TC531000
+
+	{ "062-c1k.c1",   0x100000, 0x94344850, 3 | BRF_GRA },           //  3 Sprite data		/ mask rom TC538200
+	{ "062-c2k.c2",   0x100000, 0x9d9879ba, 3 | BRF_GRA },           //  4 					/ mask rom TC538200
+	{ "062-c3.c3",    0x100000, 0xdf51e465, 3 | BRF_GRA },           //  5 					/ mask rom TC538200
+	{ "062-c4.c4",    0x100000, 0x38517e90, 3 | BRF_GRA },           //  6 					/ mask rom TC538200
+	{ "062-c5.c5",    0x100000, 0x7babd692, 3 | BRF_GRA },           //  7 					/ mask rom TC538200
+	{ "062-c6.c6",    0x100000, 0xcde5ade5, 3 | BRF_GRA },           //  8 					/ mask rom TC538200
+	{ "062-c7k.c7",   0x100000, 0x55bd00e5, 3 | BRF_GRA },           //  9 					/ mask rom TC538200
+	{ "062-c8k.c8",   0x100000, 0x524d1aa4, 3 | BRF_GRA },           // 10 					/ mask rom TC538200
+
+	{ "062-m1.m1",    0x020000, 0x76108b2f, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/ mask rom TC531001
+
+	{ "062-v1.v1",    0x100000, 0xcc281aef, 5 | BRF_SND },           // 12 Sound data		/ mask rom TC538200
+};
+
+STDROMPICKEXT(spinmastk, spinmastk, neogeo)
+STD_ROM_FN(spinmastk)
+
+struct BurnDriver BurnDrvSpinmastk = {
+	"spinmastk", "spinmast", "neogeo", NULL, "2025",
+	"Spin Master / Miracle Adventure (Korean Translation)\0", NULL, "Data East Corporation", "Neo Geo MVS",
+	L"Spin Master / Miracle Adventure (Korean Translation)\0\uC2A4\uD540 \uB9C8\uC2A4\uD130 / \uBBF8\uB77C\uD074 \uC5B4\uB4DC\uBCA4\uCC98 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_RUNGUN, 0,
+	NULL, spinmastkRomInfo, spinmastkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Samurai Shodown II / Shin Samurai Spirits - Haohmaru Jigokuhen (AES Uncensored Hack)
 
 static struct BurnRomInfo samsho2uhRomDesc[] = {

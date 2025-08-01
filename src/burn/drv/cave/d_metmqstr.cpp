@@ -851,7 +851,7 @@ STD_ROM_FN(nmasterk)
 struct BurnDriver BurnDrvnmasterk = {
 	"nmasterk", "metmqstr", NULL, NULL, "1995",
 	"Oni - The Ninja Master (Korean Translation)\0", NULL, "Banpresto / Pandorabox", "Cave",
-	L"\uC624\uB2C8\ - \uB354 \uB2CC\uC790 \uB9C8\uC2A4\uD130 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0Oni - The Ninja Master (Korean Translation)\0", NULL, NULL, NULL,
+	L"Oni - The Ninja Master (Korean Translation)\0\uC624\uB2C8\ - \uB354 \uB2CC\uC790 \uB9C8\uC2A4\uD130 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_Z80, GBF_VSFIGHT, 0,
 	NULL, nmasterkRomInfo, nmasterkRomName, NULL, NULL, NULL, NULL, metmqstrInputInfo, NULL,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
