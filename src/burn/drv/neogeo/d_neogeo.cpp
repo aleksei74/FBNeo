@@ -29525,7 +29525,6 @@ struct BurnDriver BurnDrvSamShok = {
 };
 
 // Samurai Shodown / Samurai Spirits (AES Uncensored Hack)
-/* AES VERSION */
 
 static struct BurnRomInfo samshouhRomDesc[] = {
 	{ "045-p1uh.p1",  0x100000, 0xf6920923, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
@@ -29704,7 +29703,7 @@ struct BurnDriver BurnDrvKof94uh = {
 // Spin Master / Miracle Adventure (Korean Translation)
 
 static struct BurnRomInfo spinmastkRomDesc[] = {
-	{ "062-p1k.p1",   0x100000, 0x0eb162e8, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ mask rom TC538200
+	{ "062-p1k.p1",   0x100000, 0xca144b66, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ mask rom TC538200
 	{ "062-p2.sp2",   0x100000, 0xf025ab77, 1 | BRF_ESS | BRF_PRG }, //  1 					/ mask rom TC538200
 
 	{ "062-s1k.s1",   0x020000, 0x652fc659, 2 | BRF_GRA },           //  2 Text layer tiles / mask rom TC531000
@@ -30187,7 +30186,7 @@ STD_ROM_FN(wakuwak7k)
 struct BurnDriver BurnDrvWakuwak7k = {
 	"wakuwak7k", "wakuwak7", "neogeo", NULL, "2025",
 	"Waku Waku 7 (Korean Translation)\0", NULL, "Sunsoft", "Neo Geo MVS",
-	L"Waku Waku 7 (Korean Translation)\0\uC640\uCFE0 \uC640\uCFE0 7 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	L"Waku Waku 7 (Korean Translation)\0\uB450\uADFC \uB450\uADFC 7 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
 	NULL, wakuwak7kRomInfo, wakuwak7kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
