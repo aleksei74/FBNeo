@@ -9149,6 +9149,7 @@ DRV		BurnDrvnes_ddball;
 DRV		BurnDrvnes_ddballj;
 DRV		BurnDrvnes_ddball2;
 DRV		BurnDrvnes_ddball2j;
+DRV		BurnDrvmd_ddanpeik;
 DRV		BurnDrvmd_ddanpei;
 DRV		BurnDrvpce_ddanpei;
 DRV		BurnDrvgg_ddanpei;
@@ -14817,19 +14818,20 @@ DRV		BurnDrvsms_pstarjs;
 DRV		BurnDrvsms_pstarj;
 DRV		BurnDrvsms_pstarjmd;
 DRV		BurnDrvsms_pstark;
+DRV		BurnDrvmd_pstar4k;
 DRV		BurnDrvgg_pstaradv;
 DRV		BurnDrvgg_pstargdne;
 DRV		BurnDrvgg_pstargdn;
 DRV		BurnDrvmd_pstar2br;
 DRV		BurnDrvmd_pstar2a;
 DRV		BurnDrvmd_pstar2;
+DRV		BurnDrvmd_pstar2k;
 DRV		BurnDrvmd_pstar2ser;
 DRV		BurnDrvmd_ps2aae;
 DRV		BurnDrvmd_ps2aa;
 DRV		BurnDrvmd_ps2ab;
 DRV		BurnDrvmd_ps2ace;
 DRV		BurnDrvmd_ps2ac;
-DRV		BurnDrvmd_pstar2k;
 DRV		BurnDrvmd_pstar2j;
 DRV		BurnDrvmd_ps2ade;
 DRV		BurnDrvmd_ps2ad;
@@ -23749,6 +23751,7 @@ DRV		BurnDrvnes_ysc;
 DRV		BurnDrvsms_ysj;
 DRV		BurnDrvnes_ysj;
 DRV		BurnDrvnes_ysde;
+DRV		BurnDrvmd_ys3k;
 DRV		BurnDrvmd_ys3j;
 DRV		BurnDrvnes_ysii;
 DRV		BurnDrvnes_ysiic;
@@ -33189,6 +33192,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_ddballj,		// Honoo no Doukyuuji - Dan's Dodge Ball (Japan)
 	&BurnDrvnes_ddball2,		// Honoo no Doukyuuji - Dan's Dodge Ball 2 (Hack, English v1.0a)
 	&BurnDrvnes_ddball2j,		// Honoo no Doukyuuji - Dan's Dodge Ball 2 (Japan)
+	&BurnDrvmd_ddanpeik,		// Honoo no Toukyuuji - Dodge Danpei (Hack, Korean Translation)
 	&BurnDrvmd_ddanpei,			// Honoo no Toukyuuji - Dodge Danpei (Japan)
 	&BurnDrvpce_ddanpei,		// Honoo no Toukyuuji - Dodge Danpei (Japan)
 	&BurnDrvgg_ddanpei,			// Honoo no Toukyuuji Dodge Danpei (Japan)
@@ -38857,12 +38861,14 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsms_pstarj,			// Phantasy Star (Japan)
 	&BurnDrvsms_pstarjmd,		// Phantasy Star (Japan, MD)
 	&BurnDrvsms_pstark,			// Phantasy Star (Korea)
+	&BurnDrvmd_pstar4k,			// Phantasy Star - Sennenki no Owari ni (Hack, Korean Translation)
 	&BurnDrvgg_pstaradv,		// Phantasy Star Adventure (Japan)
 	&BurnDrvgg_pstargdne,		// Phantasy Star Gaiden (Hack, English)
 	&BurnDrvgg_pstargdn,		// Phantasy Star Gaiden (Japan)
 	&BurnDrvmd_pstar2br,		// Phantasy Star II (Brazil)
 	&BurnDrvmd_pstar2a,			// Phantasy Star II (Euro, USA)
 	&BurnDrvmd_pstar2,			// Phantasy Star II (Euro, USA, Rev. A)
+	&BurnDrvmd_pstar2k,			// Phantasy Star II - Kaerazaru Toki no Owari ni (Hack, Korean Translation)
 	&BurnDrvmd_pstar2ser,		// Phantasy Star II - Sound Engine Replacement (Hack)
 	&BurnDrvmd_ps2aae,			// Phantasy Star II: Amia's Adventure (Hack, English)
 	&BurnDrvmd_ps2aa,			// Phantasy Star II: Amia's Adventure (Japan, SegaNet)
@@ -47788,6 +47794,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsms_ysj,			// Ys (Japan)
 	&BurnDrvnes_ysj,			// Ys (Japan)
 	&BurnDrvnes_ysde,			// Ys - Definitive Edition (Hack, English)
+	&BurnDrvmd_ys3k,			// Ys - Wanderers from Ys (Hack, Korean Translation)
 	&BurnDrvmd_ys3j,			// Ys - Wanderers from Ys (Japan)
 	&BurnDrvnes_ysii,			// Ys II - Ancient Ys Vanished - The Final Chapter (Hack, English)
 	&BurnDrvnes_ysiic,			// Ys II - Ancient Ys Vanished - The Final Chapter (Hack, Spanish)
@@ -57164,6 +57171,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_ddballj", "nes/d_nes.cpp"},
 	{ "nes_ddball2", "nes/d_nes.cpp"},
 	{ "nes_ddball2j", "nes/d_nes.cpp"},
+	{ "md_ddanpeik", "megadrive/d_megadrive.cpp"},
 	{ "md_ddanpei", "megadrive/d_megadrive.cpp"},
 	{ "pce_ddanpei", "pce/d_pce.cpp"},
 	{ "gg_ddanpei", "sms/d_sms.cpp"},
@@ -62780,19 +62788,20 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sms_pstarj", "sms/d_sms.cpp"},
 	{ "sms_pstarjmd", "sms/d_sms.cpp"},
 	{ "sms_pstark", "sms/d_sms.cpp"},
+	{ "md_pstar4k", "megadrive/d_megadrive.cpp"},
 	{ "gg_pstaradv", "sms/d_sms.cpp"},
 	{ "gg_pstargdne", "sms/d_sms.cpp"},
 	{ "gg_pstargdn", "sms/d_sms.cpp"},
 	{ "md_pstar2br", "megadrive/d_megadrive.cpp"},
 	{ "md_pstar2a", "megadrive/d_megadrive.cpp"},
 	{ "md_pstar2", "megadrive/d_megadrive.cpp"},
+	{ "md_pstar2k", "megadrive/d_megadrive.cpp"},
 	{ "md_pstar2ser", "megadrive/d_megadrive.cpp"},
 	{ "md_ps2aae", "megadrive/d_megadrive.cpp"},
 	{ "md_ps2aa", "megadrive/d_megadrive.cpp"},
 	{ "md_ps2ab", "megadrive/d_megadrive.cpp"},
 	{ "md_ps2ace", "megadrive/d_megadrive.cpp"},
 	{ "md_ps2ac", "megadrive/d_megadrive.cpp"},
-	{ "md_pstar2k", "megadrive/d_megadrive.cpp"},
 	{ "md_pstar2j", "megadrive/d_megadrive.cpp"},
 	{ "md_ps2ade", "megadrive/d_megadrive.cpp"},
 	{ "md_ps2ad", "megadrive/d_megadrive.cpp"},
@@ -71614,6 +71623,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sms_ysj", "sms/d_sms.cpp"},
 	{ "nes_ysj", "nes/d_nes.cpp"},
 	{ "nes_ysde", "nes/d_nes.cpp"},
+	{ "md_ys3k", "megadrive/d_megadrive.cpp"},
 	{ "md_ys3j", "megadrive/d_megadrive.cpp"},
 	{ "nes_ysii", "nes/d_nes.cpp"},
 	{ "nes_ysiic", "nes/d_nes.cpp"},
