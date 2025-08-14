@@ -19371,6 +19371,7 @@ DRV		BurnDrvgg_sheroa;
 DRV		BurnDrvgg_shero;
 DRV		BurnDrvnes_streetheroes;
 DRV		BurnDrvStrhoop;
+DRV		BurnDrvStrhoopk;
 DRV		BurnDrvMSX_strtmast;
 DRV		BurnDrvsms_strtmast;
 DRV		BurnDrvmd_sracer;
@@ -43433,6 +43434,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgg_shero,			// Street Hero (USA, Prototype, SMS Mode)
 	&BurnDrvnes_streetheroes,	// Street Heroes (Taiwan)
 	&BurnDrvStrhoop,			// Street Hoop / Street Slam / Dunk Dream (DEM-004 ~ DEH-004)
+	&BurnDrvStrhoopk,			// Street Hoop / Street Slam / Dunk Dream (Korean Translation)
 	&BurnDrvMSX_strtmast,		// Street Master (Korea)
 	&BurnDrvsms_strtmast,		// Street Master (Korea)
 	&BurnDrvmd_sracer,			// Street Racer (Euro)
@@ -67335,6 +67337,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gg_shero", "sms/d_sms.cpp"},
 	{ "nes_streetheroes", "nes/d_nes.cpp"},
 	{ "strhoop", "neogeo/d_neogeo.cpp"},
+	{ "strhoopk", "neogeo/d_neogeo.cpp"},
 	{ "msx_strtmast", "msx/d_msx.cpp"},
 	{ "sms_strtmast", "sms/d_sms.cpp"},
 	{ "md_sracer", "megadrive/d_megadrive.cpp"},
