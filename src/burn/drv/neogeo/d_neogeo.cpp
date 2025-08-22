@@ -29805,37 +29805,6 @@ struct BurnDriver BurnDrvwJammerk = {
 	0x1000, 304, 224, 4, 3
 };
 
-// Street Hoop / Street Slam / Dunk Dream (Korean Translation)
-
-static struct BurnRomInfo strhoopkRomDesc[] = {
-    { "079-p1k.p1",   0x100000, 0xfcc0e3c3, 1 | BRF_ESS | BRF_PRG }, //  0 68K code            / TC538200
-
-    { "079-s1k.s1",   0x020000, 0xfc9ddec3, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
-
-    { "079-c1k.c1",   0x200000, 0x85c3029a, 3 | BRF_GRA },           //  2 Sprite data        / TC5316200
-    { "079-c2k.c2",   0x200000, 0x2028de30, 3 | BRF_GRA },           //  3                     / TC5316200
-    { "079-c3k.c3",   0x200000, 0x79cb4d8a, 3 | BRF_GRA },           //  4                     / TC5316200
-    { "079-c4k.c4",   0x200000, 0x1f2799b5, 3 | BRF_GRA },           //  5                     / TC5316200
-
-    { "079-m1.m1",    0x020000, 0xbee3455a, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code            / TC531001
-
-    { "079-v1.v1",    0x200000, 0x718a2400, 5 | BRF_SND },           //  7 Sound data        / TC5316200
-    { "079-v2.v2",    0x100000, 0x720774eb, 5 | BRF_SND },           //  8                     / TC538200
-};
-
-STDROMPICKEXT(strhoopk, strhoopk, neogeo)
-STD_ROM_FN(strhoopk)
-
-struct BurnDriver BurnDrvStrhoopk = {
-    "strhoopk", "strhoop", "neogeo", NULL, "2025",
-    "Street Hoop / Street Slam / Dunk Dream (Korean Translation)\0", NULL, "Data East Corporation", "Neo Geo MVS",
-    L"Street Hoop / Street Slam / Dunk Dream (Korean Translation)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD6C4\uD504 / \uC2A4\uD2B8\uB9AC\uD2B8 \uC2AC\uB7A8 / \uB369\uD06C \uB4DC\uB9BC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-    BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SPORTSMISC, 0,
-    NULL, strhoopkRomInfo, strhoopkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-    NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-    0x1000, 304, 224, 4, 3
-};
-
 // Real Bout Fatal Fury / Real Bout Garou Densetsu (AES Uncensored Hack)
 
 static struct BurnRomInfo rbff1uhRomDesc[] = {
@@ -29873,6 +29842,37 @@ struct BurnDriver BurnDrvRbff1uh = {
 	NULL, rbff1uhRomInfo, rbff1uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	rbff1aInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
+};
+
+// Street Hoop / Street Slam / Dunk Dream (Korean Translation)
+
+static struct BurnRomInfo strhoopkRomDesc[] = {
+	{ "079-p1k.p1",   0x100000, 0xfcc0e3c3, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
+
+	{ "079-s1k.s1",   0x020000, 0xfc9ddec3, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "079-c1k.c1",   0x200000, 0x85c3029a, 3 | BRF_GRA },           //  2 Sprite data		/ TC5316200
+	{ "079-c2k.c2",   0x200000, 0x2028de30, 3 | BRF_GRA },           //  3 					/ TC5316200
+	{ "079-c3k.c3",   0x200000, 0x79cb4d8a, 3 | BRF_GRA },           //  4 					/ TC5316200
+	{ "079-c4k.c4",   0x200000, 0x1f2799b5, 3 | BRF_GRA },           //  5 					/ TC5316200
+
+	{ "079-m1.m1",    0x020000, 0xbee3455a, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code			/ TC531001
+
+	{ "079-v1.v1",    0x200000, 0x718a2400, 5 | BRF_SND },           //  7 Sound data		/ TC5316200
+	{ "079-v2.v2",    0x100000, 0x720774eb, 5 | BRF_SND },           //  8 					/ TC538200
+};
+
+STDROMPICKEXT(strhoopk, strhoopk, neogeo)
+STD_ROM_FN(strhoopk)
+
+struct BurnDriver BurnDrvStrhoopk = {
+	"strhoopk", "strhoop", "neogeo", NULL, "2025",
+	"Street Hoop / Street Slam / Dunk Dream (Korean Translation)\0", NULL, "Data East Corporation", "Neo Geo MVS",
+	L"Street Hoop / Street Slam / Dunk Dream (Korean Translation)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD6C4\uD504 / \uC2A4\uD2B8\uB9AC\uD2B8 \uC2AC\uB7A8 / \uB369\uD06C \uB4DC\uB9BC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SPORTSMISC, 0,
+	NULL, strhoopkRomInfo, strhoopkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
 };
 
 // The King of Fighters '95 (Korean Translation)
