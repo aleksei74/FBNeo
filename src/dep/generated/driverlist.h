@@ -13931,6 +13931,7 @@ DRV		BurnDrvNinclown;
 DRV		BurnDrvNcombath;
 DRV		BurnDrvNcombat;
 DRV		BurnSpecNinjacom;
+DRV		BurnDrvNcommandk;
 DRV		BurnDrvNcommand;
 DRV		BurnDrvnes_ninjacopsaizou;
 DRV		BurnDrvnes_ninjacrusaders;
@@ -38056,6 +38057,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvNcombath,			// Ninja Combat (NGH-009)
 	&BurnDrvNcombat,			// Ninja Combat (NGM-009)
 	&BurnSpecNinjacom,			// Ninja Commando (48K)
+	&BurnDrvNcommandk,			// Ninja Commando (Korean Translation)
 	&BurnDrvNcommand,			// Ninja Commando
 	&BurnDrvnes_ninjacopsaizou,	// Ninja Cop Saizou (Japan)
 	&BurnDrvnes_ninjacrusaders,	// Ninja Crusaders (USA)
@@ -62073,6 +62075,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "ncombath", "neogeo/d_neogeo.cpp"},
 	{ "ncombat", "neogeo/d_neogeo.cpp"},
 	{ "spec_ninjacom", "spectrum/d_spectrum.cpp"},
+	{ "ncommandk", "neogeo/d_neogeo.cpp"},
 	{ "ncommand", "neogeo/d_neogeo.cpp"},
 	{ "nes_ninjacopsaizou", "nes/d_nes.cpp"},
 	{ "nes_ninjacrusaders", "nes/d_nes.cpp"},

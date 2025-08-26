@@ -29596,6 +29596,37 @@ struct BurnDriver BurnDrvTophntrk = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Ninja Commando (Korean Translation)
+
+static struct BurnRomInfo ncommandkRomDesc[] = {
+	{ "050-p1k.p1",    0x100000, 0xb443bc9a, 1 | BRF_ESS | BRF_PRG }, //  0 68K code / CXK388000
+
+	{ "050-s1k.s1",    0x020000, 0x133f944a, 2 | BRF_GRA },           //  1 Text layer tiles / CXK 381000
+
+	{ "050-c1k.c1",    0x100000, 0x39969ab2, 3 | BRF_GRA },           //  2 Sprite data / CXK388000
+	{ "050-c2k.c2",    0x100000, 0x7b105549, 3 | BRF_GRA },           //  3 / CXK388000
+	{ "050-c3k.c3",    0x100000, 0xe94abc18, 3 | BRF_GRA },           //  4 / CXK388000
+	{ "050-c4k.c4",    0x100000, 0xaeeb1fa9, 3 | BRF_GRA },           //  5 / CXK388000
+
+	{ "050-m1.m1",    0x020000, 0x6fcf07d3, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code / CXK381003
+
+	{ "050-v1.v1",    0x100000, 0x23c3ab42, 5 | BRF_SND },           //  7 Sound data / CXK388000
+	{ "050-v2.v2",    0x080000, 0x80b8a984, 5 | BRF_SND },           //  8 / CXK384000
+};
+
+STDROMPICKEXT(ncommandk, ncommandk, neogeo)
+STD_ROM_FN(ncommandk)
+
+struct BurnDriver BurnDrvNcommandk = {
+	"ncommandk", "ncommand", "neogeo", NULL, "1992",
+	"Ninja Commando (Korean Translation)\0", NULL, "Alpha Denshi Co.", "Neo Geo MVS",
+	L"Ninja Commando (Korean Translation)\0\uB2D0\uC790 \uCF54\uB9CC\uB3C4\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VERSHOOT, 0,
+	NULL, ncommandkRomInfo, ncommandkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000,	304, 224, 4, 3
+};
+
 // World Heroes (Korean Translation)
 
 static struct BurnRomInfo wh1kRomDesc[] = {
