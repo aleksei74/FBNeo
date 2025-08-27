@@ -29620,7 +29620,7 @@ STD_ROM_FN(ncommandk)
 struct BurnDriver BurnDrvNcommandk = {
 	"ncommandk", "ncommand", "neogeo", NULL, "1992",
 	"Ninja Commando (Korean Translation)\0", NULL, "Alpha Denshi Co.", "Neo Geo MVS",
-	L"Ninja Commando (Korean Translation)\0\uB2D0\uC790 \uCF54\uB9CC\uB3C4\0", NULL, NULL, NULL,
+	L"Ninja Commando (Korean Translation)\0\uB2D0\uC790 \uCF54\uB9CC\uB3C4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VERSHOOT, 0,
 	NULL, ncommandkRomInfo, ncommandkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
