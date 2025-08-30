@@ -16017,7 +16017,7 @@ struct BurnDriver BurnDrvmd_rockman = {
 	"md_rockman", "md_megaman", NULL, NULL, "1994",
 	"Rockman Mega World (Japan)\0", NULL, "Capcom", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_PLATFORM, 0,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_EEPROM, GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_rockmanRomInfo, md_rockmanRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
@@ -16035,7 +16035,7 @@ struct BurnDriver BurnDrvmd_rockman1 = {
 	"md_rockman1", "md_megaman", NULL, NULL, "1994",
 	"Rockman Mega World (Japan, Alt)\0", NULL, "Capcom", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_EEPROM, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM, 0,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_EEPROM, GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_rockman1RomInfo, md_rockman1RomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
@@ -39635,14 +39635,14 @@ struct BurnDriver BurnDrvmd_ikplusdx = {
 
 // Irena: Genesis Metal Fury (HB, Demo)
 static struct BurnRomInfo md_irenademoRomDesc[] = {
-	{ "Irena - Genesis Metal Fury Demo (2021)(White Ninja Studio).bin", 2621440, 0xf0ab7cf3, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Irena - Genesis Metal Fury Demo (2025)(White Ninja Studio).bin", 3932160, 0xb8f47aac, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_irenademo)
 STD_ROM_FN(md_irenademo)
 
 struct BurnDriver BurnDrvmd_irenademo = {
-	"md_irenademo", NULL, NULL, NULL, "2021",
+	"md_irenademo", NULL, NULL, NULL, "2025",
 	"Irena: Genesis Metal Fury (HB, Demo)\0", NULL, "White Ninja Studio", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_HORSHOOT, 0,
@@ -41570,7 +41570,7 @@ struct BurnDriver BurnDrvmd_uwol = {
 
 // Kolobok ~ Pyramid (Russia) (Unl)
 static struct BurnRomInfo md_kolobokRomDesc[] = {
-	{ "Kolobok - Pyramid ((201x)(Kudos).bin", 0x020000, 0xc4c55bab, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Kolobok - Pyramid (201x)(Kudos).bin", 0x020000, 0xc4c55bab, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_kolobok)
