@@ -1663,8 +1663,8 @@ DRV		BurnDrvMSX_barnstrm;
 DRV		BurnDrvmd_barney;
 DRV		BurnDrvbaracuda;
 DRV		BurnDrvpce_barunba;
-DRV		BurnDrvmd_barver;
 DRV		BurnDrvmd_tkzs;
+DRV		BurnDrvmd_barver;
 DRV		BurnDrvBaryon;
 DRV		BurnDrvBaryona;
 DRV		BurnDrvnes_basewars;
@@ -25830,8 +25830,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_barney,			// Barney's Hide & Seek Game (USA)
 	&BurnDrvbaracuda,			// Barracuda
 	&BurnDrvpce_barunba,		// Barunba (Japan)
+	&BurnDrvmd_tkzs,			// Barver Battle Saga (China) (Hack)
 	&BurnDrvmd_barver,			// Barver Battle Saga: Tai Kong Zhan Shi (China) (Unl)
-	&BurnDrvmd_tkzs,			// Barver Battle Saga: Tai Kong Zhan Shi (Hack, Audio Fix)
 	&BurnDrvBaryon,				// Baryon - Future Assault (set 1)
 	&BurnDrvBaryona,			// Baryon - Future Assault (set 2)
 	&BurnDrvnes_basewars,		// Base Wars (USA)
@@ -29213,7 +29213,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Ddoujou,		// Dharma Doujou (Japan)
 	&BurnDrvDharmak,			// Dharma Doujou (Korea)
 	&BurnDrvDharma,				// Dharma Doujou
-	&BurnDrvmd_dgwcyscs,		// Di Guo Wang Chao: Ya Se Chuan Shuo (Hack, Audio Fix)
+	&BurnDrvmd_dgwcyscs,		// Di Guo Wang Chao: Ya Se Chuan Shuo (Chinese)
 	&BurnSpecDilithium,			// Di-Lithium Lift (16K)
 	&BurnDrvmd_diablo,			// Diablo (Russia) (Unl)
 	&BurnDrvnes_diabloii,		// Diablo II (Unl)
@@ -31001,7 +31001,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_fengkuan,		// Feng Kuang Tao Hua Yuan (Taiwan) (Unl)
 	&BurnDrvmd_fengshen,		// Feng Shen Ying Jie Chuan (China) (Unl)
 	&BurnDrvmd_fengshena,		// Feng Shen Ying Jie Chuan (China, Alt) (Unl)
-	&BurnDrvmd_fsyjz,			// Feng Shen Ying Jie Chuan (Hack, Audio Fix)
+	&BurnDrvmd_fsyjz,			// Feng Shen Ying Jie Zhuan (Chinese)
 	&BurnDrvKovfyzq4in1,		// Feng Yun 4 in 1 (multi-game cart, bootleg of Knights of Valour Super Heroes, V100CN, V200CN)
 	&BurnDrvFenixexpl,			// Fenix (Explomatic, Spanish bootleg of Phoenix)
 	&BurnDrvFenixn,				// Fenix (Niemer bootleg of Phoenix)
@@ -41993,7 +41993,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvShufshot,			// Shuffleshot (v1.40)
 	&BurnDrvmd_shuihu,			// Shui Hu - Feng Yun Zhuan (China) (Unl)
 	&BurnDrvmd_shuihuzh,		// Shui Hu Zhuan (China) (Unl)
-	&BurnDrvmd_shz,				// Shui Hu Zhuan (Hack, Audio Fix)
+	&BurnDrvmd_shz,				// Shui Hu Zhuan (Chinese)
 	&BurnDrvmd_shuramon,		// Shura no Mon (Japan)
 	&BurnSpecShuriken,			// Shuriken (48K)
 	&BurnSpecShuttlebug,		// Shuttlebug (48K) (HB)
@@ -49989,8 +49989,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_barney", "megadrive/d_megadrive.cpp"},
 	{ "baracuda", "pre90s/d_pacman.cpp"},
 	{ "pce_barunba", "pce/d_pce.cpp"},
-	{ "md_barver", "megadrive/d_megadrive.cpp"},
 	{ "md_barverbs", "megadrive/d_megadrive.cpp"},
+	{ "md_barver", "megadrive/d_megadrive.cpp"},
 	{ "baryon", "pst90s/d_dreamwld.cpp"},
 	{ "baryona", "pst90s/d_dreamwld.cpp"},
 	{ "nes_basewars", "nes/d_nes.cpp"},
