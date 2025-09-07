@@ -23382,7 +23382,8 @@ DRV		BurnDrvWbmlvc;
 DRV		BurnDrvWbmljb;
 DRV		BurnDrvWbml;
 DRV		BurnDrvWbmljo;
-DRV		BurnDrvWbmlkb;
+DRV		BurnDrvWbmldk;
+DRV		BurnDrvWbmlkod;
 DRV		BurnDrvgg_wboydtrp;
 DRV		BurnDrvsms_wonderkidp;
 DRV		BurnDrvWondl96;
@@ -29786,7 +29787,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_doubldraiiisc,	// Double Dragon III: The Sacred Stones (Hack, Chinese)
 	&BurnDrvnes_doubldraiiic,	// Double Dragon III: The Sacred Stones (Hack, Spanish)
 	&BurnDrvnes_doubldraiii,	// Double Dragon III: The Sacred Stones (USA)
-	&BurnDrvDoubled1,			// Double Dragon One (Beta Version)
+	&BurnDrvDoubled1,			// Double Dragon One (Beta2 Version)
 	&BurnDrvsnes_Ddragon5e,		// Double Dragon V: The Shadow Falls (Euro)
 	&BurnDrvmd_ddragon5s,		// Double Dragon V: The Shadow Falls (Hack, Spanish)
 	&BurnDrvmd_ddragon5,		// Double Dragon V: The Shadow Falls (USA)
@@ -43511,7 +43512,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvCpsSf2mdtc,			// Street Fighter II': Magic Delta Turbo (bootleg, set 4)
 	&BurnDrvCpsSf2mkot,			// Street Fighter II': Magic KO Turbo!! - Nightmare Crack (set 1)
 	&BurnDrvCpsSf2mkot2,		// Street Fighter II': Magic KO Turbo!! - Nightmare Crack (set 2)
-	&BurnDrvCpsSf2prime,		// Street Fighter II': Prime (Ver 0.63, Hack)
+	&BurnDrvCpsSf2prime,		// Street Fighter II': Prime (Ver 0.66, Hack)
 	&BurnDrvCpsSf2rules,		// Street Fighter II: The World Warrior (bootleg with rules screen)
 	&BurnDrvCpsSf2b5,			// Street Fighter II: The World Warrior (bootleg, earliest, set 5)
 	&BurnDrvCpsSf2b,			// Street Fighter II: The World Warrior (bootleg, set 1)
@@ -47561,7 +47562,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvWbmljb,				// Wonder Boy: Monster Land (Japan bootleg)
 	&BurnDrvWbml,				// Wonder Boy: Monster Land (Japan New Ver., MC-8123, 317-0043)
 	&BurnDrvWbmljo,				// Wonder Boy: Monster Land (Japan Old Ver., MC-8123, 317-0043)
-	&BurnDrvWbmlkb,				// Wonder Boy: Monster Land (Korean Translation bootleg)
+	&BurnDrvWbmldk,				// Wonder Boy: Monster Land (Korean Translation bootleg of New Ver., MC-8123, 317-0043)
+	&BurnDrvWbmlkod,			// Wonder Boy: Monster Land (Korean Translation bootleg of Old Ver., MC-8123, 317-0043)
 	&BurnDrvgg_wboydtrp,		// Wonder Boy: The Dragon's Trap (Euro)
 	&BurnDrvsms_wonderkidp,		// Wonder Kid (Korea, Prototype)
 	&BurnDrvWondl96,			// Wonder League '96 (Korea)
@@ -71532,7 +71534,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "wbmljb", "sega/d_sys1.cpp"},
 	{ "wbml", "sega/d_sys1.cpp"},
 	{ "wbmljo", "sega/d_sys1.cpp"},
-	{ "wbmlkb", "sega/d_sys1.cpp"},
+	{ "wbmldk", "sega/d_sys1.cpp"},
+	{ "wbmlkod", "sega/d_sys1.cpp"},
 	{ "gg_wboydtrp", "sms/d_sms.cpp"},
 	{ "sms_wonderkidp", "sms/d_sms.cpp"},
 	{ "wondl96", "pst90s/d_tumbleb.cpp"},

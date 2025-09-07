@@ -8450,39 +8450,76 @@ struct BurnDriver BurnDrvWbmlh = {
 // Add Korean Translation
 //========================
 
-// Wonder Boy - Monster Land (Korean Translation bootleg)
+// Wonder Boy: Monster Land (Korean Translation bootleg of New Ver., MC-8123, 317-0043)
 
-static struct BurnRomInfo wbmlkbRomDesc[] = {
-	{ "wbml.01",		0x10000, 0x66482638, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
-	{ "m-6k.bin",		0x10000, 0x7dd0b45a, BRF_ESS | BRF_PRG }, //  1
-	{ "m-7.bin",		0x10000, 0x11881703, BRF_ESS | BRF_PRG }, //  2
+static struct BurnRomInfo wbmldkRomDesc[] = {
+	{ "decrypted_epr-11031a.90",	0x08000, 0xaba42eb7, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
+	{ "decrypted_epr-11032k.91",	0x08000, 0xeacdf10e, BRF_ESS | BRF_PRG }, //  1
+	{ "decrypted_epr-11033.92",		0x08000, 0x39e07286, BRF_ESS | BRF_PRG }, //  2
 
-	{ "epr-11037.126",	0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
+	{ "epr-11037.126",				0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
 
-	{ "epr-11034k.4",	0x08000, 0x7e631c73, BRF_GRA },           //  4 Tiles
-	{ "epr-11035k.5",	0x08000, 0x4c67a9a6, BRF_GRA },           //  5
-	{ "epr-11036k.6",	0x08000, 0x0440b0c7, BRF_GRA },           //  6
+	{ "epr-11034k.4",				0x08000, 0x7e631c73, BRF_GRA },           //  4 Tiles
+	{ "epr-11035k.5",				0x08000, 0x4c67a9a6, BRF_GRA },           //  5
+	{ "epr-11036k.6",				0x08000, 0x0440b0c7, BRF_GRA },           //  6
 
-	{ "epr-11028.87",	0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
-	{ "epr-11027.86",	0x08000, 0x277d8f1d, BRF_GRA },           //  8
-	{ "epr-11030.89",	0x08000, 0xf05ffc76, BRF_GRA },           //  9
-	{ "epr-11029.88",	0x08000, 0xcedc9c61, BRF_GRA },           // 10
+	{ "epr-11028.87",				0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
+	{ "epr-11027.86",				0x08000, 0x277d8f1d, BRF_GRA },           //  8
+	{ "epr-11030.89",				0x08000, 0xf05ffc76, BRF_GRA },           //  9
+	{ "epr-11029.88",				0x08000, 0xcedc9c61, BRF_GRA },           // 10
 
-	{ "pr11026.20",		0x00100, 0x27057298, BRF_GRA },           // 11 Red PROM
-	{ "pr11025.14",		0x00100, 0x41e4d86b, BRF_GRA },           // 12 Blue
-	{ "pr11024.8",		0x00100, 0x08d71954, BRF_GRA },           // 13 Green
-	{ "pr5317.37",		0x00100, 0x648350b8, BRF_GRA },           // 14 Timing PROM
+	{ "pr11026.20",					0x00100, 0x27057298, BRF_GRA },           // 11 Red PROM
+	{ "pr11025.14",					0x00100, 0x41e4d86b, BRF_GRA },           // 12 Blue
+	{ "pr11024.8",					0x00100, 0x08d71954, BRF_GRA },           // 13 Green
+	{ "pr5317.37",					0x00100, 0x648350b8, BRF_GRA },           // 14 Timing PROM
 };
 
-STD_ROM_PICK(wbmlkb)
-STD_ROM_FN(wbmlkb)
+STD_ROM_PICK(wbmldk)
+STD_ROM_FN(wbmldk)
 
-struct BurnDriver BurnDrvWbmlkb = {
-	"wbmlkb", "wbml", NULL, NULL, "1987",
-	"Wonder Boy: Monster Land (Korean Translation bootleg)\0", NULL, "bootleg", "System 2",
-	L"\uC6D0\uB354 \uBCF4\uC774 - \uBAAC\uC2A4\uD130 \uB79C\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED \uBCF5\uC81C\uD310)\0Wonder Boy - Monster Land (Korean Translation bootleg)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_SEGA_SYSTEM1, GBF_PLATFORM, 0,
-	NULL, wbmlkbRomInfo, wbmlkbRomName, NULL, NULL, NULL, NULL, MyheroInputInfo, WbmlDIPInfo,
-	WbmljbInit, System1Exit, System1Frame, System2Render, System1Scan,
+struct BurnDriver BurnDrvWbmldk = {
+	"wbmldk", "wbml", NULL, NULL, "1987",
+	"Wonder Boy: Monster Land (Korean Translation bootleg of New Ver., MC-8123, 317-0043)\0", NULL, "bootleg (mpatou)", "System 2",
+	L"Wonder Boy: Monster Land (Korean Translation bootleg of New Ver., MC-8123, 317-0043)\0\uC6D0\uB354 \uBCF4\uC774: \uBAAC\uC2A4\uD130 \uB79C\uB4DC (\uC0C8 \uBC84\uC804\uC758 \uD55C\uAD6D\uC5B4 \uBC88\uC5ED \uBCF5\uC81C\uD488., MC-8123, 317-0043)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_SEGA_SYSTEM1, GBF_PLATFORM, 0,
+	NULL, wbmldkRomInfo, wbmldkRomName, NULL, NULL, NULL, NULL, MyheroInputInfo, WbmlDIPInfo,
+	TokisensaInit, System1Exit, System1Frame, System2Render, System1Scan,
+	NULL, 0x800, 256, 224, 4, 3
+};
+
+// Wonder Boy: Monster Land (Korean Translation bootleg of Old Ver., MC-8123, 317-0043)
+
+static struct BurnRomInfo wbmlkodRomDesc[] = {
+	{ "decrypted_epr-11031.90",		0x08000, 0x940b35bf, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
+	{ "decrypted_epr-11032k.91",	0x08000, 0xeacdf10e, BRF_ESS | BRF_PRG }, //  1
+	{ "decrypted_epr-11033.92",		0x08000, 0x39e07286, BRF_ESS | BRF_PRG }, //  2
+
+	{ "epr-11037.126",				0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
+
+	{ "epr-11034k.4",				0x08000, 0x7e631c73, BRF_GRA },           //  4 Tiles
+	{ "epr-11035k.5",				0x08000, 0x4c67a9a6, BRF_GRA },           //  5
+	{ "epr-11036k.6",				0x08000, 0x0440b0c7, BRF_GRA },           //  6
+
+	{ "epr-11028.87",				0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
+	{ "epr-11027.86",				0x08000, 0x277d8f1d, BRF_GRA },           //  8
+	{ "epr-11030.89",				0x08000, 0xf05ffc76, BRF_GRA },           //  9
+	{ "epr-11029.88",				0x08000, 0xcedc9c61, BRF_GRA },           // 10
+
+	{ "pr11026.20",					0x00100, 0x27057298, BRF_GRA },           // 11 Red PROM
+	{ "pr11025.14",					0x00100, 0x41e4d86b, BRF_GRA },           // 12 Blue
+	{ "pr11024.8",					0x00100, 0x08d71954, BRF_GRA },           // 13 Green
+	{ "pr5317.37",					0x00100, 0x648350b8, BRF_GRA },           // 14 Timing PROM
+};
+
+STD_ROM_PICK(wbmlkod)
+STD_ROM_FN(wbmlkod)
+
+struct BurnDriver BurnDrvWbmlkod = {
+	"wbmlkod", "wbml", NULL, NULL, "1987",
+	"Wonder Boy: Monster Land (Korean Translation bootleg of Old Ver., MC-8123, 317-0043)\0", NULL, "bootleg (mpatou)", "System 2",
+	L"Wonder Boy: Monster Land (Korean Translation bootleg of Old Ver., MC-8123, 317-0043)\0\uC6D0\uB354 \uBCF4\uC774: \uBAAC\uC2A4\uD130 \uB79C\uB4DC (\uAD6C \uBC84\uC804\uC758 \uD55C\uAD6D\uC5B4 \uBC88\uC5ED \uBCF5\uC81C\uD488., MC-8123, 317-0043)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_SEGA_SYSTEM1, GBF_PLATFORM, 0,
+	NULL, wbmlkodRomInfo, wbmlkodRomName, NULL, NULL, NULL, NULL, MyheroInputInfo, WbmlDIPInfo,
+	TokisensaInit, System1Exit, System1Frame, System2Render, System1Scan,
 	NULL, 0x800, 256, 224, 4, 3
 };
