@@ -2282,6 +2282,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="bodycob" cloneof="bodyco" romof="bodyco" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'Menacer' compatible game</comment>
 		<description>Body Count (Brazil)</description>
 		<year>1994</year>
 		<manufacturer>Tec Toy</manufacturer>
@@ -2290,6 +2291,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="bodyco" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'Menacer' compatible game</comment>
 		<description>Body Count (Euro)</description>
 		<year>1994</year>
 		<manufacturer>Sega</manufacturer>
@@ -2298,7 +2300,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="bodycop2" cloneof="bodyco" romof="bodyco" sourcefile="megadrive/d_megadrive.cpp">
-		<comment>Prototype</comment>
+		<comment>Prototype, Lightgun 'Menacer' compatible game</comment>
 		<description>Body Count (USA, Prototype)</description>
 		<year>1994</year>
 		<manufacturer>Sega</manufacturer>
@@ -3059,7 +3061,7 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="cavaleirop" sourcefile="megadrive/d_megadrive.cpp">
+	<game name="cavaleirop" cloneof="cavaleirodcp" romof="cavaleirodcp" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew, Prototype</comment>
 		<description>Cavaleiro (HB, Prototype)</description>
 		<year>2025</year>
@@ -3068,48 +3070,84 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="cavaleirodcp" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew, Prototype</comment>
+		<description>Cavaleiro: Director's Cut (HB, Prototype)</description>
+		<year>2025</year>
+		<manufacturer>Manganga Team</manufacturer>
+		<rom name="Cavaleiro - Director's Cut (Proto)(2025)(Manganga Team).bin" size="786432" crc="796ee6a6"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="cavestoryb" cloneof="cavestory" romof="cavestory" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Cave Story Doukutsu (HB, Brazilian Portuguese v0.8.8)</description>
+		<year>2025</year>
+		<manufacturer>Studio Pixel</manufacturer>
+		<rom name="Cave Story Doukutsu v0.8.8 (BR)(2025)(Studio Pixel).bin" size="4194304" crc="3c40f1bf"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="cavestoryc" cloneof="cavestory" romof="cavestory" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Cave Story Doukutsu (HB, Chinese v0.8.0)</description>
-		<year>2022</year>
+		<description>Cave Story Doukutsu (HB, Chinese v0.8.8)</description>
+		<year>2025</year>
 		<manufacturer>Studio Pixel</manufacturer>
-		<rom name="Cave Story Doukutsu v0.8.0 (ZH)(2022)(Studio Pixel).bin" size="4194304" crc="0c1517fc"/>
+		<rom name="Cave Story Doukutsu v0.8.8 (ZH)(2025)(Studio Pixel).bin" size="4194304" crc="a342ab5e"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
 	<game name="cavestory" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Cave Story Doukutsu (HB, English v0.8.0)</description>
-		<year>2022</year>
+		<description>Cave Story Doukutsu (HB, English v0.8.8)</description>
+		<year>2025</year>
 		<manufacturer>Studio Pixel</manufacturer>
-		<rom name="Cave Story Doukutsu v0.8.0 (EN)(2022)(Studio Pixel).bin" size="4194304" crc="d476a108"/>
+		<rom name="Cave Story Doukutsu v0.8.8 (EN)(2025)(Studio Pixel).bin" size="4194304" crc="4318aa05"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="cavestoryp" cloneof="cavestory" romof="cavestory" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Cave Story Doukutsu (HB, European Portuguese v0.8.8)</description>
+		<year>2025</year>
+		<manufacturer>Studio Pixel</manufacturer>
+		<rom name="Cave Story Doukutsu v0.8.8 (PT)(2025)(Studio Pixel).bin" size="4194304" crc="a57002ef"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="cavestoryf" cloneof="cavestory" romof="cavestory" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Cave Story Doukutsu (HB, French v0.8.8)</description>
+		<year>2025</year>
+		<manufacturer>Studio Pixel</manufacturer>
+		<rom name="Cave Story Doukutsu v0.8.8 (FR)(2025)(Studio Pixel).bin" size="4194304" crc="6a9c8fae"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
 	<game name="cavestoryi" cloneof="cavestory" romof="cavestory" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Cave Story Doukutsu (HB, Italian v0.8.0)</description>
-		<year>2022</year>
+		<description>Cave Story Doukutsu (HB, Italian v0.8.8)</description>
+		<year>2025</year>
 		<manufacturer>Studio Pixel</manufacturer>
-		<rom name="Cave Story Doukutsu v0.8.0 (IT)(2022)(Studio Pixel).bin" size="4194304" crc="8ec855f9"/>
+		<rom name="Cave Story Doukutsu v0.8.8 (IT)(2025)(Studio Pixel).bin" size="4194304" crc="b1db86f5"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
 	<game name="cavestoryj" cloneof="cavestory" romof="cavestory" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Cave Story Doukutsu (HB, Japanese v0.8.0)</description>
-		<year>2022</year>
+		<description>Cave Story Doukutsu (HB, Japanese v0.8.8)</description>
+		<year>2025</year>
 		<manufacturer>Studio Pixel</manufacturer>
-		<rom name="Cave Story Doukutsu v0.8.0 (JP)(2022)(Studio Pixel).bin" size="4194304" crc="21acbe48"/>
+		<rom name="Cave Story Doukutsu v0.8.8 (JP)(2025)(Studio Pixel).bin" size="4194304" crc="baa38769"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
 	<game name="cavestorys" cloneof="cavestory" romof="cavestory" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Cave Story Doukutsu (HB, Spanish v0.8.0)</description>
-		<year>2022</year>
+		<description>Cave Story Doukutsu (HB, Spanish v0.8.8)</description>
+		<year>2025</year>
 		<manufacturer>Studio Pixel</manufacturer>
-		<rom name="Cave Story Doukutsu v0.8.0 (ES)(2022)(Studio Pixel).bin" size="4194304" crc="06405697"/>
+		<rom name="Cave Story Doukutsu v0.8.8 (ES)(2025)(Studio Pixel).bin" size="4194304" crc="5c2e57ee"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -5783,28 +5821,28 @@
 	</game>
 	<game name="earthione" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Earthion (HB, English v2.0.1)</description>
+		<description>Earthion (HB, English v3.3.0)</description>
 		<year>2025</year>
 		<manufacturer>Ancient</manufacturer>
-		<rom name="Earthion v2.0.1 (English)(2025)(Ancient).bin" size="7864320" crc="47d6ac2c"/>
+		<rom name="Earthion v3.3.0 (English)(2025)(Ancient).bin" size="7340032" crc="ae5f1fb1"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
 	<game name="earthionj" cloneof="earthione" romof="earthione" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Earthion (HB, Japanese v2.0.1)</description>
+		<description>Earthion (HB, Japanese v3.3.0)</description>
 		<year>2025</year>
 		<manufacturer>Ancient</manufacturer>
-		<rom name="Earthion v2.0.1 (Japanese)(2025)(Ancient).bin" size="7864320" crc="7f751480"/>
+		<rom name="Earthion v3.3.0 (Japanese)(2025)(Ancient).bin" size="7340032" crc="65ebc8e0"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
 	<game name="earthionp" cloneof="earthione" romof="earthione" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Earthion (HB, Portuguese v2.0.1)</description>
+		<description>Earthion (HB, Portuguese v3.3.0)</description>
 		<year>2025</year>
 		<manufacturer>Ancient</manufacturer>
-		<rom name="Earthion v2.0.1 (Portuguese)(2025)(Ancient).bin" size="7864320" crc="a087dfd7"/>
+		<rom name="Earthion v3.3.0 (Portuguese)(2025)(Ancient).bin" size="7340032" crc="f44386a4"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -5822,7 +5860,7 @@
 		<description>Earthion - Fall 2024 Demo (HB)</description>
 		<year>2024</year>
 		<manufacturer>Ancient</manufacturer>
-		<rom name="Earthion - Fall 2024 Demo (2024)(Ancient).bin" size="6946816" crc="13b8a4a3"/>
+		<rom name="Earthion - Fall 2024 Demo (2024)(Ancient).bin" size="6946816" crc="f3e4f17e"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -5831,7 +5869,7 @@
 		<description>Earthion - Summer 2024 Demo (HB)</description>
 		<year>2024</year>
 		<manufacturer>Ancient</manufacturer>
-		<rom name="Earthion - Summer 2024 Demo (2024)(Ancient).bin" size="6946816" crc="c6461075"/>
+		<rom name="Earthion - Summer 2024 Demo (2024)(Ancient).bin" size="6946816" crc="261a45a8"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -5840,7 +5878,7 @@
 		<description>Earthion - Winter 2024 Demo (HB)</description>
 		<year>2024</year>
 		<manufacturer>Ancient</manufacturer>
-		<rom name="Earthion - Winter 2024 Demo (2024)(Ancient).bin" size="7602176" crc="36838b4b"/>
+		<rom name="Earthion - Winter 2024 Demo (2024)(Ancient).bin" size="7602176" crc="a9b237f9"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -6887,10 +6925,10 @@
 	</game>
 	<game name="ffightmd" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew, Patreon release</comment>
-		<description>Final Fight MD (HB, v0.88b)</description>
+		<description>Final Fight MD (HB, v0.89b)</description>
 		<year>2025</year>
 		<manufacturer>MXRetroDev - CFX</manufacturer>
-		<rom name="Final Fight MD v0.88b (2025)(MXRetroDev - CFX).bin" size="3932160" crc="fa21d81e"/>
+		<rom name="Final Fight MD v0.89b (2025)(MXRetroDev - CFX).bin" size="3932160" crc="ab36a032"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -7698,6 +7736,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="gogopogogirl" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Go! Go! Pogogirl (HB)</description>
+		<year>2025</year>
+		<manufacturer>Space Pants Games</manufacturer>
+		<rom name="Go! Go! Pogogirl (2025)(Space Pants Games).bin" size="2097152" crc="25ada8df"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="gods" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Gods (Euro)</description>
 		<year>1993</year>
@@ -8108,7 +8155,7 @@
 		<description>Gunfight 3 in 1 (Taiwan) (Unl)</description>
 		<year>1998</year>
 		<manufacturer>Gamtec</manufacturer>
-		<rom name="Gunfight 3 in 1 (Taiwan)(Unl)(1998)(Gamtec).bin" size="1048576" crc="e5785d45"/>
+		<rom name="Gunfight 3 in 1 (Taiwan)(Unl)(1998)(Gamtec).bin" size="524288" crc="8fa43256"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -9863,10 +9910,10 @@
 	</game>
 	<game name="knnsf" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Kunio no Nekketsu School Fighters (HB, Beta v.05b)</description>
-		<year>2023</year>
+		<description>Kunio no Nekketsu School Fighters (HB, v1.6)</description>
+		<year>2025</year>
 		<manufacturer>UsagiRu</manufacturer>
-		<rom name="Kunio no Nekketsu School Fighters Beta v.05b (2023)(UsagiRu).bin" size="4194304" crc="1054a215"/>
+		<rom name="Kunio no Nekketsu School Fighters v1.6 (2025)(UsagiRu).bin" size="5767168" crc="3b0db849"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -10205,6 +10252,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="lethalen" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'The Justifier' compatible game</comment>
 		<description>Lethal Enforcers (Euro)</description>
 		<year>1993</year>
 		<manufacturer>Konami</manufacturer>
@@ -10213,6 +10261,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="lethalenj" cloneof="lethalen" romof="lethalen" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'The Justifier' compatible game</comment>
 		<description>Lethal Enforcers (Japan)</description>
 		<year>1993</year>
 		<manufacturer>Konami</manufacturer>
@@ -10221,6 +10270,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="lethalenu" cloneof="lethalen" romof="lethalen" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'The Justifier' compatible game</comment>
 		<description>Lethal Enforcers (USA)</description>
 		<year>1993</year>
 		<manufacturer>Konami</manufacturer>
@@ -10229,6 +10279,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="le2" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'The Justifier' compatible game</comment>
 		<description>Lethal Enforcers II - Gun Fighters (Euro)</description>
 		<year>1994</year>
 		<manufacturer>Konami</manufacturer>
@@ -10237,6 +10288,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="le2u" cloneof="le2" romof="le2" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'The Justifier' compatible game</comment>
 		<description>Lethal Enforcers II - Gun Fighters (USA)</description>
 		<year>1994</year>
 		<manufacturer>Konami</manufacturer>
@@ -11476,6 +11528,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="menacer" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'Menacer' compatible game</comment>
 		<description>Menacer 6-Game Cartridge (Euro, USA)</description>
 		<year>1992</year>
 		<manufacturer>Sega</manufacturer>
@@ -20290,6 +20343,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="t2ag" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'Menacer' compatible game</comment>
 		<description>T2: The Arcade Game (Euro, USA)</description>
 		<year>1992</year>
 		<manufacturer>Acclaim Entertainment</manufacturer>
@@ -20298,6 +20352,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="t2agj" cloneof="t2ag" romof="t2ag" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Lightgun 'Menacer' compatible game</comment>
 		<description>T2: The Arcade Game (Japan)</description>
 		<year>1994</year>
 		<manufacturer>Acclaim Entertainment</manufacturer>
@@ -20306,7 +20361,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="t2agp" cloneof="t2ag" romof="t2ag" sourcefile="megadrive/d_megadrive.cpp">
-		<comment>Prototype</comment>
+		<comment>Prototype, Lightgun 'Menacer' compatible game</comment>
 		<description>T2: The Arcade Game (USA, Prototype)</description>
 		<year>1992</year>
 		<manufacturer>Acclaim Entertainment</manufacturer>

@@ -39,6 +39,66 @@ static struct BurnInputInfo MegadriveInputList[] = {
 
 STDINPUTINFO(Megadrive)
 
+#define A(a, b, c, d) {a, b, (UINT8*)(c), d}
+static struct BurnInputInfo MegadriveMenacerInputList[] = {
+	{"P1 Start",		BIT_DIGITAL,	MegadriveJoy1 +  7, "p1 start"  },
+	{"P1 Up",		BIT_DIGITAL,	MegadriveJoy1 +  0, "p1 up"     },
+	{"P1 Down",		BIT_DIGITAL,	MegadriveJoy1 +  1, "p1 down"   },
+	{"P1 Left",		BIT_DIGITAL,	MegadriveJoy1 +  2, "p1 left"   },
+	{"P1 Right",		BIT_DIGITAL,	MegadriveJoy1 +  3, "p1 right"  },
+	{"P1 Button A",		BIT_DIGITAL,	MegadriveJoy1 +  6, "p1 fire 1" },
+	{"P1 Button B",		BIT_DIGITAL,	MegadriveJoy1 +  4, "p1 fire 2" },
+	{"P1 Button C",		BIT_DIGITAL,	MegadriveJoy1 +  5, "p1 fire 3" },
+	{"P1 Button X",		BIT_DIGITAL,	MegadriveJoy1 + 10, "p1 fire 4" },
+	{"P1 Button Y",		BIT_DIGITAL,	MegadriveJoy1 +  9, "p1 fire 5" },
+	{"P1 Button Z",		BIT_DIGITAL,	MegadriveJoy1 +  8, "p1 fire 6" },
+	{"P1 Mode",		BIT_DIGITAL,	MegadriveJoy1 + 11, "p1 select" },
+
+	{"P2 Start",		BIT_DIGITAL,	MegadriveJoy2 +  7, "p2 start"  },
+	A("P2 Gun X",     	BIT_ANALOG_REL, &MegadriveAnalog[0],"p2 x-axis"),
+	A("P2 Gun Y",     	BIT_ANALOG_REL, &MegadriveAnalog[1],"p2 y-axis"),
+	{"P2 Button A",		BIT_DIGITAL,	MegadriveJoy2 +  6, "p2 fire 1" },
+	{"P2 Button B",		BIT_DIGITAL,	MegadriveJoy2 +  4, "p2 fire 2" },
+	{"P2 Button C",		BIT_DIGITAL,	MegadriveJoy2 +  5, "p2 fire 3" },
+
+	{"Reset",		BIT_DIGITAL,	&MegadriveReset,     "reset"    },
+	{"Dip A",		BIT_DIPSWITCH,	MegadriveDIP  + 0,   "dip"      },
+	{"Dip B",		BIT_DIPSWITCH,	MegadriveDIP  + 1,   "dip"      },
+};
+
+STDINPUTINFO(MegadriveMenacer)
+
+static struct BurnInputInfo MegadriveJustifierInputList[] = {
+	{"P1 Start",		BIT_DIGITAL,	MegadriveJoy1 +  7, "p1 start"  },
+	{"P1 Up",			BIT_DIGITAL,	MegadriveJoy1 +  0, "p1 up"     },
+	{"P1 Down",			BIT_DIGITAL,	MegadriveJoy1 +  1, "p1 down"   },
+	{"P1 Left",			BIT_DIGITAL,	MegadriveJoy1 +  2, "p1 left"   },
+	{"P1 Right",		BIT_DIGITAL,	MegadriveJoy1 +  3, "p1 right"  },
+	{"P1 Button A",		BIT_DIGITAL,	MegadriveJoy1 +  6, "p1 fire 1" },
+	{"P1 Button B",		BIT_DIGITAL,	MegadriveJoy1 +  4, "p1 fire 2" },
+	{"P1 Button C",		BIT_DIGITAL,	MegadriveJoy1 +  5, "p1 fire 3" },
+	{"P1 Button X",		BIT_DIGITAL,	MegadriveJoy1 + 10, "p1 fire 4" },
+	{"P1 Button Y",		BIT_DIGITAL,	MegadriveJoy1 +  9, "p1 fire 5" },
+	{"P1 Button Z",		BIT_DIGITAL,	MegadriveJoy1 +  8, "p1 fire 6" },
+	{"P1 Mode",			BIT_DIGITAL,	MegadriveJoy1 + 11, "p1 select" },
+
+	{"P2 Start",		BIT_DIGITAL,	MegadriveJoy2 +  7, "p2 start"  },
+	A("P2 Gun X",     	BIT_ANALOG_REL, &MegadriveAnalog[0],"p2 x-axis"),
+	A("P2 Gun Y",     	BIT_ANALOG_REL, &MegadriveAnalog[1],"p2 y-axis"),
+	{"P2 Fire",			BIT_DIGITAL,	MegadriveJoy2 +  6, "p2 fire 1" },
+
+	{"P3 Start",		BIT_DIGITAL,	MegadriveJoy3 +  7, "p3 start"  },
+	A("P3 Gun X",     	BIT_ANALOG_REL, &MegadriveAnalog[2],"p3 x-axis"),
+	A("P3 Gun Y",     	BIT_ANALOG_REL, &MegadriveAnalog[3],"p3 y-axis"),
+	{"P3 Fire",			BIT_DIGITAL,	MegadriveJoy3 +  6, "p3 fire 1" },
+
+	{"Reset",			BIT_DIGITAL,	&MegadriveReset,     "reset"    },
+	{"Dip A",			BIT_DIPSWITCH,	MegadriveDIP  + 0,   "dip"      },
+	{"Dip B",			BIT_DIPSWITCH,	MegadriveDIP  + 1,   "dip"      },
+};
+
+STDINPUTINFO(MegadriveJustifier)
+
 static struct BurnInputInfo Megadrive3pInputList[] = {
 	{"P1 Start",		BIT_DIGITAL,	MegadriveJoy1 +  7, "p1 start"  },
 	{"P1 Up",		BIT_DIGITAL,	MegadriveJoy1 +  0, "p1 up"     },
@@ -240,6 +300,48 @@ static struct BurnDIPInfo MegadriveDIPList[] = {
 	{0x1a,	0x01, 0x03, 0x02, "Inner Zoom"        },
 	{0x1a,  0x01, 0x03, 0x03, "Resize Screen/Window"},
 };
+
+static struct BurnDIPInfo MegadriveMenacerDIPList[] = {
+	DIP_OFFSET(0x13)
+	{0x00,	0xff, 0xff,	0x21,  NULL}, // autodetect
+	{0x01,	0xff, 0xff, 0x03,  NULL               },
+
+	{0,	0xfe, 0,       	   5, "Hardware"          },
+	{0x00,	0x01, 0xc1, 0x01, "Auto Detect"       },
+	{0x00,	0x01, 0xc1, 0x00, "Japan NTSC"        },
+	{0x00,	0x01, 0xc1, 0x40, "Japan PAL"         },
+	{0x00,	0x01, 0xc1, 0x80, "USA"               },
+	{0x00,	0x01, 0xc1, 0xc0, "Europe"            },
+
+	{0,	0xfe, 0,       	   4, "32-Col Mode Draw"  },
+	{0x01,	0x01, 0x03, 0x00, "No Change"         },
+	{0x01,	0x01, 0x03, 0x01, "Center"            },
+	{0x01,	0x01, 0x03, 0x02, "Inner Zoom"        },
+	{0x01,  0x01, 0x03, 0x03, "Resize Screen/Window"},
+};
+
+STDDIPINFO(MegadriveMenacer)
+
+static struct BurnDIPInfo MegadriveJustifierDIPList[] = {
+	DIP_OFFSET(0x15)
+	{0x00,	0xff, 0xff,	0x21,  NULL				  }, // autodetect
+	{0x01,	0xff, 0xff, 0x03,  NULL               },
+
+	{0,	0xfe, 0,       	   5, "Hardware"          },
+	{0x00,	0x01, 0xc1, 0x01, "Auto Detect"       },
+	{0x00,	0x01, 0xc1, 0x00, "Japan NTSC"        },
+	{0x00,	0x01, 0xc1, 0x40, "Japan PAL"         },
+	{0x00,	0x01, 0xc1, 0x80, "USA"               },
+	{0x00,	0x01, 0xc1, 0xc0, "Europe"            },
+
+	{0,	0xfe, 0,       	   4, "32-Col Mode Draw"  },
+	{0x01,	0x01, 0x03, 0x00, "No Change"         },
+	{0x01,	0x01, 0x03, 0x01, "Center"            },
+	{0x01,	0x01, 0x03, 0x02, "Inner Zoom"        },
+	{0x01,  0x01, 0x03, 0x03, "Resize Screen/Window"},
+};
+
+STDDIPINFO(MegadriveJustifier)
 
 static struct BurnDIPInfo AutoDetectRegionDIPList[] = {
 	{0x19,	0xff,  0xff,	0x21,   NULL},
@@ -3626,6 +3728,15 @@ struct BurnDriver BurnDrvmd_bluealma = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+static INT32 bodycountInit()
+{
+	INT32 rc = MegadriveInit();
+	if (!rc ) {
+		MegadriveLightGunOffsets(128, 0x14, false);
+	}
+	return rc;
+}
+
 // Body Count (Euro)
 static struct BurnRomInfo md_bodycoRomDesc[] = {
 	{ "Body Count (Euro)(1994)(Sega).bin", 0x100000, 0x3575a030, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -3636,11 +3747,11 @@ STD_ROM_FN(md_bodyco)
 
 struct BurnDriver BurnDrvmd_bodyco = {
 	"md_bodyco", NULL, NULL, NULL, "1994",
-	"Body Count (Euro)\0", NULL, "Sega", "Genesis / Mega Drive",
+	"Body Count (Euro)\0", "Lightgun 'Menacer' compatible game", "Sega", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_bodycoRomInfo, md_bodycoRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadrivePALDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_MENACER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_bodycoRomInfo, md_bodycoRomName, NULL, NULL, NULL, NULL, MegadriveMenacerInputInfo, MegadriveMenacerDIPInfo,
+	bodycountInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -3654,11 +3765,11 @@ STD_ROM_FN(md_bodycob)
 
 struct BurnDriver BurnDrvmd_bodycob = {
 	"md_bodycob", "md_bodyco", NULL, NULL, "1994",
-	"Body Count (Brazil)\0", NULL, "Tec Toy", "Genesis / Mega Drive",
+	"Body Count (Brazil)\0", "Lightgun 'Menacer' compatible game", "Tec Toy", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_bodycobRomInfo, md_bodycobRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_MENACER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_bodycobRomInfo, md_bodycobRomName, NULL, NULL, NULL, NULL, MegadriveMenacerInputInfo, MegadriveMenacerDIPInfo,
+	bodycountInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -3672,11 +3783,11 @@ STD_ROM_FN(md_bodycop2)
 
 struct BurnDriver BurnDrvmd_bodycop2 = {
 	"md_bodycop2", "md_bodyco", NULL, NULL, "1994",
-	"Body Count (USA, Prototype)\0", NULL, "Sega", "Genesis / Mega Drive",
+	"Body Count (USA, Prototype)\0", "Lightgun 'Menacer' compatible game", "Sega", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_PROTOTYPE, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_bodycop2RomInfo, md_bodycop2RomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_PROTOTYPE, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_MENACER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_bodycop2RomInfo, md_bodycop2RomName, NULL, NULL, NULL, NULL, MegadriveMenacerInputInfo, MegadriveMenacerDIPInfo,
+	bodycountInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -14541,6 +14652,15 @@ struct BurnDriver BurnDrvmd_lemming2u = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+static INT32 lethalenInit()
+{
+	INT32 rc = MegadriveInit();
+	if (!rc ) {
+		MegadriveLightGunOffsets(0, 0);
+	}
+	return rc;
+}
+
 // Lethal Enforcers (Euro)
 static struct BurnRomInfo md_lethalenRomDesc[] = {
 	{ "Lethal Enforcers (Euro)(1993)(Konami).bin", 0x200000, 0xca2bf99d, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -14551,11 +14671,11 @@ STD_ROM_FN(md_lethalen)
 
 struct BurnDriver BurnDrvmd_lethalen = {
 	"md_lethalen", NULL, NULL, NULL, "1993",
-	"Lethal Enforcers (Euro)\0", NULL, "Konami", "Genesis / Mega Drive",
+	"Lethal Enforcers (Euro)\0", "Lightgun 'The Justifier' compatible game", "Konami", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_lethalenRomInfo, md_lethalenRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_JUSTIFIER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_lethalenRomInfo, md_lethalenRomName, NULL, NULL, NULL, NULL, MegadriveJustifierInputInfo, MegadriveJustifierDIPInfo,
+	lethalenInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -14569,11 +14689,11 @@ STD_ROM_FN(md_lethalenj)
 
 struct BurnDriver BurnDrvmd_lethalenj = {
 	"md_lethalenj", "md_lethalen", NULL, NULL, "1993",
-	"Lethal Enforcers (Japan)\0", NULL, "Konami", "Genesis / Mega Drive",
+	"Lethal Enforcers (Japan)\0", "Lightgun 'The Justifier' compatible game", "Konami", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_lethalenjRomInfo, md_lethalenjRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_JUSTIFIER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_lethalenjRomInfo, md_lethalenjRomName, NULL, NULL, NULL, NULL, MegadriveJustifierInputInfo, MegadriveJustifierDIPInfo,
+	lethalenInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -14587,13 +14707,22 @@ STD_ROM_FN(md_lethalenu)
 
 struct BurnDriver BurnDrvmd_lethalenu = {
 	"md_lethalenu", "md_lethalen", NULL, NULL, "1993",
-	"Lethal Enforcers (USA)\0", NULL, "Konami", "Genesis / Mega Drive",
+	"Lethal Enforcers (USA)\0", "Lightgun 'The Justifier' compatible game", "Konami", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_lethalenuRomInfo, md_lethalenuRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_JUSTIFIER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_lethalenuRomInfo, md_lethalenuRomName, NULL, NULL, NULL, NULL, MegadriveJustifierInputInfo, MegadriveJustifierDIPInfo,
+	lethalenInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
+
+static INT32 le2Init()
+{
+	INT32 rc = MegadriveInit();
+	if (!rc ) {
+		MegadriveLightGunOffsets(50, 0);
+	}
+	return rc;
+}
 
 // Lethal Enforcers II - Gun Fighters (Euro)
 static struct BurnRomInfo md_le2RomDesc[] = {
@@ -14605,11 +14734,11 @@ STD_ROM_FN(md_le2)
 
 struct BurnDriver BurnDrvmd_le2 = {
 	"md_le2", NULL, NULL, NULL, "1994",
-	"Lethal Enforcers II - Gun Fighters (Euro)\0", NULL, "Konami", "Genesis / Mega Drive",
+	"Lethal Enforcers II - Gun Fighters (Euro)\0", "Lightgun 'The Justifier' compatible game", "Konami", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_le2RomInfo, md_le2RomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_JUSTIFIER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_le2RomInfo, md_le2RomName, NULL, NULL, NULL, NULL, MegadriveJustifierInputInfo, MegadriveJustifierDIPInfo,
+	le2Init, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -14623,11 +14752,11 @@ STD_ROM_FN(md_le2u)
 
 struct BurnDriver BurnDrvmd_le2u = {
 	"md_le2u", "md_le2", NULL, NULL, "1994",
-	"Lethal Enforcers II - Gun Fighters (USA)\0", NULL, "Konami", "Genesis / Mega Drive",
+	"Lethal Enforcers II - Gun Fighters (USA)\0", "Lightgun 'The Justifier' compatible game", "Konami", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_le2uRomInfo, md_le2uRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_JUSTIFIER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_le2uRomInfo, md_le2uRomName, NULL, NULL, NULL, NULL, MegadriveJustifierInputInfo, MegadriveJustifierDIPInfo,
+	le2Init, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -16255,6 +16384,15 @@ struct BurnDriver BurnDrvmd_megatrax = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+static INT32 menacerInit()
+{
+	INT32 rc = MegadriveInit();
+	if (!rc ) {
+		MegadriveLightGunOffsets(156, 0);
+	}
+	return rc;
+}
+
 // Menacer 6-Game Cartridge (Euro, USA)
 static struct BurnRomInfo md_menacerRomDesc[] = {
 	{ "Menacer 6-Game Cartridge (Euro, USA)(1992)(Sega).bin", 0x100000, 0x936b85f7, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -16265,11 +16403,11 @@ STD_ROM_FN(md_menacer)
 
 struct BurnDriver BurnDrvmd_menacer = {
 	"md_menacer", NULL, NULL, NULL, "1992",
-	"Menacer 6-Game Cartridge (Euro, USA)\0", NULL, "Sega", "Genesis / Mega Drive",
+	"Menacer 6-Game Cartridge (Euro, USA)\0", "Lightgun 'Menacer' compatible game", "Sega", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE, GBF_MISC, 0,
-	MegadriveGetZipName, md_menacerRomInfo, md_menacerRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_MENACER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_menacerRomInfo, md_menacerRomName, NULL, NULL, NULL, NULL, MegadriveMenacerInputInfo, MegadriveMenacerDIPInfo,
+	menacerInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -28613,6 +28751,15 @@ struct BurnDriver BurnDrvmd_term2 = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+static INT32 t2agInit()
+{
+	INT32 rc = MegadriveInit();
+	if (!rc ) {
+		MegadriveLightGunOffsets(256, 0x14, false);
+	}
+	return rc;
+}
+
 // T2: The Arcade Game (Euro, USA)
 static struct BurnRomInfo md_t2agRomDesc[] = {
 	{ "T2 - The Arcade Game (Euro, USA)(1992)(Acclaim).bin", 0x100000, 0xa1264f17, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -28623,11 +28770,11 @@ STD_ROM_FN(md_t2ag)
 
 struct BurnDriver BurnDrvmd_t2ag = {
 	"md_t2ag", NULL, NULL, NULL, "1992",
-	"T2: The Arcade Game (Euro, USA)\0", NULL, "Acclaim Entertainment", "Genesis / Mega Drive",
+	"T2: The Arcade Game (Euro, USA)\0", "Lightgun 'Menacer' compatible game", "Acclaim Entertainment", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_t2agRomInfo, md_t2agRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_MENACER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_t2agRomInfo, md_t2agRomName, NULL, NULL, NULL, NULL, MegadriveMenacerInputInfo, MegadriveMenacerDIPInfo,
+	t2agInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -28641,11 +28788,11 @@ STD_ROM_FN(md_t2agp)
 
 struct BurnDriver BurnDrvmd_t2agp = {
 	"md_t2agp", "md_t2ag", NULL, NULL, "1992",
-	"T2: The Arcade Game (USA, Prototype)\0", NULL, "Acclaim Entertainment", "Genesis / Mega Drive",
+	"T2: The Arcade Game (USA, Prototype)\0", "Lightgun 'Menacer' compatible game", "Acclaim Entertainment", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_PROTOTYPE, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
 	MegadriveGetZipName, md_t2agpRomInfo, md_t2agpRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	t2agInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -28659,11 +28806,11 @@ STD_ROM_FN(md_t2agj)
 
 struct BurnDriver BurnDrvmd_t2agj = {
 	"md_t2agj", "md_t2ag", NULL, NULL, "1994",
-	"T2: The Arcade Game (Japan)\0", NULL, "Acclaim Entertainment", "Genesis / Mega Drive",
+	"T2: The Arcade Game (Japan)\0", "Lightgun 'Menacer' compatible game", "Acclaim Entertainment", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
 	MegadriveGetZipName, md_t2agjRomInfo, md_t2agjRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	t2agInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -34797,7 +34944,7 @@ struct BurnDriver BurnDrvmd_gt5 = {
 
 // Gunfight 3 in 1 (Taiwan) (Unl)
 static struct BurnRomInfo md_Gun3in1RomDesc[] = {
-	{ "Gunfight 3 in 1 (Taiwan)(Unl)(1998)(Gamtec).bin", 1048576, 0xe5785d45, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000 },
+	{ "Gunfight 3 in 1 (Taiwan)(Unl)(1998)(Gamtec).bin", 524288, 0x8fa43256, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000 },
 };
 
 STD_ROM_PICK(md_Gun3in1)
@@ -34807,8 +34954,8 @@ struct BurnDriver Burnmd_Gun3in1 = {
 	"md_gun3in1", NULL, NULL, NULL, "1998",
 	"Gunfight 3 in 1 (Taiwan) (Unl)\0", NULL, "Gamtec", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
-	MegadriveGetZipName, md_Gun3in1RomInfo, md_Gun3in1RomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_LIONK3 | HARDWARE_SEGA_MEGADRIVE_LIGHTGUN_JUSTIFIER, GBF_SHOOT, 0,
+	MegadriveGetZipName, md_Gun3in1RomInfo, md_Gun3in1RomName, NULL, NULL, NULL, NULL, MegadriveJustifierInputInfo, MegadriveJustifierDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
@@ -37225,7 +37372,7 @@ struct BurnDriver BurnDrvmd_t3ag = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
 	MegadriveGetZipName, md_t3agRomInfo, md_t3agRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	t2agInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
@@ -38494,27 +38641,45 @@ STD_ROM_PICK(md_cavaleirop)
 STD_ROM_FN(md_cavaleirop)
 
 struct BurnDriver BurnDrvmd_cavaleirop = {
-	"md_cavaleirop", NULL, NULL, NULL, "2025",
+	"md_cavaleirop", "md_cavaleirodcp", NULL, NULL, "2025",
 	"Cavaleiro (HB, Prototype)\0", NULL, "Manganga Team", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_PROTOTYPE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM | GBF_RUNGUN, 0,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_PROTOTYPE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM | GBF_RUNGUN, 0,
 	MegadriveGetZipName, md_cavaleiropRomInfo, md_cavaleiropRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Cave Story Doukutsu (HB, English v0.8.0)
-// https://github.com/andwn/cave-story-md/releases/tag/v0.8.0
+// Cavaleiro: Director's Cut (HB, Prototype)
+static struct BurnRomInfo md_cavaleirodcpRomDesc[] = {
+	{ "Cavaleiro - Director's Cut (Proto)(2025)(Manganga Team).bin", 786432, 0x796ee6a6, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_cavaleirodcp)
+STD_ROM_FN(md_cavaleirodcp)
+
+struct BurnDriver BurnDrvmd_cavaleirodcp = {
+	"md_cavaleirodcp", NULL, NULL, NULL, "2025",
+	"Cavaleiro: Director's Cut (HB, Prototype)\0", NULL, "Manganga Team", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_PROTOTYPE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM | GBF_RUNGUN, 0,
+	MegadriveGetZipName, md_cavaleirodcpRomInfo, md_cavaleirodcpRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Cave Story Doukutsu (HB, English v0.8.8)
+// https://github.com/andwn/cave-story-md/releases/tag/v0.8.8
 static struct BurnRomInfo md_cavestoryRomDesc[] = {
-	{ "Cave Story Doukutsu v0.8.0 (EN)(2022)(Studio Pixel).bin", 0x400000, 0xd476a108, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Cave Story Doukutsu v0.8.8 (EN)(2025)(Studio Pixel).bin", 4194304, 0x4318aa05, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_cavestory)
 STD_ROM_FN(md_cavestory)
 
 struct BurnDriver BurnDrvmd_cavestory = {
-	"md_cavestory", NULL, NULL, NULL, "2022",
-	"Cave Story Doukutsu (HB, English v0.8.0)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
+	"md_cavestory", NULL, NULL, NULL, "2025",
+	"Cave Story Doukutsu (HB, English v0.8.8)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_cavestoryRomInfo, md_cavestoryRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -38522,17 +38687,35 @@ struct BurnDriver BurnDrvmd_cavestory = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Cave Story Doukutsu (HB, Spanish v0.8.0)
+// Cave Story Doukutsu (HB, Brazilian Portuguese v0.8.8)
+static struct BurnRomInfo md_cavestorybRomDesc[] = {
+	{ "Cave Story Doukutsu v0.8.8 (BR)(2025)(Studio Pixel).bin", 4194304, 0x3c40f1bf, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_cavestoryb)
+STD_ROM_FN(md_cavestoryb)
+
+struct BurnDriver BurnDrvmd_cavestoryb = {
+	"md_cavestoryb", "md_cavestory", NULL, NULL, "2025",
+	"Cave Story Doukutsu (HB, Brazilian Portuguese v0.8.8)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_cavestorybRomInfo, md_cavestorybRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Cave Story Doukutsu (HB, Spanish v0.8.8)
 static struct BurnRomInfo md_cavestorysRomDesc[] = {
-	{ "Cave Story Doukutsu v0.8.0 (ES)(2022)(Studio Pixel).bin", 0x400000, 0x06405697, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Cave Story Doukutsu v0.8.8 (ES)(2025)(Studio Pixel).bin", 4194304, 0x5c2e57ee, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_cavestorys)
 STD_ROM_FN(md_cavestorys)
 
 struct BurnDriver BurnDrvmd_cavestorys = {
-	"md_cavestorys", "md_cavestory", NULL, NULL, "2022",
-	"Cave Story Doukutsu (HB, Spanish v0.8.0)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
+	"md_cavestorys", "md_cavestory", NULL, NULL, "2025",
+	"Cave Story Doukutsu (HB, Spanish v0.8.8)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_cavestorysRomInfo, md_cavestorysRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -38540,17 +38723,35 @@ struct BurnDriver BurnDrvmd_cavestorys = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Cave Story Doukutsu (HB, Italian v0.8.0)
+// Cave Story Doukutsu (HB, French v0.8.8)
+static struct BurnRomInfo md_cavestoryfRomDesc[] = {
+	{ "Cave Story Doukutsu v0.8.8 (FR)(2025)(Studio Pixel).bin", 4194304, 0x6a9c8fae, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_cavestoryf)
+STD_ROM_FN(md_cavestoryf)
+
+struct BurnDriver BurnDrvmd_cavestoryf = {
+	"md_cavestoryf", "md_cavestory", NULL, NULL, "2025",
+	"Cave Story Doukutsu (HB, French v0.8.8)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_cavestoryfRomInfo, md_cavestoryfRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Cave Story Doukutsu (HB, Italian v0.8.8)
 static struct BurnRomInfo md_cavestoryiRomDesc[] = {
-	{ "Cave Story Doukutsu v0.8.0 (IT)(2022)(Studio Pixel).bin", 0x400000, 0x8ec855f9, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Cave Story Doukutsu v0.8.8 (IT)(2025)(Studio Pixel).bin", 4194304, 0xb1db86f5, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_cavestoryi)
 STD_ROM_FN(md_cavestoryi)
 
 struct BurnDriver BurnDrvmd_cavestoryi = {
-	"md_cavestoryi", "md_cavestory", NULL, NULL, "2022",
-	"Cave Story Doukutsu (HB, Italian v0.8.0)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
+	"md_cavestoryi", "md_cavestory", NULL, NULL, "2025",
+	"Cave Story Doukutsu (HB, Italian v0.8.8)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_cavestoryiRomInfo, md_cavestoryiRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -38558,17 +38759,17 @@ struct BurnDriver BurnDrvmd_cavestoryi = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Cave Story Doukutsu (HB, Japanese v0.8.0)
+// Cave Story Doukutsu (HB, Japanese v0.8.8)
 static struct BurnRomInfo md_cavestoryjRomDesc[] = {
-	{ "Cave Story Doukutsu v0.8.0 (JP)(2022)(Studio Pixel).bin", 0x400000, 0x21acbe48, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Cave Story Doukutsu v0.8.8 (JP)(2025)(Studio Pixel).bin", 4194304, 0xbaa38769, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_cavestoryj)
 STD_ROM_FN(md_cavestoryj)
 
 struct BurnDriver BurnDrvmd_cavestoryj = {
-	"md_cavestoryj", "md_cavestory", NULL, NULL, "2022",
-	"Cave Story Doukutsu (HB, Japanese v0.8.0)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
+	"md_cavestoryj", "md_cavestory", NULL, NULL, "2025",
+	"Cave Story Doukutsu (HB, Japanese v0.8.8)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_cavestoryjRomInfo, md_cavestoryjRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -38576,17 +38777,35 @@ struct BurnDriver BurnDrvmd_cavestoryj = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Cave Story Doukutsu (HB, Chinese v0.8.0)
+// Cave Story Doukutsu (HB, European Portuguese v0.8.8)
+static struct BurnRomInfo md_cavestorypRomDesc[] = {
+	{ "Cave Story Doukutsu v0.8.8 (PT)(2025)(Studio Pixel).bin", 4194304, 0xa57002ef, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_cavestoryp)
+STD_ROM_FN(md_cavestoryp)
+
+struct BurnDriver BurnDrvmd_cavestoryp = {
+	"md_cavestoryp", "md_cavestory", NULL, NULL, "2025",
+	"Cave Story Doukutsu (HB, European Portuguese v0.8.8)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_cavestorypRomInfo, md_cavestorypRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Cave Story Doukutsu (HB, Chinese v0.8.8)
 static struct BurnRomInfo md_doukutsucRomDesc[] = {
-	{ "Cave Story Doukutsu v0.8.0 (ZH)(2022)(Studio Pixel).bin", 0x400000, 0x0c1517fc, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Cave Story Doukutsu v0.8.8 (ZH)(2025)(Studio Pixel).bin", 4194304, 0xa342ab5e, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_doukutsuc)
 STD_ROM_FN(md_doukutsuc)
 
 struct BurnDriver BurnDrvmd_doukutsuc = {
-	"md_cavestoryc", "md_cavestory", NULL, NULL, "2022",
-	"Cave Story Doukutsu (HB, Chinese v0.8.0)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
+	"md_cavestoryc", "md_cavestory", NULL, NULL, "2025",
+	"Cave Story Doukutsu (HB, Chinese v0.8.8)\0", NULL, "Studio Pixel", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_doukutsucRomInfo, md_doukutsucRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -39026,9 +39245,9 @@ struct BurnDriver BurnDrvmd_doroppu = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Earthion (HB, English)
+// Earthion (HB, English v3.3.0)
 static struct BurnRomInfo md_earthioneRomDesc[] = {
-	{ "Earthion v2.0.1 (English)(2025)(Ancient).bin", 7864320, 0x47d6ac2c, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Earthion v3.3.0 (English)(2025)(Ancient).bin", 7340032, 0xae5f1fb1, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_earthione)
@@ -39036,7 +39255,7 @@ STD_ROM_FN(md_earthione)
 
 struct BurnDriver BurnDrvmd_earthione = {
 	"md_earthione", NULL, NULL, NULL, "2025",
-	"Earthion (HB, English v2.0.1)\0", NULL, "Ancient", "Genesis / Mega Drive",
+	"Earthion (HB, English v3.3.0)\0", NULL, "Ancient", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SSF2 | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_HORSHOOT, 0,
 	MegadriveGetZipName, md_earthioneRomInfo, md_earthioneRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -39064,7 +39283,7 @@ struct BurnDriver BurnDrvmd_earthionep = {
 
 // Earthion - Fall 2024 Demo (HB)
 static struct BurnRomInfo md_earthionfdRomDesc[] = {
-	{ "Earthion - Fall 2024 Demo (2024)(Ancient).bin", 6946816, 0x13b8a4a3, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Earthion - Fall 2024 Demo (2024)(Ancient).bin", 6946816, 0xf3e4f17e, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_earthionfd)
@@ -39080,9 +39299,9 @@ struct BurnDriver BurnDrvmd_earthionfd = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Earthion (HB, Japanese)
+// Earthion (HB, Japanese v3.3.0)
 static struct BurnRomInfo md_earthionjRomDesc[] = {
-	{ "Earthion v2.0.1 (Japanese)(2025)(Ancient).bin", 7864320, 0x7f751480, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Earthion v3.3.0 (Japanese)(2025)(Ancient).bin", 7340032, 0x65ebc8e0, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_earthionj)
@@ -39090,7 +39309,7 @@ STD_ROM_FN(md_earthionj)
 
 struct BurnDriver BurnDrvmd_earthionj = {
 	"md_earthionj", "md_earthione", NULL, NULL, "2025",
-	"Earthion (HB, Japanese v2.0.1)\0", NULL, "Ancient", "Genesis / Mega Drive",
+	"Earthion (HB, Japanese v3.3.0)\0", NULL, "Ancient", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SSF2 | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_HORSHOOT, 0,
 	MegadriveGetZipName, md_earthionjRomInfo, md_earthionjRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -39098,9 +39317,9 @@ struct BurnDriver BurnDrvmd_earthionj = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Earthion (HB, Portuguese)
+// Earthion (HB, Portuguese v3.3.0)
 static struct BurnRomInfo md_earthionpRomDesc[] = {
-	{ "Earthion v2.0.1 (Portuguese)(2025)(Ancient).bin", 7864320, 0xa087dfd7, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Earthion v3.3.0 (Portuguese)(2025)(Ancient).bin", 7340032, 0xf44386a4, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_earthionp)
@@ -39108,7 +39327,7 @@ STD_ROM_FN(md_earthionp)
 
 struct BurnDriver BurnDrvmd_earthionp = {
 	"md_earthionp", "md_earthione", NULL, NULL, "2025",
-	"Earthion (HB, Portuguese v2.0.1)\0", NULL, "Ancient", "Genesis / Mega Drive",
+	"Earthion (HB, Portuguese v3.3.0)\0", NULL, "Ancient", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SSF2 | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_HORSHOOT, 0,
 	MegadriveGetZipName, md_earthionpRomInfo, md_earthionpRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -39118,7 +39337,7 @@ struct BurnDriver BurnDrvmd_earthionp = {
 
 // Earthion - Summer 2024 Demo (HB)
 static struct BurnRomInfo md_earthionsdRomDesc[] = {
-	{ "Earthion - Summer 2024 Demo (2024)(Ancient).bin", 6946816, 0xc6461075, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Earthion - Summer 2024 Demo (2024)(Ancient).bin", 6946816, 0x261a45a8, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_earthionsd)
@@ -39136,7 +39355,7 @@ struct BurnDriver BurnDrvmd_earthionsd = {
 
 // Earthion - Winter 2024 Demo (HB)
 static struct BurnRomInfo md_earthionwdRomDesc[] = {
-	{ "Earthion - Winter 2024 Demo (2024)(Ancient).bin", 7602176, 0x36838b4b, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Earthion - Winter 2024 Demo (2024)(Ancient).bin", 7602176, 0xa9b237f9, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_earthionwd)
@@ -39314,9 +39533,9 @@ struct BurnDriver BurnDrvmd_fightveng = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Final Fight MD (HB, v0.87b)
+// Final Fight MD (HB, v0.89b)
 static struct BurnRomInfo md_ffightmdRomDesc[] = {
-	{ "Final Fight MD v0.88b (2025)(MXRetroDev - CFX).bin", 3932160, 0xfa21d81e, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Final Fight MD v0.89b (2025)(MXRetroDev - CFX).bin", 3932160, 0xab36a032, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_ffightmd)
@@ -39324,7 +39543,7 @@ STD_ROM_FN(md_ffightmd)
 
 struct BurnDriver BurnDrvmd_ffightmd = {
 	"md_ffightmd", NULL, NULL, NULL, "2025",
-	"Final Fight MD (HB, v0.88b)\0", "Patreon release", "MXRetroDev - CFX", "Genesis / Mega Drive",
+	"Final Fight MD (HB, v0.89b)\0", "Patreon release", "MXRetroDev - CFX", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SCRFIGHT, 0,
 	MegadriveGetZipName, md_ffightmdRomInfo, md_ffightmdRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -39437,6 +39656,25 @@ struct BurnDriver BurnDrvmd_gluf = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM | GBF_PUZZLE, 0,
 	MegadriveGetZipName, md_glufRomInfo, md_glufRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+
+// Go! Go! Pogogirl (HB)
+static struct BurnRomInfo md_gogopogogirlRomDesc[] = {
+	{ "Go! Go! Pogogirl (2025)(Space Pants Games).bin", 2097152, 0x25ada8df, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_gogopogogirl)
+STD_ROM_FN(md_gogopogogirl)
+
+struct BurnDriver BurnDrvmd_gogopogogirl = {
+	"md_gogopogogirl", NULL, NULL, NULL, "2025",
+	"Go! Go! Pogogirl (HB)\0", NULL, "Space Pants Games", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_gogopogogirlRomInfo, md_gogopogogirlRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
@@ -39712,20 +39950,20 @@ struct BurnDriver BurnDrvmd_jtoblivion = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Kunio no Nekketsu School Fighters Beta (HB, Beta v.05b)
+// Kunio no Nekketsu School Fighters Beta (HB, v1.6)
 // https://usagiru-orochi.itch.io/kunio-no-nekketsu-school-fighters
 static struct BurnRomInfo md_knnsfRomDesc[] = {
-	{ "Kunio no Nekketsu School Fighters Beta v.05b (2023)(UsagiRu).bin", 4194304, 0x1054a215, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Kunio no Nekketsu School Fighters v1.6 (2025)(UsagiRu).bin", 5767168, 0x3b0db849, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_knnsf)
 STD_ROM_FN(md_knnsf)
 
 struct BurnDriver BurnDrvmd_knnsf = {
-	"md_knnsf", NULL, NULL, NULL, "2023",
-	"Kunio no Nekketsu School Fighters (HB, Beta v.05b)\0", NULL, "UsagiRu", "Genesis / Mega Drive",
+	"md_knnsf", NULL, NULL, NULL, "2025",
+	"Kunio no Nekketsu School Fighters (HB, v1.6)\0", NULL, "UsagiRu", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_VSFIGHT, 0,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SSF2, GBF_VSFIGHT, 0,
 	MegadriveGetZipName, md_knnsfRomInfo, md_knnsfRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
@@ -50505,7 +50743,7 @@ struct BurnDriver BurnDrvmd_t2ags = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SHOOT, 0,
 	MegadriveGetZipName, md_t2agsRomInfo, md_t2agsRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
-	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	t2agInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
