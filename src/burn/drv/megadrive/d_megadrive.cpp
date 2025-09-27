@@ -38397,6 +38397,25 @@ struct BurnDriver BurnDrvmd_bigfd = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Black Jewel Reborn (HB, Demo v2.11)
+// https://pscdgames.itch.io/black-jewel-reborn
+static struct BurnRomInfo md_bjreborndemoRomDesc[] = {
+	{ "Black Jewel Reborn v2.11 (2022)(PSCD Games).bin", 3407872, 0x0adee51c, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_bjreborndemo)
+STD_ROM_FN(md_bjreborndemo)
+
+struct BurnDriver BurnDrvmd_bjreborndemo = {
+	"md_bjreborndemo", NULL, NULL, NULL, "2022",
+	"Black Jewel Reborn (HB, Demo v2.11)\0", NULL, "PSCD Games", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_bjreborndemoRomInfo, md_bjreborndemoRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Block'em Sock'em (HB)
 static struct BurnRomInfo md_blkemsckemRomDesc[] = {
 	{ "Block'em Sock'em (2022)(2nd Dimension).bin", 237312, 0x2f1a1655, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -39241,6 +39260,24 @@ struct BurnDriver BurnDrvmd_doroppu = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_PUZZLE, 0,
 	MegadriveGetZipName, md_doroppuRomInfo, md_doroppuRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Driftin Rage - Alpha Version (HB)
+static struct BurnRomInfo md_driftinrageRomDesc[] = {
+	{ "Driftin Rage - Alpha Version v0.01a (HB).bin", 2621440, 0x7319f173, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_driftinrage)
+STD_ROM_FN(md_driftinrage)
+
+struct BurnDriver BurnDrvmd_driftinrage = {
+	"md_driftinrage", NULL, NULL, NULL, "2025",
+	"Driftin Rage - Alpha Version v0.01a (HB)\0", NULL, "MXRETRODEV", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_RACING, 0,
+	MegadriveGetZipName, md_driftinrageRomInfo, md_driftinrageRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
@@ -45895,6 +45932,25 @@ struct BurnDriver BurnDrvmd_nadiapt = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Paprium (Unlocked) (World) (HB, Hack)
+// https://archive.org/details/paprium-custom-ver.-7z
+static struct BurnRomInfo md_papriumunlckRomDesc[] = {
+	{ "Paprium (unlocked)(World)(2025)(knightofthewind89).bin", 8388608, 0x868dd234, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_papriumunlck)
+STD_ROM_FN(md_papriumunlck)
+
+struct BurnDriver BurnDrvmd_papriumunlck = {
+	"md_papriumunlck", "md_paprium", NULL, "paprium", "2025",
+	"Paprium (Unlocked) (World) (HB, Hack)\0", "NB: at first boot hit 'reset' after selecting language.", "knightofthewind89", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW | BDF_HACK, 3, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_FOURWAYPLAY, GBF_SCRFIGHT, 0,
+	MegadriveGetZipName, md_papriumunlckRomInfo, md_papriumunlckRomName, NULL, NULL, PapriumSampleInfo, PapriumSampleName, Megadrive3pInputInfo, MegadrivePapriumDIPInfo,
+	MegadriveInitPaprium, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Phantasy Star: O Fim do Milenio (Hack, Portuguese v1.0a)
 // https://www.romhacking.net/translations/6276/
 static struct BurnRomInfo md_pstar4ptRomDesc[] = {
@@ -51484,6 +51540,24 @@ struct BurnDriver BurnDrvmd_toystorys = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM, 0,
 	MegadriveGetZipName, md_toystorysRomInfo, md_toystorysRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Traysia (Hack, Spanish)
+static struct BurnRomInfo md_traysiasRomDesc[] = {
+	{ "Traysia T-Spa (2025)(Team Alacant).bin", 0x200000, 0xf9170727, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_traysias)
+STD_ROM_FN(md_traysias)
+
+struct BurnDriver BurnDrvmd_traysias = {
+	"md_traysias", "md_traysia", NULL, NULL, "2025",
+	"Traysia (Hack, Spanish)\0", NULL, "Team Alacant", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_PCB_SEGA_SRAM, GBF_RPG, 0,
+	MegadriveGetZipName, md_traysiasRomInfo, md_traysiasRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
