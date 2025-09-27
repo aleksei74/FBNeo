@@ -70,7 +70,7 @@ static const char g_version[] = "3.32";
 /* ============================= CONFIGURATION ============================ */
 /* ======================================================================== */
 
-#define M68K_MAX_PATH 1024
+#define M68K_MAX_PATH 1033
 #define M68K_MAX_DIR  1024
 
 #define MAX_LINE_LENGTH                 200	/* length of 1 line */

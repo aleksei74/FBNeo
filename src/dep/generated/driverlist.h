@@ -48200,7 +48200,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvLeaguemn,			// Yakyuu Kakutou League-Man (Japan, set 1)
 	&BurnDrvleaguemna,			// Yakyuu Kakutou League-Man (Japan, set 2)
 	&BurnDrvLeaguemk,			// Yakyuu Kakutou League-Man (Korean Translation)
-	&BurnDrvMSX_yakyukyo,		// Yakyuu Kyo - Baseball Craze (Japan)
+	&BurnDrvMSX_yakyukyo,		// Yakyuu Kyo ~ Baseball Craze (Japan)
 	&BurnDrvsg1k_yamato,		// Yamato (Euro, Japan)
 	&BurnDrvsg1k_yamatoa,		// Yamato (Euro, Japan, Alt)
 	&BurnDrvYamato,				// Yamato (set 1)
