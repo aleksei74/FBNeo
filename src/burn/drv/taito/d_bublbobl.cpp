@@ -3120,7 +3120,7 @@ struct BurnDriver BurnDrvSboblbobl = {
 	"Super Bobble Bobble (bootleg, set 1)\0", NULL, "bootleg (Datsu)", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, SboblboblRomInfo, SboblboblRomName, NULL, NULL, NULL, NULL, BoblboblInputInfo, BoblboblDIPInfo,
+	NULL, SboblboblRomInfo, SboblboblRomName, NULL, NULL, NULL, NULL, BoblboblInputInfo, SboblbobDIPInfo,
 	SboblboblInit, BublboblExit, DrvFrame, DrvDraw, DrvScan,
 	NULL, 0x100, 256, 224, 4, 3
 };
@@ -3130,7 +3130,7 @@ struct BurnDriver BurnDrvSboblbobla = {
 	"Super Bobble Bobble (bootleg, set 2)\0", NULL, "bootleg", "Taito Misc",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
-	NULL, SboblboblaRomInfo, SboblboblaRomName, NULL, NULL, NULL, NULL, BoblboblInputInfo, BoblboblDIPInfo,
+	NULL, SboblboblaRomInfo, SboblboblaRomName, NULL, NULL, NULL, NULL, BoblboblInputInfo, SboblbobDIPInfo,
 	BoblboblInit, BublboblExit, DrvFrame, DrvDraw, DrvScan,
 	NULL, 0x100, 256, 224, 4, 3
 };
