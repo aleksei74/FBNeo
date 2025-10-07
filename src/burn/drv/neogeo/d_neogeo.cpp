@@ -30108,6 +30108,42 @@ struct BurnDriver BurnDrvSamSho3uh = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Samurai Shodown III / Samurai Spirits - Zankurou Musouken (Korean Translation)
+
+static struct BurnRomInfo samsho3kRomDesc[] = {
+	{ "087-pg1k.p1",  0x100000, 0x30b19c5e, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ mask rom TC538200
+	{ "087-p2k.sp2",  0x200000, 0x5e8fe064, 1 | BRF_ESS | BRF_PRG }, //  1 					/ mask rom TC5316200
+
+	{ "087-s1k.s1",   0x020000, 0x08349f05, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "087-c1k.c1",   0x400000, 0x4a1a4633, 3 | BRF_GRA },           //  3 Sprite data		/ TC5332202
+	{ "087-c2k.c2",   0x400000, 0x3ec7e955, 3 | BRF_GRA },           //  4 					/ TC5332202
+	{ "087-c3.c3",    0x400000, 0x8b793796, 3 | BRF_GRA },           //  5 					/ TC5332202
+	{ "087-c4.c4",    0x400000, 0x728fbf11, 3 | BRF_GRA },           //  6 					/ TC5332202
+	{ "087-c5k.c5",   0x400000, 0xdf64814c, 3 | BRF_GRA },           //  7 					/ TC5332202
+	{ "087-c6k.c6",   0x400000, 0x86298019, 3 | BRF_GRA },           //  8 					/ TC5332202
+	{ "087-c7k.c7",   0x100000, 0x6fbc7ad6, 3 | BRF_GRA },           //  9 					/ TC538200
+	{ "087-c8k.c8",   0x100000, 0x35a3ef93, 3 | BRF_GRA },           // 10 					/ TC538200
+
+	{ "087-m1.m1",    0x020000, 0x8e6440eb, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/ TC531001
+
+	{ "087-v1.v1",    0x400000, 0x84bdd9a0, 5 | BRF_SND },           // 12 Sound data		/ TC5332201
+	{ "087-v2.v2",    0x200000, 0xac0f261a, 5 | BRF_SND },           // 13					/ TC5316200
+};
+
+STDROMPICKEXT(samsho3k, samsho3k, neogeo)
+STD_ROM_FN(samsho3k)
+
+struct BurnDriver BurnDrvSamSho3k = {
+	"samsho3k", "samsho3", "neogeo", NULL, "2025",
+	"Samurai Shodown III / Samurai Spirits - Zankurou Musouken (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Samurai Shodown III / Samurai Spirits - Zankurou Musouken (Korean Translation)\0\uC0AC\uBB34\uB77C\uC774 \uC1FC\uB2E4\uC6B4 / \uC0AC\uBB34\uB77C\uC774 \uC2A4\uD53C\uB9AC\uCE20 - \uC794\uCFE0\uB85C \uBB34\uC30D\uAC80 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samsho3kRomInfo, samsho3kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (AES Uncensored Hack)
 
 static struct BurnRomInfo aof3uhRomDesc[] = {
