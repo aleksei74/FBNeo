@@ -202,7 +202,6 @@ DRV		BurnDrvsnes_7thsagardx;
 DRV		BurnSpec8chs;
 DRV		BurnDrvnes_8eyestp;
 DRV		BurnDrvnes_8eyesj;
-DRV		BurnDrvnes_8eyestp;
 DRV		BurnDrvnes_8eyes;
 DRV		BurnDrvnes_8bitpics;
 DRV		BurnDrvnes_8bitmusic;
@@ -9637,7 +9636,6 @@ DRV		BurnDrvnes_ikeikenekhocbuttc;
 DRV		BurnDrvnes_ikeikenekhocbu;
 DRV		BurnDrvIkki;
 DRV		BurnDrvnes_ikki;
-DRV		BurnSpecNomarosa;
 DRV		BurnDrvsnes_Illusionofgaia;
 DRV		BurnDrvsnes_Illusionoftime;
 DRV		BurnDrvsnes_Illusionoftimef;
@@ -17789,6 +17787,8 @@ DRV		BurnDrvSengoku3;
 DRV		BurnDrvSengoku3a;
 DRV		BurnDrvSngkace;
 DRV		BurnDrvSngkacea;
+DRV		BurnDrvSngkAcek;
+DRV		BurnDrvTengaik;
 DRV		BurnDrvTengaij;
 DRV		BurnDrvsnes_Sengokute;
 DRV		BurnDrvsnes_Sengokuj;
@@ -34153,7 +34153,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_ikeikenekhocbu,	// Ike Ike! Nekketsu Hockey-bu: Subette Koronde Dairantou (Japan)
 	&BurnDrvIkki,				// Ikki (Japan)
 	&BurnDrvnes_ikki,			// Ikki (Japan)
-	&BurnSpecNomarosa,			// Il Noma Della Rosa (48K) (Hack, English)
 	&BurnDrvsnes_Illusionofgaia,// Illusion of Gaia (USA)
 	&BurnDrvsnes_Illusionoftime,// Illusion of Time (Euro, English)
 	&BurnDrvsnes_Illusionoftimef,// Illusion of Time (Euro, French)
@@ -42305,6 +42304,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSengoku3a,			// Sengoku 3 / Sengoku Densho 2001 (set 2)
 	&BurnDrvSngkace,			// Sengoku Ace (Japan, set 1)
 	&BurnDrvSngkacea,			// Sengoku Ace (Japan, set 2)
+	&BurnDrvSngkAcek,			// Sengoku Ace (Korean Translation)
+	&BurnDrvTengaik,			// Sengoku Blade - Sengoku Ace episode II (Korean Translation)
 	&BurnDrvTengaij,			// Sengoku Blade: Sengoku Ace Episode II (Japan) / Tengai (World)
 	&BurnDrvsnes_Sengokute,		// Sengoku Denshou (Hack, English)
 	&BurnDrvsnes_Sengokuj,		// Sengoku Denshou (Japan)
@@ -49235,7 +49236,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_8chs", "spectrum/d_spectrum.cpp"},
 	{ "nes_8eyestp", "nes/d_nes.cpp"},
 	{ "nes_8eyesj", "nes/d_nes.cpp"},
-	{ "nes_8eyestp", "nes/d_nes.cpp"},
 	{ "nes_8eyes", "nes/d_nes.cpp"},
 	{ "nes_8bitpics", "nes/d_nes.cpp"},
 	{ "nes_8bitmusic", "nes/d_nes.cpp"},
@@ -58604,7 +58604,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_ikeikenekhocbu", "nes/d_nes.cpp"},
 	{ "ikki", "pre90s/d_markham.cpp"},
 	{ "nes_ikki", "nes/d_nes.cpp"},
-	{ "spec_nomarosa", "spectrum/d_spectrum.cpp"},
 	{ "snes_illusionofgaia", "snes/d_snes.cpp"},
 	{ "snes_illusionoftime", "snes/d_snes.cpp"},
 	{ "snes_illusionoftimef", "snes/d_snes.cpp"},
