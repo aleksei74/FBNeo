@@ -29759,7 +29759,7 @@ struct BurnDriver BurnDrvTophntrk = {
 // Fatal Fury 2 / Garou Densetsu 2 - Arata-naru Tatakai (Korean Translation)
 
 static struct BurnRomInfo fatfury2kRomDesc[] = {
-	{ "047-p1k.p1",   0x100000, 0xad9064bf, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
+	{ "047-p1k.p1",   0x100000, 0xffac695f, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
 
 	{ "047-s1k.s1",   0x020000, 0xf0aa564e, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
 
