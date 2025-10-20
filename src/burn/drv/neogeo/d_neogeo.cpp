@@ -29589,6 +29589,36 @@ struct BurnDriver BurnDrvMaglordk = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Crossed Swords (Korean Translation)
+
+static struct BurnRomInfo crswordkRomDesc[] = {
+	{ "037-p1k.p1",   0x080000, 0xdb719dd7, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
+
+	{ "037-s1k.s1",   0x020000, 0x8cad9cdf, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "037-c1k.c1",   0x100000, 0x5a1a7f9d, 3 | BRF_GRA },           //  2 Sprite data 		/ TC538200
+	{ "037-c2k.c2",   0x100000, 0x9895b472, 3 | BRF_GRA },           //  3 					/ TC538200
+	{ "037-c3k.c3",   0x100000, 0x2c2033f2, 3 | BRF_GRA },           //  4 					/ TC538200
+	{ "037-c4k.c4",   0x100000, 0x944a60d3, 3 | BRF_GRA },           //  5 					/ TC538200
+
+	{ "037-m1.m1",    0x020000, 0x9504b2c6, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code 		/ TC531001
+
+	{ "037-v1.v1",    0x100000, 0x61fedf65, 5 | BRF_SND },           //  7 Sound data 		/ TC538200
+};
+
+STDROMPICKEXT(crswordk, crswordk, neogeo)
+STD_ROM_FN(crswordk)
+
+struct BurnDriver BurnDrvCrswordk = {
+	"crswordk", "crsword", "neogeo", NULL, "2025",
+	"Crossed Swords (Korean Translation)\0", NULL, "Alpha Denshi Co.", "Neo Geo MVS",
+	L"Crossed Swords (Korean Translation)\0\uD06C\uB85C\uC2A4\uB4DC \uC18C\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
+	NULL, crswordkRomInfo, crswordkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Art of Fighting (Korean Translation)
 
 static struct BurnRomInfo aofkRomDesc[] = {
@@ -29723,6 +29753,37 @@ struct BurnDriver BurnDrvTophntrk = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
 	NULL, tophuntrkRomInfo, tophuntrkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
+// Fatal Fury 2 / Garou Densetsu 2 - Arata-naru Tatakai (Korean Translation)
+
+static struct BurnRomInfo fatfury2kRomDesc[] = {
+	{ "047-p1k.p1",   0x100000, 0xad9064bf, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
+
+	{ "047-s1k.s1",   0x020000, 0xf0aa564e, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "047-c1k.c1",   0x200000, 0x0f094b3d, 3 | BRF_GRA },           //  2 Sprite data 		/ TC5316200
+	{ "047-c2k.c2",   0x200000, 0xb13091a7, 3 | BRF_GRA },           //  3 					/ TC5316200
+	{ "047-c3.c3",    0x200000, 0x01e00738, 3 | BRF_GRA },           //  4 					/ TC5316200
+	{ "047-c4.c4",    0x200000, 0x9fe27432, 3 | BRF_GRA },           //  5 					/ TC5316200
+
+	{ "047-m1.m1",    0x020000, 0x820b0ba7, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code 		/ TC531001
+
+	{ "047-v1.v1",    0x200000, 0xd9d00784, 5 | BRF_SND },           //  7 Sound data 		/ TC5316200
+	{ "047-v2.v2",    0x200000, 0x2c9a4b33, 5 | BRF_SND },           //  8 					/ TC5316200
+};
+
+STDROMPICKEXT(fatfury2k, fatfury2k, neogeo)
+STD_ROM_FN(fatfury2k)
+
+struct BurnDriver BurnDrvFatfury2k = {
+	"fatfury2k", "fatfury2", "neogeo", NULL, "2025",
+	"Fatal Fury 2 / Garou Densetsu 2 - Arata-naru Tatakai (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Fatal Fury 2\0\u9913\u72FC\u4F1D\u8AAC\uFF12 - \u65B0\u305F\u306A\u308B\u95D8 (Korean Translation)\0\uD398\uC774\uD138 \uD4E8\uB9AC 2 / \uC544\uB791\uC804\uC124 2 - \uC0C8\uB85C\uC6B4 \uC2F8\uC6C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPC, GBF_VSFIGHT, FBF_FATFURY,
+	NULL, fatfury2kRomInfo, fatfury2kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	fatfury2Init, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
 };
 
@@ -30031,7 +30092,7 @@ struct BurnDriver BurnDrvStrhoopk = {
 	"Street Hoop / Street Slam / Dunk Dream (Korean Translation)\0", NULL, "Data East Corporation", "Neo Geo MVS",
 	L"Street Hoop / Street Slam / Dunk Dream (Korean Translation)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD6C4\uD504 / \uC2A4\uD2B8\uB9AC\uD2B8 \uC2AC\uB7A8 / \uB369\uD06C \uB4DC\uB9BC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SPORTSMISC, 0,
-	NULL, strhoopkRomInfo, strhoopkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NULL, strhoopkRomInfo, strhoopkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };

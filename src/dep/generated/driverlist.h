@@ -4399,6 +4399,7 @@ DRV		BurnDrvsg1k_crosstrex;
 DRV		BurnDrvpce_xwiber;
 DRV		BurnDrvCrossbow;
 DRV		BurnDrvCrsword;
+DRV		BurnDrvCrswordk;
 DRV		BurnDrvCrswd2bl;
 DRV		BurnSpeccrosswize;
 DRV		BurnDrvCphd;
@@ -6878,6 +6879,7 @@ DRV		BurnDrvsnes_Fatalfury2;
 DRV		BurnDrvmd_fatfury2;
 DRV		BurnDrvmd_fatfury2ec;
 DRV		BurnDrvFfury2es;
+DRV		BurnDrvFatfury2k;
 DRV		BurnDrvFatfury2;
 DRV		BurnDrvFatfury2a;
 DRV		BurnDrvFfury3eh;
@@ -17787,7 +17789,7 @@ DRV		BurnDrvSengoku3;
 DRV		BurnDrvSengoku3a;
 DRV		BurnDrvSngkace;
 DRV		BurnDrvSngkacea;
-DRV		BurnDrvSngkAcek;
+DRV		BurnDrvSngkacek;
 DRV		BurnDrvTengaik;
 DRV		BurnDrvTengaij;
 DRV		BurnDrvsnes_Sengokute;
@@ -28916,6 +28918,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvpce_xwiber,			// Cross Wiber: Cyber Combat Police (Japan)
 	&BurnDrvCrossbow,			// Crossbow (version 2.0)
 	&BurnDrvCrsword,			// Crossed Swords (ALM-002 ~ ALH-002)
+	&BurnDrvCrswordk,			// Crossed Swords (Korean Translation)
 	&BurnDrvCrswd2bl,			// Crossed Swords 2 (bootleg of CD version)
 	&BurnSpeccrosswize,			// Crosswize (48K)
 	&BurnDrvCphd,				// Crouching Poney Hidden Dragon (HB, Demo)
@@ -31395,6 +31398,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_fatfury2,		// Fatal Fury 2 (USA, Korea)
 	&BurnDrvmd_fatfury2ec,		// Fatal Fury 2 - Enhanced Colors (Hack, v4.0)
 	&BurnDrvFfury2es,			// Fatal Fury 2 / Garou Densetsu 2 - Arata-naru Tatakai (Easy Special Attacks, Hack)
+	&BurnDrvFatfury2k,			// Fatal Fury 2 / Garou Densetsu 2 - Arata-naru Tatakai (Korean Translation)
 	&BurnDrvFatfury2,			// Fatal Fury 2 / Garou Densetsu 2 - Arata-naru Tatakai (NGM-047 ~ NGH-047)
 	&BurnDrvFatfury2a,			// Fatal Fury 2 / Garou Densetsu 2 - arata-naru tatakai (NGM-047)
 	&BurnDrvFfury3eh,			// Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 - Haruka-naru Tatakai (Add Char - Ultra kill style changed, Hack)
@@ -42304,7 +42308,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSengoku3a,			// Sengoku 3 / Sengoku Densho 2001 (set 2)
 	&BurnDrvSngkace,			// Sengoku Ace (Japan, set 1)
 	&BurnDrvSngkacea,			// Sengoku Ace (Japan, set 2)
-	&BurnDrvSngkAcek,			// Sengoku Ace (Korean Translation)
+	&BurnDrvSngkacek,			// Sengoku Ace (Korean Translation)
 	&BurnDrvTengaik,			// Sengoku Blade - Sengoku Ace episode II (Korean Translation)
 	&BurnDrvTengaij,			// Sengoku Blade: Sengoku Ace Episode II (Japan) / Tengai (World)
 	&BurnDrvsnes_Sengokute,		// Sengoku Denshou (Hack, English)
@@ -53401,6 +53405,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "pce_xwiber", "pce/d_pce.cpp"},
 	{ "crossbow", "pre90s/d_exidy440.cpp"},
 	{ "crsword", "neogeo/d_neogeo.cpp"},
+	{ "crswordk", "neogeo/d_neogeo.cpp"},
 	{ "crswd2bl", "neogeo/d_neogeo.cpp"},
 	{ "spec_crosswize", "spectrum/d_spectrum.cpp"},
 	{ "cphd", "neogeo/d_neogeo.cpp"},
@@ -55862,6 +55867,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_fatfury2", "megadrive/d_megadrive.cpp"},
 	{ "md_fatfury2ec", "megadrive/d_megadrive.cpp"},
 	{ "ffury2es", "neogeo/d_neogeo.cpp"},
+	{ "fatfury2k", "neogeo/d_neogeo.cpp"},
 	{ "fatfury2", "neogeo/d_neogeo.cpp"},
 	{ "fatfury2a", "neogeo/d_neogeo.cpp"},
 	{ "ffury3eh", "neogeo/d_neogeo.cpp"},

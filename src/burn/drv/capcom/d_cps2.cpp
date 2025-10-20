@@ -16299,7 +16299,7 @@ struct BurnDriver BurnDrvCpsMshvsfcph = {
 };
 
 // Pocket Fighter (Simplified Chinese plot translation, Hack)
-// Modifier by: killme(Â·ï»‹)
+// Modifier by: killme(·ï»Ë)
 // 20250528
 
 static struct BurnRomInfo PfghtscRomDesc[] = {

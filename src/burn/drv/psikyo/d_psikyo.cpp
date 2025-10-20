@@ -2651,7 +2651,7 @@ static struct BurnRomInfo sngkacekRomDesc[] = {
 STD_ROM_PICK(sngkacek)
 STD_ROM_FN(sngkacek)
 
-struct BurnDriver BurnDrvSngkAcek = {
+struct BurnDriver BurnDrvSngkacek = {
 	"sngkacek", "samuraia", NULL, NULL, "2023",
 	"Sengoku Ace (Korean Translation)\0", NULL, "Psikyo (Banpresto license)", "Psikyo 68EC020",
 	L"Sengoku Ace (Korean Translation)\0\uC804\uAD6D \uC5D0\uC774\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
