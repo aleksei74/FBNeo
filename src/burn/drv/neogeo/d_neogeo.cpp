@@ -30241,6 +30241,83 @@ struct BurnDriver BurnDrvSamSho3k = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean Translation)
+
+static struct BurnRomInfo rbff1krRomDesc[] = {
+	{ "095-p1k.p1",   0x100000, 0xf086cb27, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
+	{ "095-p2k.sp2",  0x200000, 0x60c9e95b, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
+
+	{ "095-s1k.s1",   0x020000, 0x883a7d50, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "069-c1k.c1",   0x400000, 0xf1613ec6, 3 | BRF_GRA },           //  3 Sprite data		/ TC5332205
+	{ "069-c2k.c2",   0x400000, 0x22a50bf8, 3 | BRF_GRA },           //  4 					/ TC5332205
+	{ "069-c3.c3",    0x400000, 0x1c0fde2f, 3 | BRF_GRA },           //  5 					/ TC5332205
+	{ "069-c4.c4",    0x400000, 0xa25fc3d0, 3 | BRF_GRA },           //  6 					/ TC5332205
+	{ "095-c5k.c5",   0x400000, 0x889482bd, 3 | BRF_GRA },           //  7 					/ TC5332202
+	{ "095-c6k.c6",   0x400000, 0xfb50afd9, 3 | BRF_GRA },           //  8 					/ TC5332202
+	{ "095-c7.c7",    0x200000, 0xca605e12, 3 | BRF_GRA },           //  9 					/ TC5316200
+	{ "095-c8.c8",    0x200000, 0x4e6beb6c, 3 | BRF_GRA },           // 10 					/ TC5316200
+
+	{ "095-m1.m1",    0x020000, 0x653492a7, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/ TC531001
+
+	{ "069-v1.v1",    0x400000, 0x2bdbd4db, 5 | BRF_SND },           // 12 Sound data		/ TC5332204
+	{ "069-v2.v2",    0x400000, 0xa698a487, 5 | BRF_SND },           // 13 					/ TC5332204
+	{ "095-v3.v3",    0x400000, 0x189d1c6c, 5 | BRF_SND },           // 14 					/ TC5332201
+};
+
+STDROMPICKEXT(rbff1kr, rbff1kr, neogeo)
+STD_ROM_FN(rbff1kr)
+
+struct BurnDriver BurnDrvRbff1kr = {
+	"rbff1kr", "rbff1", "neogeo", NULL, "2025",
+	"Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Real Bout Fatal Fury / Real Bout \u9913\u72FC\u4F1D\u8AAC (Korean Translation)\0\uB9AC\uC5BC \uBC14\uC6C3 \uD398\uC774\uD138 \uD4E8\uB9AC / \uB9AC\uC5BC \uBC14\uC6C3 \uC544\uB791\uC804\uC124 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_FATFURY,
+	NULL, rbff1krRomInfo, rbff1krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
+// Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean Translation, bug fix revision)
+
+static struct BurnRomInfo rbff1akrRomDesc[] = {
+	{ "095-p1k.p1",   0x100000, 0xf086cb27, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
+	{ "095-p2k.sp2",  0x200000, 0x60c9e95b, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
+
+	{ "095-s1k.s1",   0x020000, 0x883a7d50, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "069-c1k.c1",   0x400000, 0xf1613ec6, 3 | BRF_GRA },           //  3 Sprite data		/ TC5332205
+	{ "069-c2k.c2",   0x400000, 0x22a50bf8, 3 | BRF_GRA },           //  4 					/ TC5332205
+	{ "069-c3.c3",    0x400000, 0x1c0fde2f, 3 | BRF_GRA },           //  5 					/ TC5332205
+	{ "069-c4.c4",    0x400000, 0xa25fc3d0, 3 | BRF_GRA },           //  6 					/ TC5332205
+	{ "095-c5k.c5",   0x400000, 0x889482bd, 3 | BRF_GRA },           //  7 					/ TC5332202
+	{ "095-c6k.c6",   0x400000, 0xfb50afd9, 3 | BRF_GRA },           //  8 					/ TC5332202
+	{ "095-c7.c7",    0x200000, 0xca605e12, 3 | BRF_GRA },           //  9 					/ TC5316200
+	{ "095-c8.c8",    0x200000, 0x4e6beb6c, 3 | BRF_GRA },           // 10 					/ TC5316200
+
+	{ "095-m1.m1",    0x020000, 0x653492a7, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/ TC531001
+
+	{ "069-v1.v1",    0x400000, 0x2bdbd4db, 5 | BRF_SND },           // 12 Sound data		/ TC5332204
+	{ "069-v2.v2",    0x400000, 0xa698a487, 5 | BRF_SND },           // 13 					/ TC5332204
+	{ "095-v3.v3",    0x400000, 0x189d1c6c, 5 | BRF_SND },           // 14 					/ TC5332201
+
+	/* the rom below acts as a patch to the program rom in the cart, replacing the first 512kb */
+	{ "095-eprk.ep1", 0x080000, 0x872f136d, 0 | BRF_ESS | BRF_PRG }, // 15 68k code 		/ M27C4002
+};
+
+STDROMPICKEXT(rbff1akr, rbff1akr, neogeo)
+STD_ROM_FN(rbff1akr)
+
+struct BurnDriver BurnDrvRbff1akr = {
+	"rbff1akr", "rbff1", "neogeo", NULL, "1995",
+	"Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean Translation, bug fix revision)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Real Bout Fatal Fury / Real Bout \u9913\u72FC\u4F1D\u8AAC (Korean Translation, bug fix revision)\0\uB9AC\uC5BC \uBC14\uC6C3 \uD398\uC774\uD138 \uD4E8\uB9AC / \uB9AC\uC5BC \uBC14\uC6C3 \uC544\uB791\uC804\uC124 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, \uBC84\uADF8 \uC218\uC815\uB428)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_FATFURY,
+	NULL, rbff1akrRomInfo, rbff1akrRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	rbff1aInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 // Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (AES Uncensored Hack)
 
 static struct BurnRomInfo aof3uhRomDesc[] = {
@@ -31035,7 +31112,7 @@ struct BurnDriver BurnDrvKof2kuh = {
 // The King of Fighters 2001 (AES Uncensored Hack)
 
 static struct BurnRomInfo kof2k1uhRomDesc[] = {
-	{ "262-p1uh.p1",           0x100000, 0xacd32422, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "262-p1uh.p1",           0x100000, 0x40beb771, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
 	{ "262-pg2.sp2",           0x400000, 0x91eea062, 1 | BRF_ESS | BRF_PRG }, //  1
 
 	{ "262-c1-08-e0.c1",       0x800000, 0x99cc785a, 3 | BRF_GRA },     //  2 Sprite data
@@ -31103,7 +31180,7 @@ struct BurnDriver BurnDrvMslug4uh = {
 // The King of Fighters 2002 (AES Uncensored Hack)
 
 static struct BurnRomInfo kof2k2uhRomDesc[] = {
-	{ "265-p1uh.p1",  0x100000, 0xfcd121a9, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "265-p1uh.p1",  0x100000, 0x863b7a14, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
 	{ "265-p2.sp2",   0x400000, 0x327266b8, 1 | BRF_ESS | BRF_PRG }, //  1
 
 	{ "265-c1.c1",    0x800000, 0x2b65a656, 3 | BRF_GRA },           //  2 Sprite data

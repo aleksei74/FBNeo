@@ -16591,6 +16591,8 @@ DRV		BurnDrvRbff1uh;
 DRV		BurnDrvRbff1a;
 DRV		BurnDrvRbff1k;
 DRV		BurnDrvRbff1ka;
+DRV		BurnDrvRbff1kr;
+DRV		BurnDrvRbff1akr;
 DRV		BurnDrvRbff1;
 DRV		BurnDrvRbff2k;
 DRV		BurnDrvRbff2uh;
@@ -41110,6 +41112,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvRbff1a,				// Real Bout Fatal Fury / Real Bout Garou Densetsu (bug fix revision)
 	&BurnDrvRbff1k,				// Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean release)
 	&BurnDrvRbff1ka,			// Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean release, bug fix revision)
+	&BurnDrvRbff1kr,			// Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean Translation)
+	&BurnDrvRbff1akr,			// Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean Translation, bug fix revision)
 	&BurnDrvRbff1,				// Real Bout Fatal Fury / Real Bout Garou Densetsu (NGM-095 ~ NGH-095)
 	&BurnDrvRbff2k,				// Real Bout Fatal Fury 2 - The Newcomers (Korean release)
 	&BurnDrvRbff2uh,			// Real Bout Fatal Fury 2 - The Newcomers / Real Bout Garou Densetsu 2 - The Newcomers (AES Uncensored Hack)
@@ -65505,6 +65509,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "rbff1a", "neogeo/d_neogeo.cpp"},
 	{ "rbff1k", "neogeo/d_neogeo.cpp"},
 	{ "rbff1ka", "neogeo/d_neogeo.cpp"},
+	{ "rbff1kr", "neogeo/d_neogeo.cpp"},
+	{ "rbff1akr", "neogeo/d_neogeo.cpp"},
 	{ "rbff1", "neogeo/d_neogeo.cpp"},
 	{ "rbff2k", "neogeo/d_neogeo.cpp"},
 	{ "rbff2uh", "neogeo/d_neogeo.cpp"},
