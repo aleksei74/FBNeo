@@ -30244,10 +30244,10 @@ struct BurnDriver BurnDrvSamSho3k = {
 // Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean Translation)
 
 static struct BurnRomInfo rbff1krRomDesc[] = {
-	{ "095-p1k.p1",   0x100000, 0xf086cb27, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
-	{ "095-p2k.sp2",  0x200000, 0x60c9e95b, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
+	{ "095-p1k.p1",   0x100000, 0x6e74a92a, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
+	{ "095-p2k.sp2",  0x200000, 0x02e52ffe, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
 
-	{ "095-s1k.s1",   0x020000, 0x883a7d50, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+	{ "095-s1k.s1",   0x020000, 0x16949cf4, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
 
 	{ "069-c1k.c1",   0x400000, 0xf1613ec6, 3 | BRF_GRA },           //  3 Sprite data		/ TC5332205
 	{ "069-c2k.c2",   0x400000, 0x22a50bf8, 3 | BRF_GRA },           //  4 					/ TC5332205
@@ -30281,10 +30281,10 @@ struct BurnDriver BurnDrvRbff1kr = {
 // Real Bout Fatal Fury / Real Bout Garou Densetsu (Korean Translation, bug fix revision)
 
 static struct BurnRomInfo rbff1akrRomDesc[] = {
-	{ "095-p1k.p1",   0x100000, 0xf086cb27, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
-	{ "095-p2k.sp2",  0x200000, 0x60c9e95b, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
+	{ "095-p1k.p1",   0x100000, 0x6e74a92a, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
+	{ "095-p2k.sp2",  0x200000, 0x02e52ffe, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
 
-	{ "095-s1k.s1",   0x020000, 0x883a7d50, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+	{ "095-s1k.s1",   0x020000, 0x16949cf4, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
 
 	{ "069-c1k.c1",   0x400000, 0xf1613ec6, 3 | BRF_GRA },           //  3 Sprite data		/ TC5332205
 	{ "069-c2k.c2",   0x400000, 0x22a50bf8, 3 | BRF_GRA },           //  4 					/ TC5332205
@@ -30302,7 +30302,7 @@ static struct BurnRomInfo rbff1akrRomDesc[] = {
 	{ "095-v3.v3",    0x400000, 0x189d1c6c, 5 | BRF_SND },           // 14 					/ TC5332201
 
 	/* the rom below acts as a patch to the program rom in the cart, replacing the first 512kb */
-	{ "095-eprk.ep1", 0x080000, 0x872f136d, 0 | BRF_ESS | BRF_PRG }, // 15 68k code 		/ M27C4002
+	{ "095-eprk.ep1", 0x080000, 0xb872382a, 0 | BRF_ESS | BRF_PRG }, // 15 68k code 		/ M27C4002
 };
 
 STDROMPICKEXT(rbff1akr, rbff1akr, neogeo)
