@@ -1828,7 +1828,7 @@ DRV		BurnDrvsnes_Battledb2j;
 DRV		BurnSpecBattlefield;
 DRV		BurnDrvBtlfieldb;
 DRV		BurnDrvBtlfield;
-DRV		BurnDrvFlipshtk;
+DRV		BurnDrvFlipshotk;
 DRV		BurnDrvFlipshot;
 DRV		BurnDrvnes_battleformula;
 DRV		BurnDrvBgareghk;
@@ -6893,6 +6893,7 @@ DRV		BurnDrvmd_fatfury;
 DRV		BurnDrvmd_fatfuryu;
 DRV		BurnDrvsnes_Fatalfury;
 DRV		BurnDrvFfury1bs;
+DRV		BurnDrvFatFury1k;
 DRV		BurnDrvFatFury1;
 DRV		BurnDrvsnes_Fatalfury2e;
 DRV		BurnDrvsnes_Fatalfury2;
@@ -7113,10 +7114,10 @@ DRV		BurnDrvsnes_Ffight2;
 DRV		BurnDrvsnes_Ffight3e;
 DRV		BurnDrvnes_finalfight3;
 DRV		BurnDrvsnes_Ffight3;
-DRV		BurnDrvCpsFfightaek;
 DRV		BurnDrvsnes_Ffight3boss;
 DRV		BurnDrvsnes_Ffight3he;
 DRV		BurnDrvsnes_Ffight3te;
+DRV		BurnDrvCpsFfightaek;
 DRV		BurnDrvCpsFfightaemgc;
 DRV		BurnDrvCpsFfightae;
 DRV		BurnDrvsnes_Ffightguyj;
@@ -10704,6 +10705,7 @@ DRV		BurnDrvmd_kotmu;
 DRV		BurnDrvsnes_Kotm;
 DRV		BurnDrvmd_kotm2;
 DRV		BurnDrvsnes_Kotm2;
+DRV		BurnDrvKotm2k;
 DRV		BurnDrvKotm2;
 DRV		BurnDrvKotm2a;
 DRV		BurnDrvKotm2p;
@@ -13990,7 +13992,7 @@ DRV		BurnDrvSyscheck;
 DRV		BurnDrvNeothndr;
 DRV		BurnDrvngpc_neoturfm;
 DRV		BurnDrvTurfmast;
-DRV		BurnDrvNeocu98k;
+DRV		BurnDrvNeocup98k;
 DRV		BurnDrvNeocup98;
 DRV		BurnDrvNeotet;
 DRV		BurnDrvNeo3ddmo;
@@ -16090,8 +16092,8 @@ DRV		BurnDrvPuzlclub;
 DRV		BurnDrvPclubys;
 DRV		BurnDrvPclubysa;
 DRV		BurnDrvPzlbowl;
-DRV		BurnDrvPuzzldpk;
-DRV		BurnDrvPuzzldrk;
+DRV		BurnDrvPuzzledpk;
+DRV		BurnDrvPuzzldprk;
 DRV		BurnDrvPuzzldpr;
 DRV		BurnDrvPuzzledp;
 DRV		BurnDrvPuzzlekg;
@@ -23591,7 +23593,7 @@ DRV		BurnDrvmd_wimbledu;
 DRV		BurnDrvmd_wimbledup;
 DRV		BurnDrvsms_wimbled2;
 DRV		BurnDrvnes_winlosordra;
-DRV		BurnDrvwJammerk;
+DRV		BurnDrvWjammersk;
 DRV		BurnDrvWjammers;
 DRV		BurnDrvsnes_Windowshapestest;
 DRV		BurnDrvsnes_Wingcmde;
@@ -26420,7 +26422,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecBattlefield,		// Battle Field (48K)
 	&BurnDrvBtlfieldb,			// Battle Field (bootleg)
 	&BurnDrvBtlfield,			// Battle Field (Japan)
-	&BurnDrvFlipshtk,			// Battle Flip Shot (Korean Translation)
+	&BurnDrvFlipshotk,			// Battle Flip Shot (Korean Translation)
 	&BurnDrvFlipshot,			// Battle Flip Shot
 	&BurnDrvnes_battleformula,	// Battle Formula (Japan)
 	&BurnDrvBgareghk,			// Battle Garegga (Austria / Hong Kong) (Sat Feb 3 1996)
@@ -31485,6 +31487,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_fatfuryu,		// Fatal Fury (USA)
 	&BurnDrvsnes_Fatalfury,		// Fatal Fury (USA)
 	&BurnDrvFfury1bs,			// Fatal Fury - King of Fighters / Garou Densetsu - Shukumei no Tatakai (Boss, Hack)
+	&BurnDrvFatFury1k,			// Fatal Fury - King of Fighters / Garou Densetsu - Shukumei no Tatakai (Korean Translation)
 	&BurnDrvFatFury1,			// Fatal Fury - King of Fighters / Garou Densetsu - Shukumei no Tatakai (NGM-033 ~ NGH-033)
 	&BurnDrvsnes_Fatalfury2e,	// Fatal Fury 2 (Euro)
 	&BurnDrvsnes_Fatalfury2,	// Fatal Fury 2 (USA)
@@ -31705,10 +31708,10 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Ffight3e,		// Final Fight 3 (Euro)
 	&BurnDrvnes_finalfight3,	// Final Fight 3 (Taiwan) (Unl)
 	&BurnDrvsnes_Ffight3,		// Final Fight 3 (USA)
-	&BurnDrvCpsFfightaek,		// Final Fight 30th Anniversary Edition (Korean Translation)
 	&BurnDrvsnes_Ffight3boss,	// Final Fight 3 - Boss (Hack)
 	&BurnDrvsnes_Ffight3he,		// Final Fight 3 - Hard Edition (Hack)
 	&BurnDrvsnes_Ffight3te,		// Final Fight 3 - Tough Edition (Hack)
+	&BurnDrvCpsFfightaek,		// Final Fight 30th Anniversary Edition (Korean Translation)
 	&BurnDrvCpsFfightaemgc,		// Final Fight 30th Anniversary Edition (Mad Gear's City Hack)
 	&BurnDrvCpsFfightae,		// Final Fight 30th Anniversary Edition (World, hack)
 	&BurnDrvsnes_Ffightguyj,	// Final Fight Guy (Japan)
@@ -35296,6 +35299,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Kotm,			// King of the Monsters (USA)
 	&BurnDrvmd_kotm2,			// King of the Monsters 2 (USA)
 	&BurnDrvsnes_Kotm2,			// King of the Monsters 2 (USA)
+	&BurnDrvKotm2k,				// King of the Monsters 2 - The Next Thing (Korean Translation)
 	&BurnDrvKotm2,				// King of the Monsters 2 - The Next Thing (NGM-039 ~ NGH-039)
 	&BurnDrvKotm2a,				// King of the Monsters 2 - The Next Thing (older)
 	&BurnDrvKotm2p,				// King of the Monsters 2 - The Next Thing (prototype)
@@ -38582,7 +38586,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvNeothndr,			// Neo Thunder (HB)
 	&BurnDrvngpc_neoturfm,		// Neo Turf Masters - Pocket Sport Series (World)
 	&BurnDrvTurfmast,			// Neo Turf Masters / Big Tournament Golf
-	&BurnDrvNeocu98k,			// Neo-Geo Cup '98 - The Road to the Victory (Korean Translation)
+	&BurnDrvNeocup98k,			// Neo-Geo Cup '98 - The Road to the Victory (Korean Translation)
 	&BurnDrvNeocup98,			// Neo-Geo Cup '98 - The Road to the Victory
 	&BurnDrvNeotet,				// NeoGeo 2-Player Tetris (HB)
 	&BurnDrvNeo3ddmo,			// NeoGeo 3D! (HB, Demo)
@@ -40682,8 +40686,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvPclubys,			// Puzzle Club (Yun Sung, set 1)
 	&BurnDrvPclubysa,			// Puzzle Club (Yun Sung, set 2)
 	&BurnDrvPzlbowl,			// Puzzle De Bowling (Japan)
-	&BurnDrvPuzzldpk,			// Puzzle De Pon! (Korean Translation)
-	&BurnDrvPuzzldrk,			// Puzzle De Pon! R! (Korean Translation)
+	&BurnDrvPuzzledpk,			// Puzzle De Pon! (Korean Translation)
+	&BurnDrvPuzzldprk,			// Puzzle De Pon! R! (Korean Translation)
 	&BurnDrvPuzzldpr,			// Puzzle De Pon! R!
 	&BurnDrvPuzzledp,			// Puzzle De Pon!
 	&BurnDrvPuzzlekg,			// Puzzle King (Dance & Puzzle)
@@ -48183,7 +48187,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_wimbledup,		// Wimbledon Championship Tennis (USA, Prototype)
 	&BurnDrvsms_wimbled2,		// Wimbledon II (Euro, Brazil)
 	&BurnDrvnes_winlosordra,	// Win, Lose or Draw (USA)
-	&BurnDrvwJammerk,			// Windjammers / Flying Power Disc (Korean Translation)
+	&BurnDrvWjammersk,			// Windjammers / Flying Power Disc (Korean Translation)
 	&BurnDrvWjammers,			// Windjammers / Flying Power Disc
 	&BurnDrvsnes_Windowshapestest,// Window Shapes Single (HB, v2)
 	&BurnDrvsnes_Wingcmde,		// Wing Commander (Euro, English)
@@ -51004,7 +51008,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_battlefield", "spectrum/d_spectrum.cpp"},
 	{ "btlfieldb", "pre90s/d_alpha68k2.cpp"},
 	{ "btlfield", "pre90s/d_alpha68k2.cpp"},
-	{ "flipshtk", "neogeo/d_neogeo.cpp"},
+	{ "flipshotk", "neogeo/d_neogeo.cpp"},
 	{ "flipshot", "neogeo/d_neogeo.cpp"},
 	{ "nes_battleformula", "nes/d_nes.cpp"},
 	{ "bgareggahk", "toaplan/d_battleg.cpp"},
@@ -56027,6 +56031,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_fatfuryu", "megadrive/d_megadrive.cpp"},
 	{ "snes_fatalfury", "snes/d_snes.cpp"},
 	{ "ffury1bs", "neogeo/d_neogeo.cpp"},
+	{ "fatfury1k", "neogeo/d_neogeo.cpp"},
 	{ "fatfury1", "neogeo/d_neogeo.cpp"},
 	{ "snes_fatalfury2e", "snes/d_snes.cpp"},
 	{ "snes_fatalfury2", "snes/d_snes.cpp"},
@@ -56247,10 +56252,10 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_ffight3e", "snes/d_snes.cpp"},
 	{ "nes_finalfight3", "nes/d_nes.cpp"},
 	{ "snes_ffight3", "snes/d_snes.cpp"},
-	{ "ffightaek", "capcom/d_cps1.cpp"},
 	{ "snes_ffight3boss", "snes/d_snes.cpp"},
 	{ "snes_ffight3he", "snes/d_snes.cpp"},
 	{ "snes_ffight3te", "snes/d_snes.cpp"},
+	{ "ffightaek", "capcom/d_cps1.cpp"},
 	{ "ffightaemgc", "capcom/d_cps1.cpp"},
 	{ "ffightae", "capcom/d_cps1.cpp"},
 	{ "snes_ffightguyj", "snes/d_snes.cpp"},
@@ -59808,6 +59813,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_kotm", "snes/d_snes.cpp"},
 	{ "md_kotm2", "megadrive/d_megadrive.cpp"},
 	{ "snes_kotm2", "snes/d_snes.cpp"},
+	{ "kotm2k", "neogeo/d_neogeo.cpp"},
 	{ "kotm2", "neogeo/d_neogeo.cpp"},
 	{ "kotm2a", "neogeo/d_neogeo.cpp"},
 	{ "kotm2p", "neogeo/d_neogeo.cpp"},
@@ -63068,7 +63074,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "neothndr", "neogeo/d_neogeo.cpp"},
 	{ "ngp_neoturfm", "pst90s/d_ngp.cpp"},
 	{ "turfmast", "neogeo/d_neogeo.cpp"},
-	{ "neocu98k", "neogeo/d_neogeo.cpp"},
+	{ "neocup98k", "neogeo/d_neogeo.cpp"},
 	{ "neocup98", "neogeo/d_neogeo.cpp"},
 	{ "neotet", "neogeo/d_neogeo.cpp"},
 	{ "neo3ddmo", "neogeo/d_neogeo.cpp"},
@@ -65152,8 +65158,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "pclubys", "pst90s/d_nmg5.cpp"},
 	{ "pclubysa", "pst90s/d_nmg5.cpp"},
 	{ "pzlbowl", "pst90s/d_seta2.cpp"},
-	{ "puzzldpk", "neogeo/d_neogeo.cpp"},
-	{ "puzzldrk", "neogeo/d_neogeo.cpp"},
+	{ "puzzledpk", "neogeo/d_neogeo.cpp"},
+	{ "puzzldprk", "neogeo/d_neogeo.cpp"},
 	{ "puzzldpr", "neogeo/d_neogeo.cpp"},
 	{ "puzzledp", "neogeo/d_neogeo.cpp"},
 	{ "puzzlekg", "pst90s/d_eolith.cpp"},
@@ -72569,7 +72575,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_wimbledup", "megadrive/d_megadrive.cpp"},
 	{ "sms_wimbled2", "sms/d_sms.cpp"},
 	{ "nes_winlosordra", "nes/d_nes.cpp"},
-	{ "wjammerk", "neogeo/d_neogeo.cpp"},
+	{ "wjammersk", "neogeo/d_neogeo.cpp"},
 	{ "wjammers", "neogeo/d_neogeo.cpp"},
 	{ "snes_windowshapestest", "snes/d_snes.cpp"},
 	{ "snes_wingcmde", "snes/d_snes.cpp"},
