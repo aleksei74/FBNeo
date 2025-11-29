@@ -6,6 +6,8 @@
 		carnival (w/sound)
 		heiankyo alien (w/sound)
 		nsub (w/sound)
+		digger (w/sound)
+		depthch (w/sound)
 
 	to do:
 	  	all the others
@@ -186,6 +188,8 @@ static struct BurnInputInfo DiggerInputList[] = {
 	{"P1 Right",		BIT_DIGITAL,	DrvJoy2 + 4,	"p1 right"	},
 	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy2 + 2,	"p1 fire 1"	},
 	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy2 + 3,	"p1 fire 2"	},
+
+	{"P2 Start",		BIT_DIGITAL,	DrvJoy2 + 1,	"p2 start"	},
 
 	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
@@ -629,13 +633,14 @@ STDDIPINFO(Pulsar)
 
 static struct BurnDIPInfo DiggerDIPList[]=
 {
-	{0x09, 0xff, 0xff, 0x63, NULL						},
+	DIP_OFFSET(0x0a)
+	{0x00, 0xff, 0xff, 0x63, NULL						},
 
 	{0   , 0xfe, 0   ,    4, "Lives"					},
-	{0x09, 0x01, 0x03, 0x03, "3"						},
-	{0x09, 0x01, 0x03, 0x02, "4"						},
-	{0x09, 0x01, 0x03, 0x01, "5"						},
-	{0x09, 0x01, 0x03, 0x00, "6"						},
+	{0x00, 0x01, 0x03, 0x03, "3"						},
+	{0x00, 0x01, 0x03, 0x02, "4"						},
+	{0x00, 0x01, 0x03, 0x01, "5"						},
+	{0x00, 0x01, 0x03, 0x00, "6"						},
 };
 
 STDDIPINFO(Digger)
@@ -1009,10 +1014,12 @@ static UINT8 __fastcall invho2_read_port(UINT16 port)
 	return 0;
 }
 
-static void __fastcall depthch_write_port(UINT16 port, UINT8 /*data*/)
-{
+static void DepthchSoundWrite1(UINT16 port, UINT8 data); // forward for now..
+
+static void __fastcall depthch_write_port(UINT16 port, UINT8 data)
+{ //  bprintf(0, _T("wp %x  %x\n"), port, data);
 	if (port & 1) coin_status = 1;
-//	if (port & 4) depthch_audio_w
+	if (port & 4) DepthchSoundWrite1(port, data);
 }
 
 static UINT8 __fastcall depthch_read_port(UINT16 port)
@@ -1081,6 +1088,9 @@ static UINT8 __fastcall alphaho_read_port(UINT16 port)
 
 static void HeiankyoSoundWrite1(UINT16 port, UINT8 data); // forward for now..
 static void HeiankyoSoundWrite2(UINT16 port, UINT8 data);
+static void DiggerSoundWrite1(UINT16 port, UINT8 data); // forward for now..
+static void DiggerSoundWrite2(UINT16 port, UINT8 data);
+static void DepthchSoundWrite1(UINT16 port, UINT8 data); // forward for now..
 
 static void __fastcall heiankyo_write_port(UINT16 port, UINT8 data)
 {
@@ -1139,9 +1149,8 @@ static UINT8 __fastcall pulsar_read_port(UINT16 port)
 static void __fastcall digger_write_port(UINT16 port, UINT8 data)
 {
 	if (port & 0x01) coin_status = 1;
-//	if (port & 0x02) // sound
-	if (port & 0x04) palette_bank = data & 3;
-//	if (port & 0x18) nop
+	if (port & 0x02) DiggerSoundWrite1(port, data);
+	if (port & 0x04) DiggerSoundWrite2(port, data); // & palette
 }
 
 static UINT8 __fastcall digger_read_port(UINT16 port)
@@ -1643,7 +1652,7 @@ static INT32 DrvLoadRoms()
 #define PLAYING(x) (BurnSampleGetStatus(x) == SAMPLE_PLAYING)
 #define PLAY(sam, loop) { BurnSamplePlay(sam); BurnSampleSetLoop(sam, loop); }
 
-static INT32 out_hole = 0;
+static INT32 sound_timer = 0;
 
 // heiankyo sound
 static void HeiankyoSoundWrite1(UINT16 port, UINT8 data)
@@ -1667,7 +1676,7 @@ static void HeiankyoSoundWrite1(UINT16 port, UINT8 data)
 	}
 	if (Low & 0x8) {
 		BurnSampleStop(2); // stop "alien in hole"
-		out_hole = 10;     // start countdown timer
+		sound_timer = 10;     // start countdown timer
 	}
 	if (Low & 0x20)
 		BurnSamplePlay(0); // aliens appear
@@ -1688,10 +1697,10 @@ static void HeiankyoSoundWrite2(UINT16 port, UINT8 data)
 
 	//if (Low || High) bprintf(0, _T("p2 low:  %x\thi:  %x\tframe:  %d\n"), Low, High, nCurrentFrame);
 
-	if (out_hole > 0) {
+	if (sound_timer > 0) {
 		// if aliens escape a hole, we need to re-trigger the "aliens moving" sample loop after a short time
-		out_hole--;
-		if (out_hole == 0 && sample_latch) {
+		sound_timer--;
+		if (sound_timer == 0 && sample_latch) {
 			Resume_Moving = 1;
 		}
 	}
@@ -1713,6 +1722,99 @@ static void HeiankyoSoundWrite2(UINT16 port, UINT8 data)
 	if (Low & 0x10 && !PLAYING(1)) { // note: also played when hero death.
 		BurnSamplePlay(1); // alien death
 		BurnSampleStop(2); // stop "alien in hole"
+	}
+}
+
+static void DepthchSoundWrite1(UINT16 port, UINT8 data)
+{
+	UINT8 Low  = (port1_state ^ data) & ~data;
+	UINT8 High = (port1_state ^ data) & data;
+	port1_state = data;
+
+	//if (Low || High) bprintf(0, _T("p1 low:  %x\thi:  %x\tframe:  %d\n"), Low, High, nCurrentFrame);
+
+	if (High & 0x08) {
+		//bprintf(0, _T("sonar on\n"));
+		BurnSampleSetRoute(2, BURN_SND_SAMPLE_ROUTE_1, 0.50, BURN_SND_ROUTE_BOTH);
+		BurnSampleSetRoute(2, BURN_SND_SAMPLE_ROUTE_2, 0.50, BURN_SND_ROUTE_BOTH);
+		BurnSamplePlay(2); // sonar
+		BurnSampleSetLoop(2, true);
+	}
+	if (Low & 0x08) {
+		//bprintf(0, _T("sonar off\n"));
+		BurnSampleStop(2); // sonar Off
+		BurnSamplePlay(3); // bonus
+	}
+
+	if (Low & 0x01) {
+		//bprintf(0, _T("underwater boom\n"));
+		BurnSamplePlay(0);
+	}
+	if (Low & 0x02) {
+		//bprintf(0, _T("abovewater boom\n"));
+		BurnSamplePlay(1);
+	}
+	if (Low & 0x04) {
+		//bprintf(0, _T("spray\n"));
+		BurnSamplePlay(4);
+	}
+}
+
+// -------------- digger sound ----------------
+static void DiggerSoundWrite1(UINT16 port, UINT8 data)
+{
+	UINT8 Low  = (port1_state ^ data) & ~data;
+	//UINT8 High = (port1_state ^ data) & data;
+	port1_state = data;
+
+	//if (Low || High) bprintf(0, _T("p1 low:  %x\thi:  %x\tframe:  %d\n"), Low, High, nCurrentFrame);
+
+	if (Low & 0x10 && !PLAYING(4)) {
+		//bprintf(0, _T("hero death\n"));
+		BurnSamplePlay(4); // hero death
+	}
+	if (Low & 0x04 && !PLAYING(1)) {
+		//bprintf(0, _T("crab death\n"));
+		BurnSamplePlay(1); // crab death
+	}
+	if (Low & 0x40 && !PLAYING(0)) { // appear / more appear (you're taking too long)
+		//bprintf(0, _T("appear\n"));
+		BurnSamplePlay(0);
+	}
+	if (Low & 0x80 && !PLAYING(2)) {
+		//bprintf(0, _T("crab in hole\n"));
+		BurnSamplePlay(2); // crab in hole
+	}
+}
+
+static void DiggerSoundWrite2(UINT16 port, UINT8 data)
+{
+	palette_bank = data & 3;
+	data &= 0xfc;
+
+	UINT8 Low  = (port2_state ^ data) & ~data;
+	UINT8 High = (port2_state ^ data) & data;
+	port2_state = data;
+
+	//if (Low || High) bprintf(0, _T("p2 low:  %x\thi:  %x\tframe:  %d\n"), Low, High, nCurrentFrame);
+
+	if (High & 0x20) {
+		BurnSamplePlay(5); // shovel
+		//bprintf(0, _T("shovel\n"));
+		return; // shovel has priority, skip processing the rest of this port
+	}
+
+	if ((Low & 0x18) == 0x18 && !PLAYING(0)) { // bass line
+		BurnSamplePlay(7 + (sound_timer & 3));
+		sound_timer++;
+	}
+	if (Low & 0x40) {
+		//bprintf(0, _T("crab out hole\n"));
+		BurnSamplePlay((PLAYING(2)) ? 11 : 3); // leaves hole, phased version (11) if "in hole" is playing.
+	}
+	if (Low & 0x80) {
+		//bprintf(0, _T("game over\n"));
+		BurnSamplePlay(6); // game over explosion
 	}
 }
 
@@ -2236,7 +2338,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(port1_state);
 		SCAN_VAR(port2_state);
 		SCAN_VAR(sample_latch);
-		SCAN_VAR(out_hole); // heiankyo timer
+		SCAN_VAR(sound_timer); // heiankyo, digger timer
 
 		SCAN_VAR(nExtraCycles);
 	}
@@ -2263,11 +2365,11 @@ STD_ROM_PICK(depthch)
 STD_ROM_FN(depthch)
 
 static struct BurnSampleInfo depthchSampleDesc[] = {
-	{ "bonus", SAMPLE_NOLOOP },
-	{ "longex", SAMPLE_NOLOOP },
-	{ "shortex", SAMPLE_NOLOOP },
-	{ "sonar", SAMPLE_NOLOOP },
-	{ "spray", SAMPLE_NOLOOP },
+	{ "longex", SAMPLE_NOLOOP },	// 0
+	{ "shortex", SAMPLE_NOLOOP },   // 1
+	{ "sonar", SAMPLE_NOLOOP },     // 2
+	{ "bonus", SAMPLE_NOLOOP },   	// 3
+	{ "spray", SAMPLE_NOLOOP },     // 4
 	{ "", 0 }
 };
 
@@ -2279,9 +2381,9 @@ static INT32 DepthchInit()
 	return DrvInit(0x4000, 0x8000, 0, depthch_write_port, depthch_read_port, NULL, NULL);
 }
 
-struct BurnDriverD BurnDrvDepthch = {
+struct BurnDriver BurnDrvDepthch = {
 	"depthch", NULL, NULL, "depthch", "1977",
-	"Depthcharge\0", "No sound", "Gremlin", "Vic Dual",
+	"Depthcharge\0", NULL, "Gremlin", "Vic Dual",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
 	NULL, depthchRomInfo, depthchRomName, NULL, NULL, depthchSampleInfo, depthchSampleName, DepthchInputInfo, DepthchDIPInfo,
@@ -2313,9 +2415,9 @@ static struct BurnRomInfo depthchoRomDesc[] = {
 STD_ROM_PICK(depthcho)
 STD_ROM_FN(depthcho)
 
-struct BurnDriverD BurnDrvDepthcho = {
+struct BurnDriver BurnDrvDepthcho = {
 	"depthcho", "depthch", NULL, "depthch", "1977",
-	"Depthcharge (older)\0", "No sound", "Gremlin", "Vic Dual",
+	"Depthcharge (older)\0", NULL, "Gremlin", "Vic Dual",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
 	NULL, depthchoRomInfo, depthchoRomName, NULL, NULL, depthchSampleInfo, depthchSampleName, DepthchInputInfo, DepthchDIPInfo,
@@ -2347,9 +2449,9 @@ static struct BurnRomInfo subhuntRomDesc[] = {
 STD_ROM_PICK(subhunt)
 STD_ROM_FN(subhunt)
 
-struct BurnDriverD BurnDrvSubhunt = {
+struct BurnDriver BurnDrvSubhunt = {
 	"subhunt", "depthch", NULL, "depthch", "1977",
-	"Sub Hunter (Gremlin / Taito)\0", "No sound", "Gremlin (Taito license)", "Vic Dual",
+	"Sub Hunter (Gremlin / Taito)\0", NULL, "Gremlin (Taito license)", "Vic Dual",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
 	NULL, subhuntRomInfo, subhuntRomName, NULL, NULL, depthchSampleInfo, depthchSampleName, DepthchInputInfo, DepthchDIPInfo,
@@ -2702,6 +2804,24 @@ struct BurnDriverD BurnDrvPulsar = {
 	224, 256, 3, 4
 };
 
+static struct BurnSampleInfo diggerSampleDesc[] = {
+	{ "crab appear", SAMPLE_NOLOOP },	// 0
+	{ "crab death", SAMPLE_NOLOOP },	// 1
+	{ "crab in hole", SAMPLE_NOLOOP },	// 2
+	{ "crab out hole", SAMPLE_NOLOOP },	// 3
+	{ "hero death", SAMPLE_NOLOOP },	// 4
+	{ "hero shovel", SAMPLE_NOLOOP },	// 5
+	{ "game over", SAMPLE_NOLOOP }, 	// 6
+	{ "bass 00", SAMPLE_NOLOOP },		// 7
+	{ "bass 01", SAMPLE_NOLOOP },		// 8
+	{ "bass 02", SAMPLE_NOLOOP },		// 9
+	{ "bass 03", SAMPLE_NOLOOP },		// 10
+	{ "crab out hole phased", SAMPLE_NOLOOP },	// 11 - edge case: plays instead of "crab out hole" if "crab in hole" is playing when triggered
+	{ "", 0 }
+};
+
+STD_SAMPLE_PICK(digger)
+STD_SAMPLE_FN(digger)
 
 // Digger
 
@@ -2716,7 +2836,7 @@ static struct BurnRomInfo diggerRomDesc[] = {
 	{ "691.u20",			0x0400, 0x8aca72d8, 1 | BRF_PRG | BRF_ESS }, //  7
 
 	{ "316-507",			0x0020, 0xfdb22e8f, 1 | BRF_GRA },           //  8 Color data
-	
+
 	{ "316-0206.u14",		0x0020, 0x9617d796, 0 | BRF_OPT },           //  9 Unused prom
 };
 
@@ -2728,12 +2848,12 @@ static INT32 DiggerInit()
 	return DrvInit(0x2000, 0xc000, 0, digger_write_port, digger_read_port, NULL, NULL);
 }
 
-struct BurnDriverD BurnDrvDigger = {
-	"digger", NULL, NULL, NULL, "1980",
-	"Digger\0", "No sound", "Sega", "Vic Dual",
+struct BurnDriver BurnDrvDigger = {
+	"digger", NULL, NULL, "digger", "1980",
+	"Digger\0", NULL, "Sega", "Vic Dual",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_MAZE, 0,
-	NULL, diggerRomInfo, diggerRomName, NULL, NULL, NULL, NULL, DiggerInputInfo, DiggerDIPInfo,
+	NULL, diggerRomInfo, diggerRomName, NULL, NULL, diggerSampleInfo, diggerSampleName, DiggerInputInfo, DiggerDIPInfo,
 	DiggerInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 8,
 	224, 256, 3, 4
 };

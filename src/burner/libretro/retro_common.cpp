@@ -1,6 +1,10 @@
 #include "retro_common.h"
 #include "retro_input.h"
 
+#include <file/file_path.h>
+#include <retro_dirent.h>
+#include <streams/file_stream.h>
+
 struct RomBiosInfo neogeo_bioses[] = {
 	{"sp-s3.sp1",         0x91b64be3, 0x00, "MVS Asia/Europe ver. 6 (1 slot)", NEOGEO_MVS | NEOGEO_EUR, 0 },
 	{"sp-s2.sp1",         0x9036d879, 0x01, "MVS Asia/Europe ver. 5 (1 slot)", NEOGEO_MVS | NEOGEO_EUR, 0 },
@@ -50,6 +54,8 @@ bool bPatchedRomsetsEnabled           = true;
 bool bLibretroSupportsAudioBuffStatus = false;
 bool bLowPassFilterEnabled            = false;
 UINT32 nVerticalMode                  = 0;
+UINT32 nNewWidth                      = 640;
+UINT32 nNewHeight                     = 480;
 UINT32 nFrameskip                     = 1;
 INT32 g_audio_samplerate              = 48000;
 UINT32 nMemcardMode                   = 0;
@@ -117,6 +123,27 @@ static struct retro_core_option_v2_definition var_fbneo_force_60hz = {
 		{ NULL,       NULL },
 	},
 	"disabled"
+};
+static struct retro_core_option_v2_definition var_fbneo_resolution = {
+	"fbneo-resolution",
+	"Resolution",
+	NULL,
+	"Set resolution in certain games (vector)",
+	NULL,
+	NULL,
+	{
+		{ "640x480",        NULL },
+		{ "800x600",        NULL },
+		{ "1024x768",       NULL },
+		{ "1080x810",       NULL },
+		{ "1280x960",       NULL },
+		{ "1440x1080",      NULL },
+		{ "1600x1200",      NULL },
+		{ "1920x1440",      NULL },
+		{ "2160x1620",      NULL },
+		{ "2880x2160",      NULL },
+	},
+	"640x480"
 };
 static struct retro_core_option_v2_definition var_fbneo_fixed_frameskip = {
 	"fbneo-fixed-frameskip",
@@ -903,17 +930,7 @@ void set_environment()
 {
 	std::vector<const retro_core_option_v2_definition*> vars_systems;
 	struct retro_core_option_v2_definition *option_defs_us;
-#ifdef _MSC_VER
-#if WINAPI_FAMILY_PARTITION(WINAPI_PARTITION_APP)
-	#ifndef FORCE_USE_VFS
-	#define FORCE_USE_VFS
-	#endif
-#endif
-#endif
-
-#ifdef FORCE_USE_VFS
 	struct retro_vfs_interface_info vfs_iface_info;
-#endif
 
 	// Add the Global core options
 	var_fbneo_allow_depth_32.desc                          = RETRO_DEPTH32_CAT_DESC;
@@ -926,9 +943,14 @@ void set_environment()
 	var_fbneo_vertical_mode.values[4].value                = RETRO_VERTICAL_VALUE_4;
 	vars_systems.push_back(&var_fbneo_vertical_mode);
 
+	var_fbneo_resolution.desc                              = RETRO_RESOLUTION_DESC;
+	var_fbneo_resolution.info                              = RETRO_RESOLUTION_INFO;
+
 	var_fbneo_force_60hz.desc                              = RETRO_FORCE60_CAT_DESC;
 	var_fbneo_force_60hz.info                              = RETRO_FORCE60_CAT_INFO;
 	vars_systems.push_back(&var_fbneo_force_60hz);
+
+	vars_systems.push_back(&var_fbneo_resolution);
 
 	var_fbneo_allow_patched_romsets.desc                   = RETRO_PATCHED_CAT_DESC;
 	var_fbneo_allow_patched_romsets.info                   = RETRO_PATCHED_CAT_INFO;
@@ -1489,14 +1511,14 @@ error:
 		}
 	}
 
-	// Initialize VFS
-	// Only on UWP for now, since EEPROM saving is not VFS aware
-#ifdef FORCE_USE_VFS
 	vfs_iface_info.required_interface_version = FILESTREAM_REQUIRED_VFS_VERSION;
 	vfs_iface_info.iface                      = NULL;
 	if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_iface_info))
+	{
+		dirent_vfs_init(&vfs_iface_info);
 		filestream_vfs_init(&vfs_iface_info);
-#endif
+		path_vfs_init(&vfs_iface_info);
+	}
 }
 
 TCHAR* AdaptiveEncodingReads(const TCHAR* pszFileName)
@@ -1561,6 +1583,61 @@ void check_variables(void)
 		}
 		else
 			bForce60Hz = false;
+	}
+
+	var.key = var_fbneo_resolution.key;
+	if (environ_cb(RETRO_ENVIRONMENT_GET_VARIABLE, &var) && var.value)
+	{
+		if (strcmp(var.value, "2880x2160") == 0)
+		{
+			nNewWidth = 2880;
+			nNewHeight = 2160;
+		}
+		else if (strcmp(var.value, "2160x1620") == 0)
+		{
+			nNewWidth = 1080;
+			nNewHeight = 810;
+		}
+		else if (strcmp(var.value, "1920x1440") == 0)
+		{
+			nNewWidth = 1920;
+			nNewHeight = 1440;
+		}
+		else if (strcmp(var.value, "1600x1200") == 0)
+		{
+			nNewWidth = 1600;
+			nNewHeight = 1200;
+		}
+		else if (strcmp(var.value, "1440x1080") == 0)
+		{
+			nNewWidth = 1440;
+			nNewHeight = 1080;
+		}
+		else if (strcmp(var.value, "1280x960") == 0)
+		{
+			nNewWidth = 1280;
+			nNewHeight = 960;
+		}
+		else if (strcmp(var.value, "1080x810") == 0)
+		{
+			nNewWidth = 1080;
+			nNewHeight = 810;
+		}
+		else if (strcmp(var.value, "1024x768") == 0)
+		{
+			nNewWidth = 1024;
+			nNewHeight = 768;
+		}
+		else if (strcmp(var.value, "800x600") == 0)
+		{
+			nNewWidth = 800;
+			nNewHeight = 600;
+		}
+		else
+		{
+			nNewWidth = 640;
+			nNewHeight = 480;
+		}
 	}
 
 	if (bLibretroSupportsAudioBuffStatus)

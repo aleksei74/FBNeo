@@ -152,6 +152,11 @@ static int DisplayCommands()
 	ShowWindow(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_LOCAL), SW_SHOW);
 	UpdateWindow(hGameInfoDlg);
 
+	// set focus, so mousewheel can scroll the text
+	// set to beginning of text (richedit likes to go to the bottom on SetFocus)
+	SetFocus(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_LOCAL));
+	SendMessage(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_LOCAL), EM_SETSEL, 0, 0);
+
 	return 0;
 }
 
@@ -164,6 +169,11 @@ static int DisplayHistory()
 	ShowWindow(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_ENG), SW_SHOW);
 	ShowWindow(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_LOCAL), SW_HIDE);
 	UpdateWindow(hGameInfoDlg);
+
+	// set focus, so mousewheel can scroll the text
+	// set to beginning of text (richedit likes to go to the bottom on SetFocus)
+	SetFocus(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_ENG));
+	SendMessage(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_ENG), EM_SETSEL, 0, 0);
 
 	return 0;
 }
@@ -360,7 +370,7 @@ static fooreplace foor[] = {
 	{L"^T", L"[3x Kick]" },
 	{L"^U", L"[3x Punch]" },
 	{L"^V", L"[2x Kick]" },
-	{L"^X", L"[2x Punch]" },
+	{L"^W", L"[2x Punch]" },
 	{L"^!", L" \u21B3 " }, // down-right arrow
 	{L"^M", L" MAX " },
 #if 0
@@ -859,13 +869,13 @@ static int GameInfoInit()
 					tcharstrreplace(cnvTemp, _T("&lt;"), _T("<"));
 
 					if (!nTitleWrote) {
-						_stprintf(szBuffer, _T("%s{\\b\\f0\\fs28\\cf1\\f0 %s}"), szBuffer, cnvTemp);
+						_stprintf(szBuffer, _T("%s{\\b\\f0\\fs28\\cf1 %s}"), szBuffer, cnvTemp);
 					} else {
 						_stprintf(szBuffer, _T("%s\\line"), szBuffer);
 						if (!strncmp("- ", Temp, 2)) {
-							_stprintf(szBuffer, _T("%s{\\b\\f0\\fs16\\cf1\\f0 %s}"), szBuffer, cnvTemp);
+							_stprintf(szBuffer, _T("%s{\\b\\f0\\fs16\\cf1 %s}"), szBuffer, cnvTemp);
 						} else {
-							_stprintf(szBuffer, _T("%s{\\f0\\fs16\\cf2\\f0 %s}"), szBuffer, cnvTemp);
+							_stprintf(szBuffer, _T("%s{\\f0\\fs16\\cf2 %s}"), szBuffer, cnvTemp);
 						}
 					}
 					free(cnvTemp);
@@ -936,13 +946,13 @@ static int GameInfoInit()
 					TCHAR *cnvTemp = wstring_from_utf8(Temp);
 
 					if (!nTitleWrote) {
-						_stprintf(szBuffer, _T("%s{\\b\\f0\\fs28\\cf1\\f0 %s}"), szBuffer, cnvTemp);
+						_stprintf(szBuffer, _T("%s{\\b\\f0\\fs28\\cf1 %s}"), szBuffer, cnvTemp);
 					} else {
 						_stprintf(szBuffer, _T("%s\\line"), szBuffer);
 						if (!strncmp("- ", Temp, 2)) {
-							_stprintf(szBuffer, _T("%s{\\b\\f0\\fs16\\cf1\\f0 %s}"), szBuffer, cnvTemp);
+							_stprintf(szBuffer, _T("%s{\\b\\f0\\fs16\\cf1 %s}"), szBuffer, cnvTemp);
 						} else {
-							_stprintf(szBuffer, _T("%s{\\f0\\fs16\\cf2\\f0 %s}"), szBuffer, cnvTemp);
+							_stprintf(szBuffer, _T("%s{\\f0\\fs16\\cf2 %s}"), szBuffer, cnvTemp);
 						}
 					}
 					free(cnvTemp);
@@ -960,10 +970,13 @@ static int GameInfoInit()
 	TextInfo.flags = ST_SELECTION;
 	TextInfo.codepage = CP_UTF8;
 
-	//BurnDump("utf8_.bin", pszBufferUTF8, strlen(pszBufferUTF8));
+	//BurnDump("utf8.bin", pszBufferUTF8, strlen(pszBufferUTF8));
 
+	// EM_EXLIMITTEXT doesn't always work above 90kbytes (or so),
+	// Also send EM_LIMITTEXT just-in-case! (kof2002 commands text)
+	SendMessage(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_LOCAL), EM_EXLIMITTEXT, (WPARAM)0x80000, (LPARAM)0); // 512kbyte limit
+	SendMessage(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_LOCAL), EM_LIMITTEXT, (WPARAM)0x80000, (LPARAM)0); // 512kbyte limit
 	SendMessage(GetDlgItem(hGameInfoDlg, IDC_MESSAGE_EDIT_LOCAL), EM_SETTEXTEX, (WPARAM)&TextInfo, (LPARAM)pszBufferUTF8);
-
 	free(pszBufferUTF8);
 	free(szBuffer);
 
