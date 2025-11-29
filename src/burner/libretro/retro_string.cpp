@@ -460,7 +460,9 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\u6700\u5f8c\u8f38\u5165\u512a\u5148\uff088\u65b9\u5411\uff09",
 		"\u521d\u59cb\u8f38\u5165\u512a\u5148",
 		"\u4e0a\u65b9\u5411\u512a\u5148\uff08\u4e0a\u8986\u84cb\u4e0b\uff09",
-		"\u4e0b\u65b9\u5411\u512a\u5148\uff08\u5de6\u53f3\u6700\u5f8c\u8f38\u5165\u512a\u5148\uff09"
+		"\u4e0b\u65b9\u5411\u512a\u5148\uff08\u5de6\u53f3\u6700\u5f8c\u8f38\u5165\u512a\u5148\uff09",
+		"\u89e3\u6790\u5ea6",
+		"\u8a2d\u5b9a\u77e2\u91cf\u5716\u5f62\u904a\u6232\u7684\u89e3\u6790\u5ea6"
 	},
 	{	// Japanese
 		"Use 32-bits color depth when available",
@@ -611,7 +613,9 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"Last Input Priority (8 Way)",
 		"First Input Priority",
 		"Up Priority (Up-override Down)",
-		"Down Priority (Left/Right Last Input Priority)"
+		"Down Priority (Left/Right Last Input Priority)",
+		"Resolution",
+		"Set resolution in certain games (vector)"
 	},
 	{	// Korean
 		"\uAC00\uB2A5\uD55C \uACBD\uC6B0 32\uBE44\uD2B8 \uC0C9\uC0C1\uC744 \uC0AC\uC6A9",
@@ -763,9 +767,8 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\uCC98\uC74C \uC785\uB825 \uC6B0\uC120 \uC21C\uC704",
 		"\uC704 \uC6B0\uC120 \uC21C\uC704 (\uC544\uB798\uCABD\uC744 \uC704\uB85C \uC7AC\uC815\uC758)",
 		"\uC544\uB798 \uC6B0\uC120 \uC21C\uC704 (\uC67C\uCABD/\uC624\uB978\uCABD \uB9C8\uC9C0\uB9C9 \uC785\uB825 \uC6B0\uC120 \uC21C\uC704)"
-		"\u4e0b\u65b9\u5411\u512a\u5148\uff08\u5de6\u53f3\u6700\u5f8c\u8f38\u5165\u512a\u5148\uff09",
-		"\u89e3\u6790\u5ea6",
-		"\u8a2d\u5b9a\u77e2\u91cf\u5716\u5f62\u904a\u6232\u7684\u89e3\u6790\u5ea6"
+		"\uD574\uC0C1\uB3C4"
+		"\uD2B9\uC815 \uAC8C\uC784\uC758 \uD574\uC0C1\uB3C4 \uC124\uC815 (\uBCA1\uD130)"
 	}
 };
 

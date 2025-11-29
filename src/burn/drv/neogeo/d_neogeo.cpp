@@ -29708,6 +29708,7 @@ struct BurnDriver BurnDrvShinobing = {
 	0x1000, 320, 224, 4, 3
 };
 
+
 // World Racer (HB)
 // https://www.patreon.com/posts/worldracer-rom-143726462
 // 3 & 4 players not working (needs Multitap)
