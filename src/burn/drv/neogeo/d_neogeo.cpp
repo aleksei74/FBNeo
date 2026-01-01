@@ -30741,7 +30741,7 @@ struct BurnDriver BurnDrvKof96kr = {
 
 static struct BurnRomInfo samsho4krRomDesc[] = {
 	{ "222-p1k.p1",   0x100000, 0x47ca001a, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/* TC538200 */
-	{ "222-p2k.sp2",  0x400000, 0xa263064c, 1 | BRF_ESS | BRF_PRG }, //  1 					/* TC5332205 */
+	{ "222-p2k.sp2",  0x400000, 0x3ade9d85, 1 | BRF_ESS | BRF_PRG }, //  1 					/* TC5332205 */
 
 	{ "222-s1k.s1",   0x020000, 0xb2a487fe, 2 | BRF_GRA },           //  2 Text layer tiles /* TC531000 */
 
