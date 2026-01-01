@@ -21130,12 +21130,12 @@ struct BurnDriver BurnDrvMslug5sc = {
 };
 
 
-// Metal Slug 5 (Legendary Unlimited Fire v7.0, Hack)
+// Metal Slug 5 (Legendary Unlimited Fire v7.5, Hack)
 // Modified by AKS & Sakura
-// 20250706
+// 20251020
 
 static struct BurnRomInfo mslug5cqiRomDesc[] = {
-	{ "268-p1cq.p1",	0xa00000, 0xc0faa4aa, 1 | BRF_ESS | BRF_PRG },
+	{ "268-p1cq.p1",	0xa00000, 0x86ac155a, 1 | BRF_ESS | BRF_PRG },
 
 	MSLUG5_DECRYPTED_TEXT
 
@@ -21164,7 +21164,7 @@ static INT32 mslug5cqiInit()
 
 struct BurnDriver BurnDrvMslug5cqi = {
 	"mslug5cqi", "mslug5", "neogeo", NULL, "2025",
-	"Metal Slug 5 (Legendary Unlimited Fire v7.0, Hack)\0", NULL, "AKS & Sakura", "Neo Geo MVS",
+	"Metal Slug 5 (Legendary Unlimited Fire v7.5, Hack)\0", NULL, "AKS & Sakura", "Neo Geo MVS",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_RUNGUN, FBF_MSLUG,
 	NULL, mslug5cqiRomInfo, mslug5cqiRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, mslugLvxDIPInfo,
@@ -27861,6 +27861,38 @@ struct BurnDriver BurnDrvTmntia = {
 };
 
 
+// Violent Vengeance: The Universe Hero (Beta 1.4)
+// https://ozzyouzo.itch.io/violentv
+
+static struct BurnRomInfo violentvRomDesc[] = {
+	{ "violentv-p1.bin",	0x0100000, 0xfc6852b8, 1 | BRF_ESS | BRF_PRG }, 	//  0 68K code
+	{ "violentv-p2.bin",	0x0800000, 0xa810b0ab, 1 | BRF_ESS | BRF_PRG }, 	//  1
+
+	{ "violentv-s1.bin",	0x0020000, 0xf7302142, 2 | BRF_GRA },           	//  2 Text layer tiles
+
+	{ "violentv-c1.bin",	0x1000000, 0xa5b714a5, 3 | BRF_GRA },           	//  3 Sprite data
+	{ "violentv-c2.bin",	0x1000000, 0x9c9b726c, 3 | BRF_GRA },           	//  4
+
+	{ "violentv-m1.bin",	0x0010000, 0x988f0366, 4 | BRF_ESS | BRF_PRG }, 	//  5 Z80 code
+
+	{ "violentv-v1.bin",	0x0800000, 0xf8def124, 5 | BRF_SND },           	//  6 Sound data
+	{ "violentv-v2.bin",	0x0800000, 0x357babe6, 5 | BRF_SND },           	//  7
+};
+
+STDROMPICKEXT(violentv, violentv, neogeo)
+STD_ROM_FN(violentv)
+
+struct BurnDriver BurnDrvViolentv = {
+	"violentv", NULL, "neogeo", NULL, "2025",
+	"Violent Vengeance: The Universe Hero (Beta 1.4)\0", NULL, "OzzyOuzo", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
+	NULL, violentvRomInfo, violentvRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
+
 // Primo (HB, Demo)
 
 static struct BurnRomInfo neoprimoRomDesc[] = {
@@ -29060,7 +29092,7 @@ struct BurnDriver BurnDrvXeviousng = {
 // Zetsu Xevious - Neo Geo Conversion (HB)
 
 static struct BurnRomInfo zetsuxevingRomDesc[] = {
-	{ "420.p1",				0x100000, 0x8a1e9214, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "420.p1",				0x100000, 0xdfa5538b, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
 
 	{ "xevious-s1.s1",		0x020000, 0xf41d121a, 2 | BRF_GRA },           //  1 Text layer tiles
 
