@@ -30737,6 +30737,43 @@ struct BurnDriver BurnDrvKof96kr = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Samurai Shodown IV - Amakusa's Revenge / Samurai Spirits - Amakusa Kourin (Korean Translation)
+
+static struct BurnRomInfo samsho4krRomDesc[] = {
+	{ "222-p1k.p1",   0x100000, 0x47ca001a, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/* TC538200 */
+	{ "222-p2k.sp2",  0x400000, 0xa263064c, 1 | BRF_ESS | BRF_PRG }, //  1 					/* TC5332205 */
+
+	{ "222-s1k.s1",   0x020000, 0xb2a487fe, 2 | BRF_GRA },           //  2 Text layer tiles /* TC531000 */
+
+	{ "222-c1k.c1",   0x400000, 0x52d60d14, 3 | BRF_GRA },           //  3 Sprite data		/* TC5332205 */
+	{ "222-c2k.c2",   0x400000, 0x0fb96cc7, 3 | BRF_GRA },           //  4 					/* TC5332205 */
+	{ "222-c3.c3",    0x400000, 0xc91b40f4, 3 | BRF_GRA },           //  5 					/* TC5332205 */
+	{ "222-c4.c4",    0x400000, 0x359510a4, 3 | BRF_GRA },           //  6 					/* TC5332205 */
+	{ "222-c5k.c5",   0x400000, 0x6b788379, 3 | BRF_GRA },           //  7 					/* TC5332205 */
+	{ "222-c6k.c6",   0x400000, 0x14aa377a, 3 | BRF_GRA },           //  8 					/* TC5332205 */
+	{ "222-c7k.c7",   0x400000, 0xb884ddda, 3 | BRF_GRA },           //  9 					/* TC5332205 */
+	{ "222-c8k.c8",   0x400000, 0xfef923b6, 3 | BRF_GRA },           // 10 					/* TC5332205 */
+
+	{ "222-m1.m1",    0x020000, 0x7615bc1b, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/* TC531001 */
+
+	{ "222-v1.v1",    0x400000, 0x7d6ba95f, 5 | BRF_SND },           // 12 Sound data		/* TC5332204 */
+	{ "222-v2.v2",    0x400000, 0x6c33bb5d, 5 | BRF_SND },           // 13 					/* TC5332204 */
+	{ "222-v3.v3",    0x200000, 0x831ea8c0, 5 | BRF_SND },           // 14 					/* TC5316200 */
+};
+
+STDROMPICKEXT(samsho4kr, samsho4kr, neogeo)
+STD_ROM_FN(samsho4kr)
+
+struct BurnDriver BurnDrvSamSho4kr = {
+	"samsho4kr", "samsho4", "neogeo", NULL, "2026",
+	"Samurai Shodown IV - Amakusa's Revenge / Samurai Spirits - Amakusa Kourin (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"\uC0AC\uBB34\uB77C\uC774 \uC1FC\uB2E4\uC6B4 IV - \uC544\uB9C8\uCFE0\uC0AC\uC758 \uBCF5\uC218 / \uC0AC\uBB34\uB77C\uC774 \uC2A4\uD53C\uB9AC\uCE20 - \uC544\uB9C8\uCFE0\uC0AC \uAC15\uB9BC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samsho4krRomInfo, samsho4krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 // Samurai Shodown IV - Amakusa's Revenge / Samurai Spirits - Amakusa Kourin (AES Uncensored Hack)
 
 static struct BurnRomInfo samsho4uhRomDesc[] = {
