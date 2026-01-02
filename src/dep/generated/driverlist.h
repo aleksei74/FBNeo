@@ -13814,6 +13814,7 @@ DRV		BurnDrvmd_nakaf1gp;
 DRV		BurnDrvmd_f1heromd;
 DRV		BurnDrvmd_nakaf1sl;
 DRV		BurnDrvnes_nalleland;
+DRV		BurnDrvNam1975k;
 DRV		BurnDrvNam1975;
 DRV		BurnDrvMSX_namake;
 DRV		BurnDrvnamcoc69;
@@ -38559,6 +38560,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_f1heromd,		// Nakajima Satoru Kanshuu F1 Hero MD (Japan)
 	&BurnDrvmd_nakaf1sl,		// Nakajima Satoru Kanshuu F1 Super License (Japan)
 	&BurnDrvnes_nalleland,		// Nalle Land (HB, v0.4.0)
+	&BurnDrvNam1975k,			// NAM-1975 (Korean Translation)
 	&BurnDrvNam1975,			// NAM-1975 (NGM-001 ~ NGH-001)
 	&BurnDrvMSX_namake,			// Namake's Bridgedrome (HB)
 	&BurnDrvnamcoc69,			// Namco C69 (M37702) (Bios) [BIOS only, NOT WORKING]
@@ -63204,6 +63206,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_f1heromd", "megadrive/d_megadrive.cpp"},
 	{ "md_nakaf1sl", "megadrive/d_megadrive.cpp"},
 	{ "nes_nalleland", "nes/d_nes.cpp"},
+	{ "nam1975k", "neogeo/d_neogeo.cpp"},
 	{ "nam1975", "neogeo/d_neogeo.cpp"},
 	{ "msx_namake", "msx/d_msx.cpp"},
 	{ "namcoc69", "pst90s/d_namcona1.cpp"},
