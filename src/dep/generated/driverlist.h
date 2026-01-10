@@ -2740,6 +2740,7 @@ DRV		BurnDrvsnes_Bofj;
 DRV		BurnDrvsnes_Bofwofg;
 DRV		BurnDrvsnes_Bofde;
 DRV		BurnDrvsnes_Bof2e;
+DRV		BurnDrvsnes_Bof2tp;
 DRV		BurnDrvsnes_Bof2ts;
 DRV		BurnDrvsnes_Bof2;
 DRV		BurnDrvsnes_Bof2j;
@@ -3566,6 +3567,7 @@ DRV		BurnDrvmd_chaoseng;
 DRV		BurnDrvsnes_Chaosengine;
 DRV		BurnDrvmd_chaosengcs;
 DRV		BurnDrvsnes_Chaosseedte;
+DRV		BurnDrvsnes_Chaosseedtp;
 DRV		BurnDrvsnes_Chaosseedj;
 DRV		BurnDrvnes_chaosworld;
 DRV		BurnDrvnes_chaosworldj;
@@ -7759,6 +7761,7 @@ DRV		BurnDrvpce_galaga88;
 DRV		BurnDrvGalaga88;
 DRV		BurnDrvtg_galaga90;
 DRV		BurnDrvgg_galaga91;
+DRV		BurnDrvnes_galagap;
 DRV		BurnDrvfds_galaga;
 DRV		BurnDrvMSX_galaga;
 DRV		BurnDrvnes_galagaj;
@@ -10623,6 +10626,7 @@ DRV		BurnDrvKeroppij;
 DRV		BurnDrvKeroppi;
 DRV		BurnDrvnes_keropkernosplbo;
 DRV		BurnDrvnes_keropkernosplboj;
+DRV		BurnDrvKetse;
 DRV		BurnDrvKetb;
 DRV		BurnDrvKeta;
 DRV		BurnDrvKet1;
@@ -10630,6 +10634,7 @@ DRV		BurnDrvKet;
 DRV		BurnDrvKetbl;
 DRV		BurnDrvketmatsuri;
 DRV		BurnDrvketarr10;
+DRV		BurnDrvketarrb;
 DRV		BurnDrvketarrf;
 DRV		BurnDrvketarr15;
 DRV		BurnDrvketarr151;
@@ -12304,6 +12309,7 @@ DRV		BurnDrvCpsMvscu;
 DRV		BurnDrvsnes_Marvelouste;
 DRV		BurnDrvsnes_Marvelousts;
 DRV		BurnDrvsnes_Marvelousj;
+DRV		BurnDrvsnes_Marveloustp;
 DRV		BurnDrvMarvins;
 DRV		BurnDrvmd_franken;
 DRV		BurnDrvsnes_Msfranken;
@@ -17934,6 +17940,7 @@ DRV		BurnDrvsnes_Seikdens3te;
 DRV		BurnDrvsnes_Seikdens3ttc;
 DRV		BurnDrvsnes_Seikdens3j;
 DRV		BurnDrvsnes_Seikdens3ts;
+DRV		BurnDrvsnes_Seikdens3tp;
 DRV		BurnDrvfds_seikepsy;
 DRV		BurnDrvfds_seikepsyj;
 DRV		BurnDrvnes_seikima2;
@@ -27486,6 +27493,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Bofwofg,		// Breath of Fire - War of the Goddess (Hack, v1.06)
 	&BurnDrvsnes_Bofde,			// Breath of Fire Definitive Edition (Hack, v2.0)
 	&BurnDrvsnes_Bof2e,			// Breath of Fire II (Euro)
+	&BurnDrvsnes_Bof2tp,		// Breath of Fire II (Hack, Portuguese v1.01)
 	&BurnDrvsnes_Bof2ts,		// Breath of Fire II (Hack, Spanish v1.2)
 	&BurnDrvsnes_Bof2,			// Breath of Fire II (USA)
 	&BurnDrvsnes_Bof2j,			// Breath of Fire II - Shimei no Ko (Japan)
@@ -28312,6 +28320,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Chaosengine,	// Chaos Engine, The (Euro)
 	&BurnDrvmd_chaosengcs,		// Chaos Engine, The - Amiga Colors and Sound Fix (Hack, v1.01)
 	&BurnDrvsnes_Chaosseedte,	// Chaos Seed (Hack, English v1.02)
+	&BurnDrvsnes_Chaosseedtp,	// Chaos Seed: Cronicas do Feng Shui (Hack, Portuguese)
 	&BurnDrvsnes_Chaosseedj,	// Chaos Seed: Fuusui Kairouki (Japan)
 	&BurnDrvnes_chaosworld,		// Chaos World (Hack, English)
 	&BurnDrvnes_chaosworldj,	// Chaos World (Japan)
@@ -32505,6 +32514,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvGalaga88,			// Galaga '88
 	&BurnDrvtg_galaga90,		// Galaga '90 (USA)
 	&BurnDrvgg_galaga91,		// Galaga '91 (Japan)
+	&BurnDrvnes_galagap,		// Galaga (Atari Prototype)
 	&BurnDrvfds_galaga,			// Galaga (Japan)
 	&BurnDrvMSX_galaga,			// Galaga (Japan)
 	&BurnDrvnes_galagaj,		// Galaga (Japan)
@@ -35369,6 +35379,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvKeroppi,			// Kero Kero Keroppi's Let's Play Together (USA, Version 2.0)
 	&BurnDrvnes_keropkernosplbo,// Keroppi to Keroriinu no Splash Bomb! (Hack, English)
 	&BurnDrvnes_keropkernosplboj,// Keroppi to Keroriinu no Splash Bomb! (Japan)
+	&BurnDrvKetse,				// Ketsui: Kizuna Jigoku Tachi (2003/01/01 Master Ver - Super Easy) (hack)
 	&BurnDrvKetb,				// Ketsui: Kizuna Jigoku Tachi (2003/01/01 Master Ver)
 	&BurnDrvKeta,				// Ketsui: Kizuna Jigoku Tachi (2003/01/01 Master Ver.)
 	&BurnDrvKet1,				// Ketsui: Kizuna Jigoku Tachi (2003/01/01. Master Ver.) (alt rom fill)
@@ -35376,6 +35387,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvKetbl,				// Ketsui: Kizuna Jigoku Tachi (2003/01/01. Master Ver., bootleg cartridge conversion)
 	&BurnDrvketmatsuri,			// Ketsui: Kizuna Jigoku Tachi (2007/09/22 CAVEMATSURI VER.)
 	&BurnDrvketarr10,			// Ketsui: Kizuna Jigoku Tachi (2012/04/17 ARRANGE VER) (hack)
+	&BurnDrvketarrb,			// Ketsui: Kizuna Jigoku Tachi (2012/04/17 BACK. VER) (hack)
 	&BurnDrvketarrf,			// Ketsui: Kizuna Jigoku Tachi (2012/04/17 FAST. VER) (hack)
 	&BurnDrvketarr15,			// Ketsui: Kizuna Jigoku Tachi (2012/06/26 ARRANGE 1.5 VER) (hack)
 	&BurnDrvketarr151,			// Ketsui: Kizuna Jigoku Tachi (2012/06/26 ARRANGE 1.51 VER) (hack)
@@ -37050,6 +37062,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Marvelouste,	// Marvelous: Another Treasure Island (Hack, English v1.07)
 	&BurnDrvsnes_Marvelousts,	// Marvelous: Another Treasure Island (Hack, Spanish)
 	&BurnDrvsnes_Marvelousj,	// Marvelous: Mouhitotsu no Takarajima (Japan)
+	&BurnDrvsnes_Marveloustp,	// Marvelous: Outra Ilha do Tesouro (Hack, Portuguese)
 	&BurnDrvMarvins,			// Marvin's Maze
 	&BurnDrvmd_franken,			// Mary Shelley's Frankenstein (USA)
 	&BurnDrvsnes_Msfranken,		// Mary Shelley's Frankenstein (USA)
@@ -42680,6 +42693,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Seikdens3ttc,	// Seiken Densetsu 3 (Hack, Traditional Chinese v1.0)
 	&BurnDrvsnes_Seikdens3j,	// Seiken Densetsu 3 (Japan)
 	&BurnDrvsnes_Seikdens3ts,	// Seiken Densetsu 3 ~ Secret of Mana 2 (Hack, Spanish)
+	&BurnDrvsnes_Seikdens3tp,	// Seiken Densetsu 3 ~ Trials of Mana (Hack, Portuguese v1.03)
 	&BurnDrvfds_seikepsy,		// Seiken Psycho Calibur (Hack, English)
 	&BurnDrvfds_seikepsyj,		// Seiken Psycho Calibur: Majuu no Mori Densetsu (Japan)
 	&BurnDrvnes_seikima2,		// Seikima II: Akuma no Gyakushuu (Japan)
@@ -52218,6 +52232,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_bofwofg", "snes/d_snes.cpp"},
 	{ "snes_bofde", "snes/d_snes.cpp"},
 	{ "snes_bof2e", "snes/d_snes.cpp"},
+	{ "snes_bof2tp", "snes/d_snes.cpp"},
 	{ "snes_bof2ts", "snes/d_snes.cpp"},
 	{ "snes_bof2", "snes/d_snes.cpp"},
 	{ "snes_bof2j", "snes/d_snes.cpp"},
@@ -53032,6 +53047,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_chaosengine", "snes/d_snes.cpp"},
 	{ "md_chaosengcs", "megadrive/d_megadrive.cpp"},
 	{ "snes_chaosseedte", "snes/d_snes.cpp"},
+	{ "snes_chaosseedtp", "snes/d_snes.cpp"},
 	{ "snes_chaosseedj", "snes/d_snes.cpp"},
 	{ "nes_chaosworld", "nes/d_nes.cpp"},
 	{ "nes_chaosworldj", "nes/d_nes.cpp"},
@@ -57199,6 +57215,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "galaga88", "pre90s/d_namcos1.cpp"},
 	{ "tg_galaga90", "pce/d_pce.cpp"},
 	{ "gg_galaga91", "sms/d_sms.cpp"},
+	{ "nes_galagap", "nes/d_nes.cpp"},
 	{ "fds_galaga", "nes/d_nes.cpp"},
 	{ "msx_galaga", "msx/d_msx.cpp"},
 	{ "nes_galagaj", "nes/d_nes.cpp"},
@@ -60041,6 +60058,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "keroppi", "pst90s/d_seta.cpp"},
 	{ "nes_keropkernosplbo", "nes/d_nes.cpp"},
 	{ "nes_keropkernosplboj", "nes/d_nes.cpp"},
+	{ "ketse", "pgm/d_pgm.cpp"},
 	{ "ketb", "pgm/d_pgm.cpp"},
 	{ "keta", "pgm/d_pgm.cpp"},
 	{ "ket1", "pgm/d_pgm.cpp"},
@@ -60048,6 +60066,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "ketbl", "pgm/d_pgm.cpp"},
 	{ "ketmatsuri", "pgm/d_pgm.cpp"},
 	{ "ketarr10", "pgm/d_pgm.cpp"},
+	{ "ketarrb", "pgm/d_pgm.cpp"},
 	{ "ketarrf", "pgm/d_pgm.cpp"},
 	{ "ketarr15", "pgm/d_pgm.cpp"},
 	{ "ketarr151", "pgm/d_pgm.cpp"},
@@ -61708,6 +61727,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_marvelouste", "snes/d_snes.cpp"},
 	{ "snes_marvelousts", "snes/d_snes.cpp"},
 	{ "snes_marvelousj", "snes/d_snes.cpp"},
+	{ "snes_marveloustp", "snes/d_snes.cpp"},
 	{ "marvins", "pre90s/d_snk.cpp"},
 	{ "md_franken", "megadrive/d_megadrive.cpp"},
 	{ "snes_msfranken", "snes/d_snes.cpp"},
@@ -67298,6 +67318,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_seikdens3ttc", "snes/d_snes.cpp"},
 	{ "snes_seikdens3j", "snes/d_snes.cpp"},
 	{ "snes_seikdens3ts", "snes/d_snes.cpp"},
+	{ "snes_seikdens3tp", "snes/d_snes.cpp"},
 	{ "fds_seikepsy", "nes/d_nes.cpp"},
 	{ "fds_seikepsyj", "nes/d_nes.cpp"},
 	{ "nes_seikima2", "nes/d_nes.cpp"},
