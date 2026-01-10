@@ -30132,8 +30132,8 @@ STD_ROM_PICK(Wofchk)
 STD_ROM_FN(Wofchk)
 
 static struct BurnRomInfo WofchkuRomDesc[] = {
-	{ "tk2ku=ch=_23.8f", 0x080000, 0x586c541f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
-	{ "tk2ku=ch=_22.7f", 0x080000, 0x1a4a3459, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "tk2ku=ch=_23.8f", 0x080000, 0x4d498441, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "tk2ku=ch=_22.7f", 0x080000, 0x88854a0b, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
 
 	{ "tk2-1m.3a",       0x080000, 0x0d9cb9bf, BRF_GRA | CPS1_TILES },
 	{ "tk2-3m.5a",       0x080000, 0x45227027, BRF_GRA | CPS1_TILES },

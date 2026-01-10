@@ -30344,6 +30344,43 @@ struct BurnDriver BurnDrvSpinmastk = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Samurai Shodown II / Shin Samurai Spirits - Haohmaru Jigokuhen (Korean Translation)
+
+static struct BurnRomInfo samsho2krRomDesc[] = {
+	{ "063-p1k.p1",   0x200000, 0x47fd209c, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC5316200
+
+	{ "063-s1k.s1",   0x020000, 0x8806c8cf, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "063-c1k.c1",   0x200000, 0xc6650458, 3 | BRF_GRA },           //  2 Sprite data		/ TC5316200
+	{ "063-c2k.c2",   0x200000, 0x1f91d819, 3 | BRF_GRA },           //  3 					/ TC5316200
+	{ "063-c3.c3",    0x200000, 0x7a63ccc7, 3 | BRF_GRA },           //  4 					/ TC5316200
+	{ "063-c4.c4",    0x200000, 0x751025ce, 3 | BRF_GRA },           //  5 					/ TC5316200
+	{ "063-c5.c5",    0x200000, 0x20d3a475, 3 | BRF_GRA },           //  6 					/ TC5316200
+	{ "063-c6.c6",    0x200000, 0xae4c0a88, 3 | BRF_GRA },           //  7 					/ TC5316200
+	{ "063-c7k.c7",   0x200000, 0x1dc1bd87, 3 | BRF_GRA },           //  8 					/ TC5316200
+	{ "063-c8k.c8",   0x200000, 0x2d6b0012, 3 | BRF_GRA },           //  9 					/ TC5316200
+
+	{ "063-m1.m1",    0x020000, 0x56675098, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code			/ TC531001
+
+	{ "063-v1.v1",    0x200000, 0x37703f91, 5 | BRF_SND },           // 11 Sound data		/ TC5316200
+	{ "063-v2.v2",    0x200000, 0x0142bde8, 5 | BRF_SND },           // 12 					/ TC5316200
+	{ "063-v3.v3",    0x200000, 0xd07fa5ca, 5 | BRF_SND },           // 13 					/ TC5316200
+	{ "063-v4.v4",    0x100000, 0x24aab4bb, 5 | BRF_SND },           // 14 					/ TC538200
+};
+
+STDROMPICKEXT(samsho2kr, samsho2kr, neogeo)
+STD_ROM_FN(samsho2kr)
+
+struct BurnDriver BurnDrvSamsho2kr = {
+	"samsho2kr", "samsho2", "neogeo", NULL, "2026",
+	"Samurai Shodown II / Shin Samurai Spirits - Haohmaru Jigokuhen (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Samurai Shodown II / Shin Samurai Spirits - Haohmaru Jigokuhen (Korean Translation)\0\uC0AC\uBB34\uB77C\uC774 \uC1FC\uB2E4\uC6B4 II / \uC9C4 \uC0AC\uBB34\uB77C\uC774 \uC2A4\uD53C\uB9AC\uCE20 - \uD558\uC624\uB9C8\uB8E8 \uC9C0\uC625\uBCC0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samsho2krRomInfo, samsho2krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 // Samurai Shodown II / Shin Samurai Spirits - Haohmaru Jigokuhen (AES Uncensored Hack)
 
 static struct BurnRomInfo samsho2uhRomDesc[] = {
