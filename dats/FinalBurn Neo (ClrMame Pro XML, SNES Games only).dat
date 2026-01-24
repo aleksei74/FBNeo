@@ -4576,10 +4576,28 @@
 	</game>
 	<game name="dgbattlete" sourcefile="snes/d_snes.cpp">
 		<comment>Hack</comment>
-		<description>Dossun! Ganseki Battle (Hack, English)</description>
+		<description>Dossun! Ganseki Battle (Hack, English v1.1)</description>
+		<year>2026</year>
+		<manufacturer>Stoneboat</manufacturer>
+		<rom name="Dossun! Ganseki Battle T-Eng v1.1 (2026)(Stoneboat).sfc" size="2097152" crc="1111d176"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="dgbattletea" cloneof="dgbattlete" romof="dgbattlete" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Dossun! Ganseki Battle (Hack, English, Alt)</description>
 		<year>2000</year>
 		<manufacturer>Aeon Genesis</manufacturer>
-		<rom name="Dossun! Ganseki Battle T-Eng (2000)(Aeon Genesis).sfc" size="1048576" crc="223d17d0"/>
+		<rom name="Dossun! Ganseki Battle T-Eng (Alt)(2000)(Aeon Genesis).sfc" size="1048576" crc="223d17d0"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="dgbattlets" cloneof="dgbattlete" romof="dgbattlete" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Dossun! Ganseki Battle (Hack, Spanish v1.1)</description>
+		<year>2018</year>
+		<manufacturer>Wave</manufacturer>
+		<rom name="Dossun! Ganseki Battle T-Spa v1.1 (2018)(Wave).sfc" size="1048576" crc="8161d72e"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -15956,10 +15974,10 @@
 	</game>
 	<game name="superbughunters" sourcefile="snes/d_snes.cpp">
 		<comment>Homebrew</comment>
-		<description>Super Bug Hunters (HB, v1.1)</description>
+		<description>Super Bug Hunters (HB, v1.2)</description>
 		<year>2025</year>
 		<manufacturer>Maxwel Olinda</manufacturer>
-		<rom name="Super Bug Hunters v1.1 (2025)(Maxwel Olinda).sfc" size="262144" crc="f9305a4f"/>
+		<rom name="Super Bug Hunters v1.2 (2025)(Maxwel Olinda).sfc" size="262144" crc="23386931"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -16148,6 +16166,15 @@
 		<year>1992</year>
 		<manufacturer>Tradewest - Technos</manufacturer>
 		<rom name="Super Double Dragon (E)(1992)(Tradewest - Technos).sfc" size="1048576" crc="b3f6009b"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="superdoubledragonep" cloneof="returndoubledragonev" romof="returndoubledragonev" sourcefile="snes/d_snes.cpp">
+		<comment>Prototype</comment>
+		<description>Super Double Dragon (Euro, Prototype)</description>
+		<year>1992</year>
+		<manufacturer>Tradewest - Technos</manufacturer>
+		<rom name="Super Double Dragon (E, Proto)(1992)(Tradewest - Technos).sfc" size="1048576" crc="1064e0e0"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -16364,12 +16391,21 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="supergngp" cloneof="supergng" romof="supergng" sourcefile="snes/d_snes.cpp">
+		<comment>Prototype</comment>
+		<description>Super Ghouls'n Ghosts (USA, Prototype)</description>
+		<year>1991</year>
+		<manufacturer>Capcom</manufacturer>
+		<rom name="Super Ghouls'n Ghosts (U, Proto)(1991)(Capcom).sfc" size="2097152" crc="f1073bb3"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="supergngr" cloneof="supergng" romof="supergng" sourcefile="snes/d_snes.cpp">
 		<comment>Hack</comment>
 		<description>Super Ghouls'n Ghosts Restoration (Hack)</description>
-		<year>2023</year>
+		<year>2023-25</year>
 		<manufacturer>SCD</manufacturer>
-		<rom name="Super Ghouls'n Ghosts Restoration Hack (2023)(SCD).sfc" size="2097152" crc="acaed88a"/>
+		<rom name="Super Ghouls'n Ghosts Restoration Hack (2023-25)(SCD).sfc" size="2097152" crc="d983a882"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
