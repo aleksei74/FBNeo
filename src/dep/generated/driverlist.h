@@ -12346,6 +12346,7 @@ DRV		BurnDrvMastboyoa;
 DRV		BurnDrvMastboyob;
 DRV		BurnDrvMastboyoc;
 DRV		BurnDrvnes_mastechuanddruhu;
+DRV		BurnDrvMSX_mastermind;
 DRV		BurnDrvgg_mastdark;
 DRV		BurnDrvsms_mastdark;
 DRV		BurnDrvsms_mastdarki;
@@ -18142,6 +18143,7 @@ DRV		BurnDrvmd_labdeathgnk;
 DRV		BurnDrvmd_labdeath;
 DRV		BurnDrvsnes_Shientbc;
 DRV		BurnDrvsnes_Shienrevenge;
+DRV		BurnDrvMSX_shift;
 DRV		BurnDrvmd_sokoban;
 DRV		BurnDrvmd_shikinjo;
 DRV		BurnDrvgg_shikinjo;
@@ -18232,6 +18234,7 @@ DRV		BurnDrvsnes_Cyberformula;
 DRV		BurnDrvShinygld;
 DRV		BurnDrvmd_ship1;
 DRV		BurnDrvmd_ship;
+DRV		BurnDrvMSX_shiper;
 DRV		BurnDrvShippuMD;
 DRV		BurnDrvpce_shiryo;
 DRV		BurnDrvShisen;
@@ -28461,7 +28464,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvChiller,			// Chiller (version 3.0)
 	&BurnDrvChimerab,			// Chimera Beast (Japan, prototype, set 1)
 	&BurnDrvChimeraba,			// Chimera Beast (Japan, prototype, set 2)
-	&BurnDrvMSX_chimneyman,		// ChimneyMan (HB, v1.5)
+	&BurnDrvMSX_chimneyman,		// Chimney Man (HB, v1.5)
 	&BurnDrvChinagat,			// China Gate (US)
 	&BurnDrvnes_chinarabbab,	// China Rabbit Baby (Taiwan) (Unl)
 	&BurnDrvChinatwn,			// China Town (Japan)
@@ -37102,9 +37105,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvpce_mashwataru,		// Mashin Eiyuuden Wataru (Japan)
 	&BurnDrvnes_mashieiydenwatga,// Mashin Hero Wataru Gaiden (Hack, English)
 	&BurnDrvnes_mashou,			// Mashou (Japan)
-	&BurnDrvMSX_gabalin,		// Mashou no Yakata - Gabalin (Japan)
-	&BurnDrvMSX_gabalina,		// Mashou no Yakata - Gabalin (Japan, Alt)
-	&BurnDrvMSX_gabalinen,		// Mashou no Yakata - Gabalin ~ Evil Mansion - Goblin (Hack, English)
+	&BurnDrvMSX_gabalin,		// Mashou no Yakata Gabalin (Japan)
+	&BurnDrvMSX_gabalina,		// Mashou no Yakata Gabalin (Japan, Alt)
+	&BurnDrvMSX_gabalinen,		// Mashou no Yakata Gabalin ~ Evil Mansion - Goblin (Hack, English)
 	&BurnDrvmd_masiaka,			// Masiaka (HB, Tech-Demo)
 	&BurnSpecMask,				// MASK (48K-128K)
 	&BurnSpecMask2,				// MASK II (128K)
@@ -37121,6 +37124,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMastboyob,			// Master Boy (1987, Z80 hardware, Ichi-Funtel, set 1)
 	&BurnDrvMastboyoc,			// Master Boy (1987, Z80 hardware, Ichi-Funtel, set 2)
 	&BurnDrvnes_mastechuanddruhu,// Master Chu and the Drunkard Hu (USA) (Unl)
+	&BurnDrvMSX_mastermind,		// Master Mind (HB)
 	&BurnDrvgg_mastdark,		// Master of Darkness (Euro)
 	&BurnDrvsms_mastdark,		// Master of Darkness (Euro, Brazil)
 	&BurnDrvsms_mastdarki,		// Master of Darkness (Hack, Italian v1.2)
@@ -42853,7 +42857,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_shadowpig,		// Shadow of the Pig (HB, v1.3)
 	&BurnSpecShadowotu,			// Shadow of the Unicorn (128K+2A, 'rebuilt' version)
 	&BurnSpecShadowskimmer,		// Shadow Skimmer (48K)
-	&BurnDrvMSX_shadswitch,		// Shadow Switcher (HB, v1.0)
+	&BurnDrvMSX_shadswitch,		// Shadow Switcher (HB)
 	&BurnSpecshadwarr,			// Shadow Warriors (128K)
 	&BurnDrvnes_shadowwarriors,	// Shadow Warriors (Euro)
 	&BurnDrvShadoww,			// Shadow Warriors (World, set 1)
@@ -42917,6 +42921,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_labdeath,		// Shi no Meikyuu: Labyrinth of Death (Japan, SegaNet)
 	&BurnDrvsnes_Shientbc,		// Shien - The Blade Chaser (Japan)
 	&BurnDrvsnes_Shienrevenge,	// Shien's Revenge (USA)
+	&BurnDrvMSX_shift,			// Shift (HB)
 	&BurnDrvmd_sokoban,			// Shijou Saidai no Soukoban (Japan)
 	&BurnDrvmd_shikinjo,		// Shikinjoh (Japan)
 	&BurnDrvgg_shikinjo,		// Shikinjou (Japan)
@@ -42940,7 +42945,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_ragnacenp,		// Shin Souseiki Ragnacenty (Japan, Prototype)
 	&BurnDrvsnes_Stfuturepastj,	// Shin Star Trek - Ooinaru Isan IFD no Nazo o Oe (Japan)
 	&BurnDrvMikiek,				// Shin-ip Sawon - Seok Dol-i
-	&BurnDrvMSX_sinbad,			// Shindobaddo Nanatsu no Bouken ~ Seven Adventures of Sindbad, The (Japan)
+	&BurnDrvMSX_sinbad,			// Shindobaddo Nanatsu no Bouken (Japan)
 	&BurnDrvTshingen,			// Shingen Samurai-Fighter (Japan, English)
 	&BurnDrvmd_shinfrcept,		// Shining Force (Hack, Portuguese)
 	&BurnDrvmd_shinfrces,		// Shining Force (Hack, Spanish)
@@ -43007,6 +43012,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvShinygld,			// Shiny Golds
 	&BurnDrvmd_ship1,			// Ship (Prototype)
 	&BurnDrvmd_ship,			// Ship (Visitor Prototype)
+	&BurnDrvMSX_shiper,			// Shiper (HB)
 	&BurnDrvShippuMD,			// Shippu Mahou Daisakusen (Japan)
 	&BurnDrvpce_shiryo,			// Shiryou Sensen (Japan)
 	&BurnDrvShisen,				// Shisensho - Joshiryo-Hen (Japan, set 1)
@@ -61808,6 +61814,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "mastboyob", "pre90s/d_mastboyo.cpp"},
 	{ "mastboyoc", "pre90s/d_mastboyo.cpp"},
 	{ "nes_mastechuanddruhu", "nes/d_nes.cpp"},
+	{ "msx_mastermind", "msx/d_msx.cpp"},
 	{ "gg_mastdark", "sms/d_sms.cpp"},
 	{ "sms_mastdark", "sms/d_sms.cpp"},
 	{ "sms_mastdarki", "sms/d_sms.cpp"},
@@ -67560,6 +67567,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_labdeath", "megadrive/d_megadrive.cpp"},
 	{ "snes_shientbc", "snes/d_snes.cpp"},
 	{ "snes_shienrevenge", "snes/d_snes.cpp"},
+	{ "msx_shift", "msx/d_msx.cpp"},
 	{ "md_sokoban", "megadrive/d_megadrive.cpp"},
 	{ "md_shikinjo", "megadrive/d_megadrive.cpp"},
 	{ "gg_shikinjo", "sms/d_sms.cpp"},
@@ -67650,6 +67658,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "shinygld", "pst90s/d_sderby.cpp"},
 	{ "md_ship1", "megadrive/d_megadrive.cpp"},
 	{ "md_ship", "megadrive/d_megadrive.cpp"},
+	{ "msx_shiper", "msx/d_msx.cpp"},
 	{ "shippumd", "toaplan/d_shippumd.cpp"},
 	{ "pce_shiryo", "pce/d_pce.cpp"},
 	{ "shisen", "pre90s/d_shisen.cpp"},

@@ -8479,7 +8479,6 @@ struct BurnDriver BurnDrvWbmlh = {
 	NULL, 0x800, 256, 224, 4, 3
 };
 
-// wboysys2
 // blckgalb
 // dakkochn
 
