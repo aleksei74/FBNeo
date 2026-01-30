@@ -31780,7 +31780,7 @@ struct BurnDriver BurnDrvSamsho5uh = {
 // The King of Fighters 2003 (AES Uncensored Hack)
 
 static struct BurnRomInfo kof2k3uhRomDesc[] = {
-	{ "271-p1uh.p1",  0x800000, 0xedee74d9, 1 | BRF_ESS | BRF_PRG },
+	{ "271-p1uh.p1",  0x800000, 0xab2da490, 1 | BRF_ESS | BRF_PRG },
 
 	{ "271-s1d.s1",   0x080000, 0x3230e10f, 2 | BRF_GRA },
 
@@ -31808,6 +31808,41 @@ struct BurnDriver BurnDrvKof2k3uh = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_ALTERNATE_TEXT, GBF_VSFIGHT, FBF_KOF,
 	NULL, kof2k3uhRomInfo, kof2k3uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// The King of Fighters 2003 (Korean Translation)
+
+static struct BurnRomInfo kof2k3kRomDesc[] = {
+	{ "271-p1dk.p1",  0x800000, 0x8544a84a, 1 | BRF_ESS | BRF_PRG },
+
+	{ "271-s1dk.s1",  0x080000, 0x215df5b8, 2 | BRF_GRA },
+
+	{ "271-c1dk.c1",  0x800000, 0xfc744083, 3 | BRF_GRA },
+	{ "271-c2dk.c2",  0x800000, 0xe22adf66, 3 | BRF_GRA },
+	{ "271-c3d.c3",   0x800000, 0xd334fdd9, 3 | BRF_GRA },
+	{ "271-c4d.c4",   0x800000, 0x0d457699, 3 | BRF_GRA },
+	{ "271-c5d.c5",   0x800000, 0x8a91aae4, 3 | BRF_GRA },
+	{ "271-c6d.c6",   0x800000, 0x9f8674b8, 3 | BRF_GRA },
+	{ "271-c7dk.c7",  0x800000, 0xcd3c4d02, 3 | BRF_GRA },
+	{ "271-c8dk.c8",  0x800000, 0x6ec4a23b, 3 | BRF_GRA },
+
+	{ "271-m1d.m1",   0x080000, 0xcc8b54c0, 4 | BRF_ESS | BRF_PRG },
+
+	{ "271-v1d.v1",   0x800000, 0xdd6c6a85, 5 | BRF_SND },
+	{ "271-v2d.v2",   0x800000, 0x0e84f8c1, 5 | BRF_SND },
+};
+
+STDROMPICKEXT(kof2k3k, kof2k3k, neogeo)
+STD_ROM_FN(kof2k3k)
+
+struct BurnDriver BurnDrvKof2k3k = {
+	"kof2k3k", "kof2003", "neogeo", NULL, "2026",
+	"The King of Fighters 2003 (Korean Translation)\0", NULL, "SNK Playmore", "Neo Geo MVS",
+	L"The King of Fighters 2003 (Korean Translation)\0\uB354 \uD0B9 \uC624\uBE0C \uD30C\uC774\uD130\uC988 2003 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_ALTERNATE_TEXT, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof2k3kRomInfo, kof2k3kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };

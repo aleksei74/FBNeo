@@ -21943,6 +21943,7 @@ DRV		BurnDrvKf2k3bl;
 DRV		BurnDrvKf2k3bla;
 DRV		BurnDrvKof2k3fd;
 DRV		BurnDrvKf2k3pcb;
+DRV		BurnDrvKof2k3k;
 DRV		BurnDrvKof2003h;
 DRV		BurnDrvKof2003;
 DRV		BurnDrvKf2k3ps2;
@@ -46721,6 +46722,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvKf2k3bla,			// The King of Fighters 2003 (bootleg set 2)
 	&BurnDrvKof2k3fd,			// The King of Fighters 2003 (Fully Decrypted)
 	&BurnDrvKf2k3pcb,			// The King of Fighters 2003 (Japan, JAMMA PCB)
+	&BurnDrvKof2k3k,			// The King of Fighters 2003 (Korean Translation)
 	&BurnDrvKof2003h,			// The King of Fighters 2003 (NGH-2710)
 	&BurnDrvKof2003,			// The King of Fighters 2003 (NGM-2710, Export)
 	&BurnDrvKf2k3ps2,			// The King of Fighters 2003 (PlayStation 2, Hack)
@@ -71331,6 +71333,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "kf2k3bla", "neogeo/d_neogeo.cpp"},
 	{ "kof2k3fd", "neogeo/d_neogeo.cpp"},
 	{ "kf2k3pcb", "neogeo/d_neogeo.cpp"},
+	{ "kof2k3k", "neogeo/d_neogeo.cpp"},
 	{ "kof2003h", "neogeo/d_neogeo.cpp"},
 	{ "kof2003", "neogeo/d_neogeo.cpp"},
 	{ "kf2k3ps2", "neogeo/d_neogeo.cpp"},
