@@ -47,7 +47,9 @@ struct NGCDGAME games[] =
 	{ _T("bstars2")		, _T("Baseball Stars 2")									, _T("1992")	, _T("SNK")					, 0x0041 },		//
 	{ _T("3countb")		, _T("3 Count Bout / Fire Suplex")							, _T("1995")	, _T("SNK")					, 0x0043 },		//
 	{ _T("aof")			, _T("Art of Fighting / Ryuuko no Ken")						, _T("1994")	, _T("SNK")					, 0x0044 },		//
+	{ _T("aofk")		, _T("Art of Fighting / Ryuuko no Ken (Korean, Hack)")		, _T("1994")	, _T("SNK")					, 0x5044 },		//
 	{ _T("samsho")		, _T("Samurai Shodown / Samurai Spirits")					, _T("1993")	, _T("SNK")					, 0x0045 },		//
+	{ _T("samshouh")	, _T("Samurai Shodown / Samurai Spirits (Uncensored)")		, _T("2025")	, _T("SNK")					, 0x9045 },		// custom id
 	{ _T("tophuntr")	, _T("Top Hunter - Roddy & Cathy")							, _T("1994")	, _T("SNK")					, 0x0046 },		//
 	{ _T("fatfury2")	, _T("Fatal Fury 2 / Garou Densetsu 2 - Aratanaru Tatakai")	, _T("1994")	, _T("SNK")					, 0x0047 },		//
 	{ _T("janshin")		, _T("Janshin Densetsu - Quest of the Jongmaster")			, _T("1995")	, _T("Yubis")				, 0x0048 },		//
@@ -60,6 +62,7 @@ struct NGCDGAME games[] =
 	{ _T("crsword2")	, _T("Crossed Swords II")									, _T("1995")	, _T("SNK/ADK")				, 0x0054 },		//
 	{ _T("kof94")		, _T("The King of Fighters '94 (JP)")						, _T("1994")	, _T("SNK")					, 0x0055 },		//
 	{ _T("kof94ju")		, _T("The King of Fighters '94 (JP-US)")					, _T("1994")	, _T("SNK")					, 0x1055 },		// custom id
+	{ _T("kof94uh")		, _T("The King of Fighters '94 (Uncensored)")				, _T("2025")	, _T("SNK")					, 0x9055 },		// custom id
 	{ _T("aof2")		, _T("Art of Fighting 2 / Ryuuko no Ken 2")					, _T("1994")	, _T("SNK")					, 0x0056 },		//
 	{ _T("wh2")			, _T("World Heroes 2")										, _T("1995")	, _T("SNK/ADK")				, 0x0057 },		//
 	{ _T("fatfursp")	, _T("Fatal Fury Special / Garou Densetsu Special")			, _T("1994")	, _T("SNK")					, 0x0058 },		//
@@ -68,6 +71,7 @@ struct NGCDGAME games[] =
 	{ _T("savagerer1")	, _T("Savage Reign / Fu'un Mokujiroku - Kakutou Sousei (Rev 1)"), _T("1995")	, _T("SNK")				, 0x1059 },		//
 	{ _T("ssideki2")	, _T("Super Sidekicks 2 / Tokuten Oh 2")					, _T("1994")	, _T("SNK")					, 0x0061 },		//
 	{ _T("samsho2")		, _T("Samurai Shodown 2 / Shin Samurai Spirits")			, _T("1994")	, _T("SNK")					, 0x0063 },		//
+	{ _T("samsho2uh")	, _T("Samurai Shodown 2 / Shin Samurai Spirits (Uncensored)")	, _T("2025")	, _T("SNK")					, 0x9063 },		// custom id
 	{ _T("wh2j")		, _T("World Heroes 2 Jet")									, _T("1995")	, _T("SNK/ADK")				, 0x0064 },		//
 	{ _T("wjammers")	, _T("Windjammers / Flying Power Disc")						, _T("1994")	, _T("Data East")			, 0x0065 },		//
 	{ _T("karnovr")		, _T("Karnov's Revenge / Fighters History Dynamite")		, _T("1994")	, _T("Data East")			, 0x0066 },		//
@@ -85,12 +89,14 @@ struct NGCDGAME games[] =
 	{ _T("pbobblen")	, _T("Puzzle Bobble / Bust-A-Move")							, _T("1994")	, _T("SNK")					, 0x0083 },		//
 	{ _T("kof95")		, _T("The King of Fighters '95 (JP-US)")					, _T("1995")	, _T("SNK")					, 0x0084 },		//
 	{ _T("kof95r1")		, _T("The King of Fighters '95 (JP-US)(Rev 1)")				, _T("1995")	, _T("SNK")					, 0x1084 },		//
+	{ _T("kof95k")		, _T("The King of Fighters '95 (Korean, Hack)")				, _T("1995")	, _T("SNK")					, 0x5084 },		//
 	{ _T("ssrpg")		, _T("Samurai Shodown RPG / Shinsetsu Samurai Spirits - Bushidohretsuden")		, _T("1997")	, _T("SNK")					, 0x0085 },		//
 	{ _T("ssrpgen")		, _T("Samurai Shodown RPG (English Translation)")			, _T("1997")	, _T("SNK")					, 0x1085 },		//
 	{ _T("ssrpgen11")	, _T("Samurai Shodown RPG (English Translation v1.1)")		, _T("1997")	, _T("SNK")					, 0x3085 },		//
 	{ _T("ssrpgchs")	, _T("Samurai Shodown RPG (Simplified Chinese Translation, Public beta)"), _T("2025"), _T("SGGG Team")	, 0x4085 },		// custom id
 	{ _T("ssrpgfr")		, _T("Samurai Shodown RPG (French Translation)")			, _T("1997")	, _T("SNK")					, 0x2085 },		//
 	{ _T("samsho3")		, _T("Samurai Shodown 3 / Samurai Spirits 3")				, _T("1995")	, _T("SNK")					, 0x0087 },		//
+	{ _T("samsho3uh")	, _T("Samurai Shodown 3 / Samurai Spirits 3 (Uncensored)")	, _T("2025")	, _T("SNK")					, 0x9087 },		// custom id
 	{ _T("stakwin")		, _T("Stakes Winner - GI Kanzen Seiha Heno Machi")			, _T("1995")	, _T("Saurus")				, 0x0088 },		//
 	{ _T("pulstar")		, _T("Pulstar")												, _T("1995")	, _T("Aicom")				, 0x0089 },		//
 	{ _T("whp")			, _T("World Heroes Perfect")								, _T("1995")	, _T("ADK")					, 0x0090 },		//
@@ -99,10 +105,12 @@ struct NGCDGAME games[] =
 	{ _T("gowcaizr")	, _T("Voltage Fighter Gowcaizer / Choujin Gakuen Gowcaizer"), _T("1995")	, _T("Technos")				, 0x0094 },		//
 	{ _T("rbff1")		, _T("Real Bout Fatal Fury")								, _T("1995")	, _T("SNK")					, 0x0095 },		//
 	{ _T("aof3")		, _T("Art of Fighting 3: Path of the Warrior")				, _T("1996")	, _T("SNK")					, 0x0096 },		//
+	{ _T("aof3uh")		, _T("Art of Fighting 3: Path of the Warrior (Uncensored)")		, _T("2025")	, _T("SNK")					, 0x9096 },		// custom id
 	{ _T("sonicwi3")	, _T("Aero Fighters 3 / Sonic Wings 3")						, _T("1995")	, _T("SNK")					, 0x0097 },		//
 	{ _T("fromanc2")	, _T("Idol Mahjong Final Romance 2")						, _T("1995")	, _T("Video Systems")		, 0x0098 },		//
 	{ _T("turfmast")	, _T("Neo Turf Masters / Big Tournament Golf")				, _T("1996")	, _T("Nazca")				, 0x0200 },		//
 	{ _T("mslug")		, _T("Metal Slug - Super Vehicle-001")						, _T("1996")	, _T("Nazca")				, 0x0201 },		//
+	{ _T("msluguh")		, _T("Metal Slug - Super Vehicle-001 (Uncensored)")			, _T("2025")	, _T("Nazca")				, 0x9201 },		// custom id
 	{ _T("mosyougi")	, _T("Shougi no Tatsujin - Master of Syougi")				, _T("1995")	, _T("ADK")					, 0x0203 },		//
 	{ _T("adkworld")	, _T("ADK World / ADK Special")								, _T("1995")	, _T("ADK")					, 0x0204 },		//
 	{ _T("ngcdsp")		, _T("Neo Geo CD Special")									, _T("1995")	, _T("SNK")					, 0x0205 },		//
@@ -116,17 +124,24 @@ struct NGCDGAME games[] =
 	{ _T("ironclad")	, _T("Ironclad / Choutetsu Brikin'ger")						, _T("1996")	, _T("Saurus")				, 0x0220 },		//
 	{ _T("magdrop2")	, _T("Magical Drop 2")										, _T("1996")	, _T("Data East")			, 0x0221 },		//
 	{ _T("samsho4")		, _T("Samurai Shodown IV - Amakusa's Revenge")				, _T("1996")	, _T("SNK")					, 0x0222 },		//
+	{ _T("samsho4uh")	, _T("Samurai Shodown IV - Amakusa's Revenge (Uncensored)")		, _T("2025")	, _T("SNK")					, 0x9222 },		// custom id
 	{ _T("rbffspec")	, _T("Real Bout Fatal Fury Special")						, _T("1996")	, _T("SNK")					, 0x0223 },		//
+	{ _T("rbffspecuh")	, _T("Real Bout Fatal Fury Special (Uncensored)")			, _T("2025")	, _T("SNK")					, 0x9223 },		// custom id
 	{ _T("twinspri")	, _T("Twinkle Star Sprites")								, _T("1996")	, _T("ADK")					, 0x0224 },		//
 	{ _T("kof96ngc")	, _T("The King of Fighters '96 NEOGEO Collection")			, _T("1996")	, _T("SNK")					, 0x0229 },		//
 	{ _T("breakers")	, _T("Breakers")											, _T("1996")	, _T("Visco")				, 0x0230 },		//
 	{ _T("kof97")		, _T("The King of Fighters '97")							, _T("1997")	, _T("SNK")					, 0x0232 },		//
+	{ _T("kof97b")		, _T("The King of Fighters '97 (Boss Hack)")				, _T("1997")	, _T("SNK")					, 0x5232 },		//
+	{ _T("kof97uh")		, _T("The King of Fighters '97 (Uncensored)")				, _T("2025")	, _T("SNK")					, 0x9232 },		// custom id
 	{ _T("lastblad")	, _T("The Last Blade / Bakumatsu Roman - Gekka no Kenshi")	, _T("1997")	, _T("SNK")					, 0x0234 },		//
 	{ _T("rbff2")		, _T("Real Bout Fatal Fury 2 - The Newcomers / Real Bout Garou Densetsu 2 - The Newcomers"), _T("1998"), _T("SNK") , 0x0240 },		//
 	{ _T("mslug2")		, _T("Metal Slug 2 - Super Vehicle-001/II")					, _T("1998")	, _T("SNK")					, 0x0241 },		//
 	{ _T("mslug2t")		, _T("Metal Slug 2 Turbo - Super Vehicle-001/II")			, _T("1998")	, _T("SNK")					, 0x0941 },		//
+	{ _T("mslug2uh")	, _T("Metal Slug 2 - Super Vehicle-001/II (Uncensored)")	, _T("2025")	, _T("SNK")					, 0x9241 },		// custom id
 	{ _T("kof98")		, _T("The King of Fighters '98 - The Slugfest")				, _T("1998")	, _T("SNK")					, 0x0242 },		//
+	{ _T("kof98uh")		, _T("The King of Fighters '98 - The Slugfest (Uncensored)")	, _T("2025")	, _T("SNK")					, 0x9242 },		// custom id
 	{ _T("lastbld2")	, _T("The Last Blade 2")									, _T("1998")	, _T("SNK")					, 0x0243 },		//
+	{ _T("lastbld2uh")	, _T("The Last Blade 2 (Uncensored)")						, _T("2025")	, _T("SNK")					, 0x9243 },		// custom id
 	{ _T("kof99")		, _T("The King of Fighters '99 - Millennium Battle")		, _T("1999")	, _T("SNK")					, 0x0251 },		//
 	{ _T("fatfury3")	, _T("Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3"), _T("1995"), _T("SNK"), 0x069c },		//
 	{ _T("fatfury3r1")	, _T("Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 (Rev 1)"), _T("1995"), _T("SNK"), 0x169c },		//

@@ -776,7 +776,7 @@ static struct BurnDIPInfo neokoreanDIPList[] = {
 	// Defaults
 	{0x00,	0xFF, 0xFF,	0x00, NULL}, // DIP 1
 	{0x01,	0xFF, 0x7F,	0x00, NULL}, // DIP 2
-	{0x02,	0xFF, 0xFF,	0x88, NULL}, // System
+	{0x02,	0xFF, 0xFF,	0x8a, NULL}, // System
 	{0x03,	0xFF, 0xFF,	0x01, NULL}, // Slots
 	{0x07,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Unibios HW)
 	{0x08,	0xFF, 0xFF,	0x00, NULL}, // Fake DIP (Overscan)
@@ -31782,7 +31782,7 @@ struct BurnDriver BurnDrvSamsho5uh = {
 static struct BurnRomInfo kof2k3uhRomDesc[] = {
 	{ "271-p1uh.p1",  0x800000, 0xab2da490, 1 | BRF_ESS | BRF_PRG },
 
-	{ "271-s1d.s1",   0x080000, 0x3230e10f, 2 | BRF_GRA },
+	{ "271-s1d.s1",   0x080000, 0x029f2af3, 2 | BRF_GRA },
 
 	{ "271-c1d.c1",   0x800000, 0xe42fc226, 3 | BRF_GRA },
 	{ "271-c2d.c2",   0x800000, 0x1b5e3b58, 3 | BRF_GRA },
@@ -31817,7 +31817,7 @@ struct BurnDriver BurnDrvKof2k3uh = {
 static struct BurnRomInfo kof2k3kRomDesc[] = {
 	{ "271-p1dk.p1",  0x800000, 0x8544a84a, 1 | BRF_ESS | BRF_PRG },
 
-	{ "271-s1dk.s1",  0x080000, 0x215df5b8, 2 | BRF_GRA },
+	{ "271-s1dk.s1",  0x080000, 0x11f23e44, 2 | BRF_GRA },
 
 	{ "271-c1dk.c1",  0x800000, 0xfc744083, 3 | BRF_GRA },
 	{ "271-c2dk.c2",  0x800000, 0xe22adf66, 3 | BRF_GRA },
