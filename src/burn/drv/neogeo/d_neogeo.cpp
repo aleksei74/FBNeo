@@ -29912,6 +29912,42 @@ struct BurnDriver BurnDrvMaglordk = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Cyber-Lip (Korean Translation)
+
+static struct BurnRomInfo cyberlipkRomDesc[] = {
+	{ "010-p1k.p1",   0x080000, 0x0069358b, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
+
+	{ "010-s1k.s1",   0x020000, 0x92fc299b, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "010-c1k.c1",   0x080000, 0xdf7c0307, 3 | BRF_GRA },           //  2 Sprite data 		/ TC534200
+	{ "010-c2k.c2",   0x080000, 0x6aa57e75, 3 | BRF_GRA },           //  3 					/ TC534200
+	{ "010-c3k.c3",   0x080000, 0x774750e4, 3 | BRF_GRA },           //  4 					/ TC534200
+	{ "010-c4k.c4",   0x080000, 0x587799ce, 3 | BRF_GRA },           //  5 					/ TC534200
+	{ "010-c5k.c5",   0x080000, 0xd6642ff2, 3 | BRF_GRA },           //  6 					/ TC534200
+	{ "010-c6k.c6",   0x080000, 0xdfc5ce12, 3 | BRF_GRA },           //  7 					/ TC534200
+
+	{ "010-m1.m1",    0x020000, 0x8be3a078, 4 | BRF_ESS | BRF_PRG }, //  8 Z80 code 		/ TC531001
+
+	{ "010-v11.v11",  0x080000, 0x90224d22, 5 | BRF_SND },           //  9 Sound data 		/ TC534000
+	{ "010-v12.v12",  0x080000, 0xa0cf1834, 5 | BRF_SND },           // 10 					/ TC534000
+	{ "010-v13.v13",  0x080000, 0xae38bc84, 5 | BRF_SND },           // 11 					/ TC534000
+	{ "010-v14.v14",  0x080000, 0x70899bd2, 5 | BRF_SND },           // 12 					/ TC534000
+	{ "010-v21.v21",  0x080000, 0x586f4cb2, 6 | BRF_SND },           // 13 					/ TC534000
+};
+
+STDROMPICKEXT(cyberlipk, cyberlipk, neogeo)
+STD_ROM_FN(cyberlipk)
+
+struct BurnDriver BurnDrvCyberlipk = {
+	"cyberlipk", "cyberlip", "neogeo", NULL, "2026",
+	"Cyber-Lip (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Cyber-Lip (Korean Translation)\0\uC0AC\uC774\uBC84-\uB9BD (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_RUNGUN, 0,
+	NULL, cyberlipkRomInfo, cyberlipkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Fatal Fury - King of Fighters / Garou Densetsu - Shukumei no Tatakai (Korean Translation)
 
 static struct BurnRomInfo fatfury1kRomDesc[] = {
