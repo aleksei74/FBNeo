@@ -548,7 +548,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="akumajo" cloneof="cvania" romof="cvania" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Akumajou Dracula - Vampire Killer (Japan)</description>
+		<description>Akumajou Dracula ~ Vampire Killer (Japan)</description>
 		<year>1994</year>
 		<manufacturer>Konami</manufacturer>
 		<rom name="Akumajou Dracula - Vampire Killer (Japan)(1994)(Konami).bin" size="1048576" crc="91b57d2b"/>
@@ -1488,6 +1488,15 @@
 		<year>1991</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Bahamut Senki (Japan)(1991)(Sega).bin" size="524288" crc="b1e268da"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="baileybrave" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Bailey the Brave (HB)</description>
+		<year>2026</year>
+		<manufacturer>Digital Mints</manufacturer>
+		<rom name="Bailey the Brave (2026)(Digital Mints).bin" size="1966080" crc="983b1eba"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -3135,10 +3144,10 @@
 	</game>
 	<game name="cavaleirodcp" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew, Prototype</comment>
-		<description>Cavaleiro: Director's Cut (HB, Prototype)</description>
+		<description>Cavaleiro: Director's Cut v3 (HB, Prototype)</description>
 		<year>2025</year>
 		<manufacturer>Manganga Team</manufacturer>
-		<rom name="Cavaleiro - Director's Cut (Proto)(2025)(Manganga Team).bin" size="786432" crc="796ee6a6"/>
+		<rom name="Cavaleiro - Director's Cut v3 (Proto)(2025)(Manganga Team).bin" size="786432" crc="796ee6a6"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -3215,7 +3224,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="centur" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Centurion - Defender of Rome (Euro, USA)</description>
+		<description>Centurion: Defender of Rome (Euro, USA)</description>
 		<year>1991</year>
 		<manufacturer>Electronic Arts</manufacturer>
 		<rom name="Centurion - Defender of Rome (Euro, USA)(1991)(Electronic Arts).bin" size="786432" crc="21283b14"/>
@@ -3316,9 +3325,9 @@
 	</game>
 	<game name="chaojimah" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Chao Ji Mahjong Club (Taiwan) (Unl)</description>
-		<year>199?</year>
-		<manufacturer>C&amp;E Inc.</manufacturer>
-		<rom name="Chao Ji Mahjong Club (Taiwan)(Unl)(199x)(C&amp;E Inc.).bin" size="1048576" crc="2b4b40e3"/>
+		<year>1995</year>
+		<manufacturer>Creaton Softech Inc.</manufacturer>
+		<rom name="Chao Ji Mahjong Club (Taiwan)(Unl)(1995)(Creaton Softech Inc.).bin" size="1048576" crc="2b4b40e3"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -3328,7 +3337,7 @@
 		<manufacturer>&lt;unknown&gt;</manufacturer>
 		<rom name="Chao Ji Poker (Taiwan)(Unl)(199x).bin" size="4194304" crc="c37e6858"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
-		<driver status="good"/>
+		<driver status="preliminary"/>
 	</game>
 	<game name="chaosen2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Prototype</comment>
@@ -3635,7 +3644,7 @@
 	</game>
 	<game name="clanofheroes" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Clan of Heroes - Generals of the Yang Family (HB)</description>
+		<description>Clan of Heroes: Generals of the Yang Family (HB)</description>
 		<year>2018</year>
 		<manufacturer>Piko Interactive</manufacturer>
 		<rom name="Clan of Heroes - Generals of the Yang Family (2018)(Piko Interactive).bin" size="2097152" crc="aeb3c10c"/>
@@ -4134,7 +4143,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="crayon" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Crayon Shin-chan - Arashi o Yobu Enji (Japan)</description>
+		<description>Crayon Shin-chan: Arashi o Yobu Enji (Japan)</description>
 		<year>1994</year>
 		<manufacturer>Ma-Ba</manufacturer>
 		<rom name="Crayon Shin-chan - Arashi o Yobu Enji (Japan)(1994)(Ma-Ba).bin" size="2097152" crc="97fc42d2"/>
@@ -5529,7 +5538,7 @@
 		<description>Dragon Ball Z: Buyuu Retsuden (Hack, New Voices v2)</description>
 		<year>2021</year>
 		<manufacturer>KanonZombie</manufacturer>
-		<rom name="Dragon Ball Z - Buyuu Retsuden (New Voices v2)(2021)(KanonZombie).bin" size="2321812" crc="1e91792d"/>
+		<rom name="Dragon Ball Z - Buyuu Retsuden - New Voices v2 (2021)(KanonZombie).bin" size="2321812" crc="1e91792d"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -5567,7 +5576,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="dslayed" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Dragon Slayer - Eiyuu Densetsu (Japan)</description>
+		<description>Dragon Slayer: The Legend of Heroes (Japan)</description>
 		<year>1994</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Dragon Slayer - Eiyuu Densetsu (Japan)(1994)(Sega).bin" size="2097152" crc="01bc1604"/>
@@ -5575,7 +5584,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="dslayed2" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Dragon Slayer - Eiyuu Densetsu II (Japan)</description>
+		<description>Dragon Slayer: The Legend of Heroes II (Japan)</description>
 		<year>1995</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Dragon Slayer - Eiyuu Densetsu II (Japan)(1995)(Sega).bin" size="2097152" crc="46924dc3"/>
@@ -5583,10 +5592,10 @@
 		<driver status="good"/>
 	</game>
 	<game name="shangh3" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Dragon's Eye Plus - Shanghai III (Japan)</description>
+		<description>Dragon's Eye + Shanghai 3 (Japan)</description>
 		<year>1991</year>
 		<manufacturer>Home Data</manufacturer>
-		<rom name="Dragon's Eye Plus - Shanghai III (Japan)(1991)(Home Data).bin" size="262144" crc="81f0c3cf"/>
+		<rom name="Dragon's Eye Plus + Shanghai 3 (Japan)(1991)(Home Data).bin" size="262144" crc="81f0c3cf"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -5767,10 +5776,10 @@
 		<driver status="good"/>
 	</game>
 	<game name="dynabr2sp" cloneof="dynabr2" romof="dynabr2" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Dyna Brothers 2 Special (Japan, Sega Channel)</description>
+		<description>Dyna Brothers 2 Special (Sega Channel, Japan)</description>
 		<year>1991</year>
 		<manufacturer>Sega</manufacturer>
-		<rom name="Dyna Brothers 2 Special (Japan, Sega Channel)(1991)(Sega).bin" size="2621440" crc="ba3554bc"/>
+		<rom name="Dyna Brothers 2 Special (Sega Channel, Japan)(1991)(Sega).bin" size="2621440" crc="ba3554bc"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -7262,6 +7271,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="flintscp" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Prototype</comment>
+		<description>Flintstones, The (Sega Channel, Prototype)</description>
+		<year>1995</year>
+		<manufacturer>Ocean</manufacturer>
+		<rom name="Flintstones, The (Sega Channel)(Proto)(1995)(Ocean).bin" size="2097152" crc="8ca71c6b"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="flintu" cloneof="flint" romof="flint" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Flintstones, The (USA)</description>
 		<year>1993</year>
@@ -7523,6 +7541,14 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="galagapp" sourcefile="megadrive/d_megadrive.cpp">
+		<description>Galaga (Pocket Player Pro)</description>
+		<year>2023</year>
+		<manufacturer>My Arcade - BNEI</manufacturer>
+		<rom name="Galaga (2023)(My Arcade).bin" size="131072" crc="eeca829d"/>
+		<video type="raster" orientation="vertical" width="224" height="320" aspectx="3" aspecty="4"/>
+		<driver status="good"/>
+	</game>
 	<game name="galahad" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Galahad (Euro, USA)</description>
 		<year>1992</year>
@@ -7538,6 +7564,14 @@
 		<manufacturer>Wave</manufacturer>
 		<rom name="Galahad T-Spa (2017)(Wave).bin" size="1048576" crc="29cb154b"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="galaxianpp" sourcefile="megadrive/d_megadrive.cpp">
+		<description>Galaxian (Pocket Player Pro)</description>
+		<year>2023</year>
+		<manufacturer>My Arcade - BNEI</manufacturer>
+		<rom name="Galaxian (Rev 1)(2023)(My Arcade).bin" size="65536" crc="1608a3a9"/>
+		<video type="raster" orientation="vertical" width="224" height="320" aspectx="3" aspecty="4"/>
 		<driver status="good"/>
 	</game>
 	<game name="gforce2s" cloneof="gforce2" romof="gforce2" sourcefile="megadrive/d_megadrive.cpp">
@@ -7701,6 +7735,15 @@
 		<year>1993</year>
 		<manufacturer>Tengen</manufacturer>
 		<rom name="Gauntlet IV (Euro, USA, 199309)(Tengen).bin" size="1048576" crc="f9d60510"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="gemesis" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Gemesis (HB, v1.1)</description>
+		<year>2026</year>
+		<manufacturer>NoutsteW</manufacturer>
+		<rom name="Gemesis v1.1 (2026)(NoutsteW).bin" size="376832" crc="a091aabe"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -8744,10 +8787,10 @@
 	</game>
 	<game name="hybridfte" cloneof="hybridf" romof="hybridf" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
-		<description>Hybrid Front, The (Hack, English)</description>
+		<description>Hybrid Front, The (Hack, English v1.1)</description>
 		<year>2025</year>
 		<manufacturer>Nebulous Group</manufacturer>
-		<rom name="Hybrid Front, The T-Eng (2025)(Nebulous Group).bin" size="2097152" crc="5a69d1ea"/>
+		<rom name="Hybrid Front, The T-Eng v1.1 (2025)(Nebulous Group).bin" size="2097152" crc="3e43639e"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -9207,7 +9250,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="jb007" sourcefile="megadrive/d_megadrive.cpp">
-		<description>James Bond 007 - The Duel (Euro, Rev. A)</description>
+		<description>James Bond 007: The Duel (Euro, Rev. A)</description>
 		<year>1992</year>
 		<manufacturer>Domark</manufacturer>
 		<rom name="James Bond 007 - The Duel (Euro, Rev A)(1992)(Domark).bin" size="524288" crc="66635364"/>
@@ -9216,7 +9259,7 @@
 	</game>
 	<game name="jb007s" cloneof="jb007" romof="jb007" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
-		<description>James Bond 007 - The Duel (Hack, Spanish)</description>
+		<description>James Bond 007: The Duel (Hack, Spanish)</description>
 		<year>2019</year>
 		<manufacturer>Wave</manufacturer>
 		<rom name="James Bond 007 - The Duel T-Spa (2019)(Wave).bin" size="524288" crc="4daf3d0d"/>
@@ -9224,7 +9267,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="jb007j" cloneof="jb007" romof="jb007" sourcefile="megadrive/d_megadrive.cpp">
-		<description>James Bond 007 - The Duel (Japan)</description>
+		<description>James Bond 007: The Duel (Japan)</description>
 		<year>1993</year>
 		<manufacturer>Tengen</manufacturer>
 		<rom name="James Bond 007 - The Duel (Japan)(1993)(Tengen).bin" size="524288" crc="aeb4b262"/>
@@ -9232,7 +9275,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="jb007u" cloneof="jb007" romof="jb007" sourcefile="megadrive/d_megadrive.cpp">
-		<description>James Bond 007 - The Duel (USA)</description>
+		<description>James Bond 007: The Duel (USA)</description>
 		<year>1992</year>
 		<manufacturer>Domark</manufacturer>
 		<rom name="James Bond 007 - The Duel (USA)(1992)(Domark).bin" size="524288" crc="4e614548"/>
@@ -9788,7 +9831,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="kickoff3" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Kick Off 3 - European Challenge (Euro)</description>
+		<description>Kick Off 3: European Challenge (Euro)</description>
 		<year>1994</year>
 		<manufacturer>Vic Tokai</manufacturer>
 		<rom name="Kick Off 3 - European Challenge (Euro)(1994)(Vic Tokai).bin" size="1048576" crc="bc37401a"/>
@@ -9918,7 +9961,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="kingsal" sourcefile="megadrive/d_megadrive.cpp">
-		<description>King Salmon - The Big Catch (USA)</description>
+		<description>King Salmon: The Big Catch (USA)</description>
 		<year>1993</year>
 		<manufacturer>Vic Tokai</manufacturer>
 		<rom name="King Salmon - The Big Catch (USA)(1993)(Vic Tokai).bin" size="524288" crc="f516e7d9"/>
@@ -10406,7 +10449,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="lemming2" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Lemmings 2 - The Tribes (Euro)</description>
+		<description>Lemmings 2: The Tribes (Euro)</description>
 		<year>1994</year>
 		<manufacturer>Psygnosis</manufacturer>
 		<rom name="Lemmings 2 - The Tribes (Euro)(1994)(Psygnosis).bin" size="2097152" crc="741eb624"/>
@@ -10414,7 +10457,7 @@
 		<driver status="good"/>
 	</game>
 	<game name="lemming2u" cloneof="lemming2" romof="lemming2" sourcefile="megadrive/d_megadrive.cpp">
-		<description>Lemmings 2 - The Tribes (USA)</description>
+		<description>Lemmings 2: The Tribes (USA)</description>
 		<year>1994</year>
 		<manufacturer>Psygnosis</manufacturer>
 		<rom name="Lemmings 2 - The Tribes (USA)(1994)(Psygnosis).bin" size="2097152" crc="de59a3a3"/>
@@ -10450,7 +10493,7 @@
 	</game>
 	<game name="le2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Lightgun 'The Justifier' compatible game</comment>
-		<description>Lethal Enforcers II - Gun Fighters (Euro)</description>
+		<description>Lethal Enforcers II: Gun Fighters (Euro)</description>
 		<year>1994</year>
 		<manufacturer>Konami</manufacturer>
 		<rom name="Lethal Enforcers II - Gun Fighters (Euro)(1994)(Konami).bin" size="2097152" crc="4bfe045c"/>
@@ -10459,7 +10502,7 @@
 	</game>
 	<game name="le2u" cloneof="le2" romof="le2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Lightgun 'The Justifier' compatible game</comment>
-		<description>Lethal Enforcers II - Gun Fighters (USA)</description>
+		<description>Lethal Enforcers II: Gun Fighters (USA)</description>
 		<year>1994</year>
 		<manufacturer>Konami</manufacturer>
 		<rom name="Lethal Enforcers II - Gun Fighters (USA)(1994)(Konami).bin" size="2097152" crc="e5fdd28b"/>
@@ -12557,6 +12600,14 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="mspacmanpp" sourcefile="megadrive/d_megadrive.cpp">
+		<description>Ms. Pac-Man (Pocket Player Pro)</description>
+		<year>2023</year>
+		<manufacturer>My Arcade - BNEI</manufacturer>
+		<rom name="Ms. Pac-Man (2023)(My Arcade).bin" size="524288" crc="9638da23"/>
+		<video type="raster" orientation="vertical" width="224" height="320" aspectx="3" aspecty="4"/>
+		<driver status="good"/>
+	</game>
 	<game name="valisj" cloneof="valis" romof="valis" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Mugen Senshi Valis (Japan)</description>
 		<year>1991</year>
@@ -13851,6 +13902,14 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="pacmanpp" sourcefile="megadrive/d_megadrive.cpp">
+		<description>Pac-Man (Pocket Player Pro)</description>
+		<year>2023</year>
+		<manufacturer>My Arcade - BNEI</manufacturer>
+		<rom name="Pac-Man (2023)(My Arcade).bin" size="262144" crc="c6f8d28c"/>
+		<video type="raster" orientation="vertical" width="224" height="320" aspectx="3" aspecty="4"/>
+		<driver status="good"/>
+	</game>
 	<game name="pacman" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Pac-Man (World)</description>
 		<year>2018</year>
@@ -14859,6 +14918,24 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="popnwizz" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Pop'n Wizz (HB, v2)</description>
+		<year>2026</year>
+		<manufacturer>format_c</manufacturer>
+		<rom name="Pop'n Wizz v2 (2026)(format_c).bin" size="393216" crc="17654df8"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="popeyescp" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Prototype</comment>
+		<description>Popeye in High Seas High-Jinks (Sega Channel, Prototype)</description>
+		<year>1995</year>
+		<manufacturer>Technos</manufacturer>
+		<rom name="Popeye in High Seas High-Jinks (Sega Channel)(Proto)(1995)(Technos).bin" size="2097152" crc="6c92e44d"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="populous" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Populous (Euro)</description>
 		<year>1991</year>
@@ -15074,7 +15151,7 @@
 		<description>Prisonela MD (HB)</description>
 		<year>2025</year>
 		<manufacturer>Two Black Cats</manufacturer>
-		<rom name="Prisonela MD (2025)(Two Black Cats).bin" size="1048576" crc="58fe6ea8"/>
+		<rom name="Prisonela MD (2025)(Two Black Cats).bin" size="1179648" crc="d16ac11c"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -18549,6 +18626,14 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="spaceinvpp" sourcefile="megadrive/d_megadrive.cpp">
+		<description>Space Invaders (Pocket Player Pro)</description>
+		<year>2023</year>
+		<manufacturer>My Arcade</manufacturer>
+		<rom name="Space Invaders (2023)(My Arcade).bin" size="131072" crc="39b16291"/>
+		<video type="raster" orientation="vertical" width="224" height="320" aspectx="3" aspecty="4"/>
+		<driver status="good"/>
+	</game>
 	<game name="sinv90" cloneof="sinv91" romof="sinv91" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Space Invaders 90 (Japan)</description>
 		<year>1990</year>
@@ -21197,6 +21282,14 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="tetrispp" sourcefile="megadrive/d_megadrive.cpp">
+		<description>Tetris (Pocket Player Pro)</description>
+		<year>2023</year>
+		<manufacturer>My Arcade</manufacturer>
+		<rom name="Tetris (2023)(My Arcade).bin" size="2097152" crc="eea3028b"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="preliminary"/>
+	</game>
 	<game name="tetris1" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Tetris (Unl)</description>
 		<year>199?</year>
@@ -21969,6 +22062,15 @@
 		<year>1996</year>
 		<manufacturer>Miky</manufacturer>
 		<rom name="Truco '96 (Argentina)(Unl)(1996)(Miky).bin" size="1048576" crc="cddbecfc"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tgmission" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>True Galactic Mission (HB)</description>
+		<year>2025</year>
+		<manufacturer>Big Uncle Games</manufacturer>
+		<rom name="True Galactic Mission (2025)(Big Uncle Games).bin" size="4194304" crc="80713dba"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
