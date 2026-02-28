@@ -373,6 +373,7 @@ DRV		BurnDrvsms_herolancc;
 DRV		BurnSpecadvlawn2;
 DRV		BurnSpecAdvancedpinballsim;
 DRV		BurnSpecAdvsocsim;
+DRV		BurnDrvAdcanoe;
 DRV		BurnDrvnes_adventureislandc;
 DRV		BurnDrvpce_advislnd;
 DRV		BurnDrvcv_advisland;
@@ -25248,6 +25249,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecadvlawn2,			// Advanced Lawnmower Simulator II (128K)
 	&BurnSpecAdvancedpinballsim,// Advanced Pinball Simulator (48K-128K)
 	&BurnSpecAdvsocsim,			// Advanced Soccer Simulator (48K)
+	&BurnDrvAdcanoe,			// Adventure Canoe
 	&BurnDrvnes_adventureislandc,// Adventure Island (Hack, Spanish v2.0)
 	&BurnDrvpce_advislnd,		// Adventure Island (Japan)
 	&BurnDrvcv_advisland,		// Adventure Island (SGM) (HB)
@@ -42903,7 +42905,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_seikima2,		// Seikima II: Akuma no Gyakushuu (Japan)
 	&BurnDrvnes_seiredenlic,	// Seirei Densetsu Lickle (Japan)
 	&BurnDrvnes_shancaraj,		// Seiryaku Simulation: Inbou no Wakusei ~ Shancara (Japan)
-	&BurnDrvnes_shancara,		// Seiryaku Simulation: Planet of Conspiracy ~ Shancara (Hack, English v1.01)
+	&BurnDrvnes_shancara,		// Seiryaku Simulation: Planet of Conspiracy ~ Shancara (Hack, English v1.02)
 	&BurnDrvSscandal,			// Seishun Scandal (315-5132, Japan)
 	&BurnDrvsms_seishun,		// Seishun Scandal (Japan, MyCard)
 	&BurnDrvsms_seishun1,		// Seishun Scandal (Japan, Pirate)
@@ -50123,6 +50125,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_advlawn2", "spectrum/d_spectrum.cpp"},
 	{ "spec_advancedpinballsim", "spectrum/d_spectrum.cpp"},
 	{ "spec_advsocsim", "spectrum/d_spectrum.cpp"},
+	{ "adcanoe", "taito/d_taitosj.cpp"},
 	{ "nes_adventureislandc", "nes/d_nes.cpp"},
 	{ "pce_advislnd", "pce/d_pce.cpp"},
 	{ "cv_advisland", "coleco/d_coleco.cpp"},
