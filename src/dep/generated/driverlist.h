@@ -14377,6 +14377,7 @@ DRV		BurnSpecNinjacarnagge;
 DRV		BurnSpecNinjacarnagit;
 DRV		BurnSpecNinjacarnages;
 DRV		BurnDrvNinclown;
+DRV		BurnDrvNcombatk;
 DRV		BurnDrvNcombath;
 DRV		BurnDrvNcombat;
 DRV		BurnSpecNinjacom;
@@ -18300,6 +18301,7 @@ DRV		BurnDrvmd_shinobi3p;
 DRV		BurnDrvmd_shinobi3u;
 DRV		BurnDrvmd_shinobi3umj;
 DRV		BurnDrvShinobing;
+DRV		BurnDrvShinobingk;
 DRV		BurnDrvsnes_Cyberformula;
 DRV		BurnDrvShinygld;
 DRV		BurnDrvmd_ship1;
@@ -39253,6 +39255,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecNinjacarnagit,		// Ninja Carnage (Italian) (128K) (HB)
 	&BurnSpecNinjacarnages,		// Ninja Carnage (Spanish) (128K) (HB)
 	&BurnDrvNinclown,			// Ninja Clowns (27 oct 91)
+	&BurnDrvNcombatk,			// Ninja Combat (Korean Translation)
 	&BurnDrvNcombath,			// Ninja Combat (NGH-009)
 	&BurnDrvNcombat,			// Ninja Combat (NGM-009)
 	&BurnSpecNinjacom,			// Ninja Commando (48K)
@@ -43176,6 +43179,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_shinobi3u,		// Shinobi III: Return of the Ninja Master (USA)
 	&BurnDrvmd_shinobi3umj,		// Shinobi III: Return of the Ninja Master - Enhancement (Hack)
 	&BurnDrvShinobing,			// Shinobi Neo Geo (HB, v1.1)
+	&BurnDrvShinobingk,			// Shinobi Neo Geo (HB, v1.1, Korean Translation)
 	&BurnDrvsnes_Cyberformula,	// Shinseiki GPX - Cyber Formula (Japan)
 	&BurnDrvShinygld,			// Shiny Golds
 	&BurnDrvmd_ship1,			// Ship (Prototype)
@@ -64025,6 +64029,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_ninjacarnagit", "spectrum/d_spectrum.cpp"},
 	{ "spec_ninjacarnages", "spectrum/d_spectrum.cpp"},
 	{ "ninclown", "pst90s/d_itech8.cpp"},
+	{ "ncombatk", "neogeo/d_neogeo.cpp"},
 	{ "ncombath", "neogeo/d_neogeo.cpp"},
 	{ "ncombat", "neogeo/d_neogeo.cpp"},
 	{ "spec_ninjacom", "spectrum/d_spectrum.cpp"},
@@ -67920,6 +67925,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_shinobi3u", "megadrive/d_megadrive.cpp"},
 	{ "md_shinobi3umj", "megadrive/d_megadrive.cpp"},
 	{ "shinobing", "neogeo/d_neogeo.cpp"},
+	{ "shinobingk", "neogeo/d_neogeo.cpp"},
 	{ "snes_cyberformula", "snes/d_snes.cpp"},
 	{ "shinygld", "pst90s/d_sderby.cpp"},
 	{ "md_ship1", "megadrive/d_megadrive.cpp"},

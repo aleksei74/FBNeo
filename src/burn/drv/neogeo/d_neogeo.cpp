@@ -29806,6 +29806,35 @@ struct BurnDriver BurnDrvShinobing = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Shinobi Neo Geo (HB, v1.1, Korean Translation)
+
+static struct BurnRomInfo shinobingkRomDesc[] = {
+	{ "1337-p1k.p1",   0x080000, 0xe5c3c0cd, 1 | BRF_ESS | BRF_PRG }, 	//  0 68K code
+
+	{ "1337-s1k.s1",   0x020000, 0xdff86694, 2 | BRF_GRA },           	//  2 Text layer tiles
+
+	{ "1337-c1.c1",    0x080000, 0x74227c08, 3 | BRF_GRA },           	//  3 Sprite data
+	{ "1337-c2.c2",    0x080000, 0xdf4104e6, 3 | BRF_GRA },           	//  4
+
+	{ "1337-m1.m1",    0x010000, 0x6b52f62d, 4 | BRF_ESS | BRF_PRG }, 	//  5 Z80 code
+
+	{ "1337-v1.v1",    0x400000, 0x67480d87, 5 | BRF_SND },           	//  6 Sound data
+	{ "1337-v2.v2",    0x400000, 0xb335aa46, 5 | BRF_SND },           	//  6 Sound data
+};
+
+STDROMPICKEXT(shinobingk, shinobingk, neogeo)
+STD_ROM_FN(shinobingk)
+
+struct BurnDriver BurnDrvShinobingk = {
+	"shinobingk", "shinobing", "neogeo", NULL, "2026",
+	"Shinobi Neo Geo (HB, v1.1, Korean Translation)\0", "Unofficial port", "Hoffman", "Neo Geo MVS",
+	L"Shinobi Neo Geo (HB, v1.1, Korean Translation)\0\uC2DC\uB178\uBE44 \uB124\uC624\uC9C0\uC624 (\uD648\uBE0C\uB958, v1.1, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_PLATFORM | GBF_SCRFIGHT, 0,
+	NULL, shinobingkRomInfo, shinobingkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 
 // World Racer 32Kb (HB, 251226)
 // https://www.patreon.com/posts/worldracer32kb-146718741
@@ -29910,6 +29939,41 @@ struct BurnDriver BurnDrvMaglordk = {
 	NULL, maglordkRomInfo, maglordkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
+};
+
+// Ninja Combat (Korean Translation)
+
+static struct BurnRomInfo ncombatkRomDesc[] = {
+	{ "009-p1k.p1",   0x080000, 0x82e9e9d3, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
+
+	{ "009-s1k.s1",   0x020000, 0xe8853e74, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "009-c1k.c1",   0x080000, 0xf7687d49, 3 | BRF_GRA },           //  2 Sprite data 		/ TC534200
+	{ "009-c2k.c2",   0x080000, 0x8c87b37c, 3 | BRF_GRA },           //  3 					/ TC534200
+	{ "009-c3k.c3",   0x080000, 0xa7cff240, 3 | BRF_GRA },           //  4 					/ TC534200
+	{ "009-c4k.c4",   0x080000, 0x22bbf93b, 3 | BRF_GRA },           //  5 					/ TC534200
+	{ "009-c5.c5",    0x080000, 0x67a4344e, 3 | BRF_GRA },           //  6 					/ TC534200
+	{ "009-c6.c6",    0x080000, 0x2eca8b19, 3 | BRF_GRA },           //  7 					/ TC534200
+
+	{ "009-m1.m1",    0x020000, 0xb5819863, 4 | BRF_ESS | BRF_PRG }, //  8 Z80 code 		/ TC531001
+
+	{ "009-v11.v11",  0x080000, 0xcf32a59c, 5 | BRF_SND },           //  9 Sound data 		/ TC534000
+	{ "009-v12.v12",  0x080000, 0x7b3588b7, 5 | BRF_SND },           // 10 					/ TC534000
+	{ "009-v13.v13",  0x080000, 0x505a01b5, 5 | BRF_SND },           // 11 					/ TC534000
+	{ "009-v21.v21",  0x080000, 0x365f9011, 6 | BRF_SND },           // 12 					/ TC534000
+};
+
+STDROMPICKEXT(ncombatk, ncombatk, neogeo)
+STD_ROM_FN(ncombatk)
+
+struct BurnDriver BurnDrvNcombatk = {
+	"ncombatk", "ncombat", "neogeo", NULL, "2026",
+	"Ninja Combat (Korean Translation)\0", NULL, "Alpha Denshi Co.", "Neo Geo MVS",
+	L"Ninja Combat (Korean Translation)\0\uB2CC\uC790 \uCEF4\uBC43 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
+	NULL, ncombatkRomInfo, ncombatkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
 };
 
 // Cyber-Lip (Korean Translation)
@@ -31884,19 +31948,19 @@ struct BurnDriver BurnDrvKof2k3uh = {
 // The King of Fighters 2003 (Korean Translation)
 
 static struct BurnRomInfo kof2003kRomDesc[] = {
-	{ "271-p1kr.p1",    0x400000, 0x1f5f41f0, 1 | BRF_ESS | BRF_PRG }, //  0 68K Code
-	{ "271-p2kr.p2",    0x400000, 0xa013e9e6, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "271-p1kr.p1",    0x400000, 0x1888bc2e, 1 | BRF_ESS | BRF_PRG }, //  0 68K Code
+	{ "271-p2kr.p2",    0x400000, 0x1524f74f, 1 | BRF_ESS | BRF_PRG }, //  1
 	{ "271-p3kr.p3",    0x100000, 0x67320237, 1 | BRF_ESS | BRF_PRG }, //  2
 
 	/* Encrypted */
-	{ "271-c1kr.c1",    0x800000, 0x0d96fdd1, 3 | BRF_GRA },           //  3 Sprite data
-	{ "271-c2kr.c2",    0x800000, 0x1295cce1, 3 | BRF_GRA },           //  4
-	{ "271-c3kr.c3",    0x800000, 0x0e057e22, 3 | BRF_GRA },           //  5
-	{ "271-c4kr.c4",    0x800000, 0x2ec0084a, 3 | BRF_GRA },           //  6
-	{ "271-c5kr.c5",    0x800000, 0x103276ab, 3 | BRF_GRA },           //  7
-	{ "271-c6kr.c6",    0x800000, 0xb3c60945, 3 | BRF_GRA },           //  8
-	{ "271-c7kr.c7",    0x800000, 0x41854b1c, 3 | BRF_GRA },           //  9
-	{ "271-c8kr.c8",    0x800000, 0xd1a245b1, 3 | BRF_GRA },           // 10
+	{ "271-c1kr.c1",    0x800000, 0x7080d58e, 3 | BRF_GRA },           //  3 Sprite data
+	{ "271-c2kr.c2",    0x800000, 0xa192884a, 3 | BRF_GRA },           //  4
+	{ "271-c3kr.c3",    0x800000, 0xc80cbb8c, 3 | BRF_GRA },           //  5
+	{ "271-c4kr.c4",    0x800000, 0x7f62af1b, 3 | BRF_GRA },           //  6
+	{ "271-c5kr.c5",    0x800000, 0xdc55875b, 3 | BRF_GRA },           //  7
+	{ "271-c6kr.c6",    0x800000, 0x8bb04c99, 3 | BRF_GRA },           //  8
+	{ "271-c7kr.c7",    0x800000, 0xe9d804f0, 3 | BRF_GRA },           //  9
+	{ "271-c8kr.c8",    0x800000, 0x5a7f997f, 3 | BRF_GRA },           // 10
 
 	/* Encrypted */
 	{ "271-m1k.m1",     0x080000, 0x48d9affe, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code
