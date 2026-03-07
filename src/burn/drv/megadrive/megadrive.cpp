@@ -106,7 +106,7 @@ static void z80CyclesSync()
 typedef void (*MegadriveCb)();
 static MegadriveCb MegadriveCallback;
 
-struct PicoVideo {
+struct MegadrivePicoVideo {
 	UINT8 reg[0x20];
 	UINT32 command;		// 32-bit Command
 	UINT8 pending;		// 1 if waiting for second half of 32-bit command
@@ -196,7 +196,7 @@ struct PicoMisc {
 	UINT8 MapperBank[0x10];
 };
 
-struct TileStrip
+struct MegadriveTileStrip
 {
 	INT32 nametab; // Position in VRAM of name table (for this tile line)
 	INT32 line;    // Line number in pixels 0x000-0x3ff within the virtual tilemap
@@ -238,7 +238,7 @@ static UINT8 *RamIO;
 static UINT16 *RamPal;
 static UINT16 *RamVid;
 static UINT16 *RamSVid;
-static struct PicoVideo *RamVReg;
+static struct MegadrivePicoVideo *RamVReg;
 static struct PicoMisc *RamMisc;
 static struct MegadriveJoyPad *JoyPad;
 
@@ -443,7 +443,7 @@ static INT32 MemIndex()
 	RamPal		= (UINT16 *) Next; Next += 0x000040 * sizeof(UINT16);
 	RamSVid		= (UINT16 *) Next; Next += 0x000040 * sizeof(UINT16);	// VSRam
 	RamVid		= (UINT16 *) Next; Next += 0x010000 * sizeof(UINT16);	// Video Ram
-	RamVReg		= (struct PicoVideo *)Next; Next += sizeof(struct PicoVideo);
+	RamVReg		= (struct MegadrivePicoVideo *)Next; Next += sizeof(struct MegadrivePicoVideo);
 
 	JoyPad		= (struct MegadriveJoyPad *) Next; Next += sizeof(struct MegadriveJoyPad);
 
@@ -931,7 +931,7 @@ static void DmaFill(INT32 data)
 
 static void CommandChange()
 {
-	//struct PicoVideo *pvid=&Pico.video;
+	//struct MegadrivePicoVideo *pvid=&Pico.video;
 	UINT32 cmd = RamVReg->command;
 	UINT32 addr = 0;
 
@@ -1685,7 +1685,7 @@ static INT32 MegadriveResetDo()
 	clear_opposite.reset();
 
 	// default VDP register values (based on Fusion)
-	memset(RamVReg, 0, sizeof(struct PicoVideo));
+	memset(RamVReg, 0, sizeof(struct MegadrivePicoVideo));
 	RamVReg->reg[0x00] = 0x04;
 	RamVReg->reg[0x01] = 0x04;
 	RamVReg->reg[0x0c] = 0x81;
@@ -4118,7 +4118,7 @@ TileFlipMaker(TileFlip_and, pix_and)
 
 // --------------------------------------------
 
-static void DrawStrip(struct TileStrip *ts, INT32 lflags, INT32 cellskip)
+static void DrawStrip(struct MegadriveTileStrip *ts, INT32 lflags, INT32 cellskip)
 {
   UINT8 *pd = HighCol;
   INT32 tilex,dx,ty,code=0,addr=0,cells;
@@ -4178,7 +4178,7 @@ static void DrawStrip(struct TileStrip *ts, INT32 lflags, INT32 cellskip)
   if (oldcode == -1) RamVReg->rendstatus |= PDRAW_PLANE_HI_PRIO;
 }
 
-static void DrawStripVSRam(struct TileStrip *ts, INT32 plane_sh, INT32 cellskip)
+static void DrawStripVSRam(struct MegadriveTileStrip *ts, INT32 plane_sh, INT32 cellskip)
 {
   UINT8 *pd = HighCol;
   UINT32 *hc = ts->hc;
@@ -4262,7 +4262,7 @@ static void DrawStripVSRam(struct TileStrip *ts, INT32 plane_sh, INT32 cellskip)
 
   if (oldcode == -1) RamVReg->rendstatus |= PDRAW_PLANE_HI_PRIO;
 }
-static void DrawStripInterlace(struct TileStrip *ts, INT32 plane_sh)
+static void DrawStripInterlace(struct MegadriveTileStrip *ts, INT32 plane_sh)
 {
   UINT8 *pd = HighCol;
   INT32 tilex=0,dx=0,ty=0,code=0,addr=0,cells;
@@ -4322,14 +4322,14 @@ static void DrawStripInterlace(struct TileStrip *ts, INT32 plane_sh)
 static void DrawLayer(INT32 plane_sh, UINT32 *hcache, INT32 cellskip, INT32 maxcells)
 {
   const char shift[4]={5,6,5,7}; // 32,64 or 128 sized tilemaps (2 is invalid)
-  struct TileStrip ts;
+  struct MegadriveTileStrip ts;
   INT32 width, height, ymask;
   INT32 vscroll, htab;
 
   ts.hc=hcache;
   ts.cells=maxcells;
 
-  // Work out the TileStrip to draw
+  // Work out the MegadriveTileStrip to draw
 
   // Work out the name table size: 32 64 or 128 tiles (0-3)
   width=RamVReg->reg[16];

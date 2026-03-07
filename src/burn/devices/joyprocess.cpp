@@ -98,6 +98,12 @@ UINT32 scalerange(UINT32 x, UINT32 in_min, UINT32 in_max, UINT32 out_min, UINT32
 	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
 }
 
+INT32 scalerangei(INT32 x, INT32 in_min, INT32 in_max, INT32 out_min, INT32 out_max) {
+	if (x < in_min) return out_min;
+	if (x > in_max) return out_max;
+	return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 UINT8 ProcessAnalog(INT16 anaval, INT32 reversed, INT32 flags, UINT8 scalemin, UINT8 scalemax)
 {
 	return ProcessAnalog(anaval, reversed, flags, scalemin, scalemax, 0x80);
@@ -119,7 +125,7 @@ UINT8 ProcessAnalog(INT16 anaval, INT32 reversed, INT32 flags, UINT8 scalemin, U
     }
 
 	INT32 DeadZone = (flags & INPUT_DEADZONE) ? 10 : 0;
-	INT16 Temp = (reversed) ? (centerval - (anaval / 16)) : (centerval + (anaval / 16));  // - for reversed, + for normal
+	INT16 Temp = (reversed) ? (centerval - ((anaval + 1) / 16)) : (centerval + (anaval / 16));  // - for reversed, + for normal
 
 	if (flags & INPUT_DEADZONE) { // deadzones
 		if (flags & INPUT_LINEAR) {
@@ -148,7 +154,8 @@ UINT8 ProcessAnalog(INT16 anaval, INT32 reversed, INT32 flags, UINT8 scalemin, U
 	if (flags & INPUT_LINEAR) {
 		if (!reversed) Temp -= centerval;
 		Temp = scalerange(Temp, 0, centerval, linear_min, linear_max);
-		if (Temp > linear_max - 4) Temp = linear_max; // some inputs stop a little short of full-on
+		// some inputs (triggers on dualshock) stop a little short of full-on
+		if (Temp > linear_max - 4) Temp = linear_max;
 	}
 
 	return Temp;
