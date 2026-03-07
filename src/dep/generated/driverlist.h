@@ -22029,7 +22029,7 @@ DRV		BurnDrvKf2k2pl;
 DRV		BurnDrvKf2k2plh;
 DRV		BurnDrvKof2002t;
 DRV		BurnDrvKf2k2plc;
-DRV		BurnDrvKof2k3uh;
+DRV		BurnDrvKof2003u;
 DRV		BurnDrvKf2k3bl;
 DRV		BurnDrvKf2k3bla;
 DRV		BurnDrvKof2k3fd;
@@ -46908,7 +46908,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvKf2k2plh,			// The King of Fighters 2002 Plus (Hack)
 	&BurnDrvKof2002t,			// The King of Fighters 2002 Plus (Optimised, Hack)
 	&BurnDrvKf2k2plc,			// The King of Fighters 2002 Super (bootleg)
-	&BurnDrvKof2k3uh,			// The King of Fighters 2003 (AES Uncensored Hack)
+	&BurnDrvKof2003u,			// The King of Fighters 2003 (AES Uncensored Hack)
 	&BurnDrvKf2k3bl,			// The King of Fighters 2003 (bootleg set 1)
 	&BurnDrvKf2k3bla,			// The King of Fighters 2003 (bootleg set 2)
 	&BurnDrvKof2k3fd,			// The King of Fighters 2003 (Fully Decrypted)
@@ -71617,7 +71617,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "kf2k2plh", "neogeo/d_neogeo.cpp"},
 	{ "kof2002t", "neogeo/d_neogeo.cpp"},
 	{ "kf2k2plc", "neogeo/d_neogeo.cpp"},
-	{ "kof2k3uh", "neogeo/d_neogeo.cpp"},
+	{ "kof2003u", "neogeo/d_neogeo.cpp"},
 	{ "kf2k3bl", "neogeo/d_neogeo.cpp"},
 	{ "kf2k3bla", "neogeo/d_neogeo.cpp"},
 	{ "kof2k3fd", "neogeo/d_neogeo.cpp"},

@@ -31912,44 +31912,47 @@ struct BurnDriver BurnDrvSamsho5uh = {
 
 // The King of Fighters 2003 (AES Uncensored Hack)
 
-static struct BurnRomInfo kof2k3uhRomDesc[] = {
-	{ "271-p1uh.p1",  0x800000, 0xab2da490, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+static struct BurnRomInfo kof2003uRomDesc[] = {
+	{ "271-p1ku.p1",    0x400000, 0x85bf46b0, 1 | BRF_ESS | BRF_PRG }, //  0 68K Code
+	{ "271-p2ku.p2",    0x400000, 0x78691a29, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "271-p3k.p3",     0x100000, 0x232702ad, 1 | BRF_ESS | BRF_PRG }, //  2
 
-	{ "271-s1d.s1",   0x080000, 0x029f2af3, 2 | BRF_GRA },           //  1 Sprite data
+	/* Encrypted */
+	{ "271-c1k.c1",     0x800000, 0xefb9dd24, 3 | BRF_GRA },		 //  3 Sprite data
+	{ "271-c2k.c2",     0x800000, 0x3fb90447, 3 | BRF_GRA },		 //  4
+	{ "271-c3k.c3",     0x800000, 0x27950f28, 3 | BRF_GRA },		 //  5
+	{ "271-c4k.c4",     0x800000, 0x735177f8, 3 | BRF_GRA },		 //  6
+	{ "271-c5k.c5",     0x800000, 0xa51b7c0f, 3 | BRF_GRA },		 //  7
+	{ "271-c6k.c6",     0x800000, 0xd5cae4e0, 3 | BRF_GRA },		 //  8
+	{ "271-c7k.c7",     0x800000, 0xe65ae2d0, 3 | BRF_GRA },		 //  9
+	{ "271-c8k.c8",     0x800000, 0x312f528c, 3 | BRF_GRA },		 // 10
 
-	{ "271-c1d.c1",   0x800000, 0xe42fc226, 3 | BRF_GRA },           //  2
-	{ "271-c2d.c2",   0x800000, 0x1b5e3b58, 3 | BRF_GRA },           //  3
-	{ "271-c3d.c3",   0x800000, 0xd334fdd9, 3 | BRF_GRA },           //  4
-	{ "271-c4d.c4",   0x800000, 0x0d457699, 3 | BRF_GRA },           //  5
-	{ "271-c5d.c5",   0x800000, 0x8a91aae4, 3 | BRF_GRA },           //  6
-	{ "271-c6d.c6",   0x800000, 0x9f8674b8, 3 | BRF_GRA },           //  7
-	{ "271-c7d.c7",   0x800000, 0x8ee6b43c, 3 | BRF_GRA },           //  8
-	{ "271-c8d.c8",   0x800000, 0x6d8d2d60, 3 | BRF_GRA },           //  9
+	/* Encrypted */
+	{ "271-m1k.m1",     0x080000, 0x48d9affe, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code
 
-	{ "271-m1d.m1",   0x080000, 0xcc8b54c0, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code
-
-	{ "271-v1d.v1",   0x800000, 0xdd6c6a85, 5 | BRF_SND },           // 10 Sound data
-	{ "271-v2d.v2",   0x800000, 0x0e84f8c1, 5 | BRF_SND },           // 11
+	/* Encrypted */
+	{ "271-v1c.v1",     0x800000, 0xffa3f8c7, 5 | BRF_SND },		 // 12 Sound data
+	{ "271-v2c.v2",     0x800000, 0x5382c7d1, 5 | BRF_SND },		 // 13
 };
 
-STDROMPICKEXT(kof2k3uh, kof2k3uh, neogeo)
-STD_ROM_FN(kof2k3uh)
+STDROMPICKEXT(kof2003u, kof2003u, neogeo)
+STD_ROM_FN(kof2003u)
 
-struct BurnDriver BurnDrvKof2k3uh = {
-	"kof2k3uh", "kof2003", "neogeo", NULL, "2024",
+struct BurnDriver BurnDrvKof2003u = {
+	"kof2003u", "kof2003", "neogeo", NULL, "2024",
 	"The King of Fighters 2003 (AES Uncensored Hack)\0", NULL, "SNK Playmore", "Neo Geo MVS",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_ALTERNATE_TEXT, GBF_VSFIGHT, FBF_KOF,
-	NULL, kof2k3uhRomInfo, kof2k3uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ALTERNATE_TEXT | HARDWARE_SNK_P32 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_KOF,
+	NULL, kof2003uRomInfo, kof2003uRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	kof2003hInit, NeoPVCExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
 
 // The King of Fighters 2003 (Korean Translation)
 
 static struct BurnRomInfo kof2003kRomDesc[] = {
-	{ "271-p1kr.p1",    0x400000, 0x1888bc2e, 1 | BRF_ESS | BRF_PRG }, //  0 68K Code
-	{ "271-p2kr.p2",    0x400000, 0x1524f74f, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "271-p1kr.p1",    0x400000, 0x4e88719f, 1 | BRF_ESS | BRF_PRG }, //  0 68K Code
+	{ "271-p2kr.p2",    0x400000, 0x6ec43161, 1 | BRF_ESS | BRF_PRG }, //  1
 	{ "271-p3kr.p3",    0x100000, 0x67320237, 1 | BRF_ESS | BRF_PRG }, //  2
 
 	/* Encrypted */
