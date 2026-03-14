@@ -31956,14 +31956,14 @@ static struct BurnRomInfo kof2003kRomDesc[] = {
 	{ "271-p3kr.p3",    0x100000, 0x67320237, 1 | BRF_ESS | BRF_PRG }, //  2
 
 	/* Encrypted */
-	{ "271-c1kr.c1",    0x800000, 0x7080d58e, 3 | BRF_GRA },           //  3 Sprite data
-	{ "271-c2kr.c2",    0x800000, 0xa192884a, 3 | BRF_GRA },           //  4
-	{ "271-c3kr.c3",    0x800000, 0xc80cbb8c, 3 | BRF_GRA },           //  5
-	{ "271-c4kr.c4",    0x800000, 0x7f62af1b, 3 | BRF_GRA },           //  6
-	{ "271-c5kr.c5",    0x800000, 0xdc55875b, 3 | BRF_GRA },           //  7
-	{ "271-c6kr.c6",    0x800000, 0x8bb04c99, 3 | BRF_GRA },           //  8
-	{ "271-c7kr.c7",    0x800000, 0xe9d804f0, 3 | BRF_GRA },           //  9
-	{ "271-c8kr.c8",    0x800000, 0x5a7f997f, 3 | BRF_GRA },           // 10
+	{ "271-c1kr.c1",    0x800000, 0x08db245a, 3 | BRF_GRA },           //  3 Sprite data
+	{ "271-c2kr.c2",    0x800000, 0xcae3ecce, 3 | BRF_GRA },           //  4
+	{ "271-c3kr.c3",    0x800000, 0x337d2cbb, 3 | BRF_GRA },           //  5
+	{ "271-c4kr.c4",    0x800000, 0x8413382c, 3 | BRF_GRA },           //  6
+	{ "271-c5kr.c5",    0x800000, 0xa9411aaf, 3 | BRF_GRA },           //  7
+	{ "271-c6kr.c6",    0x800000, 0xde8f7e08, 3 | BRF_GRA },           //  8
+	{ "271-c7kr.c7",    0x800000, 0x9578be7d, 3 | BRF_GRA },           //  9
+	{ "271-c8kr.c8",    0x800000, 0x26df23f2, 3 | BRF_GRA },           // 10
 
 	/* Encrypted */
 	{ "271-m1k.m1",     0x080000, 0x48d9affe, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code
