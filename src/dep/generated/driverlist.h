@@ -3030,6 +3030,7 @@ DRV		BurnDrvMSX_csok;
 DRV		BurnDrvsms_cso;
 DRV		BurnDrvsg1k_csot;
 DRV		BurnSpeccabal;
+DRV		BurnDrvCabalexsv;
 DRV		BurnDrvCabala;
 DRV		BurnDrvCabalukj;
 DRV		BurnDrvCabaluk;
@@ -27971,6 +27972,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsms_cso,			// C_So! (Korea)
 	&BurnDrvsg1k_csot,			// C_So! (Taiwan)
 	&BurnSpeccabal,				// Cabal (128K)
+	&BurnDrvCabalexsv,			// Cabal (Ex Super Version 2009-03-09) (Hack)
 	&BurnDrvCabala,				// Cabal (Korea?, Joystick)
 	&BurnDrvCabalukj,			// Cabal (UK, Joystick)
 	&BurnDrvCabaluk,			// Cabal (UK, Trackball)
@@ -52896,6 +52898,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sms_cso", "sms/d_sms.cpp"},
 	{ "sg1k_csot", "sg1000/d_sg1000.cpp"},
 	{ "spec_cabal", "spectrum/d_spectrum.cpp"},
+	{ "cabalexsv", "pre90s/d_cabal.cpp"},
 	{ "cabala", "pre90s/d_cabal.cpp"},
 	{ "cabalukj", "pre90s/d_cabal.cpp"},
 	{ "cabaluk", "pre90s/d_cabal.cpp"},
