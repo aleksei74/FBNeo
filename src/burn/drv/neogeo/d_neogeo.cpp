@@ -31284,6 +31284,43 @@ struct BurnDriver BurnDrvKof97uh = {
 	0x1000, 304, 224, 4, 3
 };
 
+// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340)
+/* MVS VERSION */
+
+static struct BurnRomInfo lastbladkRomDesc[] = {
+	{ "234-p1k.p1",    0x100000, 0x99d399a5, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "234-p2k.sp2",   0x400000, 0xb5fe86e9, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "234-s1k.s1",    0x020000, 0xeac83881, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "234-c1k.c1",    0x800000, 0xd639ed89, 3 | BRF_GRA },           //  3 Sprite data
+	{ "234-c2k.c2",    0x800000, 0x556bd717, 3 | BRF_GRA },           //  4
+	{ "234-c3k.c3",    0x800000, 0xb2a7f65f, 3 | BRF_GRA },           //  5
+	{ "234-c4k.c4",    0x800000, 0xcceca5f5, 3 | BRF_GRA },           //  6
+	{ "234-c5k.c5",    0x400000, 0xb8dd14ce, 3 | BRF_GRA },           //  7
+	{ "234-c6k.c6",    0x400000, 0x7e25736f, 3 | BRF_GRA },           //  8
+
+	{ "234-m1.m1",    0x020000, 0x087628ea, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code
+
+	{ "234-v1.v1",    0x400000, 0xed66b76f, 5 | BRF_SND },           // 10 Sound data
+	{ "234-v2.v2",    0x400000, 0xa0e7f6e2, 5 | BRF_SND },           // 11
+	{ "234-v3.v3",    0x400000, 0xa506e1e2, 5 | BRF_SND },           // 12
+	{ "234-v4.v4",    0x400000, 0x0e34157f, 5 | BRF_SND },           // 13
+};
+
+STDROMPICKEXT(lastbladk, lastbladk, neogeo)
+STD_ROM_FN(lastbladk)
+
+struct BurnDriver BurnDrvLastbladk = {
+	"lastbladk", "lastblad", "neogeo", NULL, "1997",
+	"The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340)\0", NULL, "SNK", "Neo Geo MVS",
+	L"The Last Blade\0\u5E55\u672B\u6D6A\u6F2B \u6708\u83EF\u306E\u5263\u58EB (NGM-2340)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
+	NULL, lastbladkRomInfo, lastbladkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 // Puzzle De Pon! R! (Korean Translation)
 
 static struct BurnRomInfo puzzldprkRomDesc[] = {

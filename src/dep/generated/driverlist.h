@@ -22128,6 +22128,7 @@ DRV		BurnDrvKf2k4pls;
 DRV		BurnDrvLastbldi;
 DRV		BurnDrvLastbladh;
 DRV		BurnDrvLastblad;
+DRV		BurnDrvLastbladk;
 DRV		BurnDrvLastblada;
 DRV		BurnDrvLastbldp;
 DRV		BurnDrvLastblsp;
@@ -47094,6 +47095,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvLastbldi,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Infinite Energy, Hack)
 	&BurnDrvLastbladh,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGH-2340)
 	&BurnDrvLastblad,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340)
+	&BurnDrvLastbladk,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340)
 	&BurnDrvLastblada,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340, alt board)
 	&BurnDrvLastbldp,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Plus, Hack)
 	&BurnDrvLastblsp,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Special 2017 v2.5 FINAL, Hack)
@@ -71890,6 +71892,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "lastbldi", "neogeo/d_neogeo.cpp"},
 	{ "lastbladh", "neogeo/d_neogeo.cpp"},
 	{ "lastblad", "neogeo/d_neogeo.cpp"},
+	{ "lastbladk", "neogeo/d_neogeo.cpp"},
 	{ "lastblada", "neogeo/d_neogeo.cpp"},
 	{ "lastbldp", "neogeo/d_neogeo.cpp"},
 	{ "lastblsp", "neogeo/d_neogeo.cpp"},
