@@ -22126,9 +22126,9 @@ DRV		BurnDrvKf2k3upl;
 DRV		BurnDrvKof2k4se;
 DRV		BurnDrvKf2k4pls;
 DRV		BurnDrvLastbldi;
+DRV		BurnDrvLastbladk;
 DRV		BurnDrvLastbladh;
 DRV		BurnDrvLastblad;
-DRV		BurnDrvLastbladk;
 DRV		BurnDrvLastblada;
 DRV		BurnDrvLastbldp;
 DRV		BurnDrvLastblsp;
@@ -47093,9 +47093,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvKof2k4se,			// The King of Fighters Special Edition 2004 (bootleg of The King of Fighters 2002)
 	&BurnDrvKf2k4pls,			// The King of Fighters Special Edition 2004 Plus (bootleg)
 	&BurnDrvLastbldi,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Infinite Energy, Hack)
+	&BurnDrvLastbladk,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Korean Translation)
 	&BurnDrvLastbladh,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGH-2340)
 	&BurnDrvLastblad,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340)
-	&BurnDrvLastbladk,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340)
 	&BurnDrvLastblada,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340, alt board)
 	&BurnDrvLastbldp,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Plus, Hack)
 	&BurnDrvLastblsp,			// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Special 2017 v2.5 FINAL, Hack)
@@ -71890,9 +71890,9 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "kof2k4se", "neogeo/d_neogeo.cpp"},
 	{ "kf2k4pls", "neogeo/d_neogeo.cpp"},
 	{ "lastbldi", "neogeo/d_neogeo.cpp"},
+	{ "lastbladk", "neogeo/d_neogeo.cpp"},
 	{ "lastbladh", "neogeo/d_neogeo.cpp"},
 	{ "lastblad", "neogeo/d_neogeo.cpp"},
-	{ "lastbladk", "neogeo/d_neogeo.cpp"},
 	{ "lastblada", "neogeo/d_neogeo.cpp"},
 	{ "lastbldp", "neogeo/d_neogeo.cpp"},
 	{ "lastblsp", "neogeo/d_neogeo.cpp"},

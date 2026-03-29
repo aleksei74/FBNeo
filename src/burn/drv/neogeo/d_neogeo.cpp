@@ -31284,7 +31284,7 @@ struct BurnDriver BurnDrvKof97uh = {
 	0x1000, 304, 224, 4, 3
 };
 
-// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340)
+// The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Korean Translation)
 /* MVS VERSION */
 
 static struct BurnRomInfo lastbladkRomDesc[] = {
@@ -31313,8 +31313,8 @@ STD_ROM_FN(lastbladk)
 
 struct BurnDriver BurnDrvLastbladk = {
 	"lastbladk", "lastblad", "neogeo", NULL, "1997",
-	"The Last Blade / Bakumatsu Roman - Gekka no Kenshi (NGM-2340)\0", NULL, "SNK", "Neo Geo MVS",
-	L"The Last Blade\0\u5E55\u672B\u6D6A\u6F2B \u6708\u83EF\u306E\u5263\u58EB (NGM-2340)\0", NULL, NULL, NULL,
+	"The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"The Last Blade\0\u5E55\u672B\u6D6A\u6F2B \u6708\u83EF\u306E\u5263\u58EB (\uC138\uD2B8 1, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
 	NULL, lastbladkRomInfo, lastbladkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
