@@ -31287,20 +31287,19 @@ struct BurnDriver BurnDrvKof97uh = {
 };
 
 // The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Korean Translation)
-/* MVS VERSION */
 
 static struct BurnRomInfo lastbladkRomDesc[] = {
-	{ "234-p1k.p1",    0x100000, 0x99d399a5, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
-	{ "234-p2k.sp2",   0x400000, 0xb5fe86e9, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "234-pg1k.p1",  0x100000, 0x5fefc835, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "234-p2k.sp2",  0x400000, 0xb5fe86e9, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "234-s1k.s1",    0x020000, 0xeac83881, 2 | BRF_GRA },           //  2 Text layer tiles
+	{ "234-s1k.s1",   0x020000, 0xeac83881, 2 | BRF_GRA },           //  2 Text layer tiles
 
-	{ "234-c1k.c1",    0x800000, 0xd639ed89, 3 | BRF_GRA },           //  3 Sprite data
-	{ "234-c2k.c2",    0x800000, 0x556bd717, 3 | BRF_GRA },           //  4
-	{ "234-c3k.c3",    0x800000, 0xb2a7f65f, 3 | BRF_GRA },           //  5
-	{ "234-c4k.c4",    0x800000, 0xcceca5f5, 3 | BRF_GRA },           //  6
-	{ "234-c5k.c5",    0x400000, 0xb8dd14ce, 3 | BRF_GRA },           //  7
-	{ "234-c6k.c6",    0x400000, 0x7e25736f, 3 | BRF_GRA },           //  8
+	{ "234-c1k.c1",   0x800000, 0xd639ed89, 3 | BRF_GRA },           //  3 Sprite data
+	{ "234-c2k.c2",   0x800000, 0x556bd717, 3 | BRF_GRA },           //  4
+	{ "234-c3k.c3",   0x800000, 0xb2a7f65f, 3 | BRF_GRA },           //  5
+	{ "234-c4k.c4",   0x800000, 0xcceca5f5, 3 | BRF_GRA },           //  6
+	{ "234-c5k.c5",   0x400000, 0xb8dd14ce, 3 | BRF_GRA },           //  7
+	{ "234-c6k.c6",   0x400000, 0x7e25736f, 3 | BRF_GRA },           //  8
 
 	{ "234-m1.m1",    0x020000, 0x087628ea, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code
 
@@ -31314,10 +31313,10 @@ STDROMPICKEXT(lastbladk, lastbladk, neogeo)
 STD_ROM_FN(lastbladk)
 
 struct BurnDriver BurnDrvLastbladk = {
-	"lastbladk", "lastblad", "neogeo", NULL, "1997",
-	"The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"The Last Blade\0\u5E55\u672B\u6D6A\u6F2B \u6708\u83EF\u306E\u5263\u58EB (\uC138\uD2B8 1, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
+	"lastbladk", "lastblad", "neogeo", NULL, "2026",
+	"The Last Blade / Bakumatsu Roman - Gekka no Kenshi (Korean Translation)\0", NULL, "SNK", "Neo Geo AES",
+	L"The Last Blade / \u5E55\u672B\u6D6A\u6F2B \u6708\u83EF\u306E\u5263\u58EB (Korean Translation)\0\uB354 \uB77C\uC2A4\uD2B8 \uBE14\uB808\uC774\uB4DC / \uB9C9\uB9D0\uB0AD\uB9CC - \uC6D4\uD654\uC758 \uAC80\uC0AC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
 	NULL, lastbladkRomInfo, lastbladkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
@@ -31462,7 +31461,7 @@ struct BurnDriver BurnDrvRbff2uh = {
 // Metal Slug 2 - Super Vehicle-001/II (AES Uncensored Hack)
 
 static struct BurnRomInfo mslug2uhRomDesc[] = {
-	{ "241-p1uh.p1",  0x100000, 0x97d70cd6, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "241-p1uh.p1",  0x100000, 0x68584177, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
 	{ "241-p2.sp2",   0x200000, 0x38883f44, 1 | BRF_ESS | BRF_PRG }, //  1
 
 	{ "241-s1.s1",    0x020000, 0xf3d32f0f, 2 | BRF_GRA },           //  2 Text layer tiles
