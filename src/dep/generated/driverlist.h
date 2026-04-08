@@ -6476,8 +6476,8 @@ DRV		BurnDrvmd_elviento;
 DRV		BurnDrvfds_electrician;
 DRV		BurnDrvfds_electrician1;
 DRV		BurnDrvsms_eledreams;
-DRV		BurnDrvmd_elemastk;
 DRV		BurnDrvcv_elecquart;
+DRV		BurnDrvmd_elemastk;
 DRV		BurnDrvmd_elemastj;
 DRV		BurnDrvmd_elemast;
 DRV		BurnSpecElevaction;
@@ -22124,8 +22124,8 @@ DRV		BurnDrvKof98pfe;
 DRV		BurnDrvKof98rat;
 DRV		BurnDrvKof98ult;
 DRV		BurnDrvKof98mix;
-DRV		BurnDrvKof99uh;
 DRV		BurnDrvkof98umh;
+DRV		BurnDrvKof99uh;
 DRV		BurnDrvKof99ae;
 DRV		BurnDrvKof99cb;
 DRV		BurnDrvKof99e;
@@ -31544,8 +31544,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvfds_electrician,	// Electrician (Hack, English)
 	&BurnDrvfds_electrician1,	// Electrician (Japan)
 	&BurnDrvsms_eledreams,		// Electronic Dreams (HB, v.77)
-	&BurnDrvmd_elemastk,		// Elemental Master (Hack, Korean Translation)
 	&BurnDrvcv_elecquart,		// Electronic Quarterback (HB)
+	&BurnDrvmd_elemastk,		// Elemental Master (Hack, Korean Translation)
 	&BurnDrvmd_elemastj,		// Elemental Master (Japan)
 	&BurnDrvmd_elemast,			// Elemental Master (USA)
 	&BurnSpecElevaction,		// Elevator Action (128K)
@@ -47192,8 +47192,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvKof98rat,			// The King of Fighters '98 - The Slugfest / King of Fighters '98 - Dream Match Never Ends (Ratio, Hack)
 	&BurnDrvKof98ult,			// The King of Fighters '98 - The Slugfest / King of Fighters '98 - Dream Match Never Ends (Ultimate Match, Hack)
 	&BurnDrvKof98mix,			// The King of Fighters '98 - The Slugfest / King of Fighters '98 - Dream Match Never Ends (Unlimited, Hack)
-	&BurnDrvKof99uh,			// The King of Fighters '99 - Millennium Battle (AES Uncensored Hack)
 	&BurnDrvkof98umh,			// The King of Fighters '98: Ultimate Match HERO (China, V100)
+	&BurnDrvKof99uh,			// The King of Fighters '99 - Millennium Battle (AES Uncensored Hack)
 	&BurnDrvKof99ae,			// The King of Fighters '99 - Millennium Battle (Anniversary, Hack)
 	&BurnDrvKof99cb,			// The King of Fighters '99 - Millennium Battle (Combo, Hack)
 	&BurnDrvKof99e,				// The King of Fighters '99 - Millennium Battle (earlier)
@@ -56570,8 +56570,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "fds_electrician", "nes/d_nes.cpp"},
 	{ "fds_electrician1", "nes/d_nes.cpp"},
 	{ "sms_eledreams", "sms/d_sms.cpp"},
-	{ "md_elemastk", "megadrive/d_megadrive.cpp"},
 	{ "cv_elecquart", "coleco/d_coleco.cpp"},
+	{ "md_elemastk", "megadrive/d_megadrive.cpp"},
 	{ "md_elemastj", "megadrive/d_megadrive.cpp"},
 	{ "md_elemast", "megadrive/d_megadrive.cpp"},
 	{ "spec_elevaction", "spectrum/d_spectrum.cpp"},
@@ -72090,8 +72090,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "kof98rat", "neogeo/d_neogeo.cpp"},
 	{ "kof98ult", "neogeo/d_neogeo.cpp"},
 	{ "kof98mix", "neogeo/d_neogeo.cpp"},
-	{ "kof99uh", "neogeo/d_neogeo.cpp"},
 	{ "kof98umh", "pgm2/d_pgm2.cpp"},
+	{ "kof99uh", "neogeo/d_neogeo.cpp"},
 	{ "kof99ae", "neogeo/d_neogeo.cpp"},
 	{ "kof99cb", "neogeo/d_neogeo.cpp"},
 	{ "kof99e", "neogeo/d_neogeo.cpp"},
