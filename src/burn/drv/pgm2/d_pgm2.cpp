@@ -1,4 +1,4 @@
-﻿// d_pgm2.cpp - IGS PGM2 (IGS036) driver definitions for FBNeo
+// d_pgm2.cpp - IGS PGM2 (IGS036) driver definitions for FBNeo
 
 #include "pgm2.h"
 #include "pgm2_crypt.h"
@@ -52,7 +52,7 @@ static struct BurnInputInfo pgm2InputList[] = {
     { "Test Key P3 & P4", BIT_DIGITAL, Pgm2InputPort1 + 19, "diag"      },
     { "Service P1 & P2",  BIT_DIGITAL, Pgm2InputPort1 + 20, "service"   },
     { "Service P3 & P4",  BIT_DIGITAL, Pgm2InputPort1 + 21, "service"   },
-    { "ResetGame",            BIT_DIGITAL, &Pgm2Reset,           "reset"     },
+    { "ResetGame",        BIT_DIGITAL, &Pgm2Reset,           "reset"     },
     { "Dip A",            BIT_DIPSWITCH, Pgm2Dip + 0,        "dip"       },
 };
 STDINPUTINFO(pgm2)
@@ -185,63 +185,23 @@ static void kov3LoadRoms()
 
 static INT32 orleg2InitCommon()
 {
-    pgm2SetStorageRomIndices(-1, 11);
-    pgm2SetSpeedhack(0x20020114, 0x1002faec, 0x1002f9b8, 0, 0);
+    pgm2SetStorageRomIndices(-1, 10);
+    pgm2SetSpeedhack(0, 0x20020114, 0x1002faec, 0x1002f9b8, 0, 0);
     pPgm2InitCallback = orleg2LoadRoms;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
     return pgm2Init();
 }
 
-static INT32 orleg2CnInitCommon()
+static INT32 orleg2CardInitCommon()
 {
-    pgm2SetStorageRomIndices(10, 14);
+    pgm2SetStorageRomIndices(10, 11);
     pgm2SetMaxCardSlots(4);
     pgm2SetCardRomIndex(0, 10);
-    pgm2SetCardRomIndex(1, 11);
-    pgm2SetCardRomIndex(2, 12);
-    pgm2SetCardRomIndex(3, 13);
-    pgm2SetSpeedhack(0x20020114, 0x1002faec, 0x1002f9b8, 0, 0);
-    pPgm2InitCallback = orleg2LoadRoms;
-    pPgm2ResetCallback = NULL;
-    pPgm2ScanCallback = NULL;
-    return pgm2Init();
-}
-
-static INT32 orleg2HkInitCommon()
-{
-    pgm2SetStorageRomIndices(10, 14);
-    pgm2SetMaxCardSlots(4);
-    pgm2SetCardRomIndex(0, 10);
-    pgm2SetCardRomIndex(1, 11);
-    pgm2SetCardRomIndex(2, 12);
-    pgm2SetCardRomIndex(3, 13);
-    pgm2SetSpeedhack(0x20020114, 0x1002faec, 0x1002f9b8, 0, 0);
-    pPgm2InitCallback = orleg2LoadRoms;
-    pPgm2ResetCallback = NULL;
-    pPgm2ScanCallback = NULL;
-    return pgm2Init();
-}
-
-static INT32 orleg2JpInitCommon()
-{
-    pgm2SetStorageRomIndices(-1, 14);
-    pgm2SetSpeedhack(0x20020114, 0x1002faec, 0x1002f9b8, 0, 0);
-    pPgm2InitCallback = orleg2LoadRoms;
-    pPgm2ResetCallback = NULL;
-    pPgm2ScanCallback = NULL;
-    return pgm2Init();
-}
-
-static INT32 orleg2TwInitCommon()
-{
-    pgm2SetStorageRomIndices(10, 14);
-    pgm2SetMaxCardSlots(4);
-    pgm2SetCardRomIndex(0, 10);
-    pgm2SetCardRomIndex(1, 11);
-    pgm2SetCardRomIndex(2, 12);
-    pgm2SetCardRomIndex(3, 13);
-    pgm2SetSpeedhack(0x20020114, 0x1002faec, 0x1002f9b8, 0, 0);
+    pgm2SetCardRomIndex(1, 10);
+    pgm2SetCardRomIndex(2, 10);
+    pgm2SetCardRomIndex(3, 10);
+    pgm2SetSpeedhack(0, 0x20020114, 0x1002faec, 0x1002f9b8, 0, 0);
     pPgm2InitCallback = orleg2LoadRoms;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
@@ -250,13 +210,13 @@ static INT32 orleg2TwInitCommon()
 
 static INT32 kov2nlInitCommon()
 {
-    pgm2SetStorageRomIndices(10, 14);
+    pgm2SetStorageRomIndices(10, 11);
     pgm2SetMaxCardSlots(4);
     pgm2SetCardRomIndex(0, 10);
-    pgm2SetCardRomIndex(1, 11);
-    pgm2SetCardRomIndex(2, 12);
-    pgm2SetCardRomIndex(3, 13);
-    pgm2SetSpeedhack(0x20020470, 0x10053a94, 0x1005332c, 0x1005327c, 0);
+    pgm2SetCardRomIndex(1, 10);
+    pgm2SetCardRomIndex(2, 10);
+    pgm2SetCardRomIndex(3, 10);
+    pgm2SetSpeedhack(0, 0x20020470, 0x10053a94, 0x1005332c, 0x1005327c, 0);
     pPgm2InitCallback = kov2nlLoadRoms;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
@@ -274,12 +234,12 @@ static const UINT8 kov3_100_sum[8] = { 0x96, 0xf0, 0x91, 0xe1, 0xb3, 0xf1, 0xef,
 
 static INT32 kov3Init()
 {
-    pgm2SetStorageRomIndices(10, 12);
+    pgm2SetStorageRomIndices(10, 11);
     pgm2SetMaxCardSlots(2);
     pgm2SetCardRomIndex(0, 10);
-    pgm2SetCardRomIndex(1, 11);
+    pgm2SetCardRomIndex(1, 10);
     pgm2EnableKov3Module(kov3_104_key, kov3_104_sum, 0x18ec71, 0xb89d);
-    pgm2SetSpeedhack(0x200000b4, 0x1000729a, 0x1000729e, 0, 0);
+    pgm2SetSpeedhack(0, 0x200000b4, 0x1000729a, 0x1000729e, 0, 0);
     pPgm2InitCallback = kov3LoadRoms;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
@@ -288,12 +248,12 @@ static INT32 kov3Init()
 
 static INT32 kov3_102Init()
 {
-    pgm2SetStorageRomIndices(10, 12);
+    pgm2SetStorageRomIndices(10, 11);
     pgm2SetMaxCardSlots(2);
     pgm2SetCardRomIndex(0, 10);
-    pgm2SetCardRomIndex(1, 11);
+    pgm2SetCardRomIndex(1, 10);
     pgm2EnableKov3Module(kov3_102_key, kov3_102_sum, 0x021d37, 0x81d0);
-    pgm2SetSpeedhack(0x200000b4, 0x1000729a, 0x1000729e, 0, 0);
+    pgm2SetSpeedhack(0, 0x200000b4, 0x1000729a, 0x1000729e, 0, 0);
     pPgm2InitCallback = kov3LoadRoms;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
@@ -302,12 +262,12 @@ static INT32 kov3_102Init()
 
 static INT32 kov3_101Init()
 {
-    pgm2SetStorageRomIndices(10, 12);
+    pgm2SetStorageRomIndices(10, 11);
     pgm2SetMaxCardSlots(2);
     pgm2SetCardRomIndex(0, 10);
-    pgm2SetCardRomIndex(1, 11);
+    pgm2SetCardRomIndex(1, 10);
     pgm2EnableKov3Module(kov3_101_key, kov3_101_sum, 0x000000, 0xffff);
-    pgm2SetSpeedhack(0x200000b4, 0x1000729a, 0x1000729e, 0, 0);
+    pgm2SetSpeedhack(0, 0x200000b4, 0x1000729a, 0x1000729e, 0, 0);
     pPgm2InitCallback = kov3LoadRoms;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
@@ -316,12 +276,12 @@ static INT32 kov3_101Init()
 
 static INT32 kov3_100Init()
 {
-    pgm2SetStorageRomIndices(10, 12);
+    pgm2SetStorageRomIndices(10, 11);
     pgm2SetMaxCardSlots(2);
     pgm2SetCardRomIndex(0, 10);
-    pgm2SetCardRomIndex(1, 11);
+    pgm2SetCardRomIndex(1, 10);
     pgm2EnableKov3Module(kov3_100_key, kov3_100_sum, 0x3e8aa8, 0xc530);
-    pgm2SetSpeedhack(0x200000b4, 0x1000729a, 0x1000729e, 0, 0);
+    pgm2SetSpeedhack(0, 0x200000b4, 0x1000729a, 0x1000729e, 0, 0);
     pPgm2InitCallback = kov3LoadRoms;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
@@ -365,7 +325,8 @@ static INT32 ddpdojtInit()
 {
     pgm2SetStorageRomIndices(-1, 10);
     pgm2SetRamRomBoard(0x200000);  // 2MB RAM before ROM
-    pgm2SetSpeedhack(0x20000060, 0x10001a7e, 0, 0, 0);
+	pgm2SetSpeedhack(0, 0x20000060, 0x10001a7e, 0, 0, 0);
+	pgm2SetSpeedhack(1, 0x20021e04, 0x1008fefe, 0x1008fbe8, 0, 0);
     pPgm2InitCallback = ddpdojtLoadRoms;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
@@ -411,7 +372,7 @@ static void kof98umhLoadRoms()
 static INT32 kof98umhInit()
 {
     pgm2SetStorageRomIndices(-1, 11);
-    pgm2SetSpeedhack(0x20000060, 0x100028f6, 0, 0, 0);
+    pgm2SetSpeedhack(0, 0x20000060, 0x100028f6, 0, 0, 0);
     pgm2SetRefreshRate(15625.0 / 264.0);  // ~59.19 Hz (MAME pgm2_lores config)
     pPgm2InitCallback = kof98umhLoadRoms;
     pPgm2ResetCallback = NULL;
@@ -431,7 +392,6 @@ static struct BurnRomInfo orleg2RomDesc[] = {
     { "ig-a_cgl.u18",  0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",  0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",    0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",    0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2)
@@ -448,7 +408,6 @@ static struct BurnRomInfo orleg2_103RomDesc[] = {
     { "ig-a_cgl.u18",  0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",  0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",    0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",    0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2_103)
@@ -465,7 +424,6 @@ static struct BurnRomInfo orleg2_101RomDesc[] = {
     { "ig-a_cgl.u18",  0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",  0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",    0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",    0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2_101)
@@ -482,9 +440,6 @@ static struct BurnRomInfo orleg2_104cnRomDesc[] = {
     { "ig-a_cgl.u18",          0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",          0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",            0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",            0x0010000, 0xccccc71c, BRF_OPT },
 };
@@ -503,9 +458,6 @@ static struct BurnRomInfo orleg2_103cnRomDesc[] = {
     { "ig-a_cgh.u26",          0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",            0x1000000, 0x8250688c, BRF_SND },
     { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",            0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2_103cn)
@@ -522,9 +474,6 @@ static struct BurnRomInfo orleg2_101cnRomDesc[] = {
     { "ig-a_cgl.u18",          0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",          0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",            0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",            0x0010000, 0xccccc71c, BRF_OPT },
 };
@@ -543,9 +492,6 @@ static struct BurnRomInfo orleg2_104hkRomDesc[] = {
     { "ig-a_cgh.u26",   0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",     0x1000000, 0x8250688c, BRF_SND },
     { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
     { "xyj2_nvram",     0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2_104hk)
@@ -562,9 +508,6 @@ static struct BurnRomInfo orleg2_103hkRomDesc[] = {
     { "ig-a_cgl.u18",    0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",    0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",      0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
     { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
     { "xyj2_nvram",      0x0010000, 0xccccc71c, BRF_OPT },
 };
@@ -583,9 +526,6 @@ static struct BurnRomInfo orleg2_101hkRomDesc[] = {
     { "ig-a_cgh.u26",    0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",      0x1000000, 0x8250688c, BRF_SND },
     { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
     { "xyj2_nvram",      0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2_101hk)
@@ -602,9 +542,6 @@ static struct BurnRomInfo orleg2_104jpRomDesc[] = {
     { "ig-a_cgl.u18",   0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",   0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",     0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",     0x0010000, 0xccccc71c, BRF_OPT },
 };
@@ -623,9 +560,6 @@ static struct BurnRomInfo orleg2_103jpRomDesc[] = {
     { "ig-a_cgh.u26",    0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",      0x1000000, 0x8250688c, BRF_SND },
     { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",      0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2_103jp)
@@ -642,9 +576,6 @@ static struct BurnRomInfo orleg2_101jpRomDesc[] = {
     { "ig-a_cgl.u18",    0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",    0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",      0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
-    { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "blank_orleg2_china_card.pg2", 0x0000108, 0xdc29556f, BRF_OPT },
     { "xyj2_nvram",      0x0010000, 0xccccc71c, BRF_OPT },
 };
@@ -663,9 +594,6 @@ static struct BurnRomInfo orleg2_104twRomDesc[] = {
     { "ig-a_cgh.u26",    0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",      0x1000000, 0x8250688c, BRF_SND },
     { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
     { "xyj2_nvram",      0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2_104tw)
@@ -682,9 +610,6 @@ static struct BurnRomInfo orleg2_103twRomDesc[] = {
     { "ig-a_cgl.u18",    0x2000000, 0x43501fa6, BRF_GRA },
     { "ig-a_cgh.u26",    0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",      0x1000000, 0x8250688c, BRF_SND },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
     { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
     { "xyj2_nvram",      0x0010000, 0xccccc71c, BRF_OPT },
 };
@@ -703,311 +628,198 @@ static struct BurnRomInfo orleg2_101twRomDesc[] = {
     { "ig-a_cgh.u26",    0x2000000, 0x7051d020, BRF_GRA },
     { "ig-a_sp.u2",      0x1000000, 0x8250688c, BRF_SND },
     { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
-    { "blank_orleg2_taiwan_card.pg2", 0x0000108, 0xcff88f98, BRF_OPT },
     { "xyj2_nvram",      0x0010000, 0xccccc71c, BRF_OPT },
 };
 STD_ROM_PICK(orleg2_101tw)
 STD_ROM_FN(orleg2_101tw)
 
 // kov2nl family
+#define KOV2NL_INTERNAL_CHINA \
+	{ "gsyx_igs036_china.rom",      0x0004000, 0xe09fe4ce, BRF_PRG | BRF_ESS },
+#define KOV2NL_INTERNAL_TAIWAN \
+	{ "kov2nl_igs036_taiwan.rom",   0x0004000, 0xb3ca3124, BRF_PRG | BRF_ESS },
+#define KOV2NL_INTERNAL_JAPAN \
+	{ "kov2nl_igs036_japan.rom",    0x0004000, 0x46344f1a, BRF_PRG | BRF_ESS },
+#define KOV2NL_INTERNAL_KOREA \
+	{ "kov2nl_igs036_korea.rom",    0x0004000, 0x15619af0, BRF_PRG | BRF_ESS },
+#define KOV2NL_INTERNAL_HONGKONG \
+	{ "kov2nl_igs036_hongkong.rom", 0x0004000, 0x76b9b527, BRF_PRG | BRF_ESS },
+#define KOV2NL_INTERNAL_OVERSEA \
+	{ "kov2nl_igs036_oversea.rom",  0x0004000, 0x25ec60cd, BRF_PRG | BRF_ESS },
+
+#define KOV2NL_PROGRAM_302(prefix, extension) \
+	{ #prefix "_v302" #extension ".u7",            0x0800000, 0xb19cf540, BRF_PRG | BRF_ESS }, // V302 08-12-03 15:27:34
+#define KOV2NL_PROGRAM_301(prefix, extension) \
+	{ #prefix "_v301" #extension ".u7",            0x0800000, 0xc4595c2c, BRF_PRG | BRF_ESS }, // V301 08-09-09 09:44:53
+#define KOV2NL_PROGRAM_300(prefix, extension) \
+	{ #prefix "_v300" #extension ".u7",            0x0800000, 0x08da7552, BRF_PRG | BRF_ESS }, // V300 08-08-06 18:21:23
+
+#define KOV2NL_VIDEO_SOUND_ROMS \
+	{ "ig-a3_text.u4",             0x0200000, 0x214530ff, BRF_GRA }, \
+	{ "ig-a3_bgl.u35",             0x0800000, 0x2d46b1f6, BRF_GRA }, \
+	{ "ig-a3_bgh.u36",             0x0800000, 0xdf710c36, BRF_GRA }, \
+	{ "ig-a3_bml.u12",             0x1000000, 0x0bf63836, BRF_GRA }, \
+	{ "ig-a3_bmh.u16",             0x1000000, 0x4a378542, BRF_GRA }, \
+	{ "ig-a3_cgl.u18",             0x2000000, 0x8d923e1f, BRF_GRA }, \
+	{ "ig-a3_cgh.u26",             0x2000000, 0x5b6fbf3f, BRF_GRA }, \
+	{ "ig-a3_sp.u37",              0x2000000, 0x45cdf422, BRF_SND },
+
+#define KOV2NL_CARD_CHINA \
+	{ "blank_gsyx_china.pg2",           0x0000108, 0x02842ae8, BRF_OPT },
+#define KOV2NL_CARD_OVERSEA \
+	{ "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
+#define KOV2NL_CARD_JAPAN \
+	{ "blank_kov2nl_japan_card.pg2",    0x0000108, 0x0d63cb64, BRF_OPT },
+
+#define KOV2NL_NVRAM \
+	{ "gsyx_nvram",                0x0010000, 0x22400c16, BRF_OPT },
+
 static struct BurnRomInfo kov2nlRomDesc[] = {
-    { "kov2nl_igs036_oversea.rom", 0x0004000, 0x25ec60cd, BRF_PRG | BRF_ESS },
-    { "gsyx_v302cn.u7",            0x0800000, 0xb19cf540, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",             0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",             0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",             0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",             0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",             0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",             0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",             0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",              0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",                0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_OVERSEA
+	KOV2NL_PROGRAM_302(kov2nl, fa)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_OVERSEA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl)
 STD_ROM_FN(kov2nl)
 
 static struct BurnRomInfo kov2nl_301RomDesc[] = {
-    { "kov2nl_igs036_oversea.rom", 0x0004000, 0x25ec60cd, BRF_PRG | BRF_ESS },
-    { "gsyx_v301cn.u7",            0x0800000, 0xc4595c2c, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",             0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",             0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",             0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",             0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",             0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",             0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",             0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",              0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",                0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_OVERSEA
+	KOV2NL_PROGRAM_301(kov2nl, fa)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_OVERSEA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_301)
 STD_ROM_FN(kov2nl_301)
 
 static struct BurnRomInfo kov2nl_300RomDesc[] = {
-    { "kov2nl_igs036_oversea.rom", 0x0004000, 0x25ec60cd, BRF_PRG | BRF_ESS },
-    { "kov2nl_gsyx_v300tw.u7",     0x0800000, 0x08da7552, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",             0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",             0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",             0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",             0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",             0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",             0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",             0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",              0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_kov2nl_overseas_card.pg2", 0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",                0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_OVERSEA
+	KOV2NL_PROGRAM_300(kov2nl, fa)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_OVERSEA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_300)
 STD_ROM_FN(kov2nl_300)
 
 static struct BurnRomInfo kov2nl_302cnRomDesc[] = {
-    { "gsyx_igs036_china.rom", 0x0004000, 0xe09fe4ce, BRF_PRG | BRF_ESS },
-    { "gsyx_v302cn.u7",        0x0800000, 0xb19cf540, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",         0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",         0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",         0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",         0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",         0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",         0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",         0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",          0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "gsyx_nvram",            0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_CHINA
+	KOV2NL_PROGRAM_302(gsyx, cn)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_CHINA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_302cn)
 STD_ROM_FN(kov2nl_302cn)
 
 static struct BurnRomInfo kov2nl_301cnRomDesc[] = {
-    { "gsyx_igs036_china.rom", 0x0004000, 0xe09fe4ce, BRF_PRG | BRF_ESS },
-    { "gsyx_v301cn.u7",        0x0800000, 0xc4595c2c, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",         0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",         0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",         0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",         0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",         0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",         0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",         0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",          0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "gsyx_nvram",            0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_CHINA
+	KOV2NL_PROGRAM_301(gsyx, cn)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_CHINA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_301cn)
 STD_ROM_FN(kov2nl_301cn)
 
 static struct BurnRomInfo kov2nl_300cnRomDesc[] = {
-    { "gsyx_igs036_china.rom", 0x0004000, 0xe09fe4ce, BRF_PRG | BRF_ESS },
-    { "kov2nl_gsyx_v300tw.u7", 0x0800000, 0x08da7552, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",         0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",         0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",         0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",         0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",         0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",         0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",         0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",          0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_kov2nl_china_card.pg2", 0x0000108, 0x02842ae8, BRF_OPT },
-    { "gsyx_nvram",            0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_CHINA
+	KOV2NL_PROGRAM_300(gsyx, cn)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_CHINA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_300cn)
 STD_ROM_FN(kov2nl_300cn)
 
 static struct BurnRomInfo kov2nl_302hkRomDesc[] = {
-    { "gsyx_igs036_hongkong.rom", 0x0004000, 0x76b9b527, BRF_PRG | BRF_ESS },
-    { "gsyx_v302cn.u7",           0x0800000, 0xb19cf540, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",            0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",            0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",            0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",            0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",            0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",            0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",            0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",             0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "gsyx_nvram",               0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_HONGKONG
+	KOV2NL_PROGRAM_302(kov2nl, hk)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_CHINA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_302hk)
 STD_ROM_FN(kov2nl_302hk)
 
 static struct BurnRomInfo kov2nl_301hkRomDesc[] = {
-    { "gsyx_igs036_hongkong.rom", 0x0004000, 0x76b9b527, BRF_PRG | BRF_ESS },
-    { "gsyx_v301hk.u7",           0x0800000, 0xc4595c2c, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",            0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",            0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",            0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",            0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",            0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",            0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",            0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",             0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "gsyx_nvram",               0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_HONGKONG
+	KOV2NL_PROGRAM_301(kov2nl, hk)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_CHINA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_301hk)
 STD_ROM_FN(kov2nl_301hk)
 
 static struct BurnRomInfo kov2nl_300hkRomDesc[] = {
-    { "gsyx_igs036_hongkong.rom", 0x0004000, 0x76b9b527, BRF_PRG | BRF_ESS },
-    { "gsyx_v300hk.u7",           0x0800000, 0x08da7552, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",            0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",            0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",            0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",            0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",            0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",            0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",            0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",             0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "blank_gsyx_hongkong.pg2",  0x0000108, 0x02842ae8, BRF_OPT },
-    { "gsyx_nvram",               0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_HONGKONG
+	KOV2NL_PROGRAM_300(kov2nl, hk)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_CHINA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_300hk)
 STD_ROM_FN(kov2nl_300hk)
 
 static struct BurnRomInfo kov2nl_302jpRomDesc[] = {
-    { "gsyx_igs036_taiwan.rom", 0x0004000, 0xb3ca3124, BRF_PRG | BRF_ESS },
-    { "gsyx_v302cn.u7",         0x0800000, 0xb19cf540, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",          0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",          0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",          0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",          0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",          0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",          0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",          0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",           0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",             0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_JAPAN
+	KOV2NL_PROGRAM_302(kov2nl, jp)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_JAPAN
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_302jp)
 STD_ROM_FN(kov2nl_302jp)
 
 static struct BurnRomInfo kov2nl_301jpRomDesc[] = {
-    { "gsyx_igs036_taiwan.rom", 0x0004000, 0xb3ca3124, BRF_PRG | BRF_ESS },
-    { "kov2nl_v301a10.u7",      0x0800000, 0xc4595c2c, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",          0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",          0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",          0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",          0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",          0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",          0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",          0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",           0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",             0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_JAPAN
+	KOV2NL_PROGRAM_301(kov2nl, jp)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_JAPAN
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_301jp)
 STD_ROM_FN(kov2nl_301jp)
 
 static struct BurnRomInfo kov2nl_300jpRomDesc[] = {
-    { "gsyx_igs036_taiwan.rom", 0x0004000, 0xb3ca3124, BRF_PRG | BRF_ESS },
-    { "kov2nl_v300a10.u7",      0x0800000, 0x08da7552, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",          0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",          0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",          0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",          0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",          0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",          0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",          0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",           0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",             0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_JAPAN
+	KOV2NL_PROGRAM_300(kov2nl, jp)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_JAPAN
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_300jp)
 STD_ROM_FN(kov2nl_300jp)
 
 static struct BurnRomInfo kov2nl_302twRomDesc[] = {
-    { "gsyx_igs036_taiwan.rom", 0x0004000, 0xb3ca3124, BRF_PRG | BRF_ESS },
-    { "gsyx_v301tw.u7",         0x0800000, 0xc4595c2c, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",          0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",          0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",          0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",          0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",          0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",          0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",          0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",           0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",             0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_TAIWAN
+	KOV2NL_PROGRAM_302(kov2nl, tw)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_OVERSEA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_302tw)
 STD_ROM_FN(kov2nl_302tw)
 
 static struct BurnRomInfo kov2nl_301twRomDesc[] = {
-    { "gsyx_igs036_taiwan.rom", 0x0004000, 0xb3ca3124, BRF_PRG | BRF_ESS },
-    { "gsyx_v301tw.u7",         0x0800000, 0xc4595c2c, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",          0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",          0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",          0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",          0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",          0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",          0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",          0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",           0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",             0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_TAIWAN
+	KOV2NL_PROGRAM_301(kov2nl, tw)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_OVERSEA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_301tw)
 STD_ROM_FN(kov2nl_301tw)
 
 static struct BurnRomInfo kov2nl_300twRomDesc[] = {
-    { "gsyx_igs036_taiwan.rom", 0x0004000, 0xb3ca3124, BRF_PRG | BRF_ESS },
-    { "gsyx_v300tw.u7",         0x0800000, 0x08da7552, BRF_PRG | BRF_ESS },
-    { "ig-a3_text.u4",          0x0200000, 0x214530ff, BRF_GRA },
-    { "ig-a3_bgl.u35",          0x0800000, 0x2d46b1f6, BRF_GRA },
-    { "ig-a3_bgh.u36",          0x0800000, 0xdf710c36, BRF_GRA },
-    { "ig-a3_bml.u12",          0x1000000, 0x0bf63836, BRF_GRA },
-    { "ig-a3_bmh.u16",          0x1000000, 0x4a378542, BRF_GRA },
-    { "ig-a3_cgl.u18",          0x2000000, 0x8d923e1f, BRF_GRA },
-    { "ig-a3_cgh.u26",          0x2000000, 0x5b6fbf3f, BRF_GRA },
-    { "ig-a3_sp.u37",           0x2000000, 0x45cdf422, BRF_SND },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "blank_gsyx_taiwan.pg2",  0x0000108, 0x1155f01f, BRF_OPT },
-    { "gsyx_nvram",             0x0010000, 0x22400c16, BRF_OPT },
+	KOV2NL_INTERNAL_TAIWAN
+	KOV2NL_PROGRAM_300(kov2nl, tw)
+	KOV2NL_VIDEO_SOUND_ROMS
+	KOV2NL_CARD_OVERSEA
+	KOV2NL_NVRAM
 };
 STD_ROM_PICK(kov2nl_300tw)
 STD_ROM_FN(kov2nl_300tw)
@@ -1024,7 +836,6 @@ static struct BurnRomInfo kov3RomDesc[] = {
     { "kov3_spa0.u17",         0x4000000, 0x3a1e58a9, BRF_GRA },
     { "kov3_spb0.u10",         0x4000000, 0x90396065, BRF_GRA },
     { "kov3_wave0.u13",        0x4000000, 0xaa639152, BRF_SND },
-    { "blank_kov3_china_card.pg2", 0x0000108, 0xbd5a968f, BRF_OPT },
     { "blank_kov3_china_card.pg2", 0x0000108, 0xbd5a968f, BRF_OPT },
     { "kov3_sram",             0x0010000, 0xd9608102, BRF_OPT },
 };
@@ -1043,7 +854,6 @@ static struct BurnRomInfo kov3_102RomDesc[] = {
     { "kov3_spb0.u10",         0x4000000, 0x90396065, BRF_GRA },
     { "kov3_wave0.u13",        0x4000000, 0xaa639152, BRF_SND },
     { "blank_kov3_china_card.pg2", 0x0000108, 0xbd5a968f, BRF_OPT },
-    { "blank_kov3_china_card.pg2", 0x0000108, 0xbd5a968f, BRF_OPT },
     { "kov3_sram",             0x0010000, 0xd9608102, BRF_OPT },
 };
 STD_ROM_PICK(kov3_102)
@@ -1061,7 +871,6 @@ static struct BurnRomInfo kov3_101RomDesc[] = {
     { "kov3_spb0.u10",         0x4000000, 0x90396065, BRF_GRA },
     { "kov3_wave0.u13",        0x4000000, 0xaa639152, BRF_SND },
     { "blank_kov3_china_card.pg2", 0x0000108, 0xbd5a968f, BRF_OPT },
-    { "blank_kov3_china_card.pg2", 0x0000108, 0xbd5a968f, BRF_OPT },
     { "kov3_sram",             0x0010000, 0xd9608102, BRF_OPT },
 };
 STD_ROM_PICK(kov3_101)
@@ -1078,7 +887,6 @@ static struct BurnRomInfo kov3_100RomDesc[] = {
     { "kov3_spa0.u17",         0x4000000, 0x3a1e58a9, BRF_GRA },
     { "kov3_spb0.u10",         0x4000000, 0x90396065, BRF_GRA },
     { "kov3_wave0.u13",        0x4000000, 0xaa639152, BRF_SND },
-    { "blank_kov3_china_card.pg2", 0x0000108, 0xbd5a968f, BRF_OPT },
     { "blank_kov3_china_card.pg2", 0x0000108, 0xbd5a968f, BRF_OPT },
     { "kov3_sram",             0x0010000, 0xd9608102, BRF_OPT },
 };
@@ -1163,7 +971,7 @@ struct BurnDriver BurnDrvorleg2_104cn = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_104cnRomInfo, orleg2_104cnRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2CnInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1175,7 +983,7 @@ struct BurnDriver BurnDrvorleg2_103cn = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_103cnRomInfo, orleg2_103cnRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2CnInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1187,7 +995,7 @@ struct BurnDriver BurnDrvorleg2_101cn = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_101cnRomInfo, orleg2_101cnRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2CnInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1199,7 +1007,7 @@ struct BurnDriver BurnDrvorleg2_104hk = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_104hkRomInfo, orleg2_104hkRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2HkInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1211,7 +1019,7 @@ struct BurnDriver BurnDrvorleg2_103hk = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_103hkRomInfo, orleg2_103hkRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2HkInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1223,7 +1031,7 @@ struct BurnDriver BurnDrvorleg2_101hk = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_101hkRomInfo, orleg2_101hkRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2HkInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1235,7 +1043,7 @@ struct BurnDriver BurnDrvorleg2_104jp = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_104jpRomInfo, orleg2_104jpRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2JpInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2InitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1247,7 +1055,7 @@ struct BurnDriver BurnDrvorleg2_103jp = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_103jpRomInfo, orleg2_103jpRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2JpInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2InitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1259,7 +1067,7 @@ struct BurnDriver BurnDrvorleg2_101jp = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_101jpRomInfo, orleg2_101jpRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2JpInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2InitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1271,7 +1079,7 @@ struct BurnDriver BurnDrvorleg2_104tw = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_104twRomInfo, orleg2_104twRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2TwInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1283,7 +1091,7 @@ struct BurnDriver BurnDrvorleg2_103tw = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_103twRomInfo, orleg2_103twRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2TwInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
@@ -1295,7 +1103,7 @@ struct BurnDriver BurnDrvorleg2_101tw = {
     BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_IGS_PGM2, GBF_SCRFIGHT, 0,
     NULL, orleg2_101twRomInfo, orleg2_101twRomName, NULL, NULL, NULL, NULL,
     pgm2InputInfo, pgm2DIPInfo,
-    orleg2TwInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
+    orleg2CardInitCommon, pgm2Exit, pgm2Frame, pgm2DoDraw, pgm2Scan,
     NULL, 0x4000, 448, 224, 4, 3
 };
 
