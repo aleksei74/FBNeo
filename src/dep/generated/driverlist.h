@@ -3421,6 +3421,7 @@ DRV		BurnDrvmd_cvaniaec;
 DRV		BurnDrvnes_castlsim;
 DRV		BurnDrvmd_cvania;
 DRV		BurnDrvmd_cvaniap;
+DRV		BurnDrvsnes_Castlevaniadxtp;
 DRV		BurnDrvsnes_Castlevaniadx;
 DRV		BurnDrvnes_castliie;
 DRV		BurnDrvnes_castliitp;
@@ -4612,6 +4613,7 @@ DRV		BurnDrvmd_cutiesuz;
 DRV		BurnDrvsnes_Cutthroate;
 DRV		BurnDrvgg_cutthr;
 DRV		BurnDrvmd_cutthr;
+DRV		BurnDrvsnes_Cutthroattp;
 DRV		BurnDrvmd_cutthrs;
 DRV		BurnDrvgg_cutthrp;
 DRV		BurnDrvmd_cutthrp;
@@ -8740,6 +8742,7 @@ DRV		BurnDrvGstrik2;
 DRV		BurnDrvGstrik2j;		// ROZ layer broken
 #endif
 DRV		BurnDrvGrndtour;
+DRV		BurnDrvsnes_Mickeytokyotp;
 DRV		BurnDrvmd_grandslj;
 DRV		BurnDrvmd_grandsl;
 DRV		BurnSpecGrangehill;
@@ -11065,6 +11068,7 @@ DRV		BurnDrvCpsKnightsp;
 DRV		BurnDrvCpsKnightsu;
 DRV		BurnDrvsnes_Knightsround;
 DRV		BurnDrvCpsKnights;
+DRV		BurnDrvsnes_Knightsroundtp;
 DRV		BurnDrvKovbl;
 DRV		BurnDrvKov111;
 DRV		BurnDrvKov115;
@@ -28510,6 +28514,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_castlsim,		// Castlevania - Simplified (Hack)
 	&BurnDrvmd_cvania,			// Castlevania - The New Generation (Euro)
 	&BurnDrvmd_cvaniap,			// Castlevania - The New Generation (Euro, Prototype)
+	&BurnDrvsnes_Castlevaniadxtp,// Castlevania Dracula X (Hack, Portuguese v3.0)
 	&BurnDrvsnes_Castlevaniadx,	// Castlevania Dracula X (USA)
 	&BurnDrvnes_castliie,		// Castlevania II: Simon's Quest (Euro)
 	&BurnDrvnes_castliitp,		// Castlevania II: Simon's Quest (Hack, Portuguese)
@@ -29701,6 +29706,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Cutthroate,	// CutThroat Island (Euro)
 	&BurnDrvgg_cutthr,			// Cutthroat Island (Euro, USA)
 	&BurnDrvmd_cutthr,			// CutThroat Island (Euro, USA)
+	&BurnDrvsnes_Cutthroattp,	// CutThroat Island (Hack, Portuguese)
 	&BurnDrvmd_cutthrs,			// Cutthroat Island (Hack, Spanish)
 	&BurnDrvgg_cutthrp,			// Cutthroat Island (Prototype)
 	&BurnDrvmd_cutthrp,			// CutThroat Island (Prototype)
@@ -33829,6 +33835,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvGstrik2j,			// Grand Striker 2 (Japan) [ROZ layer broken]
 #endif
 	&BurnDrvGrndtour,			// Grand Tour (V100U)
+	&BurnDrvsnes_Mickeytokyotp,	// Grande Aventura de Mickey na Disneylandia de Toquio, A (Hack, Portuguese v1.4)
 	&BurnDrvmd_grandslj,		// GrandSlam - The Tennis Tournament '92 (Japan)
 	&BurnDrvmd_grandsl,			// GrandSlam - The Tennis Tournament (Euro)
 	&BurnSpecGrangehill,		// Grange Hill: The Computer Game (128K)
@@ -36154,6 +36161,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvCpsKnightsu,		// Knights of the Round (USA 911127)
 	&BurnDrvsnes_Knightsround,	// Knights of the Round (USA)
 	&BurnDrvCpsKnights,			// Knights of the Round (World 911127)
+	&BurnDrvsnes_Knightsroundtp,// Knights of the Round ~ Cavaleiros da Tavola Redonda (Hack, Portuguese v1.1)
 	&BurnDrvKovbl,				// Knights of Valour / San Guo Zhan Ji / Sangoku Senki (Bootleg, V112CN?)
 	&BurnDrvKov111,				// Knights of Valour / San Guo Zhan Ji / Sangoku Senki (ver. 111, Japanese Board)
 	&BurnDrvKov115,				// Knights of Valour / San Guo Zhan Ji / Sangoku Senki (ver. 115)
@@ -53577,6 +53585,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_castlsim", "nes/d_nes.cpp"},
 	{ "md_cvania", "megadrive/d_megadrive.cpp"},
 	{ "md_cvaniap", "megadrive/d_megadrive.cpp"},
+	{ "snes_castlevaniadxtp", "snes/d_snes.cpp"},
 	{ "snes_castlevaniadx", "snes/d_snes.cpp"},
 	{ "nes_castliie", "nes/d_nes.cpp"},
 	{ "nes_castliitp", "nes/d_nes.cpp"},
@@ -54758,6 +54767,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_cutthroate", "snes/d_snes.cpp"},
 	{ "gg_cutthr", "sms/d_sms.cpp"},
 	{ "md_cutthr", "megadrive/d_megadrive.cpp"},
+	{ "snes_cutthroattp", "snes/d_snes.cpp"},
 	{ "md_cutthrs", "megadrive/d_megadrive.cpp"},
 	{ "gg_cutthrp", "sms/d_sms.cpp"},
 	{ "md_cutthrp", "megadrive/d_megadrive.cpp"},
@@ -58862,6 +58872,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gstrik2", "pst90s/d_metro.cpp"},
 	{ "gstrik2j", "pst90s/d_metro.cpp"},
 	{ "grndtour", "pre90s/d_iqblock.cpp"},
+	{ "snes_mickeytokyotp", "snes/d_snes.cpp"},
 	{ "md_grandslj", "megadrive/d_megadrive.cpp"},
 	{ "md_grandsl", "megadrive/d_megadrive.cpp"},
 	{ "spec_grangehill", "spectrum/d_spectrum.cpp"},
@@ -61165,6 +61176,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "knightsu", "capcom/d_cps1.cpp"},
 	{ "snes_knightsround", "snes/d_snes.cpp"},
 	{ "knights", "capcom/d_cps1.cpp"},
+	{ "snes_knightsroundtp", "snes/d_snes.cpp"},
 	{ "kovbl", "pgm/d_pgm.cpp"},
 	{ "kov111", "pgm/d_pgm.cpp"},
 	{ "kov115", "pgm/d_pgm.cpp"},
