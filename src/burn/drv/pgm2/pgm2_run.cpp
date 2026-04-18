@@ -103,6 +103,7 @@ static INT32  Pgm2IntRomNeedRestore = 0;       // 1 = need to restore all patche
 static INT32  Pgm2ArmROMFileLen = 0;          // actual ROM file size (e.g. 0x800000)
 static INT32  Pgm2CardRomIndex = -1;
 static INT32  Pgm2SramRomIndex = 10;
+static INT32  Pgm2ArmRomIndex = 1;
 static INT32  Pgm2PerSlotCardIndex[4] = {-1, -1, -1, -1};
 static INT32  Pgm2CardLogCount = 0;
 
@@ -113,6 +114,8 @@ static bool Pgm2CardAuthenticated[4] = {false, false, false, false};
 INT32  Pgm2MaxCardSlots = 0;
 INT32  Pgm2ActiveCardSlot = 0;
 bool   Pgm2CardInserted[4] = {false, false, false, false};
+
+UINT8 CardlessHack = 0;
 
 // Speed hack variables
 static UINT32 Pgm2SpeedHackAddr[2] = { 0, 0 };
@@ -145,6 +148,7 @@ static UINT8  Pgm2ModuleSendBuf[10] = {0};
 static INT32  Pgm2ModuleSumRead = 0;
 static UINT32 Pgm2PioOutData = 0;
 
+static INT32 nCyclesExtra;
 
 // Per-game refresh rate (default 59.08 Hz; kof98umh uses 59.19 Hz per MAME pgm2_lores)
 static double Pgm2RefreshRate = 59.08;
@@ -158,6 +162,11 @@ void pgm2SetStorageRomIndices(INT32 cardRomIndex, INT32 sramRomIndex)
 {
     Pgm2CardRomIndex = cardRomIndex;
     Pgm2SramRomIndex = sramRomIndex;
+}
+
+void pgm2SetArmRomIndex(INT32 armRomIndex)
+{
+    Pgm2ArmRomIndex = armRomIndex;
 }
 
 void pgm2SetCardRomIndex(INT32 slot, INT32 index)
@@ -829,12 +838,12 @@ static void pgm2McuCommand(bool isCommand)
                 Pgm2McuRegs[3] = Pgm2McuResult0;
                 Pgm2McuRegs[4] = Pgm2McuResult1;
                 Pgm2McuLastCmd = 0;
-            break;
+                break;
 
             case 0xe0: // startup/self-test echo
                 Pgm2McuResult0 = Pgm2McuRegs[0];
                 Pgm2McuResult1 = Pgm2McuRegs[1];
-            break;
+                break;
 
             case 0xe1: // shared RAM fill helper used by boot code
                 // MCU sees the opposite bank while CPU accesses the selected one.
@@ -842,10 +851,17 @@ static void pgm2McuCommand(bool isCommand)
                     memset(Pgm2SharedRAM2 + ((~Pgm2ShareBank & 1) * 0x80), arg3, 0x80);
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc0: // insert card / check card presence
             case 0xc1: // check ready/busy
+                if ((CardlessHack & 1) && (0xc0 == cmd)) {  // Cardless mode
+                    if (!pgm2CardPresent(arg1 & 3)) {
+                        status = 0x00f70000;
+                    }
+                    Pgm2McuResult0 = cmd;
+                    break;
+                }
                 if (!pgm2CardPresent(arg1)) {
                     status = 0x00f40000;
                 }
@@ -854,7 +870,7 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc2: // read card data to shared RAM
                 for (INT32 i = 0; i < arg3; i++) {
@@ -869,7 +885,7 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc3: // save shared RAM to card data
                 for (INT32 i = 0; i < arg3; i++) {
@@ -884,7 +900,7 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc4: // read security bytes 1..3
                 if (pgm2CardPresent(arg1)) {
@@ -897,7 +913,7 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc5: // write security byte
                 if (pgm2CardPresent(arg1)) {
@@ -910,7 +926,7 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc6: // write protection byte
                 if (pgm2CardPresent(arg1)) {
@@ -923,7 +939,7 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc7: // read protection bytes
                 if (pgm2CardPresent(arg1)) {
@@ -936,7 +952,7 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc8: // write one card data byte
                 if (pgm2CardPresent(arg1)) {
@@ -949,7 +965,7 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             case 0xc9: // card authentication (SLE4442 PSC verification)
                 if (pgm2CardPresent(arg1)) {
@@ -965,13 +981,13 @@ static void pgm2McuCommand(bool isCommand)
                     Pgm2CardLogCount++;
                 }
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
 
             default:
                 // Match MAME: unknown commands report error status (0xF4).
                 status = 0x00f40000;
                 Pgm2McuResult0 = cmd;
-            break;
+                break;
         }
 
         // Status is exposed in bits [23:16].
@@ -1069,7 +1085,7 @@ static void checkSpeedhack(UINT32 addr, UINT32 v)
 			}
 
 			if ((v == 0 || shId == 1) && next == 0) {
-				Arm9RunEndEatCycles();
+				Arm9BurnUntilInterrupt();
 			}
 		}
 	}
@@ -1738,14 +1754,13 @@ INT32 pgm2Init()
     // Game-specific ROM load + decrypt callback
     if (pPgm2InitCallback)
         pPgm2InitCallback();
-	
 
     // Detect actual ROM file size for correct decrypt length and MAP_ROM range
     Pgm2ArmROMFileLen = Pgm2ArmROMLen;  // default to buffer size
     if (Pgm2ArmROM && Pgm2ArmROMLen > 0) {
         struct BurnRomInfo armri;
         memset(&armri, 0, sizeof(armri));
-        if (BurnDrvGetRomInfo(&armri, 1) == 0 && armri.nLen > 0) {
+        if (BurnDrvGetRomInfo(&armri, Pgm2ArmRomIndex) == 0 && armri.nLen > 0) {
             Pgm2ArmROMFileLen = armri.nLen;
             PGM2_LOG(PGM2_LOG_SYS, "arm rom file size=%d (0x%X) buffer=%d (0x%X)", armri.nLen, armri.nLen, Pgm2ArmROMLen, Pgm2ArmROMLen);
             // Fill unloaded tail with 0x00 to match MAME's ROM_REGION default zero-fill.
@@ -1972,9 +1987,10 @@ INT32 pgm2DoReset()
 	ymz770_reset();
 	Pgm2Reset = 0;
 	Pgm2RtcFrameCounter = 0;
-	HiscoreReset();
+	nCyclesExtra = 0;
 	if(pPgm2ResetCallback)
 		pPgm2ResetCallback();
+	HiscoreReset();
 	return 0;
 }
 INT32 pgm2Exit()
@@ -2011,6 +2027,7 @@ INT32 pgm2Exit()
     pPgm2InitCallback = NULL;
     pPgm2ResetCallback = NULL;
     pPgm2ScanCallback = NULL;
+    Pgm2ArmRomIndex = 1;
     Pgm2CardRomIndex = -1;
     for (int i = 0; i < 4; i++) Pgm2PerSlotCardIndex[i] = -1;
     memset(Pgm2CardAuthenticated, 0, sizeof(Pgm2CardAuthenticated));
@@ -2112,14 +2129,15 @@ INT32 pgm2Frame()
     // 100 MHz ARM9 / Pgm2RefreshRate fps / 264 total lines (224 active + 40 vblank)
     static const INT32 PGM2_TOTAL_LINES  = 264;
     static const INT32 PGM2_VBLANK_START = 224;
-    static const INT32 PGM2_CPU_HZ       = 100000000;
-    INT32 nCyclesPerLine = (INT32)((double)PGM2_CPU_HZ / ((double)PGM2_TOTAL_LINES * Pgm2RefreshRate));
-
+	static const INT32 PGM2_CPU_HZ       = 100000000;
+	INT32 nInterleave = PGM2_TOTAL_LINES;
+	INT32 nCyclesTotal[1] = { (INT32)((double)PGM2_CPU_HZ / (double)Pgm2RefreshRate) };
+	INT32 nCyclesDone[1] = { nCyclesExtra };
     Arm9Open(0);
     Arm9NewFrame();
 
     for (INT32 i = 0; i < PGM2_TOTAL_LINES; i++) {
-        Arm9Run(nCyclesPerLine);
+		CPU_RUN(0, Arm9);
         // We approximate with scanline countdowns.  When the countdown expires
         // we assert IRQ3 — matching MAME's mcu_interrupt() callback.
         if (Pgm2McuDoneCountdown > 0) {
@@ -2210,6 +2228,8 @@ INT32 pgm2Frame()
     }
 
     Arm9Close();
+
+	nCyclesExtra = nCyclesDone[0] - nCyclesTotal[0];
 
     // Render after all scanlines (using snapshotted OAM from vblank start)
     if (pBurnDraw) {
@@ -2367,7 +2387,9 @@ INT32 pgm2Scan(INT32 nAction, INT32 *pnMin)
             SCAN_VAR(Pgm2ModuleSendBuf);
             SCAN_VAR(Pgm2ModuleSumRead);
             SCAN_VAR(Pgm2PioOutData);
-        }
+		}
+
+		SCAN_VAR(nCyclesExtra);
     }
 
     // After loading a savestate, restore encrypted ROM and re-decrypt if
