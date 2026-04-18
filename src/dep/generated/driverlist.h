@@ -22286,6 +22286,7 @@ DRV		BurnDrvLastbld2uh;
 DRV		BurnDrvLastbd2b;
 DRV		BurnDrvDlastbd2e;
 DRV		BurnDrvDlastbd2i;
+DRV		BurnDrvLastbld2k;
 DRV		BurnDrvLastbld2;
 DRV		BurnDrvDlastbd2p;
 DRV		BurnDrvLastbd2t;
@@ -47413,6 +47414,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvLastbd2b,			// The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Enable Hidden Characters V4)
 	&BurnDrvDlastbd2e,			// The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Enhanced, Hack)
 	&BurnDrvDlastbd2i,			// The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Infinite Energy, Hack)
+	&BurnDrvLastbld2k,			// The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Korean Translation)
 	&BurnDrvLastbld2,			// The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (NGM-2430 ~ NGH-2430)
 	&BurnDrvDlastbd2p,			// The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Plus, Hack)
 	&BurnDrvLastbd2t,			// The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Team, Hack)
@@ -72370,6 +72372,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "lastbd2b", "neogeo/d_neogeo.cpp"},
 	{ "lastbd2e", "neogeo/d_neogeo.cpp"},
 	{ "lastbd2i", "neogeo/d_neogeo.cpp"},
+	{ "lastbld2k", "neogeo/d_neogeo.cpp"},
 	{ "lastbld2", "neogeo/d_neogeo.cpp"},
 	{ "lastbd2p", "neogeo/d_neogeo.cpp"},
 	{ "lastbd2t", "neogeo/d_neogeo.cpp"},

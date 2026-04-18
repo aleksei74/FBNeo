@@ -31553,10 +31553,46 @@ struct BurnDriver BurnDrvKof98uh = {
 	0x1000, 304, 224, 4, 3
 };
 
+// The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Korean Translation)
+
+static struct BurnRomInfo lastbld2kRomDesc[] = {
+	{ "243-pg1k.p1",  0x100000, 0xd765a624, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "243-pg2k.sp2", 0x400000, 0xed11dd63, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "243-s1k.s1",   0x020000, 0x5b1f35e5, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "243-c1k.c1",   0x800000, 0x336d5343, 3 | BRF_GRA },           //  3 Sprite data
+	{ "243-c2k.c2",   0x800000, 0xfef48a79, 3 | BRF_GRA },           //  4
+	{ "243-c3.c3",    0x800000, 0x6054cbe0, 3 | BRF_GRA },           //  5
+	{ "243-c4.c4",    0x800000, 0x8bd2a9d2, 3 | BRF_GRA },           //  6
+	{ "243-c5k.c5",   0x800000, 0x011132f8, 3 | BRF_GRA },           //  7
+	{ "243-c6k.c6",   0x800000, 0xad4011a4, 3 | BRF_GRA },           //  8
+
+	{ "243-m1.m1",    0x020000, 0xacf12d10, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code
+
+	{ "243-v1.v1",    0x400000, 0xf7ee6fbb, 5 | BRF_SND },           // 10 Sound data
+	{ "243-v2.v2",    0x400000, 0xaa9e4df6, 5 | BRF_SND },           // 11
+	{ "243-v3.v3",    0x400000, 0x4ac750b2, 5 | BRF_SND },           // 12
+	{ "243-v4.v4",    0x400000, 0xf5c64ba6, 5 | BRF_SND },           // 13
+};
+
+STDROMPICKEXT(lastbld2k, lastbld2k, neogeo)
+STD_ROM_FN(lastbld2k)
+
+struct BurnDriver BurnDrvLastbld2k = {
+	"lastbld2k", "lastbld2", "neogeo", NULL, "2026",
+	"The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"The Last Blade 2 / \u5E55\u672B\u6D6A\u6F2B \u7B2C\u4E8C\u5E55 - \u6708\u83EF\u306E\u5263\u58EB - \u6708\u306B\u54B2\u304F\u83EF\u3001\u6563\u308A\u3086\u304F\u82B1 (Korean Translation)\0\uB354 \uB77C\uC2A4\uD2B8 \uBE14\uB808\uC774\uB4DC 2 / \uB9C9\uB9D0\uB0AD\uB9CC \uC81C 2\uB9C9 - \uC6D4\uD654\uC758 \uAC80\uC0AC - \uB2EC\uC5D0 \uD53C\uB294 \uAF43, \uD769\uB0A0\uB9AC\uB294 \uAF43 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
+	NULL, lastbld2kRomInfo, lastbld2kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeokorDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 // The Last Blade 2 / Bakumatsu Roman - Dai Ni Maku Gekka no Kenshi (AES Uncensored Hack)
 
 static struct BurnRomInfo lastbld2uhRomDesc[] = {
-	{ "243-p1uh.p1",  0x100000, 0xf24d57a1, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "243-p1uh.p1",  0x100000, 0x4c14ddba, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
 	{ "243-pg2.sp2",  0x400000, 0xadd4a30b, 1 | BRF_ESS | BRF_PRG }, //  1
 
 	{ "243-s1.s1",    0x020000, 0xc9cd2298, 2 | BRF_GRA },           //  2 Text layer tiles
