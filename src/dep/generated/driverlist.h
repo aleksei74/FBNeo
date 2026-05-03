@@ -13825,6 +13825,7 @@ DRV		BurnDrvcv_mkinga;
 DRV		BurnDrvnes_mourysenmad;
 DRV		BurnDrvnes_mourysenmadj;
 DRV		BurnDrvsnes_Mouse_check;
+DRV		BurnSpecMouselife2;
 DRV		BurnSpecMouselife;
 DRV		BurnDrvMsgogo;
 DRV		BurnDrvMtrapb;
@@ -17530,6 +17531,7 @@ DRV		BurnSpecRobot1pd;
 DRV		BurnSpecRobot1sd;
 DRV		BurnDrvmd_robotbat;
 DRV		BurnDrvRobotbwl;
+DRV		BurnSpecRobotriot;
 DRV		BurnDrvCHF_robotwarp;
 DRV		BurnDrvCHF_robotwar;
 DRV		BurnDrvMSX_robotwar;
@@ -21078,6 +21080,7 @@ DRV		BurnDrvSuprmous;
 DRV		BurnDrvsnes_Smw4magicwandsp;
 DRV		BurnDrvCpsSmbombr1;
 DRV		BurnDrvCpsSmbomb;
+DRV		BurnSpecSupermutt;
 DRV		BurnDrvsnes_Supnaxatj;
 DRV		BurnDrvsnes_Supnaxatte;
 DRV		BurnDrvsnes_Supnazopuyoj;
@@ -21420,6 +21423,7 @@ DRV		BurnDrvNineteen42h;
 DRV		BurnDrvsnes_Supcooked;
 DRV		BurnSpecSuperhair128;
 DRV		BurnSpecSuperhair48;
+DRV		BurnSpecSuperhair2;
 DRV		BurnDrvSsoldier;
 DRV		BurnDrvmd_Supermans;
 DRV		BurnDrvnes_supermanh;
@@ -21673,6 +21677,7 @@ DRV		BurnDrvmd_talespins;
 DRV		BurnDrvnes_talespin;
 DRV		BurnDrvtg_talespin;
 DRV		BurnDrvmd_talmit;
+DRV		BurnSpecTalos;
 DRV		BurnDrvMSX_tamtamtwins;
 DRV		BurnDrvfds_tamafri;
 DRV		BurnDrvgg_tamalymp;
@@ -24631,6 +24636,7 @@ DRV		BurnDrvWc90b2;
 DRV		BurnDrvmd_worms;
 DRV		BurnDrvsnes_Worms;
 DRV		BurnDrvmd_wormsp;
+DRV		BurnSpecWthas;
 DRV		BurnDrvWownfant;
 DRV		BurnDrvWownfanta;
 DRV		BurnDrvMSX_wrangler;
@@ -38606,9 +38612,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvCpsMPangjd,			// Mighty! Pang (Japan 001011 Phoenix Edition) (bootleg)
 	&BurnDrvCpsMPangj,			// Mighty! Pang (Japan 001011)
 	&BurnDrvCpsMPangu,			// Mighty! Pang (USA 001010)
-	&BurnSpecMijadore2en,		// Mijadore 2 - the Key (English) (128K) (HB)
-	&BurnSpecMijadore2pt,		// Mijadore 2 - the Key (Portuguese) (128K) (HB)
-	&BurnSpecMijadore2es,		// Mijadore 2 - the Key (Spanish) (128K) (HB)
+	&BurnSpecMijadore2en,		// Mijadore 2: The Key (English) (128K) (HB)
+	&BurnSpecMijadore2pt,		// Mijadore 2: The Key (Portuguese) (128K) (HB)
+	&BurnSpecMijadore2es,		// Mijadore 2: The Key (Spanish) (128K) (HB)
 	&BurnSpecMijavasee,			// Mijadore vase, The (English) (128K) (HB)
 	&BurnSpecMijavases,			// Mijadore vase, The (Spanish) (128K) (HB)
 	&BurnDrvmd_ditkapf,			// Mike Ditka Power Football (Euro, USA)
@@ -39125,6 +39131,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_mourysenmad,	// Mouryou Senki Madara (Hack, English)
 	&BurnDrvnes_mourysenmadj,	// Mouryou Senki Madara (Japan)
 	&BurnDrvsnes_Mouse_check,	// Mouse Check
+	&BurnSpecMouselife2,		// Mouse Life 2, A: Escape from Science Lab (128K) (HB, v1.2)
 	&BurnSpecMouselife,			// Mouse Life, A (48K) (HB)
 	&BurnDrvMsgogo,				// Mouse Shooter GoGo
 	&BurnDrvMtrapb,				// Mouse Trap (bootleg)
@@ -42830,6 +42837,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecRobot1sd,			// Robot 1 in... The Ship of Doom (48K-128K) (HB)
 	&BurnDrvmd_robotbat,		// Robot Battler (Japan, SegaNet)
 	&BurnDrvRobotbwl,			// Robot Bowl
+	&BurnSpecRobotriot,			// Robot Riot (48K)
 	&BurnDrvCHF_robotwarp,		// Robot War (Prototype)
 	&BurnDrvCHF_robotwar,		// Robot War / Torpedo Alley
 	&BurnDrvMSX_robotwar,		// Robot Wars (Euro)
@@ -46378,6 +46386,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Smw4magicwandsp,// Super Mundo Mario: As 4 Varinhas Magicas (GlobalHack, Portuguese v1.0.2)
 	&BurnDrvCpsSmbombr1,		// Super Muscle Bomber: The International Blowout (Japan 940808)
 	&BurnDrvCpsSmbomb,			// Super Muscle Bomber: The International Blowout (Japan 940831)
+	&BurnSpecSupermutt,			// Super Mutt (48K)
 	&BurnDrvsnes_Supnaxatj,		// Super Naxat Open - Golf de Shoubu da! (Japan)
 	&BurnDrvsnes_Supnaxatte,	// Super Naxat Open - Spike McFang Golf (Hack, English v0.99)
 	&BurnDrvsnes_Supnazopuyoj,	// Super Nazo Puyo - Rulue no Roux (Japan)
@@ -46720,6 +46729,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Supcooked,		// Supercooked! (HB, v1.2)
 	&BurnSpecSuperhair128,		// SuperHair (128K) (HB)
 	&BurnSpecSuperhair48,		// SuperHair (48K) (HB)
+	&BurnSpecSuperhair2,		// SuperHair 2: Revenge of the Wizard (128K) (HB)
 	&BurnDrvSsoldier,			// Superior Soldiers (US)
 	&BurnDrvmd_Supermans,		// Superman (Hack, Spanish)
 	&BurnDrvnes_supermanh,		// Superman (Hack, v1.1)
@@ -46973,6 +46983,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_talespin,		// TaleSpin (USA)
 	&BurnDrvtg_talespin,		// TaleSpin (USA)
 	&BurnDrvmd_talmit,			// Talmit's Adventure (Euro)
+	&BurnSpecTalos,				// Talos (48K)
 	&BurnDrvMSX_tamtamtwins,	// Tam Tam Twins (HB)
 	&BurnDrvfds_tamafri,		// Tama & Friends: 3 Choume Daibouken (Japan)
 	&BurnDrvgg_tamalymp,		// Tama & Friends: 3 Choume Kouen Tamalympic (Japan)
@@ -47353,7 +47364,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_termintruh,		// Terminator, The - Remastered Edition (Hack)
 	&BurnDrvMSX_terminus,		// Terminus: Prison Planet (Euro)
 	&BurnDrvcv_terrattak,		// Terra Attack (HB)
-	&BurnSpecTerracognita,		// Terra Cognita - The Hollow Moon (48K)
+	&BurnSpecTerracognita,		// Terra Cognita: The Hollow Moon (48K)
 	&BurnSpecterracresta,		// Terra Cresta (48K)
 	&BurnDrvnes_terracresta,	// Terra Cresta (USA)
 	&BurnDrvTerracren,			// Terra Cresta (YM2203)
@@ -49931,6 +49942,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_worms,			// Worms (Euro)
 	&BurnDrvsnes_Worms,			// Worms (Euro)
 	&BurnDrvmd_wormsp,			// Worms (Euro, Prototype)
+	&BurnSpecWthas,				// Worse Things Happen at Sea (48K)
 	&BurnDrvWownfant,			// WOW New Fantasia (Explicit)
 	&BurnDrvWownfanta,			// WOW New Fantasia
 	&BurnDrvMSX_wrangler,		// Wrangler (Euro, Spanish)
@@ -64329,6 +64341,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_mourysenmad", "nes/d_nes.cpp"},
 	{ "nes_mourysenmadj", "nes/d_nes.cpp"},
 	{ "snes_mouse_check", "snes/d_snes.cpp"},
+	{ "spec_mouselife2", "spectrum/d_spectrum.cpp"},
 	{ "spec_mouselife", "spectrum/d_spectrum.cpp"},
 	{ "msgogo", "pst90s/d_metro.cpp"},
 	{ "mtrapb", "pre90s/d_exidy.cpp"},
@@ -68010,6 +68023,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_robot1sd", "spectrum/d_spectrum.cpp"},
 	{ "md_robotbat", "megadrive/d_megadrive.cpp"},
 	{ "robotbwl", "pre90s/d_circus.cpp"},
+	{ "spec_robotriot", "spectrum/d_spectrum.cpp"},
 	{ "chf_robotwarp", "channelf/d_channelf.cpp"},
 	{ "chf_robotwar", "channelf/d_channelf.cpp"},
 	{ "msx_robotwar", "msx/d_msx.cpp"},
@@ -71514,6 +71528,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_smw4magicwandsp", "snes/d_snes.cpp"},
 	{ "smbombr1", "capcom/d_cps2.cpp"},
 	{ "smbomb", "capcom/d_cps2.cpp"},
+	{ "spec_supermutt", "spectrum/d_spectrum.cpp"},
 	{ "snes_supnaxatj", "snes/d_snes.cpp"},
 	{ "snes_supnaxatte", "snes/d_snes.cpp"},
 	{ "snes_supnazopuyoj", "snes/d_snes.cpp"},
@@ -71852,6 +71867,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_supcooked", "snes/d_snes.cpp"},
 	{ "spec_superhair128", "spectrum/d_spectrum.cpp"},
 	{ "spec_superhair48", "spectrum/d_spectrum.cpp"},
+	{ "spec_superhair2", "spectrum/d_spectrum.cpp"},
 	{ "ssoldier", "irem/d_m92.cpp"},
 	{ "md_supermans", "megadrive/d_megadrive.cpp"},
 	{ "nes_supermanh", "nes/d_nes.cpp"},
@@ -72103,6 +72119,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_talespin", "nes/d_nes.cpp"},
 	{ "tg_talespin", "pce/d_pce.cpp"},
 	{ "md_talmit", "megadrive/d_megadrive.cpp"},
+	{ "spec_talos", "spectrum/d_spectrum.cpp"},
 	{ "msx_tamtamtwins", "msx/d_msx.cpp"},
 	{ "fds_tamafri", "nes/d_nes.cpp"},
 	{ "gg_tamalymp", "sms/d_sms.cpp"},
@@ -75027,6 +75044,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_worms", "megadrive/d_megadrive.cpp"},
 	{ "snes_worms", "snes/d_snes.cpp"},
 	{ "md_wormsp", "megadrive/d_megadrive.cpp"},
+	{ "spec_wthas", "spectrum/d_spectrum.cpp"},
 	{ "wownfant", "pst90s/d_expro02.cpp"},
 	{ "wownfanta", "pst90s/d_expro02.cpp"},
 	{ "msx_wrangler", "msx/d_msx.cpp"},
