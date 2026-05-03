@@ -1231,15 +1231,16 @@ DRV		BurnDrvmd_artalive;
 DRV		BurnDrvmd_aof;
 DRV		BurnDrvsnes_Aofe;
 DRV		BurnDrvmd_aofs;
-DRV		BurnDrvAofk;
 DRV		BurnDrvmd_aofp;
 DRV		BurnDrvmd_aofu;
 DRV		BurnDrvsnes_Aof;
 DRV		BurnDrvmd_aofec;
+DRV		BurnDrvAofk;
 DRV		BurnDrvAof;
 DRV		BurnDrvAofbr;
 DRV		BurnDrvAof2bhs;
 DRV		BurnDrvAof2bh;
+DRV		BurnDrvAof2k;
 DRV		BurnDrvAof2a;
 DRV		BurnDrvAof2;
 DRV		BurnDrvAof3k;
@@ -7396,6 +7397,7 @@ DRV		BurnDrvFirebatl;
 DRV		BurnDrvnes_firedragon;
 DRV		BurnDrvnes_fireembc;
 DRV		BurnDrvsnes_Fireemblem4te;
+DRV		BurnDrvsnes_Fireemblem4tp;
 DRV		BurnDrvsnes_Fireemblemtsc;
 DRV		BurnDrvsnes_Fireemblemttc;
 DRV		BurnDrvsnes_Fireemblemj;
@@ -10441,6 +10443,7 @@ DRV		BurnDrvnes_joemac;
 DRV		BurnDrvsnes_Joemac;
 DRV		BurnDrvsnes_Joemace;
 DRV		BurnDrvsnes_Joemacj;
+DRV		BurnDrvsnes_Joemac2tp;
 DRV		BurnDrvsnes_Joemac2;
 DRV		BurnDrvsnes_Joemac2e;
 DRV		BurnDrvJoemacrj;
@@ -12178,6 +12181,7 @@ DRV		BurnDrvnes_magicjohsfasbr;
 DRV		BurnDrvnes_magickidgoogoo;
 DRV		BurnDrvsnes_Magkrayte;
 DRV		BurnDrvgg_rayearthe;
+DRV		BurnDrvsnes_Magkraytp;
 DRV		BurnDrvgg_rayearth;
 DRV		BurnDrvgg_rayeart2;
 DRV		BurnDrvCHF_magicnum;
@@ -12379,6 +12383,7 @@ DRV		BurnDrvMSX_maltesepool;
 DRV		BurnDrvMSX_mambo;
 DRV		BurnDrvmd_mamono;
 DRV		BurnSpecMangoldjoy;
+DRV		BurnDrvmanpac;
 DRV		BurnSpecManfutebolpt;
 DRV		BurnDrvsnes_Manchestersoccer;
 DRV		BurnSpecmanutdeu;
@@ -12826,6 +12831,7 @@ DRV		BurnDrvsnes_Megamanxsa1;
 DRV		BurnDrvsnes_Megamanx2e;
 DRV		BurnDrvsnes_Megamanx2;
 DRV		BurnDrvsnes_Megamanx3e;
+DRV		BurnDrvsnes_Megamanx3tp;
 DRV		BurnDrvsnes_Megamanx3;
 DRV		BurnDrvsnes_Megamansoccer;
 DRV		BurnDrvsnes_Megamansocrest;
@@ -18639,7 +18645,6 @@ DRV		BurnDrvmd_shinobi3p;
 DRV		BurnDrvmd_shinobi3u;
 DRV		BurnDrvmd_shinobi3umj;
 DRV		BurnDrvShinobing;
-DRV		BurnDrvShinobingk;
 DRV		BurnDrvsnes_Cyberformula;
 DRV		BurnDrvShinygld;
 DRV		BurnDrvmd_ship1;
@@ -21027,6 +21032,7 @@ DRV		BurnDrvsnes_Supermetroide;
 DRV		BurnDrvsnes_Supermetroid;
 DRV		BurnDrvsnes_Supermetroidasc;
 DRV		BurnDrvsnes_Supermetroidxf;
+DRV		BurnDrvsnes_Supermetroidtp;
 DRV		BurnDrvcv_smfield;
 DRV		BurnDrvSmissw;
 DRV		BurnDrvSuprmatk;
@@ -26525,15 +26531,16 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_aof,				// Art of Fighting (Euro)
 	&BurnDrvsnes_Aofe,			// Art of Fighting (Euro)
 	&BurnDrvmd_aofs,			// Art Of Fighting (Hack, Spanish)
-	&BurnDrvAofk,				// Art of Fighting (Korean Translation)
 	&BurnDrvmd_aofp,			// Art of Fighting (Prototype)
 	&BurnDrvmd_aofu,			// Art of Fighting (USA)
 	&BurnDrvsnes_Aof,			// Art of Fighting (USA)
 	&BurnDrvmd_aofec,			// Art of Fighting - Enhanced Colors (Hack)
+	&BurnDrvAofk,				// Art of Fighting / Ryuuko no Ken (Korean Translation)
 	&BurnDrvAof,				// Art of Fighting / Ryuuko no Ken (NGM-044 ~ NGH-044)
 	&BurnDrvAofbr,				// Art of Fighting / Ryuuko no Ken (Portuguese edition v1.0, Hack)
 	&BurnDrvAof2bhs,			// Art of Fighting 2 / Ryuuko no Ken 2 (Boss With Simple Attack Edition, Hack)
 	&BurnDrvAof2bh,				// Art of Fighting 2 / Ryuuko no Ken 2 (Enable hidden characters V2)
+	&BurnDrvAof2k,				// Art of Fighting 2 / Ryuuko no Ken 2 (Korean Translation)
 	&BurnDrvAof2a,				// Art of Fighting 2 / Ryuuko no Ken 2 (NGH-056)
 	&BurnDrvAof2,				// Art of Fighting 2 / Ryuuko no Ken 2 (NGM-056)
 	&BurnDrvAof3k,				// Art of Fighting 3 - The Path of the Warrior (Korean release)
@@ -32690,6 +32697,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_firedragon,		// Fire Dragon (Taiwan) (Unl)
 	&BurnDrvnes_fireembc,		// Fire Emblem - Ankoku Ryuu to Hikari no Tsurugi (Hack, Chinese)
 	&BurnDrvsnes_Fireemblem4te,	// Fire Emblem - Genealogy of the Holy War (Hack, English v1.01)
+	&BurnDrvsnes_Fireemblem4tp,	// Fire Emblem - Genealogy of the Holy War (Hack, Portuguese v1.13)
 	&BurnDrvsnes_Fireemblemtsc,	// Fire Emblem - Monshou no Nazo (Hack, Simplified Chinese v1.03)
 	&BurnDrvsnes_Fireemblemttc,	// Fire Emblem - Monshou no Nazo (Hack, Traditional Chinese v1.03)
 	&BurnDrvsnes_Fireemblemj,	// Fire Emblem - Monshou no Nazo (Japan, Rev. 1)
@@ -33619,7 +33627,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_ghost,			// Ghost (Euro, Spanish)
 	&BurnDrvmsx_ghost2017,		// Ghost (HB)
 	&BurnDrvcv_ghost,			// Ghost (SGM) (HB)
-	&BurnDrvmd_ghbaseball,		// Ghost Baseball (HB, v1.3)
+	&BurnDrvmd_ghbaseball,		// Ghost Baseball (HB, v2.0)
 	&BurnDrvcv_gblaster,		// Ghost Blaster (HB)
 	&BurnDrvGhostbi,			// Ghost Busters (FMV Demo)
 	&BurnSpecGcastle,			// Ghost Castle (48K) (HB)
@@ -35735,6 +35743,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Joemac,		// Joe & Mac (USA)
 	&BurnDrvsnes_Joemace,		// Joe & Mac - Caveman Ninja (Euro)
 	&BurnDrvsnes_Joemacj,		// Joe & Mac - Tatakae Genshijin (Japan)
+	&BurnDrvsnes_Joemac2tp,		// Joe & Mac 2 - Lost in the Tropics (Hack, Portuguese)
 	&BurnDrvsnes_Joemac2,		// Joe & Mac 2 - Lost in the Tropics (USA)
 	&BurnDrvsnes_Joemac2e,		// Joe & Mac 3 - Lost in the Tropics (Euro)
 	&BurnDrvJoemacrj,			// Joe & Mac Returns (Japan, Version 1.2, 1994.06.06)
@@ -37472,6 +37481,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_magickidgoogoo,	// Magic Kid GooGoo (Unl)
 	&BurnDrvsnes_Magkrayte,		// Magic Knight Rayearth (Hack, English v1.02)
 	&BurnDrvgg_rayearthe,		// Magic Knight Rayearth (Hack, English)
+	&BurnDrvsnes_Magkraytp,		// Magic Knight Rayearth (Hack, Portuguese)
 	&BurnDrvgg_rayearth,		// Magic Knight Rayearth (Japan)
 	&BurnDrvgg_rayeart2,		// Magic Knight Rayearth 2: Making of Magic Knight (Japan)
 	&BurnDrvCHF_magicnum,		// Magic Numbers / Mind Reader / Nim
@@ -37673,6 +37683,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_mambo,			// Mambo (Euro, Spanish)
 	&BurnDrvmd_mamono,			// Mamono Hunter Youko: Dai 7 no Keishou (Japan)
 	&BurnSpecMangoldjoy,		// Man with the Golden Joystick, The (128K) (HB, v1.2)
+	&BurnDrvmanpac,				// Man-Pac
 	&BurnSpecManfutebolpt,		// Manager de Futebol 2025 (Portuguese) (128K) (HB)
 	&BurnDrvsnes_Manchestersoccer,// Manchester United Championship Soccer (Euro)
 	&BurnSpecmanutdeu,			// Manchester United Europe (128K)
@@ -38120,6 +38131,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Megamanx2e,	// Mega Man X2 (Euro)
 	&BurnDrvsnes_Megamanx2,		// Mega Man X2 (USA)
 	&BurnDrvsnes_Megamanx3e,	// Mega Man X3 (Euro)
+	&BurnDrvsnes_Megamanx3tp,	// Mega Man X3 (Hack, Portuguese)
 	&BurnDrvsnes_Megamanx3,		// Mega Man X3 (USA)
 	&BurnDrvsnes_Megamansoccer,	// Mega Man's Soccer (USA)
 	&BurnDrvsnes_Megamansocrest,// Mega Man's Soccer Restoration (Hack, v1.1)
@@ -43933,7 +43945,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_shinobi3u,		// Shinobi III: Return of the Ninja Master (USA)
 	&BurnDrvmd_shinobi3umj,		// Shinobi III: Return of the Ninja Master - Enhancement (Hack)
 	&BurnDrvShinobing,			// Shinobi Neo Geo (HB, v1.1)
-	&BurnDrvShinobingk,			// Shinobi Neo Geo (HB, v1.1, Korean Translation)
 	&BurnDrvsnes_Cyberformula,	// Shinseiki GPX - Cyber Formula (Japan)
 	&BurnDrvShinygld,			// Shiny Golds
 	&BurnDrvmd_ship1,			// Ship (Prototype)
@@ -46321,6 +46332,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Supermetroid,	// Super Metroid (USA, Japan)
 	&BurnDrvsnes_Supermetroidasc,// Super Metroid Ascent (Hack, v1.12)
 	&BurnDrvsnes_Supermetroidxf,// Super Metroid X-Fusion (Hack, v1.2)
+	&BurnDrvsnes_Supermetroidtp,// Super Metroide (Hack, Portuguese)
 	&BurnDrvcv_smfield,			// Super MineField (HB)
 	&BurnDrvSmissw,				// Super Miss World
 	&BurnDrvSuprmatk,			// Super Missile Attack (for rev 1)
@@ -51813,15 +51825,16 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_aof", "megadrive/d_megadrive.cpp"},
 	{ "snes_aofe", "snes/d_snes.cpp"},
 	{ "md_aofs", "megadrive/d_megadrive.cpp"},
-	{ "aofk", "neogeo/d_neogeo.cpp"},
 	{ "md_aofp", "megadrive/d_megadrive.cpp"},
 	{ "md_aofu", "megadrive/d_megadrive.cpp"},
 	{ "snes_aof", "snes/d_snes.cpp"},
 	{ "md_aofec", "megadrive/d_megadrive.cpp"},
+	{ "aofk", "neogeo/d_neogeo.cpp"},
 	{ "aof", "neogeo/d_neogeo.cpp"},
 	{ "aofbr", "neogeo/d_neogeo.cpp"},
 	{ "aof2bhs", "neogeo/d_neogeo.cpp"},
 	{ "aof2bh", "neogeo/d_neogeo.cpp"},
+	{ "aof2k", "neogeo/d_neogeo.cpp"},
 	{ "aof2a", "neogeo/d_neogeo.cpp"},
 	{ "aof2", "neogeo/d_neogeo.cpp"},
 	{ "aof3k", "neogeo/d_neogeo.cpp"},
@@ -57938,6 +57951,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_firedragon", "nes/d_nes.cpp"},
 	{ "nes_fireembc", "nes/d_nes.cpp"},
 	{ "snes_fireemblem4te", "snes/d_snes.cpp"},
+	{ "snes_fireemblem4tp", "snes/d_snes.cpp"},
 	{ "snes_fireemblemtsc", "snes/d_snes.cpp"},
 	{ "snes_fireemblemttc", "snes/d_snes.cpp"},
 	{ "snes_fireemblemj", "snes/d_snes.cpp"},
@@ -60961,6 +60975,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_joemac", "snes/d_snes.cpp"},
 	{ "snes_joemace", "snes/d_snes.cpp"},
 	{ "snes_joemacj", "snes/d_snes.cpp"},
+	{ "snes_joemac2tp", "snes/d_snes.cpp"},
 	{ "snes_joemac2", "snes/d_snes.cpp"},
 	{ "snes_joemac2e", "snes/d_snes.cpp"},
 	{ "joemacrj", "dataeast/d_simpl156.cpp"},
@@ -62678,6 +62693,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_magickidgoogoo", "nes/d_nes.cpp"},
 	{ "snes_magkrayte", "snes/d_snes.cpp"},
 	{ "gg_rayearthe", "sms/d_sms.cpp"},
+	{ "snes_magkraytp", "snes/d_snes.cpp"},
 	{ "gg_rayearth", "sms/d_sms.cpp"},
 	{ "gg_rayeart2", "sms/d_sms.cpp"},
 	{ "chf_magicnum", "channelf/d_channelf.cpp"},
@@ -62879,6 +62895,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "msx_mambo", "msx/d_msx.cpp"},
 	{ "md_mamono", "megadrive/d_megadrive.cpp"},
 	{ "spec_mangoldjoy", "spectrum/d_spectrum.cpp"},
+	{ "manpac", "pre90s/d_pacman.cpp"},
 	{ "spec_manfutebolpt", "spectrum/d_spectrum.cpp"},
 	{ "snes_manchestersoccer", "snes/d_snes.cpp"},
 	{ "spec_manutdeu", "spectrum/d_spectrum.cpp"},
@@ -63324,6 +63341,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_megamanx2e", "snes/d_snes.cpp"},
 	{ "snes_megamanx2", "snes/d_snes.cpp"},
 	{ "snes_megamanx3e", "snes/d_snes.cpp"},
+	{ "snes_megamanx3tp", "snes/d_snes.cpp"},
 	{ "snes_megamanx3", "snes/d_snes.cpp"},
 	{ "snes_megamansoccer", "snes/d_snes.cpp"},
 	{ "snes_megamansocrest", "snes/d_snes.cpp"},
@@ -69095,7 +69113,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_shinobi3u", "megadrive/d_megadrive.cpp"},
 	{ "md_shinobi3umj", "megadrive/d_megadrive.cpp"},
 	{ "shinobing", "neogeo/d_neogeo.cpp"},
-	{ "shinobingk", "neogeo/d_neogeo.cpp"},
 	{ "snes_cyberformula", "snes/d_snes.cpp"},
 	{ "shinygld", "pst90s/d_sderby.cpp"},
 	{ "md_ship1", "megadrive/d_megadrive.cpp"},
@@ -71451,6 +71468,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_supermetroid", "snes/d_snes.cpp"},
 	{ "snes_supermetroidasc", "snes/d_snes.cpp"},
 	{ "snes_supermetroidxf", "snes/d_snes.cpp"},
+	{ "snes_supermetroidtp", "snes/d_snes.cpp"},
 	{ "cv_smfield", "coleco/d_coleco.cpp"},
 	{ "smissw", "pst90s/d_expro02.cpp"},
 	{ "suprmatk", "atari/d_missile.cpp"},
