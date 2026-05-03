@@ -488,7 +488,8 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\u8f38\u5165\u8a2d\u5b9a",
 		"\u914d\u7f6e\u8f38\u5165\u8a2d\u5b9a",
 		"\u9032\u968e\u8a2d\u5b9a",
-		"\u914d\u7f6e\u9032\u968e\u8a2d\u5b9a"
+		"\u914d\u7f6e\u9032\u968e\u8a2d\u5b9a",
+		"%s\n\u4ee5\u53ca\u53e6\u5916 %d \u500b..."
 	},
 	{	// Japanese
 		"Use 32-bits color depth when available",
@@ -649,7 +650,8 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"Input Settings",
 		"Configure Input Settings",
 		"Advanced Settings",
-		"Configure Advanced Settings"
+		"Configure Advanced Settings",
+		"%s\nAnd %d more..."
 	},
 	{	// Korean
 		"\uAC00\uB2A5\uD55C \uACBD\uC6B0 32\uBE44\uD2B8 \uC0C9\uC0C1\uC744 \uC0AC\uC6A9",
@@ -811,8 +813,7 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\uC785\uB825 \uC124\uC815 \uAD6C\uC131",
 		"\uACE0\uAE09 \uC124\uC815",
 		"\uACE0\uAE09\uC124\uC815 \uAD6C\uC131",
-		"\u914d\u7f6e\u9032\u968e\u8a2d\u5b9a",
-		"%s\n\u4ee5\u53ca\u53e6\u5916 %d \u500b..."
+		"%s\n\uADF8\uB9AC\uACE0 %d \uB354..."
 	}
 };
 
