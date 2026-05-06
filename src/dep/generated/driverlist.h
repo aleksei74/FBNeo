@@ -3193,6 +3193,7 @@ DRV		BurnDrvnes_caltron6in1;
 DRV		BurnDrvnes_caltron9in1;
 DRV		BurnDrvcv_camknights;
 DRV		BurnDrvsg1k_camknights;
+DRV		BurnDrvcv_camknightsb;
 DRV		BurnSpeccamelotw;
 DRV		BurnDrvMSX_camelotw;
 DRV		BurnDrvsnes_Cameltry;
@@ -12255,9 +12256,9 @@ DRV		BurnDrvnes_magictarkun2;
 DRV		BurnSpecMagtower;
 DRV		BurnSpecMagtowerold;
 DRV		BurnDrvcv_magtree;
+DRV		BurnDrvcv_magtreep;
 DRV		BurnDrvMSX_magtree;
 DRV		BurnDrvMSX_magtreea;
-DRV		BurnDrvcv_magtreep;
 DRV		BurnDrvsg1k_magtree;
 DRV		BurnDrvMagicbal;
 DRV		BurnDrvnes_magician;
@@ -14892,6 +14893,7 @@ DRV		BurnDrvnes_oishinboj;
 DRV		BurnDrvsg1k_matchpg;
 DRV		BurnDrvsg1k_matchpga;
 DRV		BurnDrvsg1k_matchpgt;
+DRV		BurnDrvnes_oldoaklaneerm;
 DRV		BurnDrvnes_oldoaklane;
 DRV		BurnSpecoldtower;
 DRV		BurnDrvsnes_Oldtowers;
@@ -18164,6 +18166,8 @@ DRV		BurnSpecSavageprincess2;
 DRV		BurnDrvSavagereb;
 DRV		BurnDrvSavagerp;
 DRV		BurnDrvSavagere;
+DRV		BurnDrvnes_savekuingmg;
+DRV		BurnDrvnes_savekuin;
 DRV		BurnSpecSavekonga;
 DRV		BurnSpecSavekongb;
 DRV		BurnSpecSbotp1;
@@ -19896,6 +19900,8 @@ DRV		BurnDrvmd_starmobile;
 DRV		BurnDrvsnes_Staroceante;
 DRV		BurnDrvsnes_Staroceants;
 DRV		BurnDrvsnes_Staroceanj;
+DRV		BurnDrvcv_starocean;
+DRV		BurnDrvcv_staroceana;
 DRV		BurnSpecStarpaws;
 DRV		BurnSpecStaraiders2;
 #if defined FBNEO_DEBUG
@@ -22165,6 +22171,8 @@ DRV		BurnDrvMSX_tetsuman;
 DRV		BurnDrvMSX_tetsumana;
 DRV		BurnDrvnes_tetsuwanatom;
 DRV		BurnDrvsnes_Tetsuwatom;
+DRV		BurnDrvcv_textadv1ce;
+DRV		BurnDrvcv_textadv1;
 DRV		BurnDrvThoop2d;
 DRV		BurnDrvThoop2e;
 DRV		BurnDrvThoop2b;
@@ -28502,6 +28510,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_caltron9in1,	// Caltron 9-in-1 (USA) (Unl)
 	&BurnDrvcv_camknights,		// Camelot Knights (HB)
 	&BurnDrvsg1k_camknights,	// Camelot Knights (HB)
+	&BurnDrvcv_camknightsb,		// Camelot Knights (HB, Prototype)
 	&BurnSpeccamelotw,			// Camelot Warriors (48K)
 	&BurnDrvMSX_camelotw,		// Camelot Warriors (Euro, Spanish)
 	&BurnDrvsnes_Cameltry,		// Cameltry (Japan)
@@ -37564,9 +37573,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecMagtower,			// Magical Tower Adventure - 2019 Version (48K) (HB)
 	&BurnSpecMagtowerold,		// Magical Tower Adventure - Mini Version (48K) (HB)
 	&BurnDrvcv_magtree,			// Magical Tree (HB)
+	&BurnDrvcv_magtreep,		// Magical Tree (HB, Prototype)
 	&BurnDrvMSX_magtree,		// Magical Tree (Japan)
 	&BurnDrvMSX_magtreea,		// Magical Tree (Japan, Alt)
-	&BurnDrvcv_magtreep,		// Magical Tree (Prototype) (HB)
 	&BurnDrvsg1k_magtree,		// Magical Tree (Taiwan)
 	&BurnDrvMagicbal,			// Magicball Fighting (Korea)
 	&BurnDrvnes_magician,		// Magician (USA)
@@ -40201,6 +40210,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsg1k_matchpg,		// Okamoto Ayako no Match Play Golf (Japan, OMV)
 	&BurnDrvsg1k_matchpga,		// Okamoto Ayako no Match Play Golf (Japan, OMV, Alt)
 	&BurnDrvsg1k_matchpgt,		// Okamoto Ayako no Match Play Golf (Taiwan)
+	&BurnDrvnes_oldoaklaneerm,	// Old Oak Lane (Easy Reading Mod) (HB)
 	&BurnDrvnes_oldoaklane,		// Old Oak Lane (HB)
 	&BurnSpecoldtower,			// Old Tower (128K) (HB)
 	&BurnDrvsnes_Oldtowers,		// Old Towers (HB)
@@ -43473,6 +43483,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSavagereb,			// Savage Reign / Fu'un Mokushiroku - Kakutou Sousei (Boss Hack)
 	&BurnDrvSavagerp,			// Savage Reign / Fu'un Mokushiroku - Kakutou Sousei (Plus, Hack)
 	&BurnDrvSavagere,			// Savage Reign / Fu'un Mokushiroku - Kakutou Sousei
+	&BurnDrvnes_savekuingmg,	// Save the Kuin (Grass Mini Game) (HB)
+	&BurnDrvnes_savekuin,		// Save the Kuin (HB)
 	&BurnSpecSavekonga,			// Saving Kong: Crazy Kong City II (bgm Dizziness) (48K-128K) (HB)
 	&BurnSpecSavekongb,			// Saving Kong: Crazy Kong City II (bgm Massive Attack) (48K-128K) (HB)
 	&BurnSpecSbotp1,			// SBOT - Part 1 (128K) (HB)
@@ -45205,6 +45217,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Staroceante,	// Star Ocean (Hack, English)
 	&BurnDrvsnes_Staroceants,	// Star Ocean (Hack, Spanish)
 	&BurnDrvsnes_Staroceanj,	// Star Ocean (Japan)
+	&BurnDrvcv_starocean,		// Star Ocean - The Missed Hope (HB)
+	&BurnDrvcv_staroceana,		// Star Ocean - The Missed Hope (HB, Alt)
 	&BurnSpecStarpaws,			// Star Paws (48K-128K)
 	&BurnSpecStaraiders2,		// Star Raiders II (48K)
 #if defined FBNEO_DEBUG
@@ -47474,6 +47488,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_tetsumana,		// Tetsuman (Japan, Alt)
 	&BurnDrvnes_tetsuwanatom,	// Tetsuwan Atom (Japan)
 	&BurnDrvsnes_Tetsuwatom,	// Tetsuwan Atom (Japan)
+	&BurnDrvcv_textadv1ce,		// Text Adventure - Part 1 (Cheat to Ending) (HB)
+	&BurnDrvcv_textadv1,		// Text Adventure - Part 1 (HB)
 	&BurnDrvThoop2d,			// TH Strikes Back (non North America, version 1.0, checksum 0206DF91)
 	&BurnDrvThoop2e,			// TH Strikes Back (non North America, version 1.0, checksum 0206DF91, without title)
 	&BurnDrvThoop2b,			// TH Strikes Back (non North America, version 1.0, checksum 020E0867)
@@ -53795,6 +53811,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_caltron9in1", "nes/d_nes.cpp"},
 	{ "cv_camknights", "coleco/d_coleco.cpp"},
 	{ "sg1k_camknights", "sg1000/d_sg1000.cpp"},
+	{ "cv_camknightsb", "coleco/d_coleco.cpp"},
 	{ "spec_camelotw", "spectrum/d_spectrum.cpp"},
 	{ "msx_camelotw", "msx/d_msx.cpp"},
 	{ "snes_cameltry", "snes/d_snes.cpp"},
@@ -62785,9 +62802,9 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_magtower", "spectrum/d_spectrum.cpp"},
 	{ "spec_magtowerold", "spectrum/d_spectrum.cpp"},
 	{ "cv_magtree", "coleco/d_coleco.cpp"},
+	{ "cv_magtreep", "coleco/d_coleco.cpp"},
 	{ "msx_magtree", "msx/d_msx.cpp"},
 	{ "msx_magtreea", "msx/d_msx.cpp"},
-	{ "cv_magtreep", "coleco/d_coleco.cpp"},
 	{ "sg1k_magtree", "sg1000/d_sg1000.cpp"},
 	{ "magicbal", "pst90s/d_tumbleb.cpp"},
 	{ "nes_magician", "nes/d_nes.cpp"},
@@ -65404,6 +65421,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sg1k_matchpg", "sg1000/d_sg1000.cpp"},
 	{ "sg1k_matchpga", "sg1000/d_sg1000.cpp"},
 	{ "sg1k_matchpgt", "sg1000/d_sg1000.cpp"},
+	{ "nes_oldoaklaneerm", "nes/d_nes.cpp"},
 	{ "nes_oldoaklane", "nes/d_nes.cpp"},
 	{ "spec_oldtower", "spectrum/d_spectrum.cpp"},
 	{ "snes_oldtowers", "snes/d_snes.cpp"},
@@ -68654,6 +68672,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "savagereb", "neogeo/d_neogeo.cpp"},
 	{ "savagerp", "neogeo/d_neogeo.cpp"},
 	{ "savagere", "neogeo/d_neogeo.cpp"},
+	{ "nes_savekuingmg", "nes/d_nes.cpp"},
+	{ "nes_savekuin", "nes/d_nes.cpp"},
 	{ "spec_savekonga", "spectrum/d_spectrum.cpp"},
 	{ "spec_savekongb", "spectrum/d_spectrum.cpp"},
 	{ "spec_sbotp1", "spectrum/d_spectrum.cpp"},
@@ -70372,6 +70392,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_staroceante", "snes/d_snes.cpp"},
 	{ "snes_staroceants", "snes/d_snes.cpp"},
 	{ "snes_staroceanj", "snes/d_snes.cpp"},
+	{ "cv_starocean", "coleco/d_coleco.cpp"},
+	{ "cv_staroceana", "coleco/d_coleco.cpp"},
 	{ "spec_starpaws", "spectrum/d_spectrum.cpp"},
 	{ "spec_staraiders2", "spectrum/d_spectrum.cpp"},
 	{ "starrkr", "pre90s/d_vicdual.cpp"},
@@ -72613,6 +72635,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "msx_tetsumana", "msx/d_msx.cpp"},
 	{ "nes_tetsuwanatom", "nes/d_nes.cpp"},
 	{ "snes_tetsuwatom", "snes/d_snes.cpp"},
+	{ "cv_textadv1ce", "coleco/d_coleco.cpp"},
+	{ "cv_textadv1", "coleco/d_coleco.cpp"},
 	{ "thoop2d", "pst90s/d_thoop2.cpp"},
 	{ "thoop2e", "pst90s/d_thoop2.cpp"},
 	{ "thoop2b", "pst90s/d_thoop2.cpp"},
