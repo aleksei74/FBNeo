@@ -30372,7 +30372,7 @@ struct BurnDriver BurnDrvNcommandk = {
 // World Heroes (Korean Translation)
 
 static struct BurnRomInfo wh1kRomDesc[] = {
-	{ "053-eprk.p1",  0x080000, 0x2fe7690f, 1 | BRF_ESS | BRF_PRG }, //  0 68K code / D27C400
+	{ "053-eprk.p1",  0x080000, 0xe9953efb, 1 | BRF_ESS | BRF_PRG }, //  0 68K code / D27C400
 	{ "053-epr.p2",   0x080000, 0x0e33e8a3, 1 | BRF_ESS | BRF_PRG }, //  1 			/ D27C400
 
 	{ "053-s1k.s1",   0x020000, 0x7a3f5069, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
