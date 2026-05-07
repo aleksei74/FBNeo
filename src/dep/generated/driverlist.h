@@ -39386,7 +39386,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvFutari10,			// Mushihime-Sama Futari Ver 1.0 (2006/10/23 MASTER VER.)
 	&BurnDrvFutari15a,			// Mushihime-Sama Futari Ver 1.5 (2006/12/8 MASTER VER 1.54)
 	&BurnDrvFutari15,			// Mushihime-Sama Futari Ver 1.5 (2006/12/8.MASTER VER. 1.54.)
-	&BurnDrvMatsuri15,			// Mushihime-Sama Matsuri Ver 1.5 (2011/05/23)
+	&BurnDrvMatsuri15,			// Mushihime-Sama Matsuri Ver 1.5 (2011/5/23 CAVEMATSURI VER1.5)
 	&BurnDrvnes_musheaven,		// Mushroom Heaven (Hack)
 	&BurnSpecMushromsoup128,	// Mushroom Soup (128K) (HB, v1.2)
 	&BurnSpecMushromsoup48,		// Mushroom Soup (48K) (HB, v1.2)
