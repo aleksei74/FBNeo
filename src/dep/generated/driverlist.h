@@ -2435,6 +2435,7 @@ DRV		BurnDrvnes_bloodfall;
 DRV		BurnDrvmd_bloodsht;
 DRV		BurnDrvmd_bloodshtfix;
 DRV		BurnSpecBloodstone;
+DRV		BurnSpecBloodstoneru;
 DRV		BurnDrvMSX_bloody;
 DRV		BurnSpecBloody;
 DRV		BurnSpecBloodpaws1;
@@ -6881,6 +6882,7 @@ DRV		BurnDrvFx;
 DRV		BurnDrvsnes_Fzeroe;
 DRV		BurnDrvsnes_Fzeroj;
 DRV		BurnDrvsnes_Fzero;
+DRV		BurnDrvsnes_Fzeroml;
 DRV		BurnDrvFa;
 DRV		BurnDrvmd_f1;
 DRV		BurnDrvsms_f1;
@@ -7683,6 +7685,7 @@ DRV		BurnSpecfp128k;
 DRV		BurnSpecFpengo2;
 DRV		BurnSpecFraysimone;
 DRV		BurnSpecFraysimons;
+DRV		BurnDrvgg_frayte;
 DRV		BurnDrvgg_fray;
 DRV		BurnSpecfred;
 DRV		BurnDrvgg_fredcoupj;
@@ -27623,7 +27626,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_bloodfall,		// Bloodfall (HB)
 	&BurnDrvmd_bloodsht,		// Bloodshot ~ Battle Frenzy (Euro)
 	&BurnDrvmd_bloodshtfix,		// Bloodshot ~ Battle Frenzy (Hack, Texture Fix)
-	&BurnSpecBloodstone,		// Bloodstone (128K) (HB, v1.2)
+	&BurnSpecBloodstone,		// Bloodstone (English) (128K) (HB, v1.2)
+	&BurnSpecBloodstoneru,		// Bloodstone (Russian) (128K) (HB, v1.2)
 	&BurnDrvMSX_bloody,			// Bloody (Euro, Spanish)
 	&BurnSpecBloody,			// Bloody (Spanish) (48K)
 	&BurnSpecBloodpaws1,		// Bloody Paws - Part 1 (Spanish) (128K)
@@ -32070,6 +32074,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Fzeroe,		// F-Zero (Euro)
 	&BurnDrvsnes_Fzeroj,		// F-Zero (Japan)
 	&BurnDrvsnes_Fzero,			// F-Zero (USA)
+	&BurnDrvsnes_Fzeroml,		// F-Zero: Max League (Hack)
 	&BurnDrvFa,					// F/A (Japan)
 	&BurnDrvmd_f1,				// F1 (Euro)
 	&BurnDrvsms_f1,				// F1 (Euro, Brazil)
@@ -32872,6 +32877,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecFpengo2,			// Frantic Pengo 2 (128K) (HB)
 	&BurnSpecFraysimone,		// Fray Simon (English) (48K) (HB)
 	&BurnSpecFraysimons,		// Fray Simon (Spanish) (48K) (HB)
+	&BurnDrvgg_frayte,			// Fray: Shugyouhen (Hack, English)
 	&BurnDrvgg_fray,			// Fray: Shugyouhen (Japan)
 	&BurnSpecfred,				// Fred (48K)
 	&BurnDrvgg_fredcoupj,		// Fred Couples' Golf (Japan)
@@ -38824,7 +38830,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvcv_moonswpra,		// Moonsweeper (USA, Alt)
 	&BurnDrvcv_moonswpr,		// Moonsweeper (USA, Euro)
 	&BurnSpecmoontorc,			// MoonTorc (48K)
-	&BurnSpecmoonwalk,			// Moonwalker - The Computer Game (128K)
+	&BurnSpecmoonwalk,			// Moonwalker: The Computer Game (128K)
 	&BurnDrvMSX_moonwalker,		// Moonwalker: The Computer Game (Euro)
 	&BurnDrvMoonwara,			// Moonwar (older)
 	&BurnDrvMoonwar,			// Moonwar
@@ -48659,7 +48665,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvUnksigb,			// unknown 'Space Invaders' gambling game (unencrypted)
 	&BurnDrvmd_unnecess,		// Unnecessary Roughness 95 (USA)
 	&BurnDrvmd_uspknight,		// Unstoppable Knight (HB)
-	&BurnSpecuntouchb,			// Untouchables, The (128K)
+	&BurnSpecuntouchb,			// Untouchables, The (48K-128K)
 	&BurnDrvsnes_Untouchables,	// Untouchables, The (USA)
 	&BurnDrvUpndown,			// Up'n Down (315-5030)
 	&BurnDrvUpndownu,			// Up'n Down (not encrypted)
@@ -48991,7 +48997,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_vixen357e,		// Vixen 357 (Hack, English v1.2)
 	&BurnDrvmd_vixen357s,		// Vixen 357 (Hack, Spanish v2.0)
 	&BurnDrvmd_vixen357,		// Vixen 357 (Japan)
-	&BurnSpecViz,				// Viz - The Computer Game (128K)
+	&BurnSpecViz,				// Viz: The Computer Game (128K)
 	&BurnSpecVoid,				// Void (128K) (HB, Tech-Demo)
 	&BurnSpecVoidbringen,		// Void Bringer, The (English) (128K) (HB)
 	&BurnSpecVoidbringes,		// Void Bringer, The (Spanish) (128K) (HB)
@@ -49075,7 +49081,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_wacko,			// Wacko (HB)
 	&BurnDrvWacko,				// Wacko
 	&BurnSpecWackydarts,		// Wacky Darts (48K-128K)
-	&BurnSpecwackrace,			// Wacky Races (128K)
+	&BurnSpecwackrace,			// Wacky Races (48K-128K)
 	&BurnDrvnes_wackyraces,		// Wacky Races (USA)
 	&BurnDrvmd_wackyrac,		// Wacky Races (USA, Prototype)
 	&BurnDrvmd_wworldsp1,		// Wacky Worlds (Prototype)
@@ -49141,7 +49147,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvcv_wargames,		// War Games (USA, Euro)
 	&BurnDrvcv_wargamesp,		// War Games (USA, Prototype)
 	&BurnDrvnes_warinthegulf,	// War in the Gulf (Unl)
-	&BurnSpecWarmachine,		// War Machine (128K)
+	&BurnSpecWarmachine,		// War Machine (48K-128K)
 	&BurnDrvWrofaero,			// War of Aero - Project MEIOU
 #if defined FBNEO_DEBUG
 	&BurnDrvWarofbugg,			// War of the Bugs or Monsterous Manouvers in a Mushroom Maze (German) [no comment, NOT WORKING]
@@ -52801,6 +52807,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_bloodsht", "megadrive/d_megadrive.cpp"},
 	{ "md_bloodshtfix", "megadrive/d_megadrive.cpp"},
 	{ "spec_bloodstone", "spectrum/d_spectrum.cpp"},
+	{ "spec_bloodstoneru", "spectrum/d_spectrum.cpp"},
 	{ "msx_bloody", "msx/d_msx.cpp"},
 	{ "spec_bloody", "spectrum/d_spectrum.cpp"},
 	{ "spec_bloodpaws1", "spectrum/d_spectrum.cpp"},
@@ -57215,6 +57222,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_fzeroe", "snes/d_snes.cpp"},
 	{ "snes_fzeroj", "snes/d_snes.cpp"},
 	{ "snes_fzero", "snes/d_snes.cpp"},
+	{ "snes_fzeroml", "snes/d_snes.cpp"},
 	{ "fa", "pst90s/d_namcona1.cpp"},
 	{ "md_f1", "megadrive/d_megadrive.cpp"},
 	{ "sms_f1", "sms/d_sms.cpp"},
@@ -58015,6 +58023,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_fpengo2", "spectrum/d_spectrum.cpp"},
 	{ "spec_fraysimone", "spectrum/d_spectrum.cpp"},
 	{ "spec_fraysimons", "spectrum/d_spectrum.cpp"},
+	{ "gg_frayte", "sms/d_sms.cpp"},
 	{ "gg_fray", "sms/d_sms.cpp"},
 	{ "spec_fred", "spectrum/d_spectrum.cpp"},
 	{ "gg_fredcoupj", "sms/d_sms.cpp"},

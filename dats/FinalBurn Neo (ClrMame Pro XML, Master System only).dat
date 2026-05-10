@@ -3624,7 +3624,7 @@
 		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="loretta" cloneof="lorettate" romof="lorettate" sourcefile="sms/d_sms.cpp">
+	<game name="loretta" sourcefile="sms/d_sms.cpp">
 		<description>Loretta no Shouzou: Sherlock Holmes (Japan)</description>
 		<year>1987</year>
 		<manufacturer>Sega</manufacturer>
@@ -3632,7 +3632,7 @@
 		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="lorettate" sourcefile="sms/d_sms.cpp">
+	<game name="lorettate" cloneof="loretta" romof="loretta" sourcefile="sms/d_sms.cpp">
 		<comment>Hack</comment>
 		<description>Loretta's Portrait (Hack, English)</description>
 		<year>2026</year>

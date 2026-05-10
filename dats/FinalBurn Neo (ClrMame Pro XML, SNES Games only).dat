@@ -5603,6 +5603,15 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="fzeroml" cloneof="fzero" romof="fzero" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>F-Zero: Max League (Hack)</description>
+		<year>2026</year>
+		<manufacturer>PowerPanda, Zephyrum25</manufacturer>
+		<rom name="F-Zero - MAX League (2026)(PowerPanda, Zephyrum25).sfc" size="1048576" crc="0539686b"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="f1polepose" cloneof="f1polepos" romof="f1polepos" sourcefile="snes/d_snes.cpp">
 		<description>F1 Pole Position (Euro)</description>
 		<year>1993</year>
