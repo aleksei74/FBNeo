@@ -214,11 +214,23 @@ size_t retro_get_memory_size(unsigned id)
 }
 
 // Savestates support
+#define SS_CONTEXT_NUM 5
 static UINT8 *pStateBuffer;
-static UINT32 nStateLen;
+static UINT32 nStateLen[SS_CONTEXT_NUM];
+static UINT32 nStateTmpLen[SS_CONTEXT_NUM];
+static UINT32 nTempSize;
+static bool bScanOk;
+static int nSavestateContext = RETRO_SAVESTATE_CONTEXT_NORMAL;
 
 static int StateWriteAcb(BurnArea *pba)
 {
+	nStateTmpLen[nSavestateContext] += pba->nLen;
+	// size is bigger than the buffer we are writing to, abort
+	if (nStateTmpLen[nSavestateContext] > nTempSize)
+	{
+		bScanOk = false;
+		return 1;
+	}
 	memcpy(pStateBuffer, pba->Data, pba->nLen);
 	pStateBuffer += pba->nLen;
 
@@ -227,6 +239,13 @@ static int StateWriteAcb(BurnArea *pba)
 
 static int StateReadAcb(BurnArea *pba)
 {
+	nStateTmpLen[nSavestateContext] += pba->nLen;
+	// size is bigger than the buffer we are loading from, abort
+	if (nStateTmpLen[nSavestateContext] > nTempSize)
+	{
+		bScanOk = false;
+		return 1;
+	}
 	memcpy(pba->Data, pStateBuffer, pba->nLen);
 	pStateBuffer += pba->nLen;
 
@@ -235,9 +254,9 @@ static int StateReadAcb(BurnArea *pba)
 
 static int StateLenAcb(BurnArea *pba)
 {
-	nStateLen += pba->nLen;
+	nStateLen[nSavestateContext] += pba->nLen;
 #ifdef FBNEO_DEBUG
-	HandleMessage(RETRO_LOG_INFO, "state debug: name %s, len %d, total %d\n", pba->szName, pba->nLen, nStateLen);
+	HandleMessage(RETRO_LOG_INFO, "state debug: name %s, len %d, total %d\n", pba->szName, pba->nLen, nStateLen[nSavestateContext]);
 #endif
 
 	return 0;
@@ -245,6 +264,8 @@ static int StateLenAcb(BurnArea *pba)
 
 static INT32 LibretroAreaScan(INT32 nAction)
 {
+	nStateTmpLen[nSavestateContext] = 0;
+
 	// The following value is sometimes used in game logic (xmen6p, ...),
 	// and will lead to various issues if not handled properly.
 	// On standalone, this value is stored in savestate files headers
@@ -267,9 +288,9 @@ static void TweakScanFlags(INT32 &nAction)
 {
 	// note: due to the fact all hosts would require the same version of hiscore.dat to properly scan the same memory ranges,
 	//       hiscores can't work reliably in a netplay environment, and we should never enable them in that context
+	nSavestateContext = RETRO_SAVESTATE_CONTEXT_NORMAL;
 	if (bLibretroSupportsSavestateContext)
 	{
-		int nSavestateContext = RETRO_SAVESTATE_CONTEXT_NORMAL;
 		environ_cb(RETRO_ENVIRONMENT_GET_SAVESTATE_CONTEXT, &nSavestateContext);
 		// With RETRO_ENVIRONMENT_GET_SAVESTATE_CONTEXT, we can guess accurately
 		switch (nSavestateContext)
@@ -295,6 +316,7 @@ static void TweakScanFlags(INT32 &nAction)
 		kNetGame = nAudioVideoEnable & 4 ? 1 : 0;
 		if (kNetGame == 1)
 		{
+			nSavestateContext = RETRO_SAVESTATE_CONTEXT_ROLLBACK_NETPLAY;
 			EnableHiscores = false;
 			nAction |= ACB_NET_OPT;
 		}
@@ -314,11 +336,11 @@ size_t retro_serialize_size()
 	TweakScanFlags(nAction);
 
 	// Compute size
-	nStateLen = 0;
+	nStateLen[nSavestateContext] = 0;
 	BurnAcb = StateLenAcb;
 	LibretroAreaScan(nAction);
 
-	return nStateLen;
+	return nStateLen[nSavestateContext];
 }
 
 bool retro_serialize(void *data, size_t size)
@@ -341,8 +363,14 @@ bool retro_serialize(void *data, size_t size)
 
 	BurnAcb = StateWriteAcb;
 	pStateBuffer = (UINT8*)data;
+	nTempSize = size;
+	bScanOk = true;
 
 	LibretroAreaScan(nAction);
+
+	// return false if scan failed
+	if (!bScanOk)
+		return false;
 
 	return true;
 }
@@ -360,8 +388,14 @@ bool retro_unserialize(const void *data, size_t size)
 
 	BurnAcb = StateReadAcb;
 	pStateBuffer = (UINT8*)data;
+	nTempSize = size;
+	bScanOk = true;
 
 	LibretroAreaScan(nAction);
+
+	// return false if scan failed
+	if (!bScanOk)
+		return false;
 
 	// Some driver require to recalc palette after loading savestates
 	BurnRecalcPal();
