@@ -22296,6 +22296,24 @@ struct BurnDriver BurnDrvsms_draconic = {
 	256, 192, 4, 3
 };
 
+// Dragon's Descent (HB)
+static struct BurnRomInfo sms_dragdescentRomDesc[] = {
+	{ "Dragon's Descent (2026)(Revontuli124).sms",	49152, 0x2afa9c93, BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(sms_dragdescent)
+STD_ROM_FN(sms_dragdescent)
+
+struct BurnDriver BurnDrvsms_dragdescent = {
+	"sms_dragdescent", NULL, NULL, NULL, "2026",
+	"Dragon's Descent (HB)\0", NULL, "Revontuli124", "Sega Master System",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SEGA_MASTER_SYSTEM, GBF_ACTION | GBF_ADV, 0,
+	SMSGetZipName, sms_dragdescentRomInfo, sms_dragdescentRomName, NULL, NULL, NULL, NULL, SMSInputInfo, SMSDIPInfo,
+	SMSInit, SMSExit, SMSFrame, SMSDraw, SMSScan, &SMSPaletteRecalc, 0x1E00,
+	256, 192, 4, 3
+};
+
 // Duke Nukem (GlobalHack)
 static struct BurnRomInfo sms_dnukemRomDesc[] = {
 	{ "Duke Nukem v0.93 (2017)(Revo, Tibone, Calindro).sms",	524288, 0xa16dba3b, BRF_PRG | BRF_ESS },
@@ -23468,6 +23486,24 @@ struct BurnDriver BurnDrvsms_mspacmancl = {
 	256, 192, 4, 3
 };
 
+// Multicolour Mars (HB, Tech-Demo v1.2)
+static struct BurnRomInfo sms_multimarsRomDesc[] = {
+	{ "Multicolour Mars v1.2 (2026)(joe).sms",	32768, 0x14348fb2, BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(sms_multimars)
+STD_ROM_FN(sms_multimars)
+
+struct BurnDriver BurnDrvsms_multimars = {
+	"sms_multimars", NULL, NULL, NULL, "2026",
+	"Multicolour Mars (HB, Tech-Demo v1.2)\0", NULL, "joe", "Sega Master System",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW | BDF_DEMO, 1, HARDWARE_SEGA_MASTER_SYSTEM, GBF_MISC, 0,
+	SMSGetZipName, sms_multimarsRomInfo, sms_multimarsRomName, NULL, NULL, NULL, NULL, SMSInputInfo, SMSDIPInfo,
+	SMSInit, SMSExit, SMSFrame, SMSDraw, SMSScan, &SMSPaletteRecalc, 0x1E00,
+	256, 192, 4, 3
+};
+
 // NanoWars 8k (HB, v0.7)
 static struct BurnRomInfo sms_nanowarsRomDesc[] = {
 	{ "NanoWars8k v0.7 (2006)(haroldoop).sms",	32768, 0xa06d065c, BRF_PRG | BRF_ESS },
@@ -23934,6 +23970,24 @@ struct BurnDriver BurnDrvsms_scope = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SEGA_MASTER_SYSTEM, GBF_ACTION, 0,
 	SMSGetZipName, sms_scopeRomInfo, sms_scopeRomName, NULL, NULL, NULL, NULL, SMSInputInfo, SMSDIPInfo,
+	SMSInit, SMSExit, SMSFrame, SMSDraw, SMSScan, &SMSPaletteRecalc, 0x1E00,
+	256, 192, 4, 3
+};
+
+// Ship Schematic Demo (HB, Tech-Demo)
+static struct BurnRomInfo sms_shipschedemoRomDesc[] = {
+	{ "Ship Schematic Demo (2026)(BadComputer, LovePenguin).sms",	65536, 0xbad541e1, BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(sms_shipschedemo)
+STD_ROM_FN(sms_shipschedemo)
+
+struct BurnDriver BurnDrvsms_shipschedemo = {
+	"sms_shipschedemo", NULL, NULL, NULL, "2026",
+	"Ship Schematic Demo (HB, Tech-Demo)\0", NULL, "BadComputer, LovePenguin", "Sega Master System",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW | BDF_DEMO, 1, HARDWARE_SEGA_MASTER_SYSTEM, GBF_MISC, 0,
+	SMSGetZipName, sms_shipschedemoRomInfo, sms_shipschedemoRomName, NULL, NULL, NULL, NULL, SMSInputInfo, SMSDIPInfo,
 	SMSInit, SMSExit, SMSFrame, SMSDraw, SMSScan, &SMSPaletteRecalc, 0x1E00,
 	256, 192, 4, 3
 };
