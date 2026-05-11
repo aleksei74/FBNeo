@@ -216,13 +216,9 @@ size_t retro_get_memory_size(unsigned id)
 // Savestates support
 static UINT8 *pStateBuffer;
 static UINT32 nStateLen;
-static UINT32 nStateTmpLen;
 
 static int StateWriteAcb(BurnArea *pba)
 {
-	nStateTmpLen += pba->nLen;
-	if (nStateTmpLen > nStateLen)
-		return 1;
 	memcpy(pStateBuffer, pba->Data, pba->nLen);
 	pStateBuffer += pba->nLen;
 
@@ -231,9 +227,6 @@ static int StateWriteAcb(BurnArea *pba)
 
 static int StateReadAcb(BurnArea *pba)
 {
-	nStateTmpLen += pba->nLen;
-	if (nStateTmpLen > nStateLen)
-		return 1;
 	memcpy(pba->Data, pStateBuffer, pba->nLen);
 	pStateBuffer += pba->nLen;
 
@@ -252,8 +245,6 @@ static int StateLenAcb(BurnArea *pba)
 
 static INT32 LibretroAreaScan(INT32 nAction)
 {
-	nStateTmpLen = 0;
-
 	// The following value is sometimes used in game logic (xmen6p, ...),
 	// and will lead to various issues if not handled properly.
 	// On standalone, this value is stored in savestate files headers
@@ -266,7 +257,6 @@ static INT32 LibretroAreaScan(INT32 nAction)
 	BurnAreaScan(nAction, 0);
 
 	// We want to serialize this for single-instance runahead, otherwise the counter increases faster
-	// Putting this at the end is somehow mitigating the bug from https://github.com/libretro/RetroArch/issues/16374
 	if (nAction & ACB_RUNAHEAD)
 		SCAN_VAR(nDiagInputHoldCounter);
 
@@ -288,8 +278,7 @@ static void TweakScanFlags(INT32 &nAction)
 				nAction |= ACB_RUNAHEAD;
 				break;
 			case RETRO_SAVESTATE_CONTEXT_RUNAHEAD_SAME_BINARY:
-				// Until https://github.com/libretro/RetroArch/issues/16374 is fixed, just use 100% standard savestates for second instance runahead
-				// nAction |= ACB_2RUNAHEAD;
+				nAction |= ACB_2RUNAHEAD;
 				break;
 			case RETRO_SAVESTATE_CONTEXT_ROLLBACK_NETPLAY:
 				EnableHiscores = false;
@@ -324,29 +313,10 @@ size_t retro_serialize_size()
 	// Tweaking from context
 	TweakScanFlags(nAction);
 
-	// Store previous size
-	//INT32 nStateLenPrev = nStateLen;
-
 	// Compute size
 	nStateLen = 0;
 	BurnAcb = StateLenAcb;
 	LibretroAreaScan(nAction);
-
-	// cv1k and ngp/ngpc need overallocation
-	switch (BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK)
-	{
-		case HARDWARE_CAVE_CV1000:
-		case HARDWARE_SNK_NGP:
-		case HARDWARE_SNK_NGPC:
-			nStateLen += (128*1024);
-			break;
-	}
-
-	// The frontend doesn't handle it well when different savestates
-	// with different sizes are used concurrently for runahead & rewind,
-	// so we always keep the largest computed size
-	//if (nStateLenPrev > nStateLen)
-	//	nStateLen = nStateLenPrev;
 
 	return nStateLen;
 }
@@ -374,10 +344,6 @@ bool retro_serialize(void *data, size_t size)
 
 	LibretroAreaScan(nAction);
 
-	// size is bigger than expected
-	if (nStateTmpLen > size)
-		return false;
-
 	return true;
 }
 
@@ -392,20 +358,10 @@ bool retro_unserialize(const void *data, size_t size)
 	// Tweaking from context
 	TweakScanFlags(nAction);
 
-	// second instance runahead never calls retro_serialize_size(),
-	// but to avoid overflows nStateLen is required in this core's savestate logic,
-	// so we use "size" to update nStateLen
-	if (size > nStateLen)
-		nStateLen = size;
-
 	BurnAcb = StateReadAcb;
 	pStateBuffer = (UINT8*)data;
 
 	LibretroAreaScan(nAction);
-
-	// size is bigger than expected
-	if (nStateTmpLen > size)
-		return false;
 
 	// Some driver require to recalc palette after loading savestates
 	BurnRecalcPal();
