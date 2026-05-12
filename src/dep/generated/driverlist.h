@@ -7867,6 +7867,7 @@ DRV		BurnDrvGlocr360j;
 DRV		BurnDrvGlocr360;
 DRV		BurnDrvMSX_gmonkey;
 DRV		BurnDrvGstream;
+DRV		BurnDrvmd_gzero;
 DRV		BurnSpecGihero;
 DRV		BurnDrvGijoea;
 DRV		BurnDrvGijoej;
@@ -33072,6 +33073,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvGlocr360,			// G-LOC R360 (World)
 	&BurnDrvMSX_gmonkey,		// G-Monkey (HB)
 	&BurnDrvGstream,			// G-Stream G2020
+	&BurnDrvmd_gzero,			// G-ZERO (HB, beta 4)
 	&BurnSpecGihero,			// G.I. Hero (48K-128K)
 	&BurnDrvGijoea,				// G.I. Joe (Asia, AA)
 	&BurnDrvGijoej,				// G.I. Joe (Japan, JAA)
@@ -58227,6 +58229,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "glocr360", "sega/d_ybrd.cpp"},
 	{ "msx_gmonkey", "msx/d_msx.cpp"},
 	{ "gstream", "pst90s/d_gstream.cpp"},
+	{ "md_gzero", "megadrive/d_megadrive.cpp"},
 	{ "spec_gihero", "spectrum/d_spectrum.cpp"},
 	{ "gijoea", "konami/d_gijoe.cpp"},
 	{ "gijoej", "konami/d_gijoe.cpp"},
