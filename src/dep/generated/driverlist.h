@@ -967,6 +967,8 @@ DRV		BurnDrvpce_ankoku;
 DRV		BurnDrvsms_anmitsu;
 DRV		BurnDrvMSX_anexoen;
 DRV		BurnDrvmd_annexedter;
+DRV		BurnDrvngpc_anotherdih;
+DRV		BurnDrvngpc_anotherdiha;
 DRV		BurnDrvmd_anotherw;
 DRV		BurnDrvsnes_Anotherworld;
 DRV		BurnSpecAntattack;
@@ -1479,6 +1481,7 @@ DRV		BurnDrvAvengrgs;
 DRV		BurnDrvAvspirit;
 DRV		BurnSpecAvespacial2;
 DRV		BurnSpecAvespacial1;
+DRV		BurnDrvsnes_Magicquest3tp;
 DRV		BurnSpecAvoriginal1;
 DRV		BurnSpecAvoriginal2;
 DRV		BurnDrvsnes_Advhouraits;
@@ -1704,12 +1707,14 @@ DRV		BurnDrvpce_barbarian;
 DRV		BurnSpecbarbarian;
 DRV		BurnSpecbarbarn2;
 DRV		BurnDrvMSX_barb2;
+DRV		BurnDrvngpc_barbinv;
 DRV		BurnDrvmd_barbarianrk;
 DRV		BurnDrvmd_barbarianami;
 DRV		BurnDrvmd_barbariancpc;
 DRV		BurnDrvmd_barbarianst;
 DRV		BurnDrvmd_barbarianc64;
 DRV		BurnDrvmd_barbarianzxs;
+DRV		BurnDrvngpc_barbarian;
 DRV		BurnSpecbarbpt1;
 DRV		BurnSpecbarbpt2;
 DRV		BurnDrvsnes_Barbiesupermodel;
@@ -2440,6 +2445,7 @@ DRV		BurnDrvnes_bloodfall;
 DRV		BurnDrvmd_bloodsht;
 DRV		BurnDrvmd_bloodshtfix;
 DRV		BurnSpecBloodstone;
+DRV		BurnSpecBloodstoneru;
 DRV		BurnDrvMSX_bloody;
 DRV		BurnSpecBloody;
 DRV		BurnSpecBloodpaws1;
@@ -2564,6 +2570,7 @@ DRV		BurnDrvpce_bombmn93;
 DRV		BurnDrvtg_bombmn93;
 DRV		BurnDrvpce_bombmn93s;
 DRV		BurnDrvpce_bombmn94;
+DRV		BurnDrvngpc_bomberman;
 DRV		BurnDrvfds_bomberman;
 DRV		BurnDrvnes_bombermanj;
 DRV		BurnDrvpce_bombman;
@@ -5293,6 +5300,7 @@ DRV		BurnDrvmd_dialqoc;
 DRV		BurnDrvmd_dialqo;
 DRV		BurnDrvcv_ddash;
 DRV		BurnDrvcv_ddash2;
+DRV		BurnDrvngpc_diamondrun;
 DRV		BurnDrvDiamrun;
 DRV		BurnDrvmd_diathieves;
 DRV		BurnSpecDcadv128;
@@ -6116,6 +6124,7 @@ DRV		BurnDrvDwex101cn;
 DRV		BurnDrvDrgw2100x;
 DRV		BurnDrvDrgw2;
 DRV		BurnDrvtg_dragcrse;
+DRV		BurnDrvsms_dragdescent;
 DRV		BurnDrvmd_shangh3;
 DRV		BurnDrvmd_dfury;
 DRV		BurnDrvmd_dfurys;
@@ -6444,6 +6453,7 @@ DRV		BurnDrvsms_ejim;
 DRV		BurnDrvgg_ejim;
 DRV		BurnDrvmd_ejim;
 DRV		BurnDrvsnes_Earthwormjime;
+DRV		BurnDrvsnes_Earthwormjimtp;
 DRV		BurnDrvmd_ejims;
 DRV		BurnDrvsnes_Earthwormjimj;
 DRV		BurnDrvmd_ejimp;
@@ -6898,6 +6908,7 @@ DRV		BurnDrvFx;
 DRV		BurnDrvsnes_Fzeroe;
 DRV		BurnDrvsnes_Fzeroj;
 DRV		BurnDrvsnes_Fzero;
+DRV		BurnDrvsnes_Fzeroml;
 DRV		BurnDrvFa;
 DRV		BurnDrvmd_f1;
 DRV		BurnDrvsms_f1;
@@ -7706,6 +7717,7 @@ DRV		BurnSpecfp128k;
 DRV		BurnSpecFpengo2;
 DRV		BurnSpecFraysimone;
 DRV		BurnSpecFraysimons;
+DRV		BurnDrvgg_frayte;
 DRV		BurnDrvgg_fray;
 DRV		BurnSpecfred;
 DRV		BurnDrvgg_fredcoupj;
@@ -7884,6 +7896,7 @@ DRV		BurnDrvGlocr360j;
 DRV		BurnDrvGlocr360;
 DRV		BurnDrvMSX_gmonkey;
 DRV		BurnDrvGstream;
+DRV		BurnDrvmd_gzero;
 DRV		BurnSpecGihero;
 DRV		BurnDrvGijoea;
 DRV		BurnDrvGijoej;
@@ -8447,6 +8460,7 @@ DRV		BurnDrvGteikoku;
 DRV		BurnDrvcv_ggarden;
 DRV		BurnDrvsg1k_girlgard;
 DRV		BurnDrvsg1k_girlgardt;
+DRV		BurnDrvsg1k_girlgardpt;
 DRV		BurnSpecGladtr128;
 DRV		BurnSpecGladtr48;
 DRV		BurnDrvGladiatr;
@@ -8846,6 +8860,7 @@ DRV		BurnDrvsnes_Greatbattle5j;
 DRV		BurnDrvnes_greatbox;
 DRV		BurnDrvmd_greatcirj;
 DRV		BurnDrvsnes_Greatcircmyste;
+DRV		BurnDrvsnes_Greatcircmysttp;
 DRV		BurnDrvmd_mickeycms;
 DRV		BurnDrvmd_mickeycm;
 DRV		BurnDrvsnes_Greatcircmyst;
@@ -9040,8 +9055,8 @@ DRV		BurnDrvGundhara;
 DRV		Burnmd_Gun3in1;
 DRV		BurnDrvGunforcej;
 DRV		BurnDrvGunforceu;
-DRV		BurnDrvsnes_Gunforce;
 DRV		BurnDrvGunforce;
+DRV		BurnDrvsnes_Gunforce;
 DRV		BurnSpecGunfright;
 DRV		BurnDrvnes_gunhawk;
 DRV		BurnSpecGunhead;
@@ -12247,6 +12262,7 @@ DRV		BurnDrvMpumpkin;
 DRV		BurnDrvgg_magiclpp;
 DRV		BurnDrvsnes_Magicquest3;
 DRV		BurnDrvsnes_Magicalqueste;
+DRV		BurnDrvsnes_Magicalquesttp;
 DRV		BurnDrvsnes_Magicalquest;
 DRV		BurnDrvsnes_Magicalquestfr;
 DRV		BurnDrvMSX_magical;
@@ -12254,8 +12270,8 @@ DRV		BurnDrvmd_mtaruruk;
 DRV		BurnDrvgg_mtaruru;
 DRV		BurnDrvmd_mtaruru;
 DRV		BurnDrvnes_magictarkun;
-DRV		BurnDrvsnes_Magicaltaruruutokun;
 DRV		BurnDrvnes_magictarkun2;
+DRV		BurnDrvsnes_Magicaltaruruutokun;
 DRV		BurnSpecMagtower;
 DRV		BurnSpecMagtowerold;
 DRV		BurnDrvcv_magtree;
@@ -12650,6 +12666,7 @@ DRV		BurnDrvMasterw;
 DRV		BurnSpecMasterpiecen;
 DRV		BurnSpecMasterpieces;
 DRV		BurnDrvnes_mastershooter;
+DRV		BurnDrvMastfury;
 DRV		BurnDrvsms_mastcomb;
 DRV		BurnSpecMastersarcade;
 DRV		BurnSpecMastersmovie;
@@ -13187,12 +13204,12 @@ DRV		BurnDrvmd_mickmackup;
 DRV		BurnDrvsms_mickmack;
 DRV		BurnDrvgg_mickmack;
 DRV		BurnSpecMickeydongw;
-DRV		BurnDrvsnes_Mickeymania;
 DRV		BurnDrvnes_mickeymania7;
 DRV		BurnDrvmd_mmania;
 DRV		BurnDrvmd_mmanias;
 DRV		BurnDrvmd_mmaniaj;
 DRV		BurnDrvmd_mmaniau;
+DRV		BurnDrvsnes_Mickeymania;
 DRV		BurnDrvmd_mmaniaup;
 DRV		BurnSpecMickeymouse;
 DRV		BurnDrvgg_legndillj;
@@ -13273,8 +13290,8 @@ DRV		BurnDrvmd_mig29;
 DRV		BurnDrvmd_mig29j;
 DRV		BurnDrvmd_mig29u;
 DRV		BurnDrvsnes_Mightmagic2;
-DRV		BurnDrvsnes_Mightmagic3;
 DRV		BurnDrvmd_mightmg3;
+DRV		BurnDrvsnes_Mightmagic3;
 DRV		BurnDrvmd_mightmag;
 DRV		BurnDrvnes_mightybombjack;
 DRV		BurnSpecMightyff;
@@ -13484,10 +13501,10 @@ DRV		BurnDrvsnes_Ggundamte;
 DRV		BurnDrvcv_mobplansty;
 DRV		BurnDrvMSX_suthir;
 DRV		BurnDrvMsgundam1;
-DRV		BurnDrvsnes_Gundamcd0079te;
 DRV		BurnDrvGundamex;
 DRV		BurnDrvGdfs;
 DRV		BurnDrvsnes_Gundamwte;
+DRV		BurnDrvsnes_Gundamcd0079te;
 DRV		BurnDrvMsgundam;
 DRV		BurnDrvMSX_gundam;
 DRV		BurnDrvMSX_gundama;
@@ -14019,6 +14036,7 @@ DRV		BurnDrvMchampda;
 DRV		BurnDrvMulti96;
 DRV		BurnDrvMltiwars;
 DRV		BurnDrvMSX_multic31in1;
+DRV		BurnDrvsms_multimars;
 DRV		BurnSpecmultidude;
 DRV		BurnDrvnes_multidude;
 DRV		BurnDrvnes_multidudee;
@@ -14712,6 +14730,8 @@ DRV		BurnDrvMSX_ninjapri;
 DRV		BurnDrvsg1k_ninjapri;
 DRV		BurnDrvMSX_ninjapria;
 DRV		BurnDrvcv_ninjaprincess;
+DRV		BurnDrvnes_kaikeyanmar2tp;
+DRV		BurnDrvnes_kaikeyanmar3tp;
 DRV		BurnDrvnes_ninjarahoi;
 DRV		BurnDrvpce_nryukend;
 DRV		BurnDrvRyukendn;
@@ -17740,6 +17760,8 @@ DRV		BurnDrvMSX_room5;
 DRV		BurnDrvClapapa2;
 DRV		BurnDrvClapapa;
 DRV		BurnDrvRopeman;
+DRV		BurnDrvsnes_Rosalinaen;
+DRV		BurnDrvsnes_Rosalinapt;
 DRV		BurnSpecRoshimilken1;
 DRV		BurnSpecRoshimilkpt1;
 DRV		BurnSpecRoshimilkes1;
@@ -18663,6 +18685,7 @@ DRV		BurnDrvsnes_Cyberformula;
 DRV		BurnDrvShinygld;
 DRV		BurnDrvmd_ship1;
 DRV		BurnDrvmd_ship;
+DRV		BurnDrvsms_shipschedemo;
 DRV		BurnDrvMSX_shiper;
 DRV		BurnDrvShippuMD;
 DRV		BurnDrvpce_shiryo;
@@ -23340,6 +23363,7 @@ DRV		BurnDrvmd_turrican;
 DRV		BurnDrvmd_turricanf;
 DRV		BurnDrvmd_turricans;
 DRV		BurnDrvtg_turrican;
+DRV		BurnDrvsnes_Turrican15;
 DRV		BurnSpecturrican2;
 DRV		BurnDrvTurtshipj;
 DRV		BurnDrvTurtshipk;
@@ -26290,6 +26314,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsms_anmitsu,		// Anmitsu Hime (Japan)
 	&BurnDrvMSX_anexoen,		// Annex 1, The Algorithm (English) (HB)
 	&BurnDrvmd_annexedter,		// Annexed Territory (HB)
+	&BurnDrvngpc_anotherdih,	// Another Day in Hell (HB, v1.1)
+	&BurnDrvngpc_anotherdiha,	// Another Day in Hell (HB, v1.1, Alt)
 	&BurnDrvmd_anotherw,		// Another World (Euro)
 	&BurnDrvsnes_Anotherworld,	// Another World (Euro)
 	&BurnSpecAntattack,			// Ant Attack (48K)
@@ -26802,6 +26828,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvAvspirit,			// Avenging Spirit
 	&BurnSpecAvespacial2,		// Aventura Espacial, La: En los Dominios del Cerebelo (Spanish) (48K)
 	&BurnSpecAvespacial1,		// Aventura Espacial, La: Explorando Mundos (Spanish) (48K)
+	&BurnDrvsnes_Magicquest3tp,	// Aventura Magica 3 Estrelando Mickey & Donald (Hack, Portuguese)
 	&BurnSpecAvoriginal1,		// Aventura Original I: La Busqueda (Spanish) (48K)
 	&BurnSpecAvoriginal2,		// Aventura Original II: El Encuentro (Spanish) (48K)
 	&BurnDrvsnes_Advhouraits,	// Aventuras de Hourai High, Las (Hack, Spanish v1.1)
@@ -27027,12 +27054,14 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecbarbarian,			// Barbarian (Psygnosis) (48K)
 	&BurnSpecbarbarn2,			// Barbarian II: The Dungeon of Drax (128K)
 	&BurnDrvMSX_barb2,			// Barbarian II: The Dungeon of Drax (Euro)
+	&BurnDrvngpc_barbinv,		// Barbarian Invaders (HB, v1.01)
 	&BurnDrvmd_barbarianrk,		// Barbarian Remake (HB)
 	&BurnDrvmd_barbarianami,	// Barbarian the Ultimate Warrior - Amiga (HB)
 	&BurnDrvmd_barbariancpc,	// Barbarian the Ultimate Warrior - Amstrad CPC (HB)
 	&BurnDrvmd_barbarianst,		// Barbarian the Ultimate Warrior - Atari ST (HB)
 	&BurnDrvmd_barbarianc64,	// Barbarian the Ultimate Warrior - C64 (HB)
 	&BurnDrvmd_barbarianzxs,	// Barbarian the Ultimate Warrior - ZX Spectrum (HB)
+	&BurnDrvngpc_barbarian,		// Barbarian: The Ultimate Warrior (HB)
 	&BurnSpecbarbpt1,			// Barbarian: The Ultimate Warrior - Part 1 (48K)
 	&BurnSpecbarbpt2,			// Barbarian: The Ultimate Warrior - Part 2 (48K)
 	&BurnDrvsnes_Barbiesupermodel,// Barbie - Super Model (USA)
@@ -27762,7 +27791,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_bloodfall,		// Bloodfall (HB)
 	&BurnDrvmd_bloodsht,		// Bloodshot ~ Battle Frenzy (Euro)
 	&BurnDrvmd_bloodshtfix,		// Bloodshot ~ Battle Frenzy (Hack, Texture Fix)
-	&BurnSpecBloodstone,		// Bloodstone (128K) (HB)
+	&BurnSpecBloodstone,		// Bloodstone (English) (128K) (HB, v1.2)
+	&BurnSpecBloodstoneru,		// Bloodstone (Russian) (128K) (HB, v1.2)
 	&BurnDrvMSX_bloody,			// Bloody (Euro, Spanish)
 	&BurnSpecBloody,			// Bloody (Spanish) (48K)
 	&BurnSpecBloodpaws1,		// Bloody Paws - Part 1 (Spanish) (128K)
@@ -27887,6 +27917,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvtg_bombmn93,		// Bomberman '93 (USA)
 	&BurnDrvpce_bombmn93s,		// Bomberman '93 - Special Version (Japan)
 	&BurnDrvpce_bombmn94,		// Bomberman '94 (Japan)
+	&BurnDrvngpc_bomberman,		// Bomberman (HB, v1.1)
 	&BurnDrvfds_bomberman,		// Bomberman (Japan)
 	&BurnDrvnes_bombermanj,		// Bomberman (Japan)
 	&BurnDrvpce_bombman,		// Bomberman (Japan)
@@ -30616,6 +30647,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_dialqo,			// Dial Q o Mawase! (Japan) (Unl)
 	&BurnDrvcv_ddash,			// Diamond Dash (HB)
 	&BurnDrvcv_ddash2,			// Diamond Dash 2 (HB)
+	&BurnDrvngpc_diamondrun,	// Diamond Run (HB)
 	&BurnDrvDiamrun,			// Diamond Run
 	&BurnDrvmd_diathieves,		// Diamond Thieves (HB)
 	&BurnSpecDcadv128,			// Diana Cave Adventure (128K) (HB)
@@ -31439,6 +31471,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvDrgw2100x,			// Dragon World II (ver. 100X, Export)
 	&BurnDrvDrgw2,				// Dragon World II (ver. 110X, Export)
 	&BurnDrvtg_dragcrse,		// Dragon's Curse (USA)
+	&BurnDrvsms_dragdescent,	// Dragon's Descent (HB)
 	&BurnDrvmd_shangh3,			// Dragon's Eye + Shanghai 3 (Japan)
 	&BurnDrvmd_dfury,			// Dragon's Fury (Euro, USA)
 	&BurnDrvmd_dfurys,			// Dragon's Fury (Hack, Spanish)
@@ -31767,6 +31800,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgg_ejim,			// Earthworm Jim (Euro)
 	&BurnDrvmd_ejim,			// Earthworm Jim (Euro)
 	&BurnDrvsnes_Earthwormjime,	// Earthworm Jim (Euro)
+	&BurnDrvsnes_Earthwormjimtp,// Earthworm Jim (Hack, Portuguese)
 	&BurnDrvmd_ejims,			// Earthworm Jim (Hack, Spanish)
 	&BurnDrvsnes_Earthwormjimj,	// Earthworm Jim (Japan)
 	&BurnDrvmd_ejimp,			// Earthworm Jim (Prototype)
@@ -32221,6 +32255,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Fzeroe,		// F-Zero (Euro)
 	&BurnDrvsnes_Fzeroj,		// F-Zero (Japan)
 	&BurnDrvsnes_Fzero,			// F-Zero (USA)
+	&BurnDrvsnes_Fzeroml,		// F-Zero: Max League (Hack)
 	&BurnDrvFa,					// F/A (Japan)
 	&BurnDrvmd_f1,				// F1 (Euro)
 	&BurnDrvsms_f1,				// F1 (Euro, Brazil)
@@ -33029,6 +33064,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecFpengo2,			// Frantic Pengo 2 (128K) (HB)
 	&BurnSpecFraysimone,		// Fray Simon (English) (48K) (HB)
 	&BurnSpecFraysimons,		// Fray Simon (Spanish) (48K) (HB)
+	&BurnDrvgg_frayte,			// Fray: Shugyouhen (Hack, English)
 	&BurnDrvgg_fray,			// Fray: Shugyouhen (Japan)
 	&BurnSpecfred,				// Fred (48K)
 	&BurnDrvgg_fredcoupj,		// Fred Couples' Golf (Japan)
@@ -33207,6 +33243,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvGlocr360,			// G-LOC R360 (World)
 	&BurnDrvMSX_gmonkey,		// G-Monkey (HB)
 	&BurnDrvGstream,			// G-Stream G2020
+	&BurnDrvmd_gzero,			// G-ZERO (HB, beta 4)
 	&BurnSpecGihero,			// G.I. Hero (48K-128K)
 	&BurnDrvGijoea,				// G.I. Joe (Asia, AA)
 	&BurnDrvGijoej,				// G.I. Joe (Japan, JAA)
@@ -33676,7 +33713,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvGpilotsh,			// Ghost Pilots (NGH-020, US)
 	&BurnDrvGpilots,			// Ghost Pilots (NGM-020 ~ NGH-020)
 	&BurnDrvGpilotsp,			// Ghost Pilots (prototype)
-	&BurnDrvsnes_Gsmikami,		// Ghost Sweeper Mikami - Joreishi wa Nice Body (Japan)
+	&BurnDrvsnes_Gsmikami,		// Ghost Sweeper Mikami: Joreishi wa Nice Body (Japan)
 	&BurnDrvcv_ghostrap,		// Ghost Trap (HB)
 	&BurnSpecGhostrev,			// Ghost's Revenge (16K)
 	&BurnDrvMSX_theghost,		// Ghost, The (Japan)
@@ -33770,6 +33807,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvcv_ggarden,			// Girl's Garden (HB)
 	&BurnDrvsg1k_girlgard,		// Girl's Garden (Japan)
 	&BurnDrvsg1k_girlgardt,		// Girl's Garden (Taiwan)
+	&BurnDrvsg1k_girlgardpt,	// Girl's Garden ~ Jardim do Amor (Hack, Portuguese v2.0)
 	&BurnSpecGladtr128,			// Gladiator (128K)
 	&BurnSpecGladtr48,			// Gladiator (48K)
 	&BurnDrvGladiatr,			// Gladiator (US)
@@ -34169,6 +34207,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_greatbox,		// Great Boxing - Rush Up (Japan)
 	&BurnDrvmd_greatcirj,		// Great Circus Mystery - Mickey to Minnie Magical Adventure 2 (Japan)
 	&BurnDrvsnes_Greatcircmyste,// Great Circus Mystery Starring Mickey & Minnie, The (Euro)
+	&BurnDrvsnes_Greatcircmysttp,// Great Circus Mystery Starring Mickey & Minnie, The (Hack, Portuguese v1.1)
 	&BurnDrvmd_mickeycms,		// Great Circus Mystery Starring Mickey & Minnie, The (Hack, Spanish)
 	&BurnDrvmd_mickeycm,		// Great Circus Mystery Starring Mickey & Minnie, The (USA)
 	&BurnDrvsnes_Greatcircmyst,	// Great Circus Mystery Starring Mickey & Minnie, The (USA)
@@ -34363,8 +34402,8 @@ static struct BurnDriver* pDriver[] = {
 	&Burnmd_Gun3in1,			// Gunfight 3 in 1 (Taiwan) (Unl)
 	&BurnDrvGunforcej,			// Gunforce - Battle Fire Engulfed Terror Island (Japan)
 	&BurnDrvGunforceu,			// Gunforce - Battle Fire Engulfed Terror Island (US)
-	&BurnDrvsnes_Gunforce,		// GunForce - Battle Fire Engulfed Terror Island (USA)
 	&BurnDrvGunforce,			// Gunforce - Battle Fire Engulfed Terror Island (World)
+	&BurnDrvsnes_Gunforce,		// GunForce: Battle Fire Engulfed Terror Island (USA)
 	&BurnSpecGunfright,			// Gunfright (48K)
 	&BurnDrvnes_gunhawk,		// Gunhawk (HB, v1.1)
 	&BurnSpecGunhead,			// Gunhead (128K)
@@ -34463,7 +34502,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpechadesnebula,		// Hades Nebula (48K)
 	&BurnSpecHafoctor,			// Hafoc Tor (48K-128K) (HB)
 	&BurnDrvsnes_Haganej,		// Hagane (Japan)
-	&BurnDrvsnes_Hagane,		// Hagane - The Final Conflict (USA)
+	&BurnDrvsnes_Hagane,		// Hagane: The Final Conflict (USA)
 	&BurnSpecMrhair,			// Hair Raising Adventures of Mr Hair, The (128K) (HB)
 	&BurnSpecMrhairiv,			// Hair Raising Adventures of Mr Hair, The - Imp. version (128K) (HB)
 	&BurnSpecHairtrigger,		// Hair Trigger (48K-128K) (HB)
@@ -36265,7 +36304,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvHorekid,			// Kid no Hore Hore Daisakusen
 	&BurnDrvnes_kiddysuninfan,	// Kiddy Sun in Fantasia (Taiwan)
 	&BurnDrvsnes_Ggundamj,		// Kidou Butouden G-Gundam (Japan)
-	&BurnDrvsnes_Gundamcd0079j,	// Kidou Senshi Gundam - Cross Dimension 0079 (Japan)
+	&BurnDrvsnes_Gundamcd0079j,	// Kidou Senshi Gundam: Cross Dimension 0079 (Japan)
 	&BurnDrvnes_kidousenzgun,	// Kidou Senshi Z Gundam - Hot Scramble (Japan)
 	&BurnDrvnes_kidousenzgunj,	// Kidou Senshi Z Gundam - Hot Scramble (Japan, Final Version)
 	&BurnDrvsnes_Kidoudion,		// Kidou Soukou Dion (Japan)
@@ -37570,6 +37609,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgg_magiclpp,		// Magical Puzzle Popils (World)
 	&BurnDrvsnes_Magicquest3,	// Magical Quest 3 Starring Mickey and Donald (Hack, English v1.5)
 	&BurnDrvsnes_Magicalqueste,	// Magical Quest Starring Mickey Mouse, The (Euro)
+	&BurnDrvsnes_Magicalquesttp,// Magical Quest Starring Mickey Mouse, The (Hack, Portuguese)
 	&BurnDrvsnes_Magicalquest,	// Magical Quest Starring Mickey Mouse, The (USA)
 	&BurnDrvsnes_Magicalquestfr,// Magical Quest Starring Mickey Mouse, The - FastROM (Hack, v0.2)
 	&BurnDrvMSX_magical,		// Magical Stones (HB)
@@ -37577,8 +37617,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgg_mtaruru,			// Magical Taruruuto-kun (Japan)
 	&BurnDrvmd_mtaruru,			// Magical Taruruuto-kun (Japan)
 	&BurnDrvnes_magictarkun,	// Magical Taruruuto-kun - Fantastic World!! (Japan)
-	&BurnDrvsnes_Magicaltaruruutokun,// Magical Taruruuto-kun - Magic Adventure (Japan)
 	&BurnDrvnes_magictarkun2,	// Magical Taruruuto-kun 2 - Mahou Daibouken (Japan)
+	&BurnDrvsnes_Magicaltaruruutokun,// Magical Taruruuto-kun: Magic Adventure (Japan)
 	&BurnSpecMagtower,			// Magical Tower Adventure - 2019 Version (48K) (HB)
 	&BurnSpecMagtowerold,		// Magical Tower Adventure - Mini Version (48K) (HB)
 	&BurnDrvcv_magtree,			// Magical Tree (HB)
@@ -37973,6 +38013,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecMasterpiecen,		// Master Piece (English) (48K) (HB)
 	&BurnSpecMasterpieces,		// Master Piece (Spanish) (48K) (HB)
 	&BurnDrvnes_mastershooter,	// Master Shooter (Unl)
+	&BurnDrvMastfury,			// Master's Fury
 	&BurnDrvsms_mastcomb,		// Masters of Combat (Euro, Brazil, Australia)
 	&BurnSpecMastersarcade,		// Masters of the Universe - The Arcade Game (48K)
 	&BurnSpecMastersmovie,		// Masters of the Universe - The Movie (48K)
@@ -38510,12 +38551,12 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsms_mickmack,		// Mick and Mack as the Global Gladiators (Euro, Brazil)
 	&BurnDrvgg_mickmack,		// Mick and Mack as the Global Gladiators (Euro, USA)
 	&BurnSpecMickeydongw,		// Mickey and Donald Game & Watch (48K) (HB)
-	&BurnDrvsnes_Mickeymania,	// Mickey Mania - The Timeless Adventures of Mickey Mouse (USA)
 	&BurnDrvnes_mickeymania7,	// Mickey Mania 7 (Taiwan) (Unl)
 	&BurnDrvmd_mmania,			// Mickey Mania: The Timeless Adventures of Mickey Mouse (Euro)
 	&BurnDrvmd_mmanias,			// Mickey Mania: The Timeless Adventures of Mickey Mouse (Hack, Spanish)
 	&BurnDrvmd_mmaniaj,			// Mickey Mania: The Timeless Adventures of Mickey Mouse (Japan)
 	&BurnDrvmd_mmaniau,			// Mickey Mania: The Timeless Adventures of Mickey Mouse (USA)
+	&BurnDrvsnes_Mickeymania,	// Mickey Mania: The Timeless Adventures of Mickey Mouse (USA)
 	&BurnDrvmd_mmaniaup,		// Mickey Mania: The Timeless Adventures of Mickey Mouse (USA, Prototype)
 	&BurnSpecMickeymouse,		// Mickey Mouse - The Computer Game (48K)
 	&BurnDrvgg_legndillj,		// Mickey Mouse Densetsu no Oukoku ~ Legend of Illusion (Japan)
@@ -38526,8 +38567,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_mickemou,		// Mickey Mousecapade (USA)
 	&BurnDrvsnes_Mickeymagicadv,// Mickey no Magical Adventure (Japan, Rev. 1)
 	&BurnDrvsnes_Mickeytokyoj,	// Mickey no Tokyo Disneyland Daibouken (Japan)
-	&BurnDrvsnes_Mickeymagicadv3,// Mickey to Donald - Magical Adventure 3 (Japan)
-	&BurnDrvsnes_Mickeymagicadv2,// Mickey to Minnie - Magical Adventure 2 (Japan)
+	&BurnDrvsnes_Mickeymagicadv3,// Mickey to Donald: Magical Adventure 3 (Japan)
+	&BurnDrvsnes_Mickeymagicadv2,// Mickey to Minnie: Magical Adventure 2 (Japan)
 	&BurnDrvsnes_Mickeytokyote,	// Mickey's Great Adventure in Tokyo Disneyland (Hack, English)
 	&BurnDrvsms_mickeyuc,		// Mickey's Ultimate Challenge (Brazil)
 	&BurnDrvgg_mickeyuc,		// Mickey's Ultimate Challenge (Euro, USA)
@@ -38595,9 +38636,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_mig29,			// Mig-29 Fighter Pilot (Euro)
 	&BurnDrvmd_mig29j,			// Mig-29 Fighter Pilot (Japan)
 	&BurnDrvmd_mig29u,			// Mig-29 Fighter Pilot (USA)
-	&BurnDrvsnes_Mightmagic2,	// Might and Magic II - Gates to Another World (Euro)
-	&BurnDrvsnes_Mightmagic3,	// Might and Magic III - Isles of Terra (USA)
+	&BurnDrvsnes_Mightmagic2,	// Might and Magic II: Gates to Another World (Euro)
 	&BurnDrvmd_mightmg3,		// Might and Magic III - Isles of Terra (USA, Prototype)
+	&BurnDrvsnes_Mightmagic3,	// Might and Magic III: Isles of Terra (USA)
 	&BurnDrvmd_mightmag,		// Might and Magic: Gates to Another World (Euro, USA)
 	&BurnDrvnes_mightybombjack,	// Mighty Bomb Jack (USA)
 	&BurnSpecMightyff,			// Mighty Final Fight (128K) (HB, v1.2)
@@ -38807,10 +38848,10 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvcv_mobplansty,		// Mobile Planet Styllus (SGM) (HB)
 	&BurnDrvMSX_suthir,			// Mobile Planet Suthirus: Approach from the Westgate (Japan)
 	&BurnDrvMsgundam1,			// Mobile Suit Gundam (Japan)
-	&BurnDrvsnes_Gundamcd0079te,// Mobile Suit Gundam - Cross Dimension 0079 (Hack, English)
 	&BurnDrvGundamex,			// Mobile Suit Gundam EX Revue
 	&BurnDrvGdfs,				// Mobile Suit Gundam Final Shooting (Japan)
-	&BurnDrvsnes_Gundamwte,		// Mobile Suit Gundam Wing - Endless Duel (Hack, English)
+	&BurnDrvsnes_Gundamwte,		// Mobile Suit Gundam Wing: Endless Duel (Hack, English)
+	&BurnDrvsnes_Gundamcd0079te,// Mobile Suit Gundam: Cross Dimension 0079 (Hack, English)
 	&BurnDrvMsgundam,			// Mobile Suit Gundam
 	&BurnDrvMSX_gundam,			// Mobile-Suit Gundam: Last Shooting (Japan)
 	&BurnDrvMSX_gundama,		// Mobile-Suit Gundam: Last Shooting (Japan, Alt)
@@ -38999,7 +39040,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvcv_moonswpra,		// Moonsweeper (USA, Alt)
 	&BurnDrvcv_moonswpr,		// Moonsweeper (USA, Euro)
 	&BurnSpecmoontorc,			// MoonTorc (48K)
-	&BurnSpecmoonwalk,			// Moonwalker - The Computer Game (128K)
+	&BurnSpecmoonwalk,			// Moonwalker: The Computer Game (128K)
 	&BurnDrvMSX_moonwalker,		// Moonwalker: The Computer Game (Euro)
 	&BurnDrvMoonwara,			// Moonwar (older)
 	&BurnDrvMoonwar,			// Moonwar
@@ -39342,6 +39383,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMulti96,			// Multi Game '96 (Italy)
 	&BurnDrvMltiwars,			// Multi Wars (bootleg of UniWar S)
 	&BurnDrvMSX_multic31in1,	// MultiCart 31in1 (HB)
+	&BurnDrvsms_multimars,		// Multicolour Mars (HB, Tech-Demo v1.2)
 	&BurnSpecmultidude,			// MultiDude (128K) (HB)
 	&BurnDrvnes_multidude,		// Multidude (HB)
 	&BurnDrvnes_multidudee,		// MultiDude - Evercade Edition (HB)
@@ -40035,6 +40077,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsg1k_ninjapri,		// Ninja Princess (Japan)
 	&BurnDrvMSX_ninjapria,		// Ninja Princess (Japan, Alt)
 	&BurnDrvcv_ninjaprincess,	// Ninja Princess (SGM) (HB)
+	&BurnDrvnes_kaikeyanmar2tp,	// Ninja Radical Yanchamaru 2: O Parque Karakuri (Hack, Portuguese v1.0.1)
+	&BurnDrvnes_kaikeyanmar3tp,	// Ninja Radical Yanchamaru 3: O Confronto Contra Zouringen! (Hack, Portuguese)
 	&BurnDrvnes_ninjarahoi,		// Ninja Rahoi! (Hack English)
 	&BurnDrvpce_nryukend,		// Ninja Ryukenden (Japan)
 	&BurnDrvRyukendn,			// Ninja Ryukenden (Japan, set 1)
@@ -43063,6 +43107,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvClapapa2,			// Rootin' Tootin' (DECO Cassette) (US)
 	&BurnDrvClapapa,			// Rootin' Tootin' / La-Pa-Pa (DECO Cassette) (US)
 	&BurnDrvRopeman,			// Ropeman (bootleg of Roc'n Rope)
+	&BurnDrvsnes_Rosalinaen,	// Rosalina's Gold Saga (GlobalHack, English)
+	&BurnDrvsnes_Rosalinapt,	// Rosalina's Gold Saga (GlobalHack, Portuguese)
 	&BurnSpecRoshimilken1,		// Roshi Milk Course - Part 1 (English) (128K) (HB)
 	&BurnSpecRoshimilkpt1,		// Roshi Milk Course - Part 1 (Portuguese) (128K) (HB)
 	&BurnSpecRoshimilkes1,		// Roshi Milk Course - Part 1 (Spanish) (128K) (HB)
@@ -43902,7 +43948,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_shin4ninuchmac,	// Shin 4 Nin Uchi Mahjong (Hack, Chinese)
 	&BurnDrvnes_shin4ninuchma,	// Shin 4 Nin Uchi Mahjong (Japan)
 	&BurnDrvnes_shinjinrui,		// Shin Jinrui: The New Type (Japan)
-	&BurnDrvsnes_Gundamwj,		// Shin Kidou Senki Gundam W - Endless Duel (Japan)
+	&BurnDrvsnes_Gundamwj,		// Shin Kidou Senki Gundam W: Endless Duel (Japan)
 	&BurnDrvsnes_Smtenseite,	// Shin Megami Tensei (Hack, English)
 	&BurnDrvsnes_Smtenseits,	// Shin Megami Tensei (Hack, Spanish)
 	&BurnDrvsnes_Smtenseij,		// Shin Megami Tensei (Japan)
@@ -43986,6 +44032,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvShinygld,			// Shiny Golds
 	&BurnDrvmd_ship1,			// Ship (Prototype)
 	&BurnDrvmd_ship,			// Ship (Visitor Prototype)
+	&BurnDrvsms_shipschedemo,	// Ship Schematic Demo (HB, Tech-Demo)
 	&BurnDrvMSX_shiper,			// Shiper (HB)
 	&BurnDrvShippuMD,			// Shippu Mahou Daisakusen (Japan)
 	&BurnDrvpce_shiryo,			// Shiryou Sensen (Japan)
@@ -44081,7 +44128,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_shyre,			// Shyre (HB, v1.2)
 	&BurnDrvsg1k_homemjt,		// Si Ren Maque (Taiwan)
 	&BurnSpecSibcity,			// Sibcity (48K) (HB)
-	&BurnDrvsnes_Sicari2,		// Sicari 2 - The Brink of Time (GlobalHack, v1.061)
+	&BurnDrvsnes_Sicari2,		// Sicari 2: The Brink of Time (GlobalHack, v1.061)
 	&BurnDrvsnes_Sicarir,		// Sicari Remastered (GlobalHack, v1.05)
 	&BurnDrvSichuan2,			// Sichuan II (bootleg, set 1)
 	&BurnDrvSichuan2a,			// Sichuan II (bootleg, set 2)
@@ -48663,6 +48710,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_turricanf,		// Turrican (Hack, Colors and Lifebar Fix)
 	&BurnDrvmd_turricans,		// Turrican (Hack, Spanish)
 	&BurnDrvtg_turrican,		// Turrican (USA)
+	&BurnDrvsnes_Turrican15,	// Turrican 1.5 (HB)
 	&BurnSpecturrican2,			// Turrican II: The Final Fight (48K-128K)
 	&BurnDrvTurtshipj,			// Turtle Ship (Japan)
 	&BurnDrvTurtshipk,			// Turtle Ship (Korea)
@@ -48915,7 +48963,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvUnksigb,			// unknown 'Space Invaders' gambling game (unencrypted)
 	&BurnDrvmd_unnecess,		// Unnecessary Roughness 95 (USA)
 	&BurnDrvmd_uspknight,		// Unstoppable Knight (HB)
-	&BurnSpecuntouchb,			// Untouchables, The (128K)
+	&BurnSpecuntouchb,			// Untouchables, The (48K-128K)
 	&BurnDrvsnes_Untouchables,	// Untouchables, The (USA)
 	&BurnDrvUpndown,			// Up'n Down (315-5030)
 	&BurnDrvUpndownu,			// Up'n Down (not encrypted)
@@ -49249,7 +49297,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_vixen357e,		// Vixen 357 (Hack, English v1.2)
 	&BurnDrvmd_vixen357s,		// Vixen 357 (Hack, Spanish v2.0)
 	&BurnDrvmd_vixen357,		// Vixen 357 (Japan)
-	&BurnSpecViz,				// Viz - The Computer Game (128K)
+	&BurnSpecViz,				// Viz: The Computer Game (128K)
 	&BurnSpecVoid,				// Void (128K) (HB, Tech-Demo)
 	&BurnSpecVoidbringen,		// Void Bringer, The (English) (128K) (HB)
 	&BurnSpecVoidbringes,		// Void Bringer, The (Spanish) (128K) (HB)
@@ -49333,7 +49381,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_wacko,			// Wacko (HB)
 	&BurnDrvWacko,				// Wacko
 	&BurnSpecWackydarts,		// Wacky Darts (48K-128K)
-	&BurnSpecwackrace,			// Wacky Races (128K)
+	&BurnSpecwackrace,			// Wacky Races (48K-128K)
 	&BurnDrvnes_wackyraces,		// Wacky Races (USA)
 	&BurnDrvmd_wackyrac,		// Wacky Races (USA, Prototype)
 	&BurnDrvmd_wworldsp1,		// Wacky Worlds (Prototype)
@@ -49400,7 +49448,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvcv_wargames,		// War Games (USA, Euro)
 	&BurnDrvcv_wargamesp,		// War Games (USA, Prototype)
 	&BurnDrvnes_warinthegulf,	// War in the Gulf (Unl)
-	&BurnSpecWarmachine,		// War Machine (128K)
+	&BurnSpecWarmachine,		// War Machine (48K-128K)
 	&BurnDrvWrofaero,			// War of Aero - Project MEIOU
 #if defined FBNEO_DEBUG
 	&BurnDrvWarofbugg,			// War of the Bugs or Monsterous Manouvers in a Mushroom Maze (German) [no comment, NOT WORKING]
@@ -51609,6 +51657,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sms_anmitsu", "sms/d_sms.cpp"},
 	{ "msx_anexoen", "msx/d_msx.cpp"},
 	{ "md_annexedter", "megadrive/d_megadrive.cpp"},
+	{ "ngp_anotherdih", "pst90s/d_ngp.cpp"},
+	{ "ngp_anotherdiha", "pst90s/d_ngp.cpp"},
 	{ "md_anotherw", "megadrive/d_megadrive.cpp"},
 	{ "snes_anotherworld", "snes/d_snes.cpp"},
 	{ "spec_antattack", "spectrum/d_spectrum.cpp"},
@@ -52119,6 +52169,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "avspirit", "pre90s/d_megasys1.cpp"},
 	{ "spec_avespacial2", "spectrum/d_spectrum.cpp"},
 	{ "spec_avespacial1", "spectrum/d_spectrum.cpp"},
+	{ "snes_magicquest3tp", "snes/d_snes.cpp"},
 	{ "spec_avoriginal1", "spectrum/d_spectrum.cpp"},
 	{ "spec_avoriginal2", "spectrum/d_spectrum.cpp"},
 	{ "snes_advhouraits", "snes/d_snes.cpp"},
@@ -52342,12 +52393,14 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_barbarian", "spectrum/d_spectrum.cpp"},
 	{ "spec_barbarn2", "spectrum/d_spectrum.cpp"},
 	{ "msx_barb2", "msx/d_msx.cpp"},
+	{ "ngp_barbinv", "pst90s/d_ngp.cpp"},
 	{ "md_barbarianrk", "megadrive/d_megadrive.cpp"},
 	{ "md_barbarianami", "megadrive/d_megadrive.cpp"},
 	{ "md_barbariancpc", "megadrive/d_megadrive.cpp"},
 	{ "md_barbarianst", "megadrive/d_megadrive.cpp"},
 	{ "md_barbarianc64", "megadrive/d_megadrive.cpp"},
 	{ "md_barbarianzxs", "megadrive/d_megadrive.cpp"},
+	{ "ngp_barbarian", "pst90s/d_ngp.cpp"},
 	{ "spec_barbpt1", "spectrum/d_spectrum.cpp"},
 	{ "spec_barbpt2", "spectrum/d_spectrum.cpp"},
 	{ "snes_barbiesupermodel", "snes/d_snes.cpp"},
@@ -53074,6 +53127,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_bloodsht", "megadrive/d_megadrive.cpp"},
 	{ "md_bloodshtfix", "megadrive/d_megadrive.cpp"},
 	{ "spec_bloodstone", "spectrum/d_spectrum.cpp"},
+	{ "spec_bloodstoneru", "spectrum/d_spectrum.cpp"},
 	{ "msx_bloody", "msx/d_msx.cpp"},
 	{ "spec_bloody", "spectrum/d_spectrum.cpp"},
 	{ "spec_bloodpaws1", "spectrum/d_spectrum.cpp"},
@@ -53198,6 +53252,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "tg_bombmn93", "pce/d_pce.cpp"},
 	{ "pce_bombmn93s", "pce/d_pce.cpp"},
 	{ "pce_bombmn94", "pce/d_pce.cpp"},
+	{ "ngp_bomberman", "pst90s/d_ngp.cpp"},
 	{ "fds_bomberman", "nes/d_nes.cpp"},
 	{ "nes_bombermanj", "nes/d_nes.cpp"},
 	{ "pce_bombman", "pce/d_pce.cpp"},
@@ -55905,6 +55960,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_dialqo", "megadrive/d_megadrive.cpp"},
 	{ "cv_ddash", "coleco/d_coleco.cpp"},
 	{ "cv_ddash2", "coleco/d_coleco.cpp"},
+	{ "ngp_diamondrun", "pst90s/d_ngp.cpp"},
 	{ "diamrun", "pre90s/d_gng.cpp"},
 	{ "md_diathieves", "megadrive/d_megadrive.cpp"},
 	{ "spec_dcadv128", "spectrum/d_spectrum.cpp"},
@@ -56722,6 +56778,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "drgw2100x", "pgm/d_pgm.cpp"},
 	{ "drgw2", "pgm/d_pgm.cpp"},
 	{ "tg_dragcrse", "pce/d_pce.cpp"},
+	{ "sms_dragdescent", "sms/d_sms.cpp"},
 	{ "md_shangh3", "megadrive/d_megadrive.cpp"},
 	{ "md_dfury", "megadrive/d_megadrive.cpp"},
 	{ "md_dfurys", "megadrive/d_megadrive.cpp"},
@@ -57048,6 +57105,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gg_ejim", "sms/d_sms.cpp"},
 	{ "md_ejim", "megadrive/d_megadrive.cpp"},
 	{ "snes_earthwormjime", "snes/d_snes.cpp"},
+	{ "snes_earthwormjimtp", "snes/d_snes.cpp"},
 	{ "md_ejims", "megadrive/d_megadrive.cpp"},
 	{ "snes_earthwormjimj", "snes/d_snes.cpp"},
 	{ "md_ejimp", "megadrive/d_megadrive.cpp"},
@@ -57500,6 +57558,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_fzeroe", "snes/d_snes.cpp"},
 	{ "snes_fzeroj", "snes/d_snes.cpp"},
 	{ "snes_fzero", "snes/d_snes.cpp"},
+	{ "snes_fzeroml", "snes/d_snes.cpp"},
 	{ "fa", "pst90s/d_namcona1.cpp"},
 	{ "md_f1", "megadrive/d_megadrive.cpp"},
 	{ "sms_f1", "sms/d_sms.cpp"},
@@ -58306,6 +58365,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_fpengo2", "spectrum/d_spectrum.cpp"},
 	{ "spec_fraysimone", "spectrum/d_spectrum.cpp"},
 	{ "spec_fraysimons", "spectrum/d_spectrum.cpp"},
+	{ "gg_frayte", "sms/d_sms.cpp"},
 	{ "gg_fray", "sms/d_sms.cpp"},
 	{ "spec_fred", "spectrum/d_spectrum.cpp"},
 	{ "gg_fredcoupj", "sms/d_sms.cpp"},
@@ -58480,6 +58540,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "glocr360", "sega/d_ybrd.cpp"},
 	{ "msx_gmonkey", "msx/d_msx.cpp"},
 	{ "gstream", "pst90s/d_gstream.cpp"},
+	{ "md_gzero", "megadrive/d_megadrive.cpp"},
 	{ "spec_gihero", "spectrum/d_spectrum.cpp"},
 	{ "gijoea", "konami/d_gijoe.cpp"},
 	{ "gijoej", "konami/d_gijoe.cpp"},
@@ -59039,6 +59100,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "cv_ggarden", "coleco/d_coleco.cpp"},
 	{ "sg1k_girlgard", "sg1000/d_sg1000.cpp"},
 	{ "sg1k_girlgardt", "sg1000/d_sg1000.cpp"},
+	{ "sg1k_girlgardpt", "sg1000/d_sg1000.cpp"},
 	{ "spec_gladtr128", "spectrum/d_spectrum.cpp"},
 	{ "spec_gladtr48", "spectrum/d_spectrum.cpp"},
 	{ "gladiatr", "taito/d_gladiatr.cpp"},
@@ -59436,6 +59498,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_greatbox", "nes/d_nes.cpp"},
 	{ "md_greatcirj", "megadrive/d_megadrive.cpp"},
 	{ "snes_greatcircmyste", "snes/d_snes.cpp"},
+	{ "snes_greatcircmysttp", "snes/d_snes.cpp"},
 	{ "md_mickeycms", "megadrive/d_megadrive.cpp"},
 	{ "md_mickeycm", "megadrive/d_megadrive.cpp"},
 	{ "snes_greatcircmyst", "snes/d_snes.cpp"},
@@ -59630,8 +59693,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_gun3in1", "megadrive/d_megadrive.cpp"},
 	{ "gunforcej", "irem/d_m92.cpp"},
 	{ "gunforceu", "irem/d_m92.cpp"},
-	{ "snes_gunforce", "snes/d_snes.cpp"},
 	{ "gunforce", "irem/d_m92.cpp"},
+	{ "snes_gunforce", "snes/d_snes.cpp"},
 	{ "spec_gunfright", "spectrum/d_spectrum.cpp"},
 	{ "nes_gunhawk", "nes/d_nes.cpp"},
 	{ "spec_gunhead", "spectrum/d_spectrum.cpp"},
@@ -62805,6 +62868,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gg_magiclpp", "sms/d_sms.cpp"},
 	{ "snes_magicquest3", "snes/d_snes.cpp"},
 	{ "snes_magicalqueste", "snes/d_snes.cpp"},
+	{ "snes_magicalquesttp", "snes/d_snes.cpp"},
 	{ "snes_magicalquest", "snes/d_snes.cpp"},
 	{ "snes_magicalquestfr", "snes/d_snes.cpp"},
 	{ "msx_magical", "msx/d_msx.cpp"},
@@ -62812,8 +62876,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gg_mtaruru", "sms/d_sms.cpp"},
 	{ "md_mtaruru", "megadrive/d_megadrive.cpp"},
 	{ "nes_magictarkun", "nes/d_nes.cpp"},
-	{ "snes_magicaltaruruutokun", "snes/d_snes.cpp"},
 	{ "nes_magictarkun2", "nes/d_nes.cpp"},
+	{ "snes_magicaltaruruutokun", "snes/d_snes.cpp"},
 	{ "spec_magtower", "spectrum/d_spectrum.cpp"},
 	{ "spec_magtowerold", "spectrum/d_spectrum.cpp"},
 	{ "cv_magtree", "coleco/d_coleco.cpp"},
@@ -63208,6 +63272,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_masterpiecen", "spectrum/d_spectrum.cpp"},
 	{ "spec_masterpieces", "spectrum/d_spectrum.cpp"},
 	{ "nes_mastershooter", "nes/d_nes.cpp"},
+	{ "mastfury", "pst90s/d_drgnmst.cpp"},
 	{ "sms_mastcomb", "sms/d_sms.cpp"},
 	{ "spec_mastersarcade", "spectrum/d_spectrum.cpp"},
 	{ "spec_mastersmovie", "spectrum/d_spectrum.cpp"},
@@ -63741,12 +63806,12 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sms_mickmack", "sms/d_sms.cpp"},
 	{ "gg_mickmack", "sms/d_sms.cpp"},
 	{ "spec_mickeydongw", "spectrum/d_spectrum.cpp"},
-	{ "snes_mickeymania", "snes/d_snes.cpp"},
 	{ "nes_mickeymania7", "nes/d_nes.cpp"},
 	{ "md_mmania", "megadrive/d_megadrive.cpp"},
 	{ "md_mmanias", "megadrive/d_megadrive.cpp"},
 	{ "md_mmaniaj", "megadrive/d_megadrive.cpp"},
 	{ "md_mmaniau", "megadrive/d_megadrive.cpp"},
+	{ "snes_mickeymania", "snes/d_snes.cpp"},
 	{ "md_mmaniaup", "megadrive/d_megadrive.cpp"},
 	{ "spec_mickeymouse", "spectrum/d_spectrum.cpp"},
 	{ "gg_legndillj", "sms/d_sms.cpp"},
@@ -63827,8 +63892,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_mig29j", "megadrive/d_megadrive.cpp"},
 	{ "md_mig29u", "megadrive/d_megadrive.cpp"},
 	{ "snes_mightmagic2", "snes/d_snes.cpp"},
-	{ "snes_mightmagic3", "snes/d_snes.cpp"},
 	{ "md_mightmg3", "megadrive/d_megadrive.cpp"},
+	{ "snes_mightmagic3", "snes/d_snes.cpp"},
 	{ "md_mightmag", "megadrive/d_megadrive.cpp"},
 	{ "nes_mightybombjack", "nes/d_nes.cpp"},
 	{ "spec_mightyff", "spectrum/d_spectrum.cpp"},
@@ -64038,10 +64103,10 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "cv_mobplansty", "coleco/d_coleco.cpp"},
 	{ "msx_suthir", "msx/d_msx.cpp"},
 	{ "msgundam1", "pst90s/d_seta.cpp"},
-	{ "snes_gundamcd0079te", "snes/d_snes.cpp"},
 	{ "gundamex", "pst90s/d_seta2.cpp"},
 	{ "gdfs", "pst90s/d_ssv.cpp"},
 	{ "snes_gundamwte", "snes/d_snes.cpp"},
+	{ "snes_gundamcd0079te", "snes/d_snes.cpp"},
 	{ "msgundam", "pst90s/d_seta.cpp"},
 	{ "msx_gundam", "msx/d_msx.cpp"},
 	{ "msx_gundama", "msx/d_msx.cpp"},
@@ -64567,6 +64632,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "multi96", "pst90s/d_hyperpac.cpp"},
 	{ "mltiwars", "galaxian/d_galaxian.cpp"},
 	{ "msx_multic31in1", "msx/d_msx.cpp"},
+	{ "sms_multimars", "sms/d_sms.cpp"},
 	{ "spec_multidude", "spectrum/d_spectrum.cpp"},
 	{ "nes_multidude", "nes/d_nes.cpp"},
 	{ "nes_multidudee", "nes/d_nes.cpp"},
@@ -65254,6 +65320,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sg1k_ninjapri", "sg1000/d_sg1000.cpp"},
 	{ "msx_ninjapria", "msx/d_msx.cpp"},
 	{ "cv_ninjaprincess", "coleco/d_coleco.cpp"},
+	{ "nes_kaikeyanmar2tp", "nes/d_nes.cpp"},
+	{ "nes_kaikeyanmar3tp", "nes/d_nes.cpp"},
 	{ "nes_ninjarahoi", "nes/d_nes.cpp"},
 	{ "pce_nryukend", "pce/d_pce.cpp"},
 	{ "ryukendn", "pst90s/d_gaiden.cpp"},
@@ -68264,6 +68332,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "clapapa2", "dataeast/d_decocass.cpp"},
 	{ "clapapa", "dataeast/d_decocass.cpp"},
 	{ "ropeman", "konami/d_rocnrope.cpp"},
+	{ "snes_rosalinaen", "snes/d_snes.cpp"},
+	{ "snes_rosalinapt", "snes/d_snes.cpp"},
 	{ "spec_roshimilken1", "spectrum/d_spectrum.cpp"},
 	{ "spec_roshimilkpt1", "spectrum/d_spectrum.cpp"},
 	{ "spec_roshimilkes1", "spectrum/d_spectrum.cpp"},
@@ -69177,6 +69247,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "shinygld", "pst90s/d_sderby.cpp"},
 	{ "md_ship1", "megadrive/d_megadrive.cpp"},
 	{ "md_ship", "megadrive/d_megadrive.cpp"},
+	{ "sms_shipschedemo", "sms/d_sms.cpp"},
 	{ "msx_shiper", "msx/d_msx.cpp"},
 	{ "shippumd", "toaplan/d_shippumd.cpp"},
 	{ "pce_shiryo", "pce/d_pce.cpp"},
@@ -73798,6 +73869,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_turricanf", "megadrive/d_megadrive.cpp"},
 	{ "md_turricans", "megadrive/d_megadrive.cpp"},
 	{ "tg_turrican", "pce/d_pce.cpp"},
+	{ "snes_turrican15", "snes/d_snes.cpp"},
 	{ "spec_turrican2", "spectrum/d_spectrum.cpp"},
 	{ "turtshipj", "pre90s/d_sidearms.cpp"},
 	{ "turtshipk", "pre90s/d_sidearms.cpp"},

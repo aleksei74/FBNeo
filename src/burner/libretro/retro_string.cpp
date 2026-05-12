@@ -165,7 +165,16 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"Configure Input Settings",
 		"Advanced Settings",
 		"Configure Advanced Settings",
-		"%s\nAnd %d more..."
+		"%s\nAnd %d more...",
+		"PGM2 Memory Cards",
+		"Select memory card before character selection. Limit 120 files per slot. Memory Card location: Under the 'Save Files' path in /FinalBurn Neo/fbneo/pgm2_memcards/",
+		"Empty Slot",
+		"Default Card (File: _default)",
+		"Temporary Card (Expires On Exit Game)",
+		"New Card (File: _Timestamped)",
+		"PGM2 slot P%c: default + %u file(s)",
+		"Memory Card Filenames start with ",
+		"_pN_ and end with .pg2 or .bin"
 	},
 	{	// Simplified Chinese
 		"\u5c3d\u53ef\u80fd\u4f7f\u7528 32 \u4f4d\u8272\u6df1",
@@ -327,7 +336,16 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\u914d\u7f6e\u8f93\u5165\u8bbe\u7f6e",
 		"\u9ad8\u7ea7\u8bbe\u7f6e",
 		"\u914d\u7f6e\u9ad8\u7ea7\u8bbe\u7f6e",
-		"%s\n\u4ee5\u53ca\u53e6\u5916 %d \u4e2a..."
+		"%s\n\u4ee5\u53ca\u53e6\u5916 %d \u4e2a...",
+		"PGM2 \u5b58\u50a8\u5361",
+		"\u5728\u89d2\u8272\u9009\u62e9\u524d\u9009\u62e9\u5b58\u50a8\u5361\u3002\u6bcf\u4e2a\u69fd\u4f4d\u6587\u4ef6\u6570\u4e0a\u9650120\u3002\u5b58\u653e\u4f4d\u7f6e\uff1a\u5728 \u201c\u5b58\u6863\u6587\u4ef6\u201d \u8def\u5f84\u4e0b\u7684 /FinalBurn Neo/fbneo/pgm2_memcards/",
+		"\u7a7a\u63d2\u69fd",
+		"\u9ed8\u8ba4\u5361\u7247\uff08\u6587\u4ef6\u540d_default\uff09",
+		"\u4e34\u65f6\u5361\u7247\uff08\u9000\u51fa\u6e38\u620f\u540e\u5931\u6548\uff09",
+		"\u65b0\u5efa\u5361\u7247\uff08\u6587\u4ef6\u540d_\u65f6\u95f4\u6233\uff09",
+		"PGM2 \u63d2\u69fd P%c: \u9ed8\u8ba4\u5361 + %u \u4e2a\u6587\u4ef6",
+		"\u5b58\u50a8\u5361\u6587\u4ef6\u540d\u4ee5 '",
+		"_p\u73a9\u5bb6\u7f16\u53f7_' \u5f00\u5934\uff0c\u4ee5 '.pg2' \u6216 '.bin' \u7ed3\u5c3e"
 	},
 	{	// Traditional Chinese
 		"\u76e1\u53ef\u80fd\u4f7f\u7528 32 \u4f4d\u8272\u6df1",
@@ -489,7 +507,16 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\u914d\u7f6e\u8f38\u5165\u8a2d\u5b9a",
 		"\u9032\u968e\u8a2d\u5b9a",
 		"\u914d\u7f6e\u9032\u968e\u8a2d\u5b9a",
-		"%s\n\u4ee5\u53ca\u53e6\u5916 %d \u500b..."
+		"%s\n\u4ee5\u53ca\u53e6\u5916 %d \u500b...",
+		"PGM2 \u5b58\u5132\u5361",
+		"\u5728\u89d2\u8272\u9078\u64c7\u524d\u9078\u64c7\u5b58\u5132\u5361\u3002\u6bcf\u500b\u69fd\u4f4d\u6a94\u6848\u6578\u4e0a\u9650120\u3002\u5b58\u653e\u4f4d\u7f6e\uff1a\u5728 \u201c\u8a18\u61b6\u5b58\u6a94\u201d \u8def\u5f91\u4e0b\u7684 /FinalBurn Neo/fbneo/pgm2_memcards/",
+		"\u7a7a\u63d2\u69fd",
+		"\u9810\u8a2d\u5361\u7247\uff08\u6a94\u540d_default\uff09",
+		"\u66ab\u5b58\u5361\u7247\uff08\u9000\u51fa\u904a\u6232\u5f8c\u5931\u6548\uff09",
+		"\u65b0\u5efa\u5361\u7247\uff08\u6a94\u540d_\u6642\u9593\u6233\uff09",
+		"PGM2 \u63d2\u69fd P%c: \u9810\u8a2d\u5361 + %u \u500b\u6a94\u6848",
+		"\u5132\u5b58\u5361\u6a94\u6848\u540d\u7a31\u4ee5 '",
+		"_p\u73a9\u5bb6\u7de8\u865f_' \u958b\u982d\uff0c\u4e26\u4ee5 '.pg2' \u6216 '.bin' \u7d50\u5c3e"
 	},
 	{	// Japanese
 		"Use 32-bits color depth when available",
@@ -651,7 +678,16 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"Configure Input Settings",
 		"Advanced Settings",
 		"Configure Advanced Settings",
-		"%s\nAnd %d more..."
+		"%s\nAnd %d more...",
+		"PGM2 Memory Cards",
+		"Select memory card before character selection. Limit 120 files per slot. Memory Card location: Under the 'Save Files' path in /FinalBurn Neo/fbneo/pgm2_memcards/",
+		"Empty Slot",
+		"Default Card (File: _default)",
+		"Temporary Card (Expires On Exit Game)",
+		"New Card (File: _Timestamped)",
+		"PGM2 slot P%c: default + %u file(s)",
+		"Memory Card Filenames start with ",
+		"_pN_ and end with .pg2 or .bin"
 	},
 	{	// Korean
 		"\uAC00\uB2A5\uD55C \uACBD\uC6B0 32\uBE44\uD2B8 \uC0C9\uC0C1\uC744 \uC0AC\uC6A9",
@@ -813,7 +849,16 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\uC785\uB825 \uC124\uC815 \uAD6C\uC131",
 		"\uACE0\uAE09 \uC124\uC815",
 		"\uACE0\uAE09\uC124\uC815 \uAD6C\uC131",
-		"%s\n\uADF8\uB9AC\uACE0 %d \uB354..."
+		"%s\n\uADF8\uB9AC\uACE0 %d \uB354...",
+		"PGM2 \uBA54\uBAA8\uB9AC\uCE74\uB4DC",
+		"\uCE10\uB9AD\uD130 \uC120\uD0DD \uC804\uC5D0 \uBA54\uBAA8\uB9AC\uCE74\uB4DC\uB97C \uC120\uD0DD\uD558\uC138\uC694. \uAC01 \uC2AC\uB86F\uB2F9 \uD30C\uC77C \uC218\uB294 \uCC1C\uB300 120\uAC1C\uAE41\uC9C0\uC785\uB2C8\uB2E4. \uC800\uC7A5 \uC704\uCE18: '\uC800\uC7A5 \uB370\uC774\uD130' \uACBD\uB85C\uC758 /FinalBurn Neo/fbneo/pgm2_memcards/",
+		"\uBE48 \uC2AC\uB86F",
+		"\uAE30\uBCF8 \uCE74\uB4DC (\uD30C\uC77C\uBA85 _default)",
+		"\uC784\uC2DC \uCE74\uB4DC (\uAC8C\uC784 \uC885\uB1CC \uC2DC \uBB34\uD6A8\uD654)",
+		"\uC0C8 \uCE74\uB4DC \uC0DD\uC131 (\uD30C\uC77C\uBA85 _\uD0C0\uC784\uC2A4\uD15C\uD504)",
+		"PGM2 \uC2AC\uB86F P%c: \uAE30\uBCF8 \uCE74\uB4DC + %u\uAC1C \uD30C\uC77C",
+		"\uBA54\uBAA8\uB9AC\uCE74\uB4DC \uD30C\uC77C \uC774\uB984\uC740 '",
+		"_p\uD50C\uB808\uC774\uC5B4\uBC88\uD638_' \uB85C \uC2DC\uC791\uD558\uACE0, '.pg2' \uB610\uB294 '.bin' \uC73C\uB85C \uB05D\uB0A9\uB2C8\uB2E4."
 	}
 };
 
