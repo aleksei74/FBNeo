@@ -6107,6 +6107,7 @@ DRV		BurnDrvDwex101cn;
 DRV		BurnDrvDrgw2100x;
 DRV		BurnDrvDrgw2;
 DRV		BurnDrvtg_dragcrse;
+DRV		BurnDrvsms_dragdescent;
 DRV		BurnDrvmd_shangh3;
 DRV		BurnDrvmd_dfury;
 DRV		BurnDrvmd_dfurys;
@@ -13986,6 +13987,7 @@ DRV		BurnDrvMchampda;
 DRV		BurnDrvMulti96;
 DRV		BurnDrvMltiwars;
 DRV		BurnDrvMSX_multic31in1;
+DRV		BurnDrvsms_multimars;
 DRV		BurnSpecmultidude;
 DRV		BurnDrvnes_multidude;
 DRV		BurnDrvnes_multidudee;
@@ -18597,6 +18599,7 @@ DRV		BurnDrvsnes_Cyberformula;
 DRV		BurnDrvShinygld;
 DRV		BurnDrvmd_ship1;
 DRV		BurnDrvmd_ship;
+DRV		BurnDrvsms_shipschedemo;
 DRV		BurnDrvMSX_shiper;
 DRV		BurnDrvShippuMD;
 DRV		BurnDrvpce_shiryo;
@@ -31309,6 +31312,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvDrgw2100x,			// Dragon World II (ver. 100X, Export)
 	&BurnDrvDrgw2,				// Dragon World II (ver. 110X, Export)
 	&BurnDrvtg_dragcrse,		// Dragon's Curse (USA)
+	&BurnDrvsms_dragdescent,	// Dragon's Descent (HB)
 	&BurnDrvmd_shangh3,			// Dragon's Eye + Shanghai 3 (Japan)
 	&BurnDrvmd_dfury,			// Dragon's Fury (Euro, USA)
 	&BurnDrvmd_dfurys,			// Dragon's Fury (Hack, Spanish)
@@ -39188,6 +39192,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMulti96,			// Multi Game '96 (Italy)
 	&BurnDrvMltiwars,			// Multi Wars (bootleg of UniWar S)
 	&BurnDrvMSX_multic31in1,	// MultiCart 31in1 (HB)
+	&BurnDrvsms_multimars,		// Multicolour Mars (HB, Tech-Demo v1.2)
 	&BurnSpecmultidude,			// MultiDude (128K) (HB)
 	&BurnDrvnes_multidude,		// Multidude (HB)
 	&BurnDrvnes_multidudee,		// MultiDude - Evercade Edition (HB)
@@ -43799,6 +43804,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvShinygld,			// Shiny Golds
 	&BurnDrvmd_ship1,			// Ship (Prototype)
 	&BurnDrvmd_ship,			// Ship (Visitor Prototype)
+	&BurnDrvsms_shipschedemo,	// Ship Schematic Demo (HB, Tech-Demo)
 	&BurnDrvMSX_shiper,			// Shiper (HB)
 	&BurnDrvShippuMD,			// Shippu Mahou Daisakusen (Japan)
 	&BurnDrvpce_shiryo,			// Shiryou Sensen (Japan)
@@ -56471,6 +56477,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "drgw2100x", "pgm/d_pgm.cpp"},
 	{ "drgw2", "pgm/d_pgm.cpp"},
 	{ "tg_dragcrse", "pce/d_pce.cpp"},
+	{ "sms_dragdescent", "sms/d_sms.cpp"},
 	{ "md_shangh3", "megadrive/d_megadrive.cpp"},
 	{ "md_dfury", "megadrive/d_megadrive.cpp"},
 	{ "md_dfurys", "megadrive/d_megadrive.cpp"},
@@ -64292,6 +64299,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "multi96", "pst90s/d_hyperpac.cpp"},
 	{ "mltiwars", "galaxian/d_galaxian.cpp"},
 	{ "msx_multic31in1", "msx/d_msx.cpp"},
+	{ "sms_multimars", "sms/d_sms.cpp"},
 	{ "spec_multidude", "spectrum/d_spectrum.cpp"},
 	{ "nes_multidude", "nes/d_nes.cpp"},
 	{ "nes_multidudee", "nes/d_nes.cpp"},
@@ -68869,6 +68877,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "shinygld", "pst90s/d_sderby.cpp"},
 	{ "md_ship1", "megadrive/d_megadrive.cpp"},
 	{ "md_ship", "megadrive/d_megadrive.cpp"},
+	{ "sms_shipschedemo", "sms/d_sms.cpp"},
 	{ "msx_shiper", "msx/d_msx.cpp"},
 	{ "shippumd", "toaplan/d_shippumd.cpp"},
 	{ "pce_shiryo", "pce/d_pce.cpp"},
