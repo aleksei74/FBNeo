@@ -11725,6 +11725,8 @@ DRV		BurnDrvLiblrabl;
 DRV		BurnDrvLiberate;
 DRV		BurnDrvmd_liberty;
 DRV		BurnDrvsnes_Libertyordeath;
+DRV		BurnDrvsnes_Lieutenantgn;
+DRV		BurnDrvsnes_Lieutenantgp;
 DRV		BurnDrvnes_lifeforce;
 DRV		BurnDrvMSX_lifefastln;
 DRV		BurnDrvmd_lifeonearth;
@@ -12832,7 +12834,9 @@ DRV		BurnDrvmd_megamanfix;
 DRV		BurnSpecMmmv2;
 DRV		BurnDrvmd_mmworld;
 DRV		BurnDrvmd_mmworld2;
+DRV		BurnDrvmd_megameatboy;
 DRV		BurnDrvmd_mindtris;
+DRV		BurnDrvmd_megapang;
 DRV		BurnSpecMegaphoenix;
 DRV		BurnDrvmd_megaqbert12;
 DRV		BurnDrvmd_queenjour;
@@ -22621,6 +22625,7 @@ DRV		BurnDrvTigerhj;
 DRV		BurnDrvTigerh;
 DRV		BurnDrvnes_tigerheli;
 DRV		BurnSpecTikitaca;
+DRV		BurnDrvsnes_Tillandhat;
 DRV		BurnSpecTilt;
 DRV		BurnDrvTimber;
 DRV		BurnDrvMSX_timebomb;
@@ -31639,7 +31644,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgg_ejim,			// Earthworm Jim (Euro)
 	&BurnDrvmd_ejim,			// Earthworm Jim (Euro)
 	&BurnDrvsnes_Earthwormjime,	// Earthworm Jim (Euro)
-	&BurnDrvsnes_Earthwormjimtp,// Earthworm Jim (Hack, Portuguese)
+	&BurnDrvsnes_Earthwormjimtp,// Earthworm Jim (Hack, Portuguese v2.0)
 	&BurnDrvmd_ejims,			// Earthworm Jim (Hack, Spanish)
 	&BurnDrvsnes_Earthwormjimj,	// Earthworm Jim (Japan)
 	&BurnDrvmd_ejimp,			// Earthworm Jim (Prototype)
@@ -32041,7 +32046,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_eyra,			// Eyra the Crow Maiden (HB)
 	&BurnDrvsnes_Eyratp,		// Eyra: The Crow Maiden (Hack, Portuguese)
 	&BurnDrvnes_eyra,			// Eyra: The Crow Maiden (HB)
-	&BurnDrvsnes_Eyra,			// Eyra: The Crow Maiden (HB)
+	&BurnDrvsnes_Eyra,			// Eyra: The Crow Maiden (HB, v1.1)
 	&BurnDrvF1dreamb,			// F-1 Dream (bootleg, set 1)
 	&BurnDrvF1dreamba,			// F-1 Dream (bootleg, set 2)
 	&BurnDrvpce_f1dream,		// F-1 Dream (Japan)
@@ -36931,6 +36936,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvLiberate,			// Liberation
 	&BurnDrvmd_liberty,			// Liberty or Death (USA)
 	&BurnDrvsnes_Libertyordeath,// Liberty or Death (USA)
+	&BurnDrvsnes_Lieutenantgn,	// Lieutenant Gourmet (NTSC) (HB, Beta v25.12.31-2)
+	&BurnDrvsnes_Lieutenantgp,	// Lieutenant Gourmet (PAL) (HB, Beta v25.12.31-2)
 	&BurnDrvnes_lifeforce,		// Life Force (USA)
 	&BurnDrvMSX_lifefastln,		// Life in the Fast Lane (Euro)
 	&BurnDrvmd_lifeonearth,		// Life on Earth - Reimagined (HB)
@@ -38038,7 +38045,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecMmmv2,				// Mega Manic Mulholland (48K) (HB, v2.0)
 	&BurnDrvmd_mmworld,			// Mega Marble World (HB, v1.90)
 	&BurnDrvmd_mmworld2,		// Mega Marble World 2 (HB, v1.03)
+	&BurnDrvmd_megameatboy,		// Mega Meat Boy (HB, v0.31)
 	&BurnDrvmd_mindtris,		// Mega Mindtris (HB, v1.2)
+	&BurnDrvmd_megapang,		// Mega Pang (HB, v0.3 Beta)
 	&BurnSpecMegaphoenix,		// Mega Phoenix (48K-128K)
 	&BurnDrvmd_megaqbert12,		// Mega Q-Bert (HB, v1.2)
 	&BurnDrvmd_queenjour,		// Mega Queen Journey, The (HB)
@@ -45861,7 +45870,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Superbonk,		// Super Bonk (USA)
 	&BurnDrvsnes_Superbonk2te,	// Super Bonk 2 (Hack, English)
 	&BurnDrvnes_sboogerman,		// Super Boogerman (Taiwan) (Unl)
-	&BurnDrvsnes_Sbgaiden,		// Super Boss Gaiden (HB, v1.2)
+	&BurnDrvsnes_Sbgaiden,		// Super Boss Gaiden (HB, v1.2b)
 	&BurnDrvsnes_Supbowlingj,	// Super Bowling (Japan)
 	&BurnDrvsnes_Supbowling,	// Super Bowling (USA)
 	&BurnDrvMSX_sboy3,			// Super Boy 3 (Korea) (Unl)
@@ -47827,6 +47836,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvTigerh,				// Tiger-Heli (US)
 	&BurnDrvnes_tigerheli,		// Tiger-Heli (USA)
 	&BurnSpecTikitaca,			// Tiki Taca (48K) (HB)
+	&BurnDrvsnes_Tillandhat,	// Till & Hat (HB, Demo v11-03d)
 	&BurnSpecTilt,				// Tilt (128K)
 	&BurnDrvTimber,				// Timber
 	&BurnDrvMSX_timebomb,		// Time Bomb (Euro)
@@ -62055,6 +62065,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "liberate", "dataeast/d_liberate.cpp"},
 	{ "md_liberty", "megadrive/d_megadrive.cpp"},
 	{ "snes_libertyordeath", "snes/d_snes.cpp"},
+	{ "snes_lieutenantgn", "snes/d_snes.cpp"},
+	{ "snes_lieutenantgp", "snes/d_snes.cpp"},
 	{ "nes_lifeforce", "nes/d_nes.cpp"},
 	{ "msx_lifefastln", "msx/d_msx.cpp"},
 	{ "md_lifeonearth", "megadrive/d_megadrive.cpp"},
@@ -63154,7 +63166,9 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_mmmv2", "spectrum/d_spectrum.cpp"},
 	{ "md_mmworld", "megadrive/d_megadrive.cpp"},
 	{ "md_mmworld2", "megadrive/d_megadrive.cpp"},
+	{ "md_megameatboy", "megadrive/d_megadrive.cpp"},
 	{ "md_mindtris", "megadrive/d_megadrive.cpp"},
+	{ "md_megapang", "megadrive/d_megadrive.cpp"},
 	{ "spec_megaphoenix", "spectrum/d_spectrum.cpp"},
 	{ "md_megaqbert12", "megadrive/d_megadrive.cpp"},
 	{ "md_queenjour", "megadrive/d_megadrive.cpp"},
@@ -72859,6 +72873,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "tigerh", "toaplan/d_slapfght.cpp"},
 	{ "nes_tigerheli", "nes/d_nes.cpp"},
 	{ "spec_tikitaca", "spectrum/d_spectrum.cpp"},
+	{ "snes_tillandhat", "snes/d_snes.cpp"},
 	{ "spec_tilt", "spectrum/d_spectrum.cpp"},
 	{ "timber", "pre90s/d_mcr.cpp"},
 	{ "msx_timebomb", "msx/d_msx.cpp"},
