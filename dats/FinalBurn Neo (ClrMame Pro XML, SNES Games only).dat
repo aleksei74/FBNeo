@@ -8505,6 +8505,15 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="joemactp" cloneof="joemac" romof="joemac" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Joe &amp; Mac (Hack, Portuguese)</description>
+		<year>2026</year>
+		<manufacturer>juliano_did</manufacturer>
+		<rom name="Joe &amp; Mac PT-BR (2026)(juliano_did).sfc" size="1048576" crc="8393e8ff"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="joemac" sourcefile="snes/d_snes.cpp">
 		<description>Joe &amp; Mac (USA)</description>
 		<year>1991</year>
@@ -10040,7 +10049,25 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="lupinsansei" sourcefile="snes/d_snes.cpp">
+	<game name="lupinsanseite" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Lupin Sansei - Densetsu no Hihou o Oe! (Hack, English v0.8)</description>
+		<year>2026</year>
+		<manufacturer>Bunkai, Jackic</manufacturer>
+		<rom name="Lupin Sansei - Densetsu no Hihou o Oe! T-Eng v0.8 (2026)(Bunkai, Jackic).sfc" size="1572864" crc="11596ecc"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="lupinsanseits" cloneof="lupinsanseite" romof="lupinsanseite" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Lupin Sansei - Densetsu no Hihou o Oe! (Hack, Spanish v0.8)</description>
+		<year>2026</year>
+		<manufacturer>Bunkai, Jackic</manufacturer>
+		<rom name="Lupin Sansei - Densetsu no Hihou o Oe! T-Spa v0.8 (2026)(Bunkai, Jackic).sfc" size="1572864" crc="71c9c650"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="lupinsansei" cloneof="lupinsanseite" romof="lupinsanseite" sourcefile="snes/d_snes.cpp">
 		<description>Lupin Sansei - Densetsu no Hihou o Oe! (Japan)</description>
 		<year>1994</year>
 		<manufacturer>Epoch Co.</manufacturer>
@@ -16103,6 +16130,15 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="superadvislandtp" cloneof="superadvisland" romof="superadvisland" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Super Aventura na Ilha (Hack, Portuguese v3.0)</description>
+		<year>2026</year>
+		<manufacturer>juliano_did</manufacturer>
+		<rom name="Super Aventura na Ilha PT-BR v3.0 (2026)(juliano_did).sfc" size="1048576" crc="86507fe8"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="superbckid" cloneof="superbonk" romof="superbonk" sourcefile="snes/d_snes.cpp">
 		<description>Super B.C. Kid (Euro)</description>
 		<year>1994</year>
@@ -17286,10 +17322,10 @@
 	</game>
 	<game name="supermetroidxf" cloneof="supermetroid" romof="supermetroid" sourcefile="snes/d_snes.cpp">
 		<comment>Hack</comment>
-		<description>Super Metroid X-Fusion (Hack, v1.2)</description>
+		<description>Super Metroid X-Fusion (Hack, v1.3)</description>
 		<year>2025</year>
 		<manufacturer>Metaquarius</manufacturer>
-		<rom name="Super Metroid X-Fusion v1.2 (2025)(Metaquarius).sfc" size="4194304" crc="0526898e"/>
+		<rom name="Super Metroid X-Fusion v1.3 (2025)(Metaquarius).sfc" size="4194304" crc="cb4a6685"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
