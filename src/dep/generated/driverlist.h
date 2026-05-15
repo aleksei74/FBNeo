@@ -853,6 +853,7 @@ DRV		BurnDrvAltbeastbl;		// no Sound [NOT WORKING]
 DRV		BurnDrvMSX_alteredbeast;
 DRV		BurnDrvmd_altbeast;
 DRV		BurnDrvsms_altbeast;
+DRV		BurnDrvmd_altbeastpt;
 DRV		BurnDrvmd_altbeasts;
 DRV		BurnDrvAltbeast2;
 DRV		BurnDrvAltbeast4;
@@ -16379,6 +16380,7 @@ DRV		BurnDrvPsychic5j;
 DRV		BurnDrvPsychic5;
 DRV		BurnDrvsms_psychicw;
 DRV		BurnDrvgg_psychicw;
+DRV		BurnDrvgg_psychicwpt;
 DRV		BurnDrvgg_psychicwj;
 DRV		BurnDrvsms_psychicwen;
 DRV		BurnDrvsms_psychicwpt;
@@ -21067,9 +21069,13 @@ DRV		BurnDrvsnes_Superoffroadbaja;
 DRV		BurnDrvmd_jordanb1;
 DRV		BurnDrvmd_jordanb;
 DRV		BurnDrvmd_jordanbj;
+DRV		BurnDrvSuperpcs;
 DRV		BurnDrvMSX_superpacman;
 DRV		BurnDrvSuperpacm;
 DRV		BurnDrvcv_superpac;
+DRV		BurnDrvSuperpc1;
+DRV		BurnDrvVectrsup;
+DRV		BurnDrvSuperpcp;
 DRV		BurnDrvSuperpac;
 DRV		BurnDrvMSX_suppachi;
 DRV		BurnDrvnes_superpainter;
@@ -21701,6 +21707,7 @@ DRV		BurnDrvsnes_Tarzanlordjungle;
 DRV		BurnSpecTarzangoesape;
 DRV		BurnDrvcv_tarzan;
 DRV		BurnDrvgg_tarzan;
+DRV		BurnDrvgg_tarzanpt;
 DRV		BurnDrvnes_tasac;
 DRV		BurnDrvnes_tashimasnoprigaip;
 DRV		BurnDrvnes_tashimasnoprigaipj;
@@ -26083,6 +26090,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_alteredbeast,	// Altered Beast (Euro)
 	&BurnDrvmd_altbeast,		// Altered Beast (Euro, USA)
 	&BurnDrvsms_altbeast,		// Altered Beast (Euro, USA, Brazil)
+	&BurnDrvmd_altbeastpt,		// Altered Beast (Hack, Portuguese)
 	&BurnDrvmd_altbeasts,		// Altered Beast (Hack, Spanish)
 	&BurnDrvAltbeast2,			// Altered Beast (set 2) (MC-8123B 317-0066)
 	&BurnDrvAltbeast4,			// Altered Beast (set 4) (MC-8123B 317-0066)
@@ -41609,6 +41617,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvPsychic5,			// Psychic 5 (World)
 	&BurnDrvsms_psychicw,		// Psychic World (Euro, Brazil)
 	&BurnDrvgg_psychicw,		// Psychic World (Euro, USA, Brazil)
+	&BurnDrvgg_psychicwpt,		// Psychic World (Hack, Portuguese v1.08)
 	&BurnDrvgg_psychicwj,		// Psychic World (Japan)
 	&BurnDrvsms_psychicwen,		// Psychic World - Enhanced Colors (Hack, v1.2)
 	&BurnDrvsms_psychicwpt,		// Psychic World ~ Mundo Psiquico (Hack, Portuguese)
@@ -46297,9 +46306,13 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_jordanb1,		// Super One on One - Jordan Vs Bird (Euro, USA)
 	&BurnDrvmd_jordanb,			// Super One on One - Jordan Vs Bird (Euro, USA, Rev. 1)
 	&BurnDrvmd_jordanbj,		// Super One on One - Jordan Vs Bird (Japan)
+	&BurnDrvSuperpcs,			// Super Pac-Man (always small)
 	&BurnDrvMSX_superpacman,	// Super Pac-Man (HB)
 	&BurnDrvSuperpacm,			// Super Pac-Man (Midway)
 	&BurnDrvcv_superpac,		// Super Pac-Man (SGM) (HB)
+	&BurnDrvSuperpc1,			// Super Pac-Man (Super Locksmith sound and gfx hack)
+	&BurnDrvVectrsup,			// Super Pac-Man (Vector sim)
+	&BurnDrvSuperpcp,			// Super Pac-Man Plus
 	&BurnDrvSuperpac,			// Super Pac-Man
 	&BurnDrvMSX_suppachi,		// Super Pachinko (Japan)
 	&BurnDrvnes_superpainter,	// Super Painter (HB)
@@ -46931,6 +46944,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecTarzangoesape,		// Tarzan Goes Ape (48K)
 	&BurnDrvcv_tarzan,			// Tarzan: from out of the Jungle (USA, Euro)
 	&BurnDrvgg_tarzan,			// Tarzan: Lord of the Jungle (Euro)
+	&BurnDrvgg_tarzanpt,		// Tarzan: Lord of the Jungle (Hack, Portuguese v1.03)
 	&BurnDrvnes_tasac,			// Tasac (Taiwan)
 	&BurnDrvnes_tashimasnoprigaip,// Tashiro Masashi has so many Princesses (Hack, English)
 	&BurnDrvnes_tashimasnoprigaipj,// Tashiro Masashi no Princess ga Ippai (Japan)
@@ -51309,6 +51323,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "msx_alteredbeast", "msx/d_msx.cpp"},
 	{ "md_altbeast", "megadrive/d_megadrive.cpp"},
 	{ "sms_altbeast", "sms/d_sms.cpp"},
+	{ "md_altbeastpt", "megadrive/d_megadrive.cpp"},
 	{ "md_altbeasts", "megadrive/d_megadrive.cpp"},
 	{ "altbeast2", "sega/d_sys16b.cpp"},
 	{ "altbeast4", "sega/d_sys16b.cpp"},
@@ -66723,6 +66738,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "psychic5", "pre90s/d_psychic5.cpp"},
 	{ "sms_psychicw", "sms/d_sms.cpp"},
 	{ "gg_psychicw", "sms/d_sms.cpp"},
+	{ "gg_psychicwpt", "sms/d_sms.cpp"},
 	{ "gg_psychicwj", "sms/d_sms.cpp"},
 	{ "sms_psychicwen", "sms/d_sms.cpp"},
 	{ "sms_psychicwpt", "sms/d_sms.cpp"},
@@ -71363,9 +71379,13 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_jordanb1", "megadrive/d_megadrive.cpp"},
 	{ "md_jordanb", "megadrive/d_megadrive.cpp"},
 	{ "md_jordanbj", "megadrive/d_megadrive.cpp"},
+	{ "superpcs", "pre90s/d_mappy.cpp"},
 	{ "msx_superpacman", "msx/d_msx.cpp"},
 	{ "superpacm", "pre90s/d_mappy.cpp"},
 	{ "cv_superpac", "coleco/d_coleco.cpp"},
+	{ "superpc1", "pre90s/d_mappy.cpp"},
+	{ "vectrsup", "pre90s/d_mappy.cpp"},
+	{ "superpcp", "pre90s/d_mappy.cpp"},
 	{ "superpac", "pre90s/d_mappy.cpp"},
 	{ "msx_suppachi", "msx/d_msx.cpp"},
 	{ "nes_superpainter", "nes/d_nes.cpp"},
@@ -71991,6 +72011,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_tarzangoesape", "spectrum/d_spectrum.cpp"},
 	{ "cv_tarzan", "coleco/d_coleco.cpp"},
 	{ "gg_tarzan", "sms/d_sms.cpp"},
+	{ "gg_tarzanpt", "sms/d_sms.cpp"},
 	{ "nes_tasac", "nes/d_nes.cpp"},
 	{ "nes_tashimasnoprigaip", "nes/d_nes.cpp"},
 	{ "nes_tashimasnoprigaipj", "nes/d_nes.cpp"},
