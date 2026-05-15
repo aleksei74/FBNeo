@@ -824,7 +824,7 @@ static struct BurnDIPInfo neogeoDIPList[] = {
 	{0x02,	0x01, 0x3f,	0x0d, "MVS Japan (J3)"							},
 	{0x02,	0x01, 0x3f,	0x0e, "MVS Japan (J3, alt)"						},
 	{0x02,	0x01, 0x3f,	0x0f, "AES Japan"								},
-	{0x02,	0x01, 0x3f,	0x10, "AES Asia"								},
+	{0x02,	0x01, 0x3f,	0x10, "AES World"								},
 	{0x02,	0x01, 0x3f,	0x11, "Development Kit"							},
 	{0x02,	0x01, 0x3f,	0x12, "Deck ver. 6 (Git Ver 1.3)"				},
 	{0x02,	0x01, 0x3f,	0x13, "Universe BIOS (Hack, Ver. 4.0)"			},
@@ -944,7 +944,7 @@ static struct BurnDIPInfo neoFakeDIPList[] = {
 	{0x02,	0x01, 0x3f,	0x0d, "MVS Japan (J3)"							},
 	{0x02,	0x01, 0x3f,	0x0e, "MVS Japan (J3, alt)"						},
 	{0x02,	0x01, 0x3f,	0x0f, "AES Japan"								},
-	{0x02,	0x01, 0x3f,	0x10, "AES Asia"								},
+	{0x02,	0x01, 0x3f,	0x10, "AES World"								},
 	{0x02,	0x01, 0x3f,	0x11, "Development Kit"							},
 	{0x02,	0x01, 0x3f,	0x12, "Deck ver. 6 (Git Ver 1.3)"				},
 	{0x02,	0x01, 0x3f,	0x13, "Universe BIOS (Hack, Ver. 4.0)"			},
@@ -1128,7 +1128,7 @@ static struct BurnDIPInfo neoForceAESDIPList[] = {
 	// System - BIOS
 	{0,		0xFD, 0,	10,    "BIOS"            },
 	{0x02,	0x01, 0x3f,	0x0f, "AES Japan"       },
-	{0x02,	0x01, 0x3f,	0x10, "AES Asia"        },
+	{0x02,	0x01, 0x3f,	0x10, "AES World"        },
 	{0x02,	0x01, 0x3f,	0x13, "Universe BIOS (Hack, Ver. 4.0)"			},
 	{0x02,	0x01, 0x3f,	0x14, "Universe BIOS (Hack, Ver. 3.3)"			},
 	{0x02,	0x01, 0x3f,	0x15, "Universe BIOS (Hack, Ver. 3.2)"			},
@@ -1316,7 +1316,7 @@ static struct BurnDIPInfo ngdefaultDIPList[] = {
 	{0x02,	0x01, 0x3f,	0x0d, "MVS Japan (J3)"							},
 	{0x02,	0x01, 0x3f,	0x0e, "MVS Japan (J3, alt)"						},
 	{0x02,	0x01, 0x3f,	0x0f, "AES Japan"								},
-	{0x02,	0x01, 0x3f,	0x10, "AES Asia"								},
+	{0x02,	0x01, 0x3f,	0x10, "AES World"								},
 	{0x02,	0x01, 0x3f,	0x11, "Development Kit"							},
 	{0x02,	0x01, 0x3f,	0x12, "Deck ver. 6 (Git Ver 1.3)"				},
 	{0x02,	0x01, 0x3f,	0x13, "Universe BIOS (Hack, Ver. 4.0)"			},
@@ -1423,7 +1423,7 @@ static struct BurnDIPInfo aesdefaultDIPList[] = {
 	{0x02,	0x01, 0x3f,	0x0d, "MVS Japan (J3)"							},
 	{0x02,	0x01, 0x3f,	0x0e, "MVS Japan (J3, alt)"						},
 	{0x02,	0x01, 0x3f,	0x0f, "AES Japan"								},
-	{0x02,	0x01, 0x3f,	0x10, "AES Asia"								},
+	{0x02,	0x01, 0x3f,	0x10, "AES World"								},
 	{0x02,	0x01, 0x3f,	0x11, "Development Kit"							},
 	{0x02,	0x01, 0x3f,	0x12, "Deck ver. 6 (Git Ver 1.3)"				},
 	{0x02,	0x01, 0x3f,	0x13, "Universe BIOS (Hack, Ver. 4.0)"			},
@@ -1628,7 +1628,7 @@ static struct BurnRomInfo neogeoRomDesc[] = {
 	{ "sp1-j3.bin",        0x20000, 0xfbc6d469, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 14 MVS Japan (J3, alt)
 #if !defined (ROM_VERIFY)
 	{ "neo-po.bin",        0x20000, 0x16d0c132, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 15 AES Japan
-	{ "neo-epo.bin",       0x20000, 0xd27a71f1, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 16 AES Asia
+	{ "neo-epo.bin",       0x20000, 0xd27a71f1, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 16 AES World
 	{ "neodebug.bin",      0x20000, 0x698ebb7d, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 17 Development Kit
 #else
 	{ "",                  0x00000, 0x00000000, 0                                                   }, // 15
@@ -1685,7 +1685,7 @@ static struct BurnRomInfo neoMVSRomDesc[] = {
 	{ "japan-j3.bin",      0x20000, 0xdff6d41f, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 13 MVS Japan (J3)
 	{ "sp1-j3.bin",        0x20000, 0xfbc6d469, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 14 MVS Japan (J3, alt)
 	{ "neo-po.bin",        0x20000, 0x16d0c132, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 15 AES Japan
-	{ "neo-epo.bin",       0x20000, 0xd27a71f1, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 16 AES Asia
+	{ "neo-epo.bin",       0x20000, 0xd27a71f1, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 16 AES World
 	{ "neodebug.bin",      0x20000, 0x698ebb7d, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 17 Development Kit
 	{ "sp-1v1_3db8c.bin",  0x20000, 0x162f0ebe, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 18 Deck ver. 6 (Git Ver 1.3)
 	{ "uni-bios_4_0.rom",  0x20000, 0xa7aab458, BRF_ESS | BRF_PRG | BRF_BIOS | BRF_SELECT | BRF_OPT }, // 19 Universe BIOS (Hack, Ver. 4.0)
@@ -6548,11 +6548,11 @@ static void LastbladPatchCallback()
 
 		UINT8 nRegion = NeoSystem & 0x3f;
 
-		// AES Japan (0x0f) / AES Asia (0x10)
+		// AES Japan (0x0f) / AES World (0x10)
 		if ((0x0f != nRegion) && (0x10 != nRegion)) {
 			NeoSystem &= ~nRegion;
 //			NeoSystem |= 0x0f;	// AES Japan
-			NeoSystem |= 0x10;	// AES Asia
+			NeoSystem |= 0x10;	// AES World
 		}
 	}
 
