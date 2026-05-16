@@ -3428,6 +3428,15 @@
 		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="psychicwpt" cloneof="psychicw" romof="psychicw" sourcefile="sms/d_sms.cpp">
+		<comment>Hack</comment>
+		<description>Psychic World (Hack, Portuguese v1.08)</description>
+		<year>2019</year>
+		<manufacturer>Antigeno</manufacturer>
+		<rom name="Psychic World T-Por v1.08 (2019)(Antigeno).gg" size="131072" crc="e8cf96ad"/>
+		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="psychicwj" cloneof="psychicw" romof="psychicw" sourcefile="sms/d_sms.cpp">
 		<description>Psychic World (Japan)</description>
 		<year>1991</year>
@@ -4673,6 +4682,15 @@
 		<year>1994</year>
 		<manufacturer>GameTek</manufacturer>
 		<rom name="Tarzan - Lord of the Jungle (Euro)(1994)(GameTek).gg" size="262144" crc="ef3afe8b"/>
+		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tarzanpt" cloneof="tarzan" romof="tarzan" sourcefile="sms/d_sms.cpp">
+		<comment>Hack</comment>
+		<description>Tarzan: Lord of the Jungle (Hack, Portuguese v1.03)</description>
+		<year>2026</year>
+		<manufacturer>Antigeno</manufacturer>
+		<rom name="Tarzan - Lord of the Jungle T-Por v1.03 (2026)(Antigeno).gg" size="262144" crc="88e1a294"/>
 		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
