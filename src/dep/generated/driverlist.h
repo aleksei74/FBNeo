@@ -5306,6 +5306,7 @@ DRV		BurnDrvmd_dicktr;
 DRV		BurnDrvmd_dickvitl;
 DRV		BurnDrvsg1k_elevatort;
 DRV		BurnDrvpce_diehardte;
+DRV		BurnDrvpce_diehardtp;
 DRV		BurnDrvnes_diehardc;
 DRV		BurnDrvpce_diehard;
 DRV		BurnDrvnes_diehard;
@@ -11653,6 +11654,7 @@ DRV		BurnDrvnes_legenzeldl;
 DRV		BurnDrvnes_triforcegc;
 DRV		BurnDrvnes_triforceg;
 DRV		BurnDrvtg_legaxe2;
+DRV		BurnDrvtg_legaxetp;
 DRV		BurnDrvtg_legaxe;
 DRV		BurnDrvLwingsb;
 DRV		BurnDrvLwingsa;
@@ -18635,6 +18637,7 @@ DRV		BurnDrvShocktr2;
 DRV		BurnDrvShockingk;
 DRV		BurnDrvShockingko;
 DRV		BurnDrvShocking;
+DRV		BurnDrvtg_shockmantp;
 DRV		BurnDrvtg_shockman;
 DRV		BurnDrvsnes_Shockman0te;
 DRV		BurnDrvsnes_Shockman0;
@@ -30543,6 +30546,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_dickvitl,		// Dick Vitale's 'Awesome, Baby!' College Hoops (USA)
 	&BurnDrvsg1k_elevatort,		// Die Dui Die (Taiwan)
 	&BurnDrvpce_diehardte,		// Die Hard (Hack, English)
+	&BurnDrvpce_diehardtp,		// Die Hard (Hack, Portuguese)
 	&BurnDrvnes_diehardc,		// Die Hard (Hack, Spanish v1.1)
 	&BurnDrvpce_diehard,		// Die Hard (Japan)
 	&BurnDrvnes_diehard,		// Die Hard (USA)
@@ -36890,6 +36894,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_triforcegc,		// Legend of Zelda: San Shen Zhi Li (China) (Unl)
 	&BurnDrvnes_triforceg,		// Legend of Zelda: Triforce of the Gods (Hack, English)
 	&BurnDrvtg_legaxe2,			// Legendary Axe II, The (USA)
+	&BurnDrvtg_legaxetp,		// Legendary Axe, The (Hack, Portuguese)
 	&BurnDrvtg_legaxe,			// Legendary Axe, The (USA)
 	&BurnDrvLwingsb,			// Legendary Wings (bootleg)
 	&BurnDrvLwingsa,			// Legendary Wings (US)
@@ -43872,6 +43877,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvShockingk,			// Shocking (Korea, set 1)
 	&BurnDrvShockingko,			// Shocking (Korea, set 2)
 	&BurnDrvShocking,			// Shocking
+	&BurnDrvtg_shockmantp,		// Shockman (Hack, Portuguese v0.95)
 	&BurnDrvtg_shockman,		// Shockman (USA)
 	&BurnDrvsnes_Shockman0te,	// Shockman Zero (Hack, English)
 	&BurnDrvsnes_Shockman0,		// Shockman Zero (World)
@@ -45487,7 +45493,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvCpsSf2mdtc,			// Street Fighter II': Magic Delta Turbo (bootleg, set 4)
 	&BurnDrvCpsSf2mkot,			// Street Fighter II': Magic KO Turbo!! - Nightmare Crack (set 1)
 	&BurnDrvCpsSf2mkot2,		// Street Fighter II': Magic KO Turbo!! - Nightmare Crack (set 2)
-	&BurnDrvCpsSf2prime,		// Street Fighter II': Prime (Ver 0.75, Hack)
+	&BurnDrvCpsSf2prime,		// Street Fighter II': Prime (Ver 0.76, Hack)
 	&BurnDrvCpsSf2rules,		// Street Fighter II: The World Warrior (bootleg with rules screen)
 	&BurnDrvCpsSf2b5,			// Street Fighter II: The World Warrior (bootleg, earliest, set 5)
 	&BurnDrvCpsSf2b,			// Street Fighter II: The World Warrior (bootleg, set 1)
@@ -55746,6 +55752,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_dickvitl", "megadrive/d_megadrive.cpp"},
 	{ "sg1k_elevatort", "sg1000/d_sg1000.cpp"},
 	{ "pce_diehardte", "pce/d_pce.cpp"},
+	{ "pce_diehardtp", "pce/d_pce.cpp"},
 	{ "nes_diehardc", "nes/d_nes.cpp"},
 	{ "pce_diehard", "pce/d_pce.cpp"},
 	{ "nes_diehard", "nes/d_nes.cpp"},
@@ -62047,6 +62054,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_triforcegc", "nes/d_nes.cpp"},
 	{ "nes_triforceg", "nes/d_nes.cpp"},
 	{ "tg_legaxe2", "pce/d_pce.cpp"},
+	{ "tg_legaxetp", "pce/d_pce.cpp"},
 	{ "tg_legaxe", "pce/d_pce.cpp"},
 	{ "lwingsb", "pre90s/d_lwings.cpp"},
 	{ "lwingsa", "pre90s/d_lwings.cpp"},
@@ -68977,6 +68985,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "shockingk", "pst90s/d_yunsun16.cpp"},
 	{ "shockingko", "pst90s/d_yunsun16.cpp"},
 	{ "shocking", "pst90s/d_yunsun16.cpp"},
+	{ "tg_shockmantp", "pce/d_pce.cpp"},
 	{ "tg_shockman", "pce/d_pce.cpp"},
 	{ "snes_shockman0te", "snes/d_snes.cpp"},
 	{ "snes_shockman0", "snes/d_snes.cpp"},
