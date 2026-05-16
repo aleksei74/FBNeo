@@ -850,7 +850,6 @@ void set_neogeo_bios_availability(char *szName, uint32_t crc, bool ignoreCrc)
 	}
 }
 
-#ifndef NO_NEOGEO
 static RomBiosInfo* find_neogeo_bios(uint32_t categories)
 {
 	for (int i = 0; neogeo_bioses[i].filename != NULL; i++)
@@ -863,7 +862,6 @@ static RomBiosInfo* find_neogeo_bios(uint32_t categories)
 
 	return NULL;
 }
-#endif
 
 void set_neo_system_bios()
 {

@@ -13026,6 +13026,7 @@ DRV		BurnDrvsnes_Msglorydcj;
 DRV		BurnDrvMslug1v2;
 DRV		BurnDrvMsluguh;
 DRV		BurnDrvMslugfs;
+DRV		BurnDrvMslugk;
 DRV		BurnDrvMslugdg;
 DRV		BurnDrvMslugdyf2;
 DRV		BurnDrvMsqyfc1;
@@ -38407,6 +38408,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMslug1v2,			// Metal Slug - Super Vehicle-001 (1v2 Mode, Hack)
 	&BurnDrvMsluguh,			// Metal Slug - Super Vehicle-001 (AES Uncensored Hack)
 	&BurnDrvMslugfs,			// Metal Slug - Super Vehicle-001 (Firepower Showdown, Hack)
+	&BurnDrvMslugk,				// Metal Slug - Super Vehicle-001 (Korean Translation)
 	&BurnDrvMslugdg,			// Metal Slug - Super Vehicle-001 (Multifunction, Hack)
 	&BurnDrvMslugdyf2,			// Metal Slug - Super Vehicle-001 (Origins Item Random v2, Hack)
 	&BurnDrvMsqyfc1,			// Metal Slug - Super Vehicle-001 (Origins Item Random, Hack)
@@ -63698,6 +63700,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "mslug1v2", "neogeo/d_neogeo.cpp"},
 	{ "msluguh", "neogeo/d_neogeo.cpp"},
 	{ "mslugfs", "neogeo/d_neogeo.cpp"},
+	{ "mslugk", "neogeo/d_neogeo.cpp"},
 	{ "mslugdg", "neogeo/d_neogeo.cpp"},
 	{ "mslugdyf2", "neogeo/d_neogeo.cpp"},
 	{ "msqyfc1", "neogeo/d_neogeo.cpp"},
