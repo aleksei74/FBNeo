@@ -30130,6 +30130,24 @@ struct BurnDriver BurnDrvMSX_eatblue = {
 	272, 228, 4, 3
 };
 
+// Endurance (HB)
+static struct BurnRomInfo MSX_enduranceRomDesc[] = {
+	{ "Endurance (2020)(Fabio Ritter).rom",	49120, 0x13caaac6, BRF_PRG | BRF_ESS },
+};
+
+STDROMPICKEXT(MSX_endurance, MSX_endurance, msx_msx)
+STD_ROM_FN(MSX_endurance)
+
+struct BurnDriver BurnDrvMSX_endurance = {
+	"msx_endurance", NULL, "msx_msx", NULL, "2020",
+	"Endurance (HB)\0", NULL, "Fabio Ritter", "MSX",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_MSX, GBF_RACING, 0,
+	MSXGetZipName, MSX_enduranceRomInfo, MSX_enduranceRomName, NULL, NULL, NULL, NULL, MSXInputInfo, MSXDIPInfo,
+	DrvInit, DrvExit, DrvFrame, TMS9928ADraw, DrvScan, NULL, 0x10,
+	272, 228, 4, 3
+};
+
 // Entombed (HB, v1.1)
 static struct BurnRomInfo MSX_entombedRomDesc[] = {
 	{ "Entombed v1.1 (2021)(Amaury Carvalho).rom",	32768, 0x0dd59289, BRF_PRG | BRF_ESS },
@@ -30238,9 +30256,9 @@ struct BurnDriver BurnDrvMSX_exoticales = {
 	272, 228, 4, 3
 };
 
-// Eye Brawls (HB, v1.1)
+// Eye Brawls (HB, 5-9-26)
 static struct BurnRomInfo MSX_eyebrawlsRomDesc[] = {
-	{ "Eye Brawls v1.1 (2026)(Jess Creations).rom",	32768, 0x26b6648d, BRF_PRG | BRF_ESS },
+	{ "Eye Brawls 5-9-26 (2026)(Jess Creations).rom",	32768, 0xc1a37604, BRF_PRG | BRF_ESS },
 };
 
 STDROMPICKEXT(MSX_eyebrawls, MSX_eyebrawls, msx_msx)
@@ -30248,7 +30266,7 @@ STD_ROM_FN(MSX_eyebrawls)
 
 struct BurnDriver BurnDrvMSX_eyebrawls = {
 	"msx_eyebrawls", NULL, "msx_msx", NULL, "2026",
-	"Eye Brawls (HB, v1.1)\0", NULL, "Jess Creations", "MSX",
+	"Eye Brawls (HB, 5-9-26)\0", NULL, "Jess Creations", "MSX",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_MSX, GBF_ACTION | GBF_MAZE, 0,
 	MSXGetZipName, MSX_eyebrawlsRomInfo, MSX_eyebrawlsRomName, NULL, NULL, NULL, NULL, MSXInputInfo, MSXDIPInfo,
@@ -34416,9 +34434,9 @@ struct BurnDriver BurnDrvMSX_soko64p = {
 	272, 228, 4, 3
 };
 
-// Solar Fox II: Space Evaders (HB)
+// Solar Fox II (HB)
 static struct BurnRomInfo MSX_solarfox2RomDesc[] = {
-	{ "Solar Fox II - Space Evaders (2025)(Jess Creations).rom",	32768, 0x7ed32582, BRF_PRG | BRF_ESS },
+	{ "Solar Fox II (2025)(Jess Creations).rom",	32768, 0x7ed32582, BRF_PRG | BRF_ESS },
 };
 
 STDROMPICKEXT(MSX_solarfox2, MSX_solarfox2, msx_msx)
@@ -34426,7 +34444,7 @@ STD_ROM_FN(MSX_solarfox2)
 
 struct BurnDriver BurnDrvMSX_solarfox2 = {
 	"msx_solarfox2", NULL, "msx_msx", NULL, "2025",
-	"Solar Fox II: Space Evaders (HB)\0", NULL, "Jess Creations", "MSX",
+	"Solar Fox II (HB)\0", NULL, "Jess Creations", "MSX",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_MSX, GBF_ACTION, 0,
 	MSXGetZipName, MSX_solarfox2RomInfo, MSX_solarfox2RomName, NULL, NULL, NULL, NULL, MSXInputInfo, MSXDIPInfo,

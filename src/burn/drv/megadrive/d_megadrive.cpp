@@ -42263,6 +42263,24 @@ struct BurnDriver BurnDrvmd_spax = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Square Brothers (HB)
+static struct BurnRomInfo md_squarebrothersRomDesc[] = {
+	{ "Square Brothers (2025)(Ratalaika Games, 9Ratones, Two Black Cats).bin", 1048576, 0x3e866383, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_squarebrothers)
+STD_ROM_FN(md_squarebrothers)
+
+struct BurnDriver BurnDrvmd_squarebrothers = {
+	"md_squarebrothers", NULL, NULL, NULL, "2025",
+	"Square Brothers (HB)\0", NULL, "Ratalaika Games, 9Ratones, Two Black Cats", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_squarebrothersRomInfo, md_squarebrothersRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Star Chaser (HB)
 static struct BurnRomInfo md_starchaserRomDesc[] = {
 	{ "Star Chaser (2014-07-05)(Sik).bin", 0x00b240, 0xfadd25a3, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -44188,10 +44206,10 @@ struct BurnDriver BurnDrvmd_ghostbstse = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Golden Axe - Arcade Colors (Hack, v1.3)
+// Golden Axe - Arcade Colors (Hack, v1.4)
 // https://www.romhacking.net/hacks/7004/
 static struct BurnRomInfo md_goldnaxeacRomDesc[] = {
-	{ "Golden Axe - Arcade Colors v1.3 (2026)(SCD).bin", 590842, 0x0f0f9154, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Golden Axe - Arcade Colors v1.4 (2026)(SCD).bin", 590842, 0xe19b97c4, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_goldnaxeac)
@@ -44199,7 +44217,7 @@ STD_ROM_FN(md_goldnaxeac)
 
 struct BurnDriver BurnDrvmd_goldnaxeac = {
 	"md_goldnaxeac", "md_goldnaxe", NULL, NULL, "2026",
-	"Golden Axe - Arcade Colors (Hack, v1.3)\0", NULL, "SCD", "Genesis / Mega Drive",
+	"Golden Axe - Arcade Colors (Hack, v1.4)\0", NULL, "SCD", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SCRFIGHT, 0,
 	MegadriveGetZipName, md_goldnaxeacRomInfo, md_goldnaxeacRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -44490,18 +44508,18 @@ struct BurnDriver BurnDrvmd_mkae = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Mortal Kombat Arcade Edition (Hack, v2.2)
+// Mortal Kombat Arcade Edition (Hack, v2.4)
 // https://romhackplaza.org/romhacks/mortal-kombat-arcade-edition-enhanced-genesis-2/
 static struct BurnRomInfo md_mkaeeRomDesc[] = {
-	{ "Mortal Kombat Arcade Edition Enhanced v2.2 (2025)(Rael G.C.).bin", 4194304, 0xe0b10bf3, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Mortal Kombat Arcade Edition Enhanced v2.4 (2026)(Rael G.C.).bin", 4194304, 0x20e1378c, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_mkaee)
 STD_ROM_FN(md_mkaee)
 
 struct BurnDriver BurnDrvmd_mkaee = {
-	"md_mkaee", "md_mk", NULL, NULL, "2025",
-	"Mortal Kombat Arcade Edition Enhanced (Hack, v2.2)\0", NULL, "Rael G.C.", "Genesis / Mega Drive",
+	"md_mkaee", "md_mk", NULL, NULL, "2026",
+	"Mortal Kombat Arcade Edition Enhanced (Hack, v2.4)\0", NULL, "Rael G.C.", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 2, HARDWARE_SEGA_MEGADRIVE, GBF_VSFIGHT, 0,
 	MegadriveGetZipName, md_mkaeeRomInfo, md_mkaeeRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
