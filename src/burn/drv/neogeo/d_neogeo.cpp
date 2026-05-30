@@ -32034,6 +32034,43 @@ struct BurnDriver BurnDrvKof99uh = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Garou - Mark of the Wolves (Korean Translation)
+
+static struct BurnRomInfo garouhkRomDesc[] = {
+	{ "ke.neo-sma",   0x040000, 0x96c72233, 9 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "253-p1k.p1",   0x400000, 0xb22f2144, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "253-p2k.p2",   0x400000, 0x1db715f0, 1 | BRF_ESS | BRF_PRG }, //  2
+
+	{ "253-c1k.c1",   0x800000, 0xba9f9e08, 3 | BRF_GRA },           //  3 Sprite data
+	{ "253-c2k.c2",   0x800000, 0xd1021625, 3 | BRF_GRA },           //  4
+	{ "253-c3k.c3",   0x800000, 0x8794ee54, 3 | BRF_GRA },           //  5
+	{ "253-c4k.c4",   0x800000, 0xa2cb663a, 3 | BRF_GRA },           //  6
+	{ "253-c5k.c5",   0x800000, 0x1bbca5f1, 3 | BRF_GRA },           //  7
+	{ "253-c6k.c6",   0x800000, 0x855f8121, 3 | BRF_GRA },           //  8
+	{ "253-c7k.c7",   0x800000, 0x22df955a, 3 | BRF_GRA },           //  9
+	{ "253-c8k.c8",   0x800000, 0x4894fa71, 3 | BRF_GRA },           // 10
+
+	{ "253-m1.m1",    0x040000, 0x36a806be, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code
+
+	{ "253-v1.v1",    0x400000, 0x263e388c, 5 | BRF_SND },           // 12 Sound data
+	{ "253-v2.v2",    0x400000, 0x2c6bc7be, 5 | BRF_SND },           // 13
+	{ "253-v3.v3",    0x400000, 0x0425b27d, 5 | BRF_SND },           // 14
+	{ "253-v4.v4",    0x400000, 0xa54be8a9, 5 | BRF_SND },           // 15
+};
+
+STDROMPICKEXT(garouhk, garouhk, neogeo)
+STD_ROM_FN(garouhk)
+
+struct BurnDriver BurnDrvGarouhk = {
+	"garouhk", "garou", "neogeo", NULL, "1999",
+	"Garou - Mark of the Wolves (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Garou\0\u9913\u72FC - Mark of the Wolves (Korean Translation)\0\uC544\uB791 - \uB9C8\uD06C \uC624\uBE0C \uB354 \uC6B8\uBE0C\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42 | HARDWARE_SNK_SMA_PROTECTION, GBF_VSFIGHT, FBF_FATFURY,
+	NULL, garouhkRomInfo, garouhkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	garouhInit, NeoSMAExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 // Metal Slug 3 (AES Uncensored Hack)
 
 static struct BurnRomInfo mslug3uhRomDesc[] = {

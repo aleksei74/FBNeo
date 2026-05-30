@@ -521,7 +521,8 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\u6700\u65b0\u7684\u65b0\u5efa\u5361\u7247\u6a94\u6848",
 		"PGM2 \u63d2\u69fd P%c: \u9810\u8a2d\u5361 + %u \u500b\u6a94\u6848",
 		"\u5132\u5b58\u5361\u6a94\u6848\u540d\u7a31\u4ee5 '",
-		"_p\u73a9\u5bb6\u7de8\u865f_' \u958b\u982d\uff0c\u4e26\u4ee5 '.pg2' \u6216 '.bin' \u7d50\u5c3e"
+		"_p\u73a9\u5bb6\u7de8\u865f_' \u958b\u982d\uff0c\u4e26\u4ee5 '.pg2' \u6216 '.bin' \u7d50\u5c3e",
+		"\u4f60\u6b63\u5728\u5617\u8a66\u4ee5 Neo-Geo CD \u6a21\u64ec\u6a21\u5f0f\u904b\u884c FBNeo\u3002\u4f46\u4f60\u5617\u8a66\u8f09\u5165\u7684\u6a94\u6848\u65e2\u4e0d\u662f .cue \u4e5f\u4e0d\u662f .ccd\u3002"
 	},
 	{	// Japanese
 		"Use 32-bits color depth when available",
@@ -685,14 +686,16 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"Configure Advanced Settings",
 		"%s\nAnd %d more...",
 		"PGM2 Memory Cards",
-		"Select memory card before character selection. Limit 120 files per slot. Memory Card location: Under the 'Save Files' path in /FinalBurn Neo/fbneo/pgm2_memcards/",
+		"Select memory card before character selection. Limit 120 files per slot. Memory Card location: Under the 'Save Files' path in /FinalBurn Neo/fbneo/pgm2_memcards/. Before the game reloads, cards created with the 'New Card' option are not immediately added to the card list. Each newly created card is applied via the 'Latest New Card File' option.",
 		"Empty Slot",
 		"Default Card (File: _default)",
 		"Temporary Card (Expires On Exit Game)",
 		"New Card (File: _Timestamped)",
+		"Latest New Card File",
 		"PGM2 slot P%c: default + %u file(s)",
 		"Memory Card Filenames start with ",
-		"_pN_ and end with .pg2 or .bin"
+		"_pN_ and end with .pg2 or .bin",
+		"You are trying to run FBNeo in Neo-Geo CD emulation mode.\nBut the file you are trying to load is neither a .cue nor a .ccd."
 	},
 	{	// Korean
 		"\uAC00\uB2A5\uD55C \uACBD\uC6B0 32\uBE44\uD2B8 \uC0C9\uC0C1\uC744 \uC0AC\uC6A9",
@@ -856,15 +859,16 @@ static const char* multi_language_strings[MAX_LANGUAGES][NUM_STRING] = {
 		"\uACE0\uAE09\uC124\uC815 \uAD6C\uC131",
 		"%s\n\uADF8\uB9AC\uACE0 %d \uB354...",
 		"PGM2 \uBA54\uBAA8\uB9AC \uCE74\uB4DC",
-		"\uBB38\uC790\uB97C \uC120\uD0DD\uD558\uAE30 \uC804\uC5D0 \uBA54\uBAA8\uB9AC \uCE74\uB4DC\uB97C \uC120\uD0DD\uD558\uC138\uC694. \uC2AC\uB86F\uB2F9 \uCD5C\uB300 120\uAC1C\uC758 \uD30C\uC77C\uC744 \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uBA54\uBAA8\uB9AC \uCE74\uB4DC \uACBD\uB85C:/FinalBurn Neo/fbneo/pgm2_memcards/ \uACBD\uB85C\uC758 '\uC800\uC7A5 \uD30C\uC77C' \uC544\uB798\uC5D0 \uC788\uC2B5\uB2C8\uB2E4.",
+		"\uBB38\uC790\uB97C \uC120\uD0DD\uD558\uAE30 \uC804\uC5D0 \uBA54\uBAA8\uB9AC \uCE74\uB4DC\uB97C \uC120\uD0DD\uD558\uC138\uC694. \uC2AC\uB86F\uB2F9 \uCD5C\uB300 120\uAC1C\uC758 \uD30C\uC77C\uC744 \uC800\uC7A5\uD560 \uC218 \uC788\uC2B5\uB2C8\uB2E4. \uBA54\uBAA8\uB9AC \uCE74\uB4DC \uACBD\uB85C:/FinalBurn Neo/fbneo/pgm2_memcards/ \uACBD\uB85C\uC758 '\uC800\uC7A5 \uD30C\uC77C' \uC544\uB798\uC5D0 \uC788\uC2B5\uB2C8\uB2E4. '\uC0C8 \uCE74\uB4DC' \uC635\uC158\uC73C\uB85C \uC0DD\uC131\uD55C \uCE74\uB4DC\uB294 \uAC8C\uC784\uC744 \uB2E4\uC2DC \uB85C\uB4DC\uD558\uAE30 \uC804\uC5D0 \uCE74\uB4DC \uBAA9\uB85D\uC5D0 \uC989\uC2DC \uCD94\uAC00\uB418\uC9C0 \uC54A\uC2B5\uB2C8\uB2E4. \uC0C8\uB85C \uC0DD\uC131\uB41C \uCE74\uB4DC\uB294 '\uCD5C\uC2E0 \uC0C8 \uCE74\uB4DC \uD30C\uC77C' \uC635\uC158\uC744 \uD1B5\uD574 \uC801\uC6A9\uB429\uB2C8\uB2E4.",
 		"\uBE48 \uC2AC\uB86F",
 		"\uAE30\uBCF8 \uCE74\uB4DC (\uD30C\uC77C: _default)",
 		"\uC784\uC2DC \uCE74\uB4DC (\uAC8C\uC784 \uC885\uB8CC \uC2DC \uB9CC\uB8CC\uB429\uB2C8\uB2E4.)",
 		"\uC0C8 \uCE74\uB4DC (\uD30C\uC77C: _Timestamped)",
+		"\uCD5C\uC2E0 \uC0C8 \uCE74\uB4DC \uD30C\uC77C",
 		"PGM2 \uC2AC\uB86F P%c: \uAE30\uBCF8 + %u \uD30C\uC77C",
 		"\uBA54\uBAA8\uB9AC \uCE74\uB4DC\uC758 \uD30C\uC77C \uC774\uB984\uC740 ",
 		"_pN_ \uC73C\uB85C \uC2DC\uC791\uD558\uACE0 .pg2 \uB610\uB294 .bin \uC73C\uB85C \uB05D\uB0A9\uB2C8\uB2E4.",
-		"\u4f60\u6b63\u5728\u5617\u8a66\u4ee5 Neo-Geo CD \u6a21\u64ec\u6a21\u5f0f\u904b\u884c FBNeo\u3002\u4f46\u4f60\u5617\u8a66\u8f09\u5165\u7684\u6a94\u6848\u65e2\u4e0d\u662f .cue \u4e5f\u4e0d\u662f .ccd\u3002"
+		"FBNeo \uB97C \uB124\uC624\uC9C0\uC624 CD \uC5D0\uBBAC\uB808\uC774\uC158 \uBAA8\uB4DC\uB85C \uC2E4\uD589\uD558\uB824\uACE0 \uD569\uB2C8\uB2E4. \uD558\uC9C0\uB9CC \uBD88\uB7EC\uC624\uB824\uB294 \uD30C\uC77C\uC740 .cue \uB610\uB294 .ccd \uD615\uC2DD\uC774 \uC544\uB2D9\uB2C8\uB2E4."
 	}
 };
 

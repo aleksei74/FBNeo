@@ -8232,6 +8232,7 @@ DRV		BurnDrvGarogun;
 DRV		BurnDrvGaroubl;
 DRV		BurnDrvGaroubs;
 DRV		BurnDrvGaroujq;
+DRV		BurnDrvGarouhk;
 DRV		BurnDrvGarouha;
 DRV		BurnDrvGarouh;
 DRV		BurnDrvGarou;
@@ -33712,6 +33713,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvGaroubl,			// Garou - Mark of the Wolves (bootleg)
 	&BurnDrvGaroubs,			// Garou - Mark of the Wolves (Enable hidden characters, Hack)
 	&BurnDrvGaroujq,			// Garou - Mark of the Wolves (Enhanced, Hack)
+	&BurnDrvGarouhk,			// Garou - Mark of the Wolves (Korean Translation)
 	&BurnDrvGarouha,			// Garou - Mark of the Wolves (NGH-2530)
 	&BurnDrvGarouh,				// Garou - Mark of the Wolves (NGM-2530 ~ NGH-2530)
 	&BurnDrvGarou,				// Garou - Mark of the Wolves (NGM-2530)
@@ -59134,6 +59136,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "garoubl", "neogeo/d_neogeo.cpp"},
 	{ "garoubs", "neogeo/d_neogeo.cpp"},
 	{ "garoujq", "neogeo/d_neogeo.cpp"},
+	{ "garouhk", "neogeo/d_neogeo.cpp"},
 	{ "garouha", "neogeo/d_neogeo.cpp"},
 	{ "garouh", "neogeo/d_neogeo.cpp"},
 	{ "garou", "neogeo/d_neogeo.cpp"},
