@@ -1585,17 +1585,10 @@ static struct BurnDIPInfo nam1975DIPList[] = {
 };
 
 static struct BurnDIPInfo nam1975kDIPList[] = {
-	// Defaults
-	{0x00,	0xFF, 0xFF,	0x00, NULL										}, // DIP 1
-	{0x01,	0xFF, 0x7F,	0x00, NULL										}, // DIP 2
-	{0x02,	0xFF, 0xFF,	0x88, NULL										}, // System
-	{0x03,	0xFF, 0xFF,	0x01, NULL										}, // Slots
-	{0x08,	0xFF, 0xFF,	0x00, NULL										}, // Fake DIP (Overscan)
-
 	// Fake DIPs
-	{0x06, 0xFF, 0xFF, 0x00, NULL                           },  // Off
+	{0x06, 0xFF, 0xFF, 0x01, NULL                           },  // Off
 
-	{0,    0xFE, 0,    2,    "Demo scene"                   },
+	{0,    0xFD, 0,    2,    "Demo scene"                   },
 	{0x06, 0x01, 0x01, 0x00, "Off"                          },
 	{0x06, 0x01, 0x01, 0x01, "On"                           },
 };

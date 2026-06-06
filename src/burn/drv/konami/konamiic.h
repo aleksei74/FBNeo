@@ -339,7 +339,10 @@ void K053936SetOffset(INT32 chip, INT32 xoffs, INT32 yoffs);
 void K053936PredrawTiles3(INT32 chip, UINT8 *gfx, INT32 tile_size_x, INT32 tile_size_y, INT32 transparent);
 void K053936PredrawTiles2(INT32 chip, UINT8 *gfx);
 void K053936PredrawTiles(INT32 chip, UINT8 *gfx, INT32 transparent, INT32 tcol /*transparent color*/);
-void K053936Draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, INT32 transp);
+void K053936Draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, INT32 flags);
+
+#define K053936_DRAW_16BIT	(1 << 24)
+#define K053936_DRAW_CLIP	(1 << 25)
 
 extern UINT16 *m_k053936_0_ctrl_16;
 extern UINT16 *m_k053936_0_linectrl_16;

@@ -16,8 +16,6 @@ static UINT8 *rambuf[MAX_K053936] = { NULL, NULL };
 static INT32 K053936Wrap[MAX_K053936] = { 0, 0 };
 static INT32 K053936Offset[MAX_K053936][2] = { { 0, 0 }, { 0, 0 } };
 
-static INT32 glfgreat_mode = 0;
-
 static void (*pTileCallback0)(INT32 offset, UINT16 *ram, INT32 *code, INT32 *color, INT32 *sx, INT32 *sy, INT32 *fx, INT32 *fy);
 static void (*pTileCallback1)(INT32 offset, UINT16 *ram, INT32 *code, INT32 *color, INT32 *sx, INT32 *sy, INT32 *fx, INT32 *fy);
 
@@ -233,14 +231,16 @@ static inline void copy_roz32(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 	{
 		INT32 scrollx = startx >> 16;
 		INT32 scrolly = starty >> 16;
+		INT32 hmask = nHeight[chip] - 1;
+		INT32 wmask = nWidth[chip] - 1;
 
 		for (INT32 sy = 0; sy < nScreenHeight; sy++) {
 			UINT8  *pri = konami_priority_bitmap + (sy * nScreenWidth);
-			UINT16 *src = tscreen[chip] + (((scrolly + sy) % nHeight[chip]) * nWidth[chip]);
+			UINT16 *src = tscreen[chip] + (((scrolly + sy) & hmask) * nWidth[chip]);
 			UINT32 *dst = konami_bitmap32 + (sy * nScreenWidth);
 
 			for (INT32 sx = 0; sx < nScreenWidth; sx++) {
-				INT32 pxl = src[(scrollx+sx)%nWidth[chip]];
+				INT32 pxl = src[(scrollx + sx) & wmask];
 				if ((pxl & 0x8000)!=0 && transp) continue;
 
 				dst[sx] = konami_palette32[pxl & 0x7fff];
@@ -258,15 +258,17 @@ static inline void copy_roz32(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 	INT32 width = nWidth[chip];
 	INT32 hmask = nHeight[chip] - 1;
 	INT32 wmask = nWidth[chip] - 1;
+	INT32 row_advance = nScreenWidth - (maxx - minx);
 
 	INT32 wrap = K053936Wrap[chip];
 	
-	dst += maxx * miny; // right?
+	dst += (miny * nScreenWidth) + minx;
+	pri += (miny * nScreenWidth) + minx;
 	
-	for (INT32 sy = miny; sy < maxy; sy++, startx+=incyx, starty+=incyy)
+	for (INT32 sy = miny; sy < maxy; sy++, startx+=incyx, starty+=incyy, dst+=row_advance, pri+=row_advance)
 	{
-		UINT32 cx = startx;
-		UINT32 cy = starty;
+		UINT32 cx = startx + (minx * incxx);
+		UINT32 cy = starty + (minx * incxy);
 
 		if (transp) {
 			if (wrap) {
@@ -326,15 +328,17 @@ static inline void copy_roz16(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 	{
 		INT32 scrollx = startx >> 16;
 		INT32 scrolly = starty >> 16;
+		INT32 hmask = clip_maxy - 1;
+		INT32 wmask = clip_maxx - 1;
 
 		for (INT32 sy = 0; sy < nScreenHeight; sy++) {
 			UINT8  *pri = pPrioDraw + (sy * nScreenWidth);
-			UINT16 *src = BurnBitmapGetBitmap(1) + (((scrolly + sy) % clip_maxy) * clip_maxx);
+			UINT16 *src = BurnBitmapGetBitmap(1) + (((scrolly + sy) & hmask) * clip_maxx);
 			UINT16 *dst = pTransDraw + (sy * nScreenWidth);
 
 			for (INT32 sx = 0; sx < nScreenWidth; sx++) {
-				INT32 pxl = src[(scrollx+sx)%clip_maxx];
-				if ((pxl & transp_mask) == transp) continue;
+				INT32 pxl = src[(scrollx + sx) & wmask];
+				if (transp_mask && ((pxl & transp_mask) == transp)) continue;
 
 				dst[sx] = pxl;
 				pri[sx] = priority;
@@ -350,15 +354,17 @@ static inline void copy_roz16(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 	INT32 width = clip_maxx;
 	INT32 hmask = clip_maxy - 1;
 	INT32 wmask = clip_maxx - 1;
+	INT32 row_advance = nScreenWidth - (maxx - minx);
 
 	INT32 wrap = K053936Wrap[chip];
 	
-	dst += maxx * miny; // right?
+	dst += (miny * nScreenWidth) + minx;
+	pri += (miny * nScreenWidth) + minx;
 
-	for (INT32 sy = miny; sy < maxy; sy++, startx+=incyx, starty+=incyy)
+	for (INT32 sy = miny; sy < maxy; sy++, startx+=incyx, starty+=incyy, dst+=row_advance, pri+=row_advance)
 	{
-		UINT32 cx = startx;
-		UINT32 cy = starty;
+		UINT32 cx = startx + (minx * incxx);
+		UINT32 cy = starty + (minx * incxy);
 
 		if (transp_mask) {
 			if (wrap) {
@@ -413,7 +419,8 @@ void K053936Draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, INT32 flags)
 	INT32 transp = flags & 0xff;
 	INT32 priority = (flags >> 8) & 0xff;
 	INT32 transp_mask = (flags >> 16) & 0xff;
-	INT32 is_16bit_indexed = flags & (1 << 24);
+	INT32 is_16bit_indexed = flags & K053936_DRAW_16BIT;
+	INT32 clip_enabled = flags & K053936_DRAW_CLIP;
 
 	if ((BURN_ENDIAN_SWAP_INT16(ctrl[0x07]) & 0x0040) && linectrl)
 	{
@@ -423,18 +430,18 @@ void K053936Draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, INT32 flags)
 		
 		INT32 clip_minx = 0, clip_maxx = 0;
 
-		// Racin' Force will get to here if glfgreat_hack is enabled, and it ends
-		// up setting a maximum y value of '13', thus causing nothing to be drawn.
+		// Racin' Force reaches this path when hardware clipping is enabled and
+		// sets a maximum y value of 13, causing nothing to be drawn.
 		// It looks like the roz output should be flipped somehow as it seems to be
 		// displaying the wrong areas of the tilemap and is rendered upside down,
 		// although due to the additional post-processing the voxel renderer performs
 		// it's difficult to know what the output SHOULD be.  (hold W in Racin' Force
 		// to see the chip output)
 
-		if (((BURN_ENDIAN_SWAP_INT16(ctrl[0x07]) & 0x0002) && BURN_ENDIAN_SWAP_INT16(ctrl[0x09])) && (glfgreat_mode)) /* wrong, but fixes glfgreat */
+		if (((BURN_ENDIAN_SWAP_INT16(ctrl[0x07]) & 0x0002) && BURN_ENDIAN_SWAP_INT16(ctrl[0x09])) && clip_enabled)
 		{
 			clip_minx = BURN_ENDIAN_SWAP_INT16(ctrl[0x08]) + K053936Offset[chip][0] + 2;
-			clip_maxx = BURN_ENDIAN_SWAP_INT16(ctrl[0x09]) + K053936Offset[chip][0] + 2 - 1;
+			clip_maxx = BURN_ENDIAN_SWAP_INT16(ctrl[0x09]) + K053936Offset[chip][0] + 2;
 			if (clip_minx < 0)
 				clip_minx = 0;
 			if (clip_maxx >= nScreenWidth)
@@ -443,7 +450,7 @@ void K053936Draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, INT32 flags)
 			y = BURN_ENDIAN_SWAP_INT16(ctrl[0x0a]) + K053936Offset[chip][1] - 2;
 			if (y < 0)
 				y = 0;
-			maxy = BURN_ENDIAN_SWAP_INT16(ctrl[0x0b]) + K053936Offset[chip][1] - 2 - 1;
+			maxy = BURN_ENDIAN_SWAP_INT16(ctrl[0x0b]) + K053936Offset[chip][1] - 2;
 			if (maxy >= nScreenHeight)
 				maxy = nScreenHeight;
 		}
