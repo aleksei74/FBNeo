@@ -44342,9 +44342,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_sewersam,		// Sewer Sam (Japan)
 	&BurnDrvcv_sewersam,		// Sewer Sam (USA)
 	&BurnDrvfds_sexyinvaders,	// Sexy Invaders (Japan) (Unl)
-	&BurnDrvSexyparoa,			// Sexy Parodius (ver AAA) [Preliminary support: ROM registration only, NOT WORKING]
+	&BurnDrvSexyparoa,			// Sexy Parodius (ver AAA)
 	&BurnDrvSexyparoebl,		// Sexy Parodius (ver EAA, bootleg) [Preliminary support: ROM registration only, NOT WORKING]
-	&BurnDrvSexyparo,			// Sexy Parodius (ver JAA) [Preliminary support: ROM registration only, NOT WORKING]
+	&BurnDrvSexyparo,			// Sexy Parodius (ver JAA)
 	&BurnSpecSeymmovi,			// Seymour at the Movies (128K)
 	&BurnSpecseymmovi,			// Seymour at the Movies (48K)
 	&BurnSpecseytakon,			// Seymour Take One (48K)
