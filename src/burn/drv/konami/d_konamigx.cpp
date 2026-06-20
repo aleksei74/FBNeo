@@ -144,7 +144,6 @@ static UINT8 gx_syncen;
 static UINT8 gx_control;
 static UINT8 gx_special;
 static INT32 gx_current_scanline;
-static UINT8 gx_bios_vblank_pending;
 static UINT8 sound_control;
 static UINT8 sound_irq_state;
 static UINT8 sound_timer_irq_pending;
@@ -369,29 +368,6 @@ static inline void gx_type3_bank_write(UINT32 address, UINT8 data)
 		gx_type3_psac2_bank = (data & 0x10) >> 4;
 		gx_type3_spriteram_bank = data & 0x01;
 	}
-}
-
-static void gx_bios_vblank_tick(INT32 pc)
-{
-	if (pc >= 0x020000) return;
-
-	UINT16 count = (DrvMainRAM[0x76] << 8) | DrvMainRAM[0x77];
-	count++;
-
-	DrvMainRAM[0x74] = 0;
-	DrvMainRAM[0x75] = 0;
-	DrvMainRAM[0x76] = count >> 8;
-	DrvMainRAM[0x77] = count;
-}
-
-static void gx_bios_vblank_wait_hle(INT32 pc)
-{
-	if (gx_type4_enable) return;
-	if (!gx_bios_vblank_pending && (pc < 0x0a10 || pc > 0x0a18)) return;
-	if (pc < 0x0a10 || pc > 0x0a18) return;
-
-	gx_bios_vblank_pending = 0;
-	gx_bios_vblank_tick(pc);
 }
 
 static void gx_k056832_set_ram_bank(UINT8 data)
@@ -1891,7 +1867,6 @@ static INT32 DrvDoReset()
 	gx_syncen = 0;
 	gx_control = 0;
 	gx_current_scanline = 0;
-	gx_bios_vblank_pending = 0;
 	sound_control = 0;
 	sound_irq_state = 0;
 	sound_timer_irq_pending = 0;
@@ -2499,9 +2474,7 @@ static INT32 DrvFrame()
 		gx_current_scanline = scanline;
 
 		SekOpen(0);
-		gx_bios_vblank_wait_hle(SekGetPC(-1));
 		CPU_RUN(0, Sek);
-		gx_bios_vblank_wait_hle(SekGetPC(-1));
 
 		if (((gx_type4_enable && scanline < 240) || (!gx_type4_enable && scanline == 48)) && (gx_syncen & 0x40)) {
 			gx_syncen &= ~0x40;
@@ -2529,13 +2502,12 @@ static INT32 DrvFrame()
 				if (((gx_irq_control & 0x81) == 0x81) || (gx_syncen & 0x01)) {
 					gx_syncen &= ~0x01;
 					SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
-					gx_bios_vblank_pending = 1;
 				}
 			}
-			gx_irq_status |= 0x02;
+			gx_irq_status |= 0x04;
 		}
 		if ((gx_type4_enable && scanline == 241) || (!gx_type4_enable && scanline == 248)) {
-			gx_irq_status &= ~0x02;
+			gx_irq_status &= ~0x04;
 			if (((gx_irq_control & 0x84) == 0x84) || (gx_syncen & 0x04)) {
 				gx_irq_status &= ~0x80;
 				gx_syncen &= ~0x04;
@@ -2594,7 +2566,6 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(gx_syncen);
 		SCAN_VAR(gx_control);
 		SCAN_VAR(gx_current_scanline);
-		SCAN_VAR(gx_bios_vblank_pending);
 		SCAN_VAR(sound_control);
 		SCAN_VAR(sound_irq_state);
 		SCAN_VAR(sound_timer_irq_pending);

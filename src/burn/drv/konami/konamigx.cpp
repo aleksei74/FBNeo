@@ -152,7 +152,7 @@ static void gx_wipezbuf(INT32 noshadow)
 {
 #define GX_ZBUFW	512
 
-	INT32 w = (nScreenWidth);
+	INT32 w = GX_ZBUFW;
 	INT32 h = (nScreenHeight);
 
 	UINT8 *zptr = gx_objzbuf;
@@ -163,7 +163,7 @@ static void gx_wipezbuf(INT32 noshadow)
 	if (!noshadow)
 	{
 		zptr = gx_shdzbuf;
-		w <<= 1;
+		w = GX_ZBUFW << 1;
 		ecx = h;
 		do { memset(zptr, -1, w); zptr += (GX_ZBUFW<<1); } while (--ecx);
 	}

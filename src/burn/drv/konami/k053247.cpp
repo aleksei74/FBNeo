@@ -5,7 +5,6 @@
 
 #include "tiles_generic.h"
 #include "konamiic.h"
-
 #define K053247_CUSTOMSHADOW	0x20000000
 #define K053247_SHDSHIFT		20
 
