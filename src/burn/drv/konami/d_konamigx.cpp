@@ -59,6 +59,7 @@ enum {
 	GX_SPECIAL_TKMMPZDM = 2,
 	GX_SPECIAL_TBYAHHOO = 8,
 	GX_SPECIAL_FANTJOUR = 9,
+	GX_SPECIAL_SEXYPARO = 6,
 	GX_SPECIAL_TYPE4SD2 = 10
 };
 
@@ -102,6 +103,8 @@ static const GxGameConfig GxGameConfigs[] = {
 	{ "mtwinbee",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "tkmmpzdm",  7, GX_SPECIAL_TKMMPZDM, GX_TILE_LAYOUT_6BPP, 6, 64,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
 	{ "daiskiss",  7, GX_SPECIAL_DAISKISS, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x200000, 7, 8, -1, -1,  9, 10, -1, -1, -50, -38, 4, 0, 5 },
+	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -70, -38, 0, 0, 5 },
+	{ "sexyparoa", 7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -70, -38, 0, 0, 5 },
 	{ "tokkae",    7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_6BPP, 6, 64,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
 	{ "rungun2",   7, GX_SPECIAL_TYPE4SD2, GX_TILE_LAYOUT_8BPP, 8, 256, 0x200000, 0x1800000, -1, -1, -1, -1, -1, 22, 23, -1, -81, -23, 0, 0, 6 },
 	{ "slamdnk2",  7, GX_SPECIAL_TYPE4SD2, GX_TILE_LAYOUT_8BPP, 8, 256, 0x200000, 0x1800000, -1, -1, -1, -1, -1, 22, 23, -1, -81, -23, 0, 0, 6 },
@@ -867,6 +870,8 @@ static void gx_esc_write(UINT32 data)
 
 		if (subop == 1 && (gx_special == GX_SPECIAL_TBYAHHOO || gx_special == GX_SPECIAL_DAISKISS)) {
 			gx_generate_sprites(0xc00000, 0xd20000, 0x100);
+		} else if (subop == 1 && gx_special == GX_SPECIAL_SEXYPARO) {
+			gx_generate_sprites(0xc00604, 0xd20000, 0xfc);
 		} else if (gx_special == GX_SPECIAL_TKMMPZDM) {
 			gx_esc_alert_mode0(0x0142, 0x100);
 		}
@@ -3804,9 +3809,9 @@ struct BurnDriver BurnDrvDragoonj = {
 
 struct BurnDriver BurnDrvSexyparo = {
 	"sexyparo", NULL, "konamigx", NULL, "1996",
-	"Sexy Parodius (ver JAA)\0", "Preliminary support: ROM registration only", "Konami", "Konami System GX",
+	"Sexy Parodius (ver JAA)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_NOT_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, sexyparoRomInfo, sexyparoRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
@@ -3814,9 +3819,9 @@ struct BurnDriver BurnDrvSexyparo = {
 
 struct BurnDriver BurnDrvSexyparoa = {
 	"sexyparoa", "sexyparo", "konamigx", NULL, "1996",
-	"Sexy Parodius (ver AAA)\0", "Preliminary support: ROM registration only", "Konami", "Konami System GX",
+	"Sexy Parodius (ver AAA)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_NOT_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, sexyparoaRomInfo, sexyparoaRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
