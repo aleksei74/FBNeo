@@ -12,6 +12,15 @@
 		<url>https://neo-source.com/</url>
 		<clrmamepro forcenodump="ignore"/>
 	</header>
+	<game name="2048sms" sourcefile="sms/d_sms.cpp">
+		<comment>Homebrew</comment>
+		<description>2048-SMS! (HB)</description>
+		<year>2014</year>
+		<manufacturer>Sanqui</manufacturer>
+		<rom name="2048-SMS! (2014)(Sanqui).sms" size="32768" crc="4b7a237d"/>
+		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="4pak" sourcefile="sms/d_sms.cpp">
 		<description>4 PAK All Action (Australia)</description>
 		<year>1995</year>
@@ -3798,6 +3807,15 @@
 		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="mbarbarricade" sourcefile="sms/d_sms.cpp">
+		<comment>Homebrew</comment>
+		<description>Master Barbarricade (HB)</description>
+		<year>2026</year>
+		<manufacturer>Jess Creations - ArugulaZ</manufacturer>
+		<rom name="Master Barbarricade (2026)(Jess Creations - ArugulaZ).sms" size="40960" crc="cc629243"/>
+		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="mastdark" sourcefile="sms/d_sms.cpp">
 		<description>Master of Darkness (Euro, Brazil)</description>
 		<year>1992</year>
@@ -4758,10 +4776,10 @@
 	</game>
 	<game name="pyramidescape" sourcefile="sms/d_sms.cpp">
 		<comment>Homebrew</comment>
-		<description>Pyramid Escape (HB, v1.2.1)</description>
+		<description>Pyramid Escape (HB, v1.2.2)</description>
 		<year>2025</year>
 		<manufacturer>IrataHack</manufacturer>
-		<rom name="Pyramid Escape v1.2.1 (2025)(IrataHack).sms" size="114688" crc="9bb83ea6"/>
+		<rom name="Pyramid Escape v1.2.2 (2025)(IrataHack).sms" size="114688" crc="313f00bd"/>
 		<video type="raster" orientation="horizontal" width="256" height="192" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
