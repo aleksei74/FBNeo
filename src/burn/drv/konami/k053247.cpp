@@ -18,9 +18,12 @@ static UINT8 *K053246Gfx;
 static UINT32   K053246Mask;
 static UINT8 *K053246GfxExp;
 static UINT32   K053246MaskExp;
+static UINT32 K053247RamMask;
 
 static INT32 K053247_dx;
 static INT32 K053247_dy;
+static INT32 K053247_visible_x;
+static INT32 K053247_visible_y;
 static INT32 K053247_wraparound;
 
 static INT32 nBpp = 4;
@@ -31,7 +34,7 @@ void (*K053247Callback)(INT32 *code, INT32 *color, INT32 *priority);
 
 void K053247Reset()
 {
-	memset (K053247Ram,  0, 0x1000);
+	memset (K053247Ram,  0, K053247RamMask + 1);
 	memset (K053247Regs, 0, sizeof(K053247Regs));
 	memset (K053246Regs, 0, sizeof(K053246Regs));
 
@@ -45,7 +48,7 @@ void K053247Scan(INT32 nAction)
 	if (nAction & ACB_MEMORY_RAM) {
 		memset(&ba, 0, sizeof(ba));
 		ba.Data	  = K053247Ram;
-		ba.nLen	  = 0x1000;
+		ba.nLen	  = K053247RamMask + 1;
 		ba.szName = "K053247 Ram";
 		BurnAcb(&ba);
 
@@ -66,7 +69,8 @@ void K053247Scan(INT32 nAction)
 
 void K053247Init(UINT8 *gfxrom, UINT8 *gfxromexp, INT32 gfxlen, void (*Callback)(INT32 *code, INT32 *color, INT32 *priority), INT32 flags)
 {
-	K053247Ram = (UINT8*)BurnMalloc(0x1000);
+	K053247Ram = (UINT8*)BurnMalloc(0x4000);
+	K053247RamMask = 0x0fff;
 
 	K053246Gfx = gfxrom;
 	K053246Mask = gfxlen;
@@ -78,6 +82,8 @@ void K053247Init(UINT8 *gfxrom, UINT8 *gfxromexp, INT32 gfxlen, void (*Callback)
 
 	K053247_dx = 0;
 	K053247_dy = 0;
+	K053247_visible_x = 0;
+	K053247_visible_y = 0;
 	K053247_wraparound = 1;
 
 	KonamiAllocateBitmaps();
@@ -94,11 +100,22 @@ void K053247SetBpp(INT32 bpp)
 	nBpp = bpp;
 }
 
+void K053247SetDecodedTileMask(INT32 mask)
+{
+	K053246MaskExp = mask;
+}
+
+void K053247SetRamSize(INT32 size)
+{
+	K053247RamMask = (size == 0x4000) ? 0x3fff : 0x0fff;
+}
+
 void K053247Exit()
 {
 	BurnFree (K053247Ram);
 
 	K053247Flags = 0;
+	K053247RamMask = 0x0fff;
 
 	memset (K053247Regs, 0, sizeof(K053247Regs));
 	memset (K053246Regs, 0, sizeof(K053246Regs));
@@ -131,6 +148,12 @@ void K053247SetSpriteOffset(INT32 offsx, INT32 offsy)
 	K053247_dy = offsy;
 }
 
+void K053247SetVisibleOffset(INT32 offsx, INT32 offsy)
+{
+	K053247_visible_x = offsx;
+	K053247_visible_y = offsy;
+}
+
 void K053247WrapEnable(INT32 status)
 {
 	K053247_wraparound = status;
@@ -138,25 +161,25 @@ void K053247WrapEnable(INT32 status)
 
 UINT8 K053247Read(INT32 offset)
 {
-	return K053247Ram[offset & 0xfff];
+	return K053247Ram[offset & K053247RamMask];
 }
 
 UINT16 K053247ReadWord(INT32 offset)
 {
-	return *((UINT16*)(K053247Ram + (offset & 0xffe)));
+	return *((UINT16*)(K053247Ram + (offset & (K053247RamMask & ~1))));
 }
 
 void K053247WriteWord(INT32 offset, UINT16 data)
 {
-	*((UINT16*)(K053247Ram + (offset & 0xffe))) = BURN_ENDIAN_SWAP_INT16(data);
+	*((UINT16*)(K053247Ram + (offset & (K053247RamMask & ~1)))) = BURN_ENDIAN_SWAP_INT16(data);
 }
 
 void K053247Write(INT32 offset, INT32 data)
 {
 	if (data & 0x10000) { // use word
-		*((UINT16*)(K053247Ram + (offset & 0xffe))) = BURN_ENDIAN_SWAP_INT16(data);
+		*((UINT16*)(K053247Ram + (offset & (K053247RamMask & ~1)))) = BURN_ENDIAN_SWAP_INT16(data);
 	} else {
-		K053247Ram[offset & 0xfff] = data;
+		K053247Ram[offset & K053247RamMask] = data;
 	}
 }
 
@@ -350,8 +373,8 @@ void K053247SpritesRender()
 		if (code & 0x20) ya += 4;
 		code &= ~0x3f;
 
-		oy = (INT16)BURN_ENDIAN_SWAP_INT16(SprRam[offs+2]);
-		ox = (INT16)BURN_ENDIAN_SWAP_INT16(SprRam[offs+3]);
+		oy = BURN_ENDIAN_SWAP_INT16(SprRam[offs+2]) & 0x3ff;
+		ox = BURN_ENDIAN_SWAP_INT16(SprRam[offs+3]) & 0x3ff;
 
 		ox += K053247_dx;
 		oy -= K053247_dy;
@@ -373,8 +396,6 @@ void K053247SpritesRender()
 			else zoomx = 0x800000;
 		}
 		else { zoomx = zoomy; x = y; }
-
-		//bprintf(0, _T("%x  -  %x %x   %x %x\n"), code, zoomx, x, zoomy, y);
 
 		if ( K053246Regs[5] & 0x08 ) // Check only "Bit #3 is '1'?" (NOTE: good guess)
 		{
@@ -435,10 +456,22 @@ void K053247SpritesRender()
 		// apply wrapping and global offsets
 		if (K053247_wraparound)
 		{
-			ox = ( ox - offx) & 0x3ff;
-			oy = (-oy - offy) & 0x3ff;
-			if (ox >= 0x300) ox -= 0x400;
-			if (oy >= 0x280) oy -= 0x400;
+			INT32 wrapsize, xwraplim, ywraplim;
+
+			if (BURN_ENDIAN_SWAP_INT16(K053247Regs[0x0c / 2]) & 0x40) {
+				wrapsize = 0x200;
+				xwraplim = 0x200 - 0x040;
+				ywraplim = 0x200 - 0x080;
+			} else {
+				wrapsize = 0x400;
+				xwraplim = 0x400 - 0x180;
+				ywraplim = 0x400 - 0x200;
+			}
+
+			ox = ( ox - offx) & (wrapsize - 1);
+			oy = (-oy - offy) & (wrapsize - 1);
+			if (ox >= xwraplim) ox -= wrapsize;
+			if (oy >= ywraplim) oy -= wrapsize;
 		}
 		else
 		{
@@ -548,12 +581,26 @@ void K053247SpritesRender()
 
 static inline UINT32 alpha_blend_r32(UINT32 d, UINT32 s, UINT32 p)
 {
+	p &= 0xff;
 	if (p == 0) return d;
 
 	INT32 a = 256 - p;
 
 	return (((((s & 0xff00ff) * p) + ((d & 0xff00ff) * a)) & 0xff00ff00) |
 		((((s & 0x00ff00) * p) + ((d & 0x00ff00) * a)) & 0x00ff0000)) >> 8;
+}
+
+static inline UINT32 add_blend_r32(UINT32 d, UINT32 s)
+{
+	INT32 r = (d & 0xff0000) + (s & 0xff0000);
+	INT32 g = (d & 0x00ff00) + (s & 0x00ff00);
+	INT32 b = (d & 0x0000ff) + (s & 0x0000ff);
+
+	if (r > 0xff0000) r = 0xff0000;
+	if (g > 0x00ff00) g = 0x00ff00;
+	if (b > 0x0000ff) b = 0x0000ff;
+
+	return r | g | b;
 }
 
 static inline UINT32 shadow_blend_338(UINT32 d, INT32 shadow_bank) // for k054338
@@ -599,459 +646,103 @@ static inline UINT32 highlight_blend(UINT32 d)
 void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32 sx, INT32 sy,
 		INT32 scalex, INT32 scaley, INT32 alpha, INT32 drawmode, INT32 zcode, INT32 pri, UINT8* gx_objzbuf, UINT8* gx_shdzbuf)
 {
-#define FP     19
-#define FPONE  (1<<FP)
-#define FPHALF (1<<(FP-1))
-#define FPENT  0
+	const INT32 granularity_new = 1 << nBpp;
+	INT32 shdpen_new = granularity_new - 1;
+	INT32 shadow_bank_new = (drawmode >> 4) & 0x07;
+	drawmode &= 0x0f;
 
-	// inner loop
-	const UINT8  *src_ptr;
-	INT32 src_x;
-	INT32 eax, ecx;
-	INT32 src_fx, src_fdx;
-	INT32 shdpen;
-	UINT8  z8 = 0, p8 = 0;
-	UINT8  *ozbuf_ptr;
-	UINT8  *szbuf_ptr;
-	const UINT32 *pal_base;
-	const UINT32 *shd_base;
-	UINT32 *dst_ptr;
-
-	// outter loop
-	INT32 src_fby, src_fdy, src_fbx;
-	const UINT8 *src_base;
-	INT32 dst_w, dst_h;
-
-	// one-time
-	INT32 nozoom, granularity;
-	INT32 src_fw, src_fh;
-	INT32 dst_minx, dst_maxx, dst_miny, dst_maxy;
-	INT32 dst_skipx, dst_skipy, dst_x, dst_y, dst_lastx, dst_lasty;
-	INT32 src_pitch, dst_pitch;
-
-	INT32 highlight_enable = (drawmode >> 4) && (K053247Flags & 2);// for fba
-	if (highlight_enable) highlight_enable = (drawmode >> 4) & 0x7;
-	INT32 shadow_bank = (drawmode >> 4) & 0x7;
-	drawmode &= 0xf;
-
-	// cull illegal and transparent objects
 	if (!scalex || !scaley) return;
 
-	// find shadow pens and cull invisible shadows
-	granularity = shdpen = ((1 << nBpp) /*- 1*/);
-	shdpen--;
-
-	if (zcode >= 0)
-	{
-		if (drawmode == 5) { drawmode = 4; shdpen = 1; }
-	}
-	else
-		if (drawmode >= 4) return;
-
-	// alpha blend necessary?
-	if (drawmode & 2)
-	{
-		if (alpha <= 0) return;
-		if (alpha >= 255) drawmode &= ~2;
+	if (zcode >= 0) {
+		if (drawmode == 5) {
+			drawmode = 4;
+			shdpen_new = 1;
+		}
+	} else if (drawmode >= 4) {
+		return;
 	}
 
-	// fill internal data structure with default values
-	ozbuf_ptr  = gx_objzbuf;
-	szbuf_ptr  = gx_shdzbuf;
-
-	src_pitch = 16;
-	src_fw    = 16;
-	src_fh    = 16;
-	src_base  = K053246GfxExp + (code * 0x100);
-
-	pal_base  = konami_palette32 + (color << nBpp);
-	shd_base  = konami_palette32; // m_palette->shadow_table(); // iq_132
-
-	dst_ptr   = konami_bitmap32;
-	dst_pitch = nScreenWidth;
-	dst_minx  = 0;
-	dst_maxx  = (nScreenWidth - 1);
-	dst_miny  = 0;
-	dst_maxy  = (nScreenHeight - 1);
-	dst_x     = sx;
-	dst_y     = sy;
-
-	// cull off-screen objects
-	if (dst_x > dst_maxx || dst_y > dst_maxy) return;
-	nozoom = (scalex == 0x10000 && scaley == 0x10000);
-	if (nozoom)
-	{
-		dst_h = dst_w = 16;
-		src_fdy = src_fdx = 1;
+	if (drawmode & 2) {
+		if (!alpha) return;
+		if (alpha == 255) drawmode &= ~2;
 	}
-	else
-	{
-		dst_w = ((scalex<<4)+0x8000)>>16;
-		dst_h = ((scaley<<4)+0x8000)>>16;
-		if (!dst_w || !dst_h) return;
 
-		src_fw <<= FP;
-		src_fh <<= FP;
-		src_fdx = src_fw / dst_w;
-		src_fdy = src_fh / dst_h;
-	}
-	dst_lastx = dst_x + dst_w - 1;
-	if (dst_lastx < dst_minx) return;
-	dst_lasty = dst_y + dst_h - 1;
-	if (dst_lasty < dst_miny) return;
+	INT32 dst_left = sx;
+	INT32 dst_top = sy;
+	INT32 dst_w = ((scalex << 4) + 0x8000) >> 16;
+	INT32 dst_h = ((scaley << 4) + 0x8000) >> 16;
+	if (dst_w <= 0 || dst_h <= 0) return;
 
-	// clip destination
-	dst_skipx = 0;
-	eax = dst_minx;  if ((eax -= dst_x) > 0) { dst_skipx = eax;  dst_w -= eax;  dst_x = dst_minx; }
-	eax = dst_lastx; if ((eax -= dst_maxx) > 0) dst_w -= eax;
-	dst_skipy = 0;
-	eax = dst_miny;  if ((eax -= dst_y) > 0) { dst_skipy = eax;  dst_h -= eax;  dst_y = dst_miny; }
-	eax = dst_lasty; if ((eax -= dst_maxy) > 0) dst_h -= eax;
+	INT32 dst_right = dst_left + dst_w - 1;
+	INT32 dst_bottom = dst_top + dst_h - 1;
+	if (dst_left > nScreenWidth - 1 || dst_right < 0) return;
+	if (dst_top > nScreenHeight - 1 || dst_bottom < 0) return;
 
-	// calculate zoom factors and clip source
-	if (nozoom)
-	{
-		if (!flipx) src_fbx = 0; else { src_fbx = src_fw - 1; src_fdx = -src_fdx; }
-		if (!flipy) src_fby = 0; else { src_fby = src_fh - 1; src_fdy = -src_fdy; src_pitch = -src_pitch; }
-	}
-	else
-	{
-		if (!flipx) src_fbx = FPENT; else { src_fbx = src_fw - FPENT - 1; src_fdx = -src_fdx; }
-		if (!flipy) src_fby = FPENT; else { src_fby = src_fh - FPENT - 1; src_fdy = -src_fdy; }
-	}
-	src_fbx += dst_skipx * src_fdx;
-	src_fby += dst_skipy * src_fdy;
+	const INT32 src_stride_x = (16 << 19) / dst_w;
+	const INT32 src_stride_y = (16 << 19) / dst_h;
+	const INT32 src_offset_x = (dst_left < 0) ? -dst_left : 0;
+	const INT32 src_offset_y = (dst_top < 0) ? -dst_top : 0;
+	const INT32 src_base_x = src_offset_x * src_stride_x;
+	const INT32 src_base_y = src_offset_y * src_stride_y;
 
-	// adjust insertion points and pre-entry constants
-	eax = (dst_y - dst_miny) * GX_ZBUFW + (dst_x - dst_minx) + dst_w;
-	z8 = (UINT8)zcode;
-	p8 = (UINT8)pri;
-	ozbuf_ptr += eax;
-	szbuf_ptr += eax << 1;
-	dst_ptr += dst_y * dst_pitch + dst_x + dst_w;
-	dst_w = -dst_w;
+	if (dst_left < 0) dst_left = 0;
+	if (dst_top < 0) dst_top = 0;
+	if (dst_right >= nScreenWidth) dst_right = nScreenWidth - 1;
+	if (dst_bottom >= nScreenHeight) dst_bottom = nScreenHeight - 1;
 
-	if (!nozoom)
-	{
-		ecx = src_fby;   src_fby += src_fdy;
-		ecx >>= FP;      src_fx = src_fbx;
-		src_x = src_fbx; src_fx += src_fdx;
-		ecx <<= 4;       src_ptr = src_base;
-		src_x >>= FP;    src_ptr += ecx;
-		ecx = dst_w;
+	UINT8 flip_mask = 0;
+	if (flipx) flip_mask |= 0x0f;
+	if (flipy) flip_mask |= 0xf0;
 
-		if (zcode < 0) // no shadow and z-buffering
-		{
-			do {
-				do {
-					eax = src_ptr[src_x];
-					src_x = src_fx;
-					src_fx += src_fdx;
-					src_x >>= FP;
-					if (!eax || eax >= shdpen) continue;
-					dst_ptr [ecx] = pal_base[eax];
+	const UINT8 *src_base_new = K053246GfxExp + ((code & K053246MaskExp) * 0x100);
+	const UINT32 *pal_base_new = konami_palette32 + ((color % (0x2000 / granularity_new)) * granularity_new);
+	UINT32 *dst_ptr_new = konami_bitmap32 + dst_left + (dst_top * nScreenWidth);
+	UINT8 *ozbuf_ptr_new = gx_objzbuf + (dst_top * GX_ZBUFW) + dst_left;
+	UINT8 *szbuf_ptr_new = gx_shdzbuf + ((dst_top * GX_ZBUFW) + dst_left) * 2;
+	const UINT8 z8_new = (UINT8)zcode;
+	const UINT8 pri_new = (UINT8)pri;
+
+	for (INT32 y = 0; y <= dst_bottom - dst_top; y++) {
+		for (INT32 x = 0; x <= dst_right - dst_left; x++) {
+			const INT32 x_off = (src_base_x + x * src_stride_x) >> 19;
+			const INT32 y_off = (src_base_y + y * src_stride_y) >> 19;
+			const UINT8 pal_idx = src_base_new[(x_off + (y_off << 4)) ^ flip_mask];
+
+			if (zcode < 0) {
+				if (!pal_idx || pal_idx >= shdpen_new) continue;
+				ozbuf_ptr_new[x + y * GX_ZBUFW] = z8_new;
+				dst_ptr_new[x + y * nScreenWidth] = pal_base_new[pal_idx];
+			} else if (drawmode < 4) {
+				if (!pal_idx || ((drawmode & 3) && pal_idx >= shdpen_new)) continue;
+				if (ozbuf_ptr_new[x + y * GX_ZBUFW] < z8_new) continue;
+				ozbuf_ptr_new[x + y * GX_ZBUFW] = z8_new;
+
+				if (!(drawmode & 2)) {
+					dst_ptr_new[x + y * nScreenWidth] = pal_base_new[pal_idx];
+				} else {
+					UINT8 alpha_level = alpha;
+					if (alpha & 0x100) {
+						UINT32 temp = alpha_blend_r32(pal_base_new[pal_idx], 0, alpha_level);
+						dst_ptr_new[x + y * nScreenWidth] = add_blend_r32(dst_ptr_new[x + y * nScreenWidth], temp);
+					} else {
+						dst_ptr_new[x + y * nScreenWidth] = alpha_blend_r32(dst_ptr_new[x + y * nScreenWidth], pal_base_new[pal_idx], alpha_level);
+					}
 				}
-				while (++ecx);
+			} else {
+				const INT32 szbuf_offset = x * 2 + y * GX_ZBUFW * 2;
+				if (pal_idx < shdpen_new) continue;
+				if (szbuf_ptr_new[szbuf_offset] < z8_new) continue;
+				if (szbuf_ptr_new[szbuf_offset + 1] <= pri_new) continue;
+				szbuf_ptr_new[szbuf_offset] = z8_new;
+				szbuf_ptr_new[szbuf_offset + 1] = pri_new;
 
-				ecx = src_fby;   src_fby += src_fdy;
-				dst_ptr += dst_pitch;
-				ecx >>= FP;      src_fx = src_fbx;
-				src_x = src_fbx; src_fx += src_fdx;
-				ecx <<= 4;       src_ptr = src_base;
-				src_x >>= FP;    src_ptr += ecx;
-				ecx = dst_w;
-			}
-			while (--dst_h);
-		}
-		else
-		{
-			switch (drawmode)
-			{
-				case 0: // all pens solid
-					do {
-						do {
-							eax = src_ptr[src_x];
-							src_x = src_fx;
-							src_fx += src_fdx;
-							src_x >>= FP;
-							if (!eax || ozbuf_ptr[ecx] < z8) continue;
-							eax = pal_base[eax];
-							ozbuf_ptr[ecx] = z8;
-							dst_ptr [ecx] = eax;
-						}
-						while (++ecx);
-
-						ecx = src_fby;   src_fby += src_fdy;
-						ozbuf_ptr += GX_ZBUFW;
-						dst_ptr += dst_pitch;
-						ecx >>= FP;      src_fx = src_fbx;
-						src_x = src_fbx; src_fx += src_fdx;
-						ecx <<= 4;       src_ptr = src_base;
-						src_x >>= FP;    src_ptr += ecx;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-
-				case 1: // solid pens only
-					do {
-						do {
-							eax = src_ptr[src_x];
-							src_x = src_fx;
-							src_fx += src_fdx;
-							src_x >>= FP;
-							if (!eax || eax >= shdpen || ozbuf_ptr[ecx] < z8) continue;
-							eax = pal_base[eax];
-							ozbuf_ptr[ecx] = z8;
-							dst_ptr [ecx] = eax;
-						}
-						while (++ecx);
-
-						ecx = src_fby;   src_fby += src_fdy;
-						ozbuf_ptr += GX_ZBUFW;
-						dst_ptr += dst_pitch;
-						ecx >>= FP;      src_fx = src_fbx;
-						src_x = src_fbx; src_fx += src_fdx;
-						ecx <<= 4;       src_ptr = src_base;
-						src_x >>= FP;    src_ptr += ecx;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-
-				case 2: // all pens solid with alpha blending
-					do {
-						do {
-							eax = src_ptr[src_x];
-							src_x = src_fx;
-							src_fx += src_fdx;
-							src_x >>= FP;
-							if (!eax || ozbuf_ptr[ecx] < z8) continue;
-							ozbuf_ptr[ecx] = z8;
-
-							dst_ptr[ecx] = alpha_blend_r32(pal_base[eax], dst_ptr[ecx], alpha);
-						}
-						while (++ecx);
-
-						ecx = src_fby;   src_fby += src_fdy;
-						ozbuf_ptr += GX_ZBUFW;
-						dst_ptr += dst_pitch;
-						ecx >>= FP;      src_fx = src_fbx;
-						src_x = src_fbx; src_fx += src_fdx;
-						ecx <<= 4;       src_ptr = src_base;
-						src_x >>= FP;    src_ptr += ecx;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-
-				case 3: // solid pens only with alpha blending
-					do {
-						do {
-							eax = src_ptr[src_x];
-							src_x = src_fx;
-							src_fx += src_fdx;
-							src_x >>= FP;
-							if (!eax || eax >= shdpen || ozbuf_ptr[ecx] < z8) continue;
-							ozbuf_ptr[ecx] = z8;
-
-							dst_ptr[ecx] = alpha_blend_r32(pal_base[eax], dst_ptr[ecx], alpha);
-						}
-						while (++ecx);
-
-						ecx = src_fby;   src_fby += src_fdy;
-						ozbuf_ptr += GX_ZBUFW;
-						dst_ptr += dst_pitch;
-						ecx >>= FP;      src_fx = src_fbx;
-						src_x = src_fbx; src_fx += src_fdx;
-						ecx <<= 4;       src_ptr = src_base;
-						src_x >>= FP;    src_ptr += ecx;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-
-				case 4: // shadow pens only
-					do {
-						do {
-							eax = src_ptr[src_x];
-							src_x = src_fx;
-							src_fx += src_fdx;
-							src_x >>= FP;
-							if (eax < shdpen || szbuf_ptr[ecx*2] < z8 || szbuf_ptr[ecx*2+1] <= p8) continue;
-							//UINT32 pix = dst_ptr[ecx];
-							szbuf_ptr[ecx*2] = z8;
-							szbuf_ptr[ecx*2+1] = p8;
-
-							// the shadow tables are 15-bit lookup tables which accept RGB15... lossy, nasty, yuck!
-							if (highlight_enable) {
-								dst_ptr[ecx] = highlight_blend(dst_ptr[ecx]); 
-							} else {
-								dst_ptr[ecx] = shadow_blend(dst_ptr[ecx], shadow_bank); //shd_base[pix.as_rgb15()];
-							}
-							//dst_ptr[ecx] =(eax>>3&0x001f);lend_r32( eax, 0x00000000, 128);
-						}
-						while (++ecx);
-
-						ecx = src_fby;   src_fby += src_fdy;
-						szbuf_ptr += (GX_ZBUFW<<1);
-						dst_ptr += dst_pitch;
-						ecx >>= FP;      src_fx = src_fbx;
-						src_x = src_fbx; src_fx += src_fdx;
-						ecx <<= 4;       src_ptr = src_base;
-						src_x >>= FP;    src_ptr += ecx;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-			}   // switch (drawmode)
-		}   // if (zcode < 0)
-	}   // if (!nozoom)
-	else
-	{
-		src_ptr = src_base + (src_fby<<4) + src_fbx;
-		src_fdy = src_fdx * dst_w + src_pitch;
-		ecx = dst_w;
-
-		if (zcode < 0) // no shadow and z-buffering
-		{
-			do {
-				do {
-					eax = *src_ptr;
-					src_ptr += src_fdx;
-					if (!eax || eax >= shdpen) continue;
-					dst_ptr[ecx] = pal_base[eax];
-				}
-				while (++ecx);
-
-				src_ptr += src_fdy;
-				dst_ptr += dst_pitch;
-				ecx = dst_w;
-			}
-			while (--dst_h);
-		}
-		else
-		{
-			switch (drawmode)
-			{
-				case 0: // all pens solid
-					do {
-						do {
-							eax = *src_ptr;
-							src_ptr += src_fdx;
-							if (!eax || ozbuf_ptr[ecx] < z8) continue;
-							eax = pal_base[eax];
-							ozbuf_ptr[ecx] = z8;
-							dst_ptr[ecx] = eax;
-						}
-						while (++ecx);
-
-						src_ptr += src_fdy;
-						ozbuf_ptr += GX_ZBUFW;
-						dst_ptr += dst_pitch;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-
-				case 1:  // solid pens only
-					do {
-						do {
-							eax = *src_ptr;
-							src_ptr += src_fdx;
-							if (!eax || eax >= shdpen || ozbuf_ptr[ecx] < z8) continue;
-							eax = pal_base[eax];
-							ozbuf_ptr[ecx] = z8;
-							dst_ptr[ecx] = eax;
-						}
-						while (++ecx);
-
-						src_ptr += src_fdy;
-						ozbuf_ptr += GX_ZBUFW;
-						dst_ptr += dst_pitch;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-
-				case 2: // all pens solid with alpha blending
-					do {
-						do {
-							eax = *src_ptr;
-							src_ptr += src_fdx;
-							if (!eax || ozbuf_ptr[ecx] < z8) continue;
-							ozbuf_ptr[ecx] = z8;
-
-							dst_ptr[ecx] = alpha_blend_r32(pal_base[eax], dst_ptr[ecx], alpha);
-						}
-						while (++ecx);
-
-						src_ptr += src_fdy;
-						ozbuf_ptr += GX_ZBUFW;
-						dst_ptr += dst_pitch;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-
-				case 3: // solid pens only with alpha blending
-					do {
-						do {
-							eax = *src_ptr;
-							src_ptr += src_fdx;
-							if (!eax || eax >= shdpen || ozbuf_ptr[ecx] < z8) continue;
-							ozbuf_ptr[ecx] = z8;
-
-							dst_ptr[ecx] = alpha_blend_r32(pal_base[eax], dst_ptr[ecx], alpha);
-						}
-						while (++ecx);
-
-						src_ptr += src_fdy;
-						ozbuf_ptr += GX_ZBUFW;
-						dst_ptr += dst_pitch;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
-
-				case 4: // shadow pens only
-					do {
-						do {
-							eax = *src_ptr;
-							src_ptr += src_fdx;
-							if (eax < shdpen || szbuf_ptr[ecx*2] < z8 || szbuf_ptr[ecx*2+1] <= p8) continue;
-							//UINT32 pix = dst_ptr[ecx];
-							szbuf_ptr[ecx*2] = z8;
-							szbuf_ptr[ecx*2+1] = p8;
-
-							// the shadow tables are 15-bit lookup tables which accept RGB15... lossy, nasty, yuck!
-							if (highlight_enable) {
-								dst_ptr[ecx] = highlight_blend(dst_ptr[ecx]); 
-							} else {
-								dst_ptr[ecx] = shadow_blend(dst_ptr[ecx], shadow_bank); //shd_base[pix.as_rgb15()];
-							}
-						}
-						while (++ecx);
-
-						src_ptr += src_fdy;
-						szbuf_ptr += (GX_ZBUFW<<1);
-						dst_ptr += dst_pitch;
-						ecx = dst_w;
-					}
-					while (--dst_h);
-					break;
+				dst_ptr_new[x + y * nScreenWidth] = shadow_blend(dst_ptr_new[x + y * nScreenWidth], shadow_bank_new);
 			}
 		}
 	}
-#undef FP
-#undef FPONE
-#undef FPHALF
-#undef FPENT
+
+	return;
 }
-
-
-
-
 
 void k053247_draw_yxloop_gx(
 		INT32 code,
@@ -1199,7 +890,7 @@ void k053247_draw_single_sprite_gxcore(UINT8 *gx_objzbuf, UINT8 *gx_shdzbuf, INT
 		// for Escape Kids (GX975)
 		if ( objset1 & 8 ) // Check only "Bit #3 is '1'?"
 		{
-			INT32 screenwidth = nScreenWidth-1;
+			INT32 screenwidth = nScreenWidth;
 
 			zoomx = zoomx>>1; // Fix sprite width to HALF size
 			ox = (ox>>1) + 1; // Fix sprite draw position
@@ -1240,6 +931,8 @@ void k053247_draw_single_sprite_gxcore(UINT8 *gx_objzbuf, UINT8 *gx_shdzbuf, INT
 		oy = (-oy - offy) & temp;
 		if (ox >= xwraplim) ox -= wrapsize;
 		if (oy >= ywraplim) oy -= wrapsize;
+		ox -= K053247_visible_x;
+		oy -= K053247_visible_y;
 
 		temp = temp4>>8 & 0x0f;
 		INT32 width = 1 << (temp & 3);

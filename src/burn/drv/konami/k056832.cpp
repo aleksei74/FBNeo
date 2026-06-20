@@ -15,6 +15,11 @@ static UINT8 *K056832RomExp;
 static UINT8 *K056832TransTab;
 
 static INT32 K056832RomExpMask;
+static INT32 K056832ColorGranularity;
+static INT32 K056832VramWordOrder;
+static INT32 K056832Brightness;
+static INT32 K056832AlphaTileMode;
+static INT32 K056832LastAlphaTileMixCode;
 
 static INT32 m_layer_offs[8][2];
 static INT32 global_clip[4];
@@ -47,6 +52,15 @@ static UINT8 *linemap_primap = NULL;
 
 static void (*m_callback)(INT32 layer, INT32 *code, INT32 *color, INT32 *flags);
 
+static void k056832_sync_tile_modes()
+{
+	UINT16 data = BURN_ENDIAN_SWAP_INT16(k056832Regs[0x08 / 2]);
+
+	for (INT32 layer = 0; layer < 4; layer++) {
+		m_layer_tile_mode[layer] = data & (1 << layer);
+	}
+}
+
 UINT16 K056832GetVram(INT32 address)
 {
 	return K056832VideoRAM[address];
@@ -69,6 +83,13 @@ void K056832Reset()
 	m_rom_half = 0;
 	m_selected_page = 0;
 	m_selected_page_x4096 = 0;
+	for (INT32 i = 0; i < 8; i++) {
+		m_layer_tile_mode[i] = 1;
+	}
+	for (INT32 i = 0; i < 16; i++) {
+		m_layer_assoc_with_page[i] = -1;
+		m_page_tile_mode[i] = 1;
+	}
 }
 
 static void CalculateTranstab()
@@ -113,6 +134,11 @@ void K056832Init(UINT8 *rom, UINT8 *romexp, INT32 rom_size, void (*cb)(INT32 lay
 	K056832Rom = rom;
 	K056832RomExp = romexp;
 	K056832RomExpMask = ((rom_size * 2) / 0x40) - 1;
+	K056832ColorGranularity = 16;
+	K056832VramWordOrder = 0;
+	K056832Brightness = 0xff;
+	K056832AlphaTileMode = 0;
+	K056832LastAlphaTileMixCode = 0;
 	m_num_gfx_banks = rom_size / 0x2000;
 
 	CalculateTranstab();
@@ -124,6 +150,48 @@ void K056832Init(UINT8 *rom, UINT8 *romexp, INT32 rom_size, void (*cb)(INT32 lay
 	K056832VideoRAM = (UINT16*)BurnMalloc(0x2000 * 0x11 * 2);
 
 	K056832Reset();
+}
+
+void K056832SetRomExpTileCount(INT32 tiles)
+{
+	if (tiles <= 0) return;
+
+	BurnFree(K056832TransTab);
+
+	K056832RomExpMask = tiles - 1;
+
+	CalculateTranstab();
+}
+
+void K056832SetColorGranularity(INT32 colors)
+{
+	if (colors > 0) K056832ColorGranularity = colors;
+}
+
+void K056832SetVramWordOrder(INT32 swapped)
+{
+	K056832VramWordOrder = swapped ? 1 : 0;
+}
+
+void K056832SetBrightness(INT32 brightness)
+{
+	K056832Brightness = brightness & 0xff;
+}
+
+static inline UINT32 K056832ApplyBrightness(UINT32 color)
+{
+	if (K056832Brightness >= 0xff) return color;
+
+	UINT32 r = ((color >> 16) & 0xff) * K056832Brightness / 0xff;
+	UINT32 g = ((color >>  8) & 0xff) * K056832Brightness / 0xff;
+	UINT32 b = ((color >>  0) & 0xff) * K056832Brightness / 0xff;
+
+	return (r << 16) | (g << 8) | b;
+}
+
+static inline UINT32 K056832VramWordOffset(UINT32 offset)
+{
+	return offset & 0x0fff;
 }
 
 void K056832Exit()
@@ -147,6 +215,11 @@ void K056832SetLayerAssociation(INT32 status)
 	m_layer_association = m_default_layer_association = status;
 }
 
+void K056832SetRomBankCount(INT32 banks)
+{
+	if (banks > 0) m_num_gfx_banks = banks;
+}
+
 void K056832SetGlobalOffsets(INT32 minx, INT32 miny)
 {
 	CLIP_MINX = (minx < 0) ? 0 : minx;
@@ -159,6 +232,16 @@ void K056832SetLayerOffsets(INT32 layer, INT32 xoffs, INT32 yoffs)
 {
 	m_layer_offs[layer & 3][0] = xoffs;
 	m_layer_offs[layer & 3][1] = yoffs;
+}
+
+void K056832SetAlphaTileMode(INT32 enable)
+{
+	K056832AlphaTileMode = enable ? 1 : 0;
+}
+
+INT32 K056832GetLastAlphaTileMixCode()
+{
+	return K056832LastAlphaTileMixCode & 3;
 }
 
 void K056832SetExtLinescroll()
@@ -219,15 +302,6 @@ static void k056832_change_rambank()
 	mark_all_tilemaps_dirty();
 }
 
-#if 0
-static INT32 k056832_get_current_rambank()
-{
-	INT32 bank = BURN_ENDIAN_SWAP_INT16(k056832Regs[0x19]);
-
-	return ((bank >> 1) & 0xc) | (bank & 3);
-}
-#endif
-
 static void k056832_change_rombank()
 {
 	INT32 bank;
@@ -260,10 +334,13 @@ static void k056832_update_page_layout()
 
 	for (INT32 layer = 0; layer < 4; layer++)
 	{
-		m_y[layer] = (BURN_ENDIAN_SWAP_INT16(k056832Regs[0x08|layer]) & 0x18) >> 3;
-		m_x[layer] = (BURN_ENDIAN_SWAP_INT16(k056832Regs[0x0c|layer]) & 0x18) >> 3;
-		m_h[layer] = (BURN_ENDIAN_SWAP_INT16(k056832Regs[0x08|layer]) & 0x03) >> 0;
-		m_w[layer] = (BURN_ENDIAN_SWAP_INT16(k056832Regs[0x0c|layer]) & 0x03) >> 0;
+		UINT16 yreg = BURN_ENDIAN_SWAP_INT16(k056832Regs[(0x10 / 2) + layer]);
+		UINT16 xreg = BURN_ENDIAN_SWAP_INT16(k056832Regs[(0x18 / 2) + layer]);
+
+		m_y[layer] = (yreg & 0x18) >> 3;
+		m_x[layer] = (xreg & 0x18) >> 3;
+		m_h[layer] = (yreg & 0x03) >> 0;
+		m_w[layer] = (xreg & 0x03) >> 0;
 
 		if (!m_y[layer] && !m_x[layer] && m_h[layer] == 3 && m_w[layer] == 3)
 		{
@@ -293,8 +370,7 @@ static void k056832_update_page_layout()
 			for (INT32 c = 0; c < colspan; c++)
 			{
 				INT32 page_idx = (((rowstart + r) & 3) << 2) + ((colstart + c) & 3);
-				if (m_layer_assoc_with_page[page_idx] == -1)
-					m_layer_assoc_with_page[page_idx] = setlayer;
+				m_layer_assoc_with_page[page_idx] = setlayer;
 			}
 		}
 	}
@@ -302,7 +378,7 @@ static void k056832_update_page_layout()
 	mark_all_tilemaps_dirty();
 }
 
-static void k056832_word_write_update(INT32 offset) // (offset/2)&0x1f internally
+static void k056832_word_write_update(INT32 offset, UINT16 old_data) // (offset/2)&0x1f internally
 {
 	offset = (offset / 2) & 0x1f;
 
@@ -326,9 +402,12 @@ static void k056832_word_write_update(INT32 offset) // (offset/2)&0x1f internall
 
 		case 0x08/2:
 			for (INT32 layer = 0; layer < 4; layer++) {
-				m_layer_tile_mode[layer] = data & (1 << layer);
+				INT32 mask = 1 << layer;
+				INT32 tilemode = data & mask;
 
-				INT32 tilemode = m_layer_tile_mode[layer];
+				if (tilemode == (old_data & mask)) continue;
+
+				m_layer_tile_mode[layer] = tilemode;
 
 				for (INT32 i = 0; i < 16; i++)
 				{
@@ -354,16 +433,20 @@ static void k056832_word_write_update(INT32 offset) // (offset/2)&0x1f internall
 
 void K056832WordWrite(INT32 offset, UINT16 data)
 {
-	k056832Regs[(offset / 2) & 0x1f] = BURN_ENDIAN_SWAP_INT16(data);
-	k056832_word_write_update(offset);
+	INT32 reg = (offset / 2) & 0x1f;
+	UINT16 old_data = BURN_ENDIAN_SWAP_INT16(k056832Regs[reg]);
+	k056832Regs[reg] = BURN_ENDIAN_SWAP_INT16(data);
+	k056832_word_write_update(offset, old_data);
 }
 
 void K056832ByteWrite(INT32 offset, UINT8 data)
 {
+	INT32 reg = (offset / 2) & 0x1f;
+	UINT16 old_data = BURN_ENDIAN_SWAP_INT16(k056832Regs[reg]);
 	UINT8 *regs = (UINT8*)&k056832Regs;
 	regs[(offset & 0x3f) ^ 1] = data;
 
-	k056832_word_write_update(offset);
+	k056832_word_write_update(offset, old_data);
 }
 
 UINT16 K056832RomWordRead(UINT16 offset)
@@ -400,30 +483,47 @@ UINT8 K056832HalfRamReadByte(UINT32 offset)
 
 void K056832RamWriteWord(UINT32 offset, UINT16 data)
 {
-	offset = (offset & 0x1fff) / 2;
-//	if (data == 0xda02) { bprintf(0, _T("fog @ %x  %x\n"), m_selected_page_x4096 + (offset), data); }
+	offset = K056832VramWordOffset((offset & 0x1fff) / 2);
 	K056832VideoRAM[m_selected_page_x4096 + (offset)] = BURN_ENDIAN_SWAP_INT16(data);
+}
+
+void K056832RamWriteWordMask(UINT32 offset, UINT16 data, UINT16 mem_mask)
+{
+	offset = K056832VramWordOffset((offset & 0x1fff) / 2);
+
+	UINT16 word = BURN_ENDIAN_SWAP_INT16(K056832VideoRAM[m_selected_page_x4096 + offset]);
+	word = (word & ~mem_mask) | (data & mem_mask);
+	K056832VideoRAM[m_selected_page_x4096 + offset] = BURN_ENDIAN_SWAP_INT16(word);
 }
 
 void K056832RamWriteByte(UINT32 offset, UINT8 data)
 {
-	UINT8 *ram = (UINT8*)(K056832VideoRAM + m_selected_page_x4096);
+	UINT32 wordoffs = K056832VramWordOffset((offset & 0x1fff) >> 1);
+	UINT16 word = BURN_ENDIAN_SWAP_INT16(K056832VideoRAM[m_selected_page_x4096 + wordoffs]);
 
-	ram[(offset & 0x1fff) ^ 1] = data;
+	if (offset & 1) {
+		word = (word & 0xff00) | data;
+	} else {
+		word = (word & 0x00ff) | (data << 8);
+	}
+
+	K056832VideoRAM[m_selected_page_x4096 + wordoffs] = BURN_ENDIAN_SWAP_INT16(word);
 }
 
 UINT16 K056832RamReadWord(UINT32 offset)
 {
-	return BURN_ENDIAN_SWAP_INT16(K056832VideoRAM[m_selected_page_x4096 + ((offset & 0x1fff) / 2)]);
+	m_rom_half = 0;
+
+	return BURN_ENDIAN_SWAP_INT16(K056832VideoRAM[m_selected_page_x4096 + K056832VramWordOffset((offset & 0x1fff) / 2)]);
 }
 
 UINT8 K056832RamReadByte(UINT32 offset)
 {
-	UINT8 *ram = (UINT8*)(K056832VideoRAM + m_selected_page_x4096);
+	UINT16 word = BURN_ENDIAN_SWAP_INT16(K056832VideoRAM[m_selected_page_x4096 + K056832VramWordOffset((offset & 0x1fff) >> 1)]);
 
 	m_rom_half = 0;
 
-	return ram[(offset & 0x1fff) ^ 1];
+	return (offset & 1) ? (word & 0xff) : (word >> 8);
 }
 
 UINT16 K056832RomWord8000Read(INT32 offset)
@@ -442,7 +542,7 @@ void K056832WritebRegsByte(INT32 offset, UINT8 data)
 {
 	UINT8 *regs = (UINT8*)&k056832Regsb;
 
-	regs[(offset & 0x1f)^1] = data;
+	regs[offset & 0x1f] = data;
 }
 
 UINT16 K056832mwRomWordRead(INT32 address)
@@ -470,6 +570,24 @@ UINT16 K056832mwRomWordRead(INT32 address)
 	}
 
 	return 0;
+}
+
+UINT8 K056832GxRomByteRead(INT32 address)
+{
+	INT32 offset = (address & 0x1fff) + (m_cur_gfx_banks * 0x2000);
+	INT32 base = (offset / 4) * 5 + ((offset & 3) * 2);
+
+	if (m_rom_half && ((address & 3) == 3)) {
+		return 0;
+	}
+
+	if (m_rom_half) {
+		return K056832Rom[base + 1];
+	}
+
+	m_rom_half = 1;
+
+	return K056832Rom[base];
 }
 
 
@@ -575,7 +693,6 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 		INT32 attr  = BURN_ENDIAN_SWAP_INT16(pMem[0]);
 		INT32 code  = BURN_ENDIAN_SWAP_INT16(pMem[1]);
-
 		if (m_layer_association)
 		{
 			layer = m_layer_assoc_with_page[pageIndex];
@@ -592,8 +709,16 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 		flip &= (attr >> smptr->flips) & 3;
 		INT32 color = (attr & smptr->palm1) | (attr >> smptr->pals2 & smptr->palm2);
 		INT32 g_flags = flip & 3;
+		INT32 mix_code = (attr >> 6) & 3;
+		INT32 category = (K056832AlphaTileMode && mix_code) ? 1 : 0;
+		if (category) {
+			K056832LastAlphaTileMixCode = mix_code;
+		}
 
 		m_callback(layer, &code, &color, &g_flags);
+
+		if ((flags & K056832_DRAW_CATEGORY_1) && !category) continue;
+		if (!(flags & (K056832_DRAW_CATEGORY_1 | K056832_DRAW_ALL_CATEGORIES)) && category) continue;
 
 		// hack - mystic warriors' water level - iq
 		if (g_flags & 0x8000) {
@@ -612,7 +737,8 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 			if (tilemap_flip & 2) g_flags ^= 2;
 
 			UINT8 *rom = K056832RomExp + (code * 0x40);
-			UINT32 *pal = konami_palette32 + (color * 16); // if > 4 bit, adjust in tilemap callback
+			INT32 palette_colors = 0x2000 / K056832ColorGranularity;
+			UINT32 *pal = konami_palette32 + ((color % palette_colors) * K056832ColorGranularity);
 
 			INT32 flip_tile = 0;
 			if (g_flags & 0x01) flip_tile |= 0x07;
@@ -643,9 +769,9 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 						if (pxl || opaque) {
 							if (alpha_enable) {
-								dst[xx] = alpha_blend(dst[xx], pal[pxl], alpha);
+								dst[xx] = alpha_blend(dst[xx], K056832ApplyBrightness(pal[pxl]), alpha);
 							} else {
-								dst[xx] = pal[pxl];
+								dst[xx] = K056832ApplyBrightness(pal[pxl]);
 							}
 							pri[xx] = priority;
 						}
@@ -656,10 +782,8 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 	}
 }
 
-void K056832SetLinemap() // just for GIJOE
+void K056832SetLinemap()
 {
-	bprintf(0, _T("K056832 - Linemap enabled. (GIJOE)\n"));
-
 	K056832_Linemap_Enabled = 1;
 	linemap_bitmap = (UINT32*)BurnMalloc(512 * 256 * sizeof(UINT32));
 	linemap_primap = (UINT8 *)BurnMalloc(512 * 256 * sizeof(UINT8));
@@ -674,9 +798,12 @@ static int update_linemap(INT32 layer, INT32 pageIndex, INT32 flags, INT32 prior
 	k056832_shiftmasks[4] = {{6, 0x3f, 0, 0x00}, {4, 0x0f, 2, 0x30}, {2, 0x03, 2, 0x3c}, {0, 0x00, 2, 0x3f}};
 	const struct K056832_SHIFTMASKS *smptr;
 
+	if (m_layer_assoc_with_page[pageIndex] >= 0) {
+		m_page_tile_mode[pageIndex] = m_layer_tile_mode[m_layer_assoc_with_page[pageIndex]];
+	}
+
 	if (m_page_tile_mode[pageIndex]) return 0; // this is a tilemap, not a linemap!
 	if (!K056832_Linemap_Enabled) return 1; // linemap not enabled? ignore this page.
-	if (~nSpriteEnable & 8) return 0;
 
 	UINT32 *dst = linemap_bitmap;
 	UINT8  *pri = linemap_primap;
@@ -687,7 +814,6 @@ static int update_linemap(INT32 layer, INT32 pageIndex, INT32 flags, INT32 prior
 
 		INT32 attr  = BURN_ENDIAN_SWAP_INT16(pMem[0]);
 		INT32 code  = BURN_ENDIAN_SWAP_INT16(pMem[1]);
-
 		if (m_layer_association)
 		{
 			layer = m_layer_assoc_with_page[pageIndex];
@@ -707,26 +833,28 @@ static int update_linemap(INT32 layer, INT32 pageIndex, INT32 flags, INT32 prior
 
 		m_callback(layer, &code, &color, &g_flags);
 
-		UINT8  *pix = K056832RomExp + ((code & ~7) * 0x40);
-		UINT32 *pal = konami_palette32 + (color * 16); // if > 4 bit, adjust in tilemap callback
-		INT32 flipx = (g_flags & 1) ? 0x1ff : 0;
+		INT32 palette_colors = 0x2000 / K056832ColorGranularity;
+		UINT32 *pal = konami_palette32 + ((color % palette_colors) * K056832ColorGranularity);
 
-		for (INT32 x = 0; x < 512; x++)
+		for (INT32 x = 0; x < 512; x += 8)
 		{
-			INT32 pixel = pix[x ^ flipx];
+			UINT8 *pix = K056832RomExp + ((((code & ~7) | (x >> 6)) * 0x40) + (x & 0x3f));
 
-			if (pixel) {
-				dst[x] = pal[pixel];
-				pri[x] = priority;
-			} else {
-				dst[x] = 0;
-				pri[x] = 0;
+			for (INT32 p = 0; p < 8; p++) {
+				INT32 pixel = pix[p];
+
+				if (pixel) {
+					dst[x + p] = K056832ApplyBrightness(pal[pixel]);
+					pri[x + p] = priority;
+				} else {
+					dst[x + p] = 0;
+					pri[x + p] = 0;
+				}
 			}
 		}
 
 		dst += 512;
 		pri += 512;
-		pix += 512;
 	}
 
 	return 0;
@@ -757,17 +885,19 @@ void K056832Draw(INT32 layer, UINT32 flags, UINT32 priority)
 	INT32 tmap;
 
 	INT32 tmap_scrollx=0,tmap_scrolly=0;
-
 	INT32 clip_data[4] = {0, 0, 0, 0}; // minx, maxx, miny, maxy
 
-	INT32 rowstart = (BURN_ENDIAN_SWAP_INT16(m_regs[0x08|layer]) & 0x18) >> 3;
-	INT32 colstart = (BURN_ENDIAN_SWAP_INT16(m_regs[0x0c|layer]) & 0x18) >> 3;
-	INT32 rowspan  = ((BURN_ENDIAN_SWAP_INT16(m_regs[0x08|layer]) & 0x03) >> 0) + 1;
-	INT32 colspan  = ((BURN_ENDIAN_SWAP_INT16(m_regs[0x0c|layer]) & 0x03) >> 0) + 1;
-	INT32 dy = (INT16)BURN_ENDIAN_SWAP_INT16(m_regs[0x10|layer]);
-	INT32 dx = (INT16)BURN_ENDIAN_SWAP_INT16(m_regs[0x14|layer]);
-	INT32 scrollbank = ((BURN_ENDIAN_SWAP_INT16(m_regs[0x18]) >> 1) & 0xc) | (BURN_ENDIAN_SWAP_INT16(m_regs[0x18]) & 3);
-	INT32 scrollmode = BURN_ENDIAN_SWAP_INT16(m_regs[0x05]) >> (m_lsram_page[layer][0] << 1) & 3;
+	UINT16 yreg = BURN_ENDIAN_SWAP_INT16(m_regs[(0x10 / 2) + layer]);
+	UINT16 xreg = BURN_ENDIAN_SWAP_INT16(m_regs[(0x18 / 2) + layer]);
+
+	INT32 rowstart = (yreg & 0x18) >> 3;
+	INT32 colstart = (xreg & 0x18) >> 3;
+	INT32 rowspan  = ((yreg & 0x03) >> 0) + 1;
+	INT32 colspan  = ((xreg & 0x03) >> 0) + 1;
+	INT32 dy = (INT16)BURN_ENDIAN_SWAP_INT16(m_regs[(0x20 / 2) + layer]);
+	INT32 dx = (INT16)BURN_ENDIAN_SWAP_INT16(m_regs[(0x28 / 2) + layer]);
+	INT32 scrollbank = ((BURN_ENDIAN_SWAP_INT16(m_regs[0x30 / 2]) >> 1) & 0xc) | (BURN_ENDIAN_SWAP_INT16(m_regs[0x30 / 2]) & 3);
+	INT32 scrollmode = BURN_ENDIAN_SWAP_INT16(m_regs[0x0a / 2]) >> (m_lsram_page[layer][0] << 1) & 3;
 
 	if (m_use_ext_linescroll)
 	{
@@ -807,6 +937,12 @@ void K056832Draw(INT32 layer, UINT32 flags, UINT32 priority)
 		corr = 0;
 
 	corr -= m_layer_offs[layer][0];
+
+	if (scrollmode == 0 && (flags & K056382_DRAW_FLAG_FORCE_XYSCROLL))
+	{
+		scrollmode = 3;
+		flags &= ~K056382_DRAW_FLAG_FORCE_XYSCROLL;
+	}
 
 	switch( scrollmode )
 	{
@@ -931,13 +1067,15 @@ void K056832Draw(INT32 layer, UINT32 flags, UINT32 priority)
 
 			if (m_layer_association)
 			{
-				if (m_layer_assoc_with_page[pageIndex] != layer)
+				if (m_layer_assoc_with_page[pageIndex] != layer) {
 					continue;
+				}
 			}
 			else
 			{
-				if (m_layer_assoc_with_page[pageIndex] == -1)
+				if (m_layer_assoc_with_page[pageIndex] == -1) {
 					continue;
+				}
 
 				m_active_layer = layer;
 			}
@@ -1049,6 +1187,11 @@ int K056832GetLayerAssociation()
 	return m_layer_association;
 }
 
+int K056832GetActiveLayer()
+{
+	return m_active_layer;
+}
+
 void K056832Metamorphic_Fixup()
 { // Metmorphic Force (metamrph)'s scroll data has a different offset.  Notably, this fixes the jumbled up "Break the Statue" text. (for those familiar with the game)
 	K056832_metamorphic_textfix = 1;
@@ -1085,6 +1228,8 @@ void K056832Scan(INT32 nAction)
 		SCAN_VAR(m_cur_tile_bank);
 		SCAN_VAR(m_layer_tile_mode);
 		SCAN_VAR(m_page_tile_mode);
+		SCAN_VAR(K056832AlphaTileMode);
+		SCAN_VAR(K056832LastAlphaTileMixCode);
 
 		SCAN_VAR(m_cur_gfx_banks);
 		SCAN_VAR(tilemap_flip);

@@ -14,12 +14,18 @@ static INT32 konamigx_wrport1_0 = 0;
 //static INT32 m_konamigx_current_frame;
 static INT32 m_gx_objdma, m_gx_primode;
 
-#define GX_MAX_SPRITES 512
+void konamigx_set_wrport1_0(INT32 data)
+{
+	konamigx_wrport1_0 = data & 0xff;
+}
+
+#define GX_MAX_SPRITES 1024
 #define GX_MAX_LAYERS  6
 #define GX_MAX_OBJECTS (GX_MAX_SPRITES + GX_MAX_LAYERS)
 
 static struct GX_OBJ { INT32 order, offs, code, color; } *gx_objpool;
 static UINT16 *gx_spriteram;
+static INT32 gx_spriteram_bank_offset;
 
 static INT32 *K054338_shdRGB;
 
@@ -93,6 +99,7 @@ void konamigx_mixer_init(INT32 objdma)
 	K054338_export_config(&K054338_shdRGB);
 
 	gx_spriteram = (UINT16*)K053247Ram;
+	gx_spriteram_bank_offset = 0;
 
 	if (objdma)
 	{
@@ -115,7 +122,16 @@ void konamigx_mixer_exit()
 	}
 	BurnFree(gx_objpool);
 	m_gx_objdma = 0;
+	gx_spriteram_bank_offset = 0;
 	konamigx_mystwarr_kludge = 0;
+}
+
+void konamigx_mixer_set_spriteram_bank(INT32 bank)
+{
+	if (!m_gx_objdma) {
+		gx_spriteram = (UINT16*)K053247Ram;
+		gx_spriteram_bank_offset = (bank & 1) ? 0x800 : 0;
+	}
 }
 
 void konamigx_scan(INT32 nAction)
@@ -127,6 +143,8 @@ void konamigx_scan(INT32 nAction)
 			ScanVar(gx_spriteram, 0x1000, "gx spriteram");
 		}
 		ScanVar(gx_objpool, GX_MAX_OBJECTS * sizeof(GX_OBJ), "gx obj pool");
+		SCAN_VAR(gx_spriteram_bank_offset);
+		SCAN_VAR(konamigx_wrport1_0);
 	}
 }
 
@@ -158,41 +176,59 @@ void konamigx_mixer_primode(INT32 mode)
 
 static void gx_draw_basic_tilemaps(INT32 mixerflags, INT32 code)
 {
-	INT32 temp1,temp2,temp3,temp4;
 	INT32 i = code<<1;
 	INT32 j = mixerflags>>i & 3;
 	INT32 k = 0;
 
 	INT32 disp = K055555ReadRegister(K55_INPUT_ENABLES);
-	if (disp & (1<<code))
+	if (disp & (1 << code))
 	{
-		if (j == GXMIX_BLEND_NONE)  { temp1 = 0xff; temp2 = temp3 = 0; } else
-		if (j == GXMIX_BLEND_FORCE) { temp1 = 0x00; temp2 = mixerflags>>(i+16); temp3 = 3; }
-		else
-		{
-			temp1 = vinmix;
-			temp2 = vinmix>>i & 3;
-			temp3 = vmixon>>i & 3;
+		INT32 bri_mode = (K055555ReadRegister(K55_VBRI) >> (code << 1)) & 3;
+		INT32 brightness = 0xff;
+		if (bri_mode == 1) brightness = K054338_read_register(K338_REG_BRI3) & 0xff;
+		if (bri_mode == 2) brightness = K054338_read_register(K338_REG_BRI3 + 1) >> 8;
+		if (bri_mode == 3) brightness = K054338_read_register(K338_REG_BRI3 + 1) & 0xff;
+		K056832SetBrightness(brightness);
+
+		INT32 mix_mode_internal = 0;
+		INT32 mix_mode_external = 0;
+
+		if (j == GXMIX_BLEND_FORCE) {
+			mix_mode_internal = (mixerflags >> (i + 16)) & 3;
+		} else {
+			INT32 v_inmix_on_layer = (vmixon >> i) & 3;
+			INT32 v_inmix_layer = (vinmix >> i) & 3;
+			INT32 tile_mix_code = (UINT32)mixerflags >> 30;
+
+			mix_mode_internal = v_inmix_layer & v_inmix_on_layer;
+			mix_mode_external = tile_mix_code & ~v_inmix_on_layer;
 		}
 
-		/* blend layer only when:
-		    1) vinmix != 0xff
-		    2) its internal mix code is set
-		    3) all mix code bits are internal(overriden until tile blending has been implemented)
-		    4) 0 > alpha < 255;
-		*/
-		if (temp1!=0xff && temp2 /*&& temp3==3*/)
-		{
-			if (konamigx_mystwarr_kludge) temp2 = 1; // mixlev only on this layer via '338 for mystwarr
-			temp4 = K054338_set_alpha_level(temp2);
-//			bprintf(0, _T("%x layer, temp4 %x  temp2 %x\n"), code, temp4, temp2);
-			if (temp4 <= 0 && !konamigx_mystwarr_kludge) return; // alpha level so high that layer is completely invisible. mystwarr needs this disabled for tile-based alpha tile counting.
-			if (temp4 < 255) k = K056832_SET_ALPHA(temp4);
+		if (mix_mode_internal) {
+			INT32 alpha_mode = konamigx_mystwarr_kludge ? 1 : mix_mode_internal;
+			INT32 alpha = K054338_set_alpha_level(alpha_mode) & 0x1ff;
+			if (alpha & 0x100) {
+				alpha &= 0xff;
+				if (alpha) alpha = ~alpha & 0xff;
+			}
+			if (alpha < 0) alpha = 0;
+			if (alpha < 255) k = K056832_SET_ALPHA(alpha);
 		}
 
 		if (mixerflags & 1<<(code+12)) k |= K056382_DRAW_FLAG_FORCE_XYSCROLL;
 
-		if (nBurnLayer & (1 << code)) K056832Draw(code, k, 0);
+		if (nBurnLayer & (1 << code)) {
+			INT32 alpha2 = K054338_set_alpha_level(mix_mode_external) & 0x1ff;
+			if (alpha2 & 0x100) alpha2 = ~alpha2 & 0xff;
+
+			if (alpha2 < 255) {
+				K056832Draw(code, (k & ~K056832_LAYER_ALPHA) | K056832_SET_ALPHA(alpha2) | K056832_DRAW_CATEGORY_1, 0);
+				K056832Draw(code, k, 0);
+			} else {
+				K056832Draw(code, k | K056832_DRAW_ALL_CATEGORIES, 0);
+			}
+		}
+		K056832SetBrightness(0xff);
 	}
 }
 
@@ -241,8 +277,9 @@ static void gx_draw_basic_extended_tilemaps_1(INT32 mixerflags, INT32 code, INT3
 			if (width>512) // vsnetscr case
 				pixeldouble_output = 1;
 
-			if (nSpriteEnable & 4 && K053936_external_bitmap)
+			if (((nSpriteEnable & 4) || rushingheroes_hack) && K053936_external_bitmap) {
 				K053936GP_0_zoom_draw(K053936_external_bitmap, l, k, alpha, pixeldouble_output, m_k053936_0_ctrl_16, m_k053936_0_linectrl_16, m_k053936_0_ctrl, m_k053936_0_linectrl);
+			}
 		}
 		else
 		{
@@ -362,7 +399,6 @@ static void konamigx_mixer_draw(INT32 sub1, INT32 sub1flags,INT32 sub2, INT32 su
 			{
 				alpha = color>>K055555_MIXSHIFT & 3;
 				if (alpha) alpha = K054338_set_alpha_level(alpha);
-				//bprintf(0, _T("alpha %X : %X "), alpha, color>>K055555_MIXSHIFT & 3);
 				if (alpha <= 0) continue;
 			}
 			color &= K055555_COLORMASK;
@@ -370,7 +406,6 @@ static void konamigx_mixer_draw(INT32 sub1, INT32 sub1flags,INT32 sub2, INT32 su
 			if (drawmode >= 4) {
 			//	m_palette->set_shadow_mode(order & 0x0f);
 				drawmode |= (order & 0x0f)<<4;
-				//bprintf(0, _T("shad %X. "), order & 0xf);
 			}
 
 			if (!(mixerflags & GXMIX_NOZBUF))
@@ -565,7 +600,7 @@ void konamigx_mixer(INT32 sub1 /*extra tilemap 1*/, INT32 sub1flags, INT32 sub2 
 //  i = j = 0xff;
 	INT32 l = 0;
 
-	for (INT32 offs=0; offs<0x800; offs+=8)
+	for (INT32 offs = gx_spriteram_bank_offset; offs < gx_spriteram_bank_offset + 0x800; offs += 8)
 	{
 		INT32 pri = 0;
 
@@ -687,7 +722,6 @@ void konamigx_mixer(INT32 sub1 /*extra tilemap 1*/, INT32 sub1flags, INT32 sub2 
 		*/
 		if (temp1)
 		{
-
 			// add objects with solid or alpha pens
 			INT32 order = pri<<24 | zcode<<16 | offs<<(8-3) | temp2<<4;
 			objptr->order = order;
@@ -727,7 +761,11 @@ void konamigx_mixer(INT32 sub1 /*extra tilemap 1*/, INT32 sub1flags, INT32 sub2 
 		{
 			INT32 temp3 = objbuf[i];
 			INT32 temp4 = objpool[temp3].order;
-			if ((UINT32)temp2 <= (UINT32)temp4) { temp2 = temp4; objbuf[i] = temp1; objbuf[j] = temp1 = temp3; }
+			if ((UINT32)temp2 < (UINT32)temp4 || (temp2 == temp4 && temp1 < temp3)) {
+				temp2 = temp4;
+				objbuf[i] = temp1;
+				objbuf[j] = temp1 = temp3;
+			}
 		}
 	}
 

@@ -31163,6 +31163,43 @@ struct BurnDriver BurnDrvRbff1uh = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (Korean Translation)
+
+static struct BurnRomInfo aof3krRomDesc[] = {
+	{ "096-p1k.p1",   0x100000, 0x57ee3b1a, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
+	{ "096-p2k.sp2",  0x200000, 0x9a7b0fd6, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
+
+	{ "096-s1k.s1",   0x020000, 0xb6a2699c, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "096-c1k.c1",   0x400000, 0xedde00a7, 3 | BRF_GRA },           //  3 Sprite data		/ TC5332205
+	{ "096-c2k.c2",   0x400000, 0x95319ee0, 3 | BRF_GRA },           //  4 					/ TC5332205
+	{ "096-c3.c3",    0x400000, 0x55f9ee1e, 3 | BRF_GRA },           //  5 					/ TC5332205
+	{ "096-c4.c4",    0x400000, 0x585b7e47, 3 | BRF_GRA },           //  6 					/ TC5332205
+	{ "096-c5.c5",    0x400000, 0xc75a753c, 3 | BRF_GRA },           //  7 					/ TC5332205
+	{ "096-c6.c6",    0x400000, 0x9a9d2f7a, 3 | BRF_GRA },           //  8 					/ TC5332205
+	{ "096-c7.c7",    0x200000, 0x51bd8ab2, 3 | BRF_GRA },           //  9 					/ TC5316200
+	{ "096-c8.c8",    0x200000, 0x9a34f99c, 3 | BRF_GRA },           // 10 					/ TC5316200
+
+	{ "096-m1.m1",    0x020000, 0xcb07b659, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/ TC531001
+
+	{ "096-v1.v1",    0x200000, 0xe2c32074, 5 | BRF_SND },           // 12 Sound data		/ TC5316200
+	{ "096-v2.v2",    0x200000, 0xa290eee7, 5 | BRF_SND },           // 13 					/ TC5316200
+	{ "096-v3.v3",    0x200000, 0x199d12ea, 5 | BRF_SND },           // 14 					/ TC5316200
+};
+
+STDROMPICKEXT(aof3kr, aof3kr, neogeo)
+STD_ROM_FN(aof3kr)
+
+struct BurnDriver BurnDrvAof3kr = {
+	"aof3kr", "aof3", "neogeo", NULL, "1996",
+	"Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"\uC544\uD2B8 \uC624\uBE0C \uB354 \uD30C\uC774\uD305 3 - \uB354 \uD328\uC2A4 \uC624\uBE0C \uB354 \uC6CC\uB9AC\uC5B4 / \uC544\uD2B8 \uC624\uBE0C \uB354 \uD30C\uC774\uD305 - \uC6A9\uD638\uC758 \uAD8C \uC678\uC804 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
+	NULL, aof3krRomInfo, aof3krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (AES Uncensored Hack)
 
 static struct BurnRomInfo aof3uhRomDesc[] = {
@@ -31193,7 +31230,7 @@ STD_ROM_FN(aof3uh)
 struct BurnDriver BurnDrvAof3uh = {
 	"aof3uh", "aof3", "neogeo", NULL, "2024",
 	"Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (AES Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
-	L"Art of Fighting 3 - The Path of the Warrior\0Art of Fighting - \u9F8D\u864E\u306E\u62F3\u5916\u4F1D (AES Uncensored Hack)\0", NULL, NULL, NULL,
+	L"Art of Fighting 3 - The Path of the Warrior / Art of Fighting - \u9F8D\u864E\u306E\u62F3\u5916\u4F1D (AES Uncensored Hack)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
 	NULL, aof3uhRomInfo, aof3uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,

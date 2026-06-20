@@ -14,31 +14,13 @@ void K055555WriteReg(UINT8 regnum, UINT8 regdat)
 	m_regs[regnum & 0x7f] = regdat;
 }
 
-#if 0
 void K055555LongWrite(INT32 offset, UINT32 data)
 {
-	UINT8 regnum, regdat;
+	offset = (offset >> 2) & 0x7f;
 
-	if (ACCESSING_BITS_24_31)
-	{
-		regnum = offset<<1;
-		regdat = data>>24;
-	}
-	else
-	{
-		if (ACCESSING_BITS_8_15)
-		{
-			regnum = (offset<<1)+1;
-			regdat = data>>8;
-		}
-		else
-		{
-			return;
-		}
-	}
-	k055555_write_reg(regnum, regdat);
+	K055555WriteReg((offset << 1) & 0x7f, data >> 24);
+	K055555WriteReg(((offset << 1) + 1) & 0x7f, data >> 8);
 }
-#endif
 
 void K055555WordWrite(INT32 offset, UINT16 data)
 {

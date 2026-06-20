@@ -19,6 +19,8 @@ UINT32 *konami_palette32;
 
 static INT32 previous_depth = 0;
 static UINT16 *palette_lut = NULL;
+static INT32 konami_bitmap_width = 0;
+static INT32 konami_bitmap_height = 0;
 
 //static UINT16 *konami_blendpal16;
 
@@ -164,6 +166,8 @@ void KonamiICExit()
 		BurnFree(konami_priority_bitmap);
 		konami_priority_bitmap = NULL;
 	}
+	konami_bitmap_width = 0;
+	konami_bitmap_height = 0;
 
 	previous_depth = 0;
 	if (palette_lut) {
@@ -228,6 +232,16 @@ void KonamiAllocateBitmaps()
 	INT32 width, height;
 	BurnDrvGetVisibleSize(&width, &height);
 
+	if (konami_bitmap32 && (konami_bitmap_width != width || konami_bitmap_height != height)) {
+		BurnFree(konami_bitmap32);
+		konami_bitmap32 = NULL;
+	}
+
+	if (konami_priority_bitmap && (konami_bitmap_width != width || konami_bitmap_height != height)) {
+		BurnFree(konami_priority_bitmap);
+		konami_priority_bitmap = NULL;
+	}
+
 	if (konami_bitmap32 == NULL) {
 		konami_bitmap32 = (UINT32*)BurnMalloc(width * height * sizeof(INT32));
 	}
@@ -235,6 +249,9 @@ void KonamiAllocateBitmaps()
 	if (konami_priority_bitmap == NULL) {
 		konami_priority_bitmap = (UINT8*)BurnMalloc(width * height * sizeof(INT8));
 	}
+
+	konami_bitmap_width = width;
+	konami_bitmap_height = height;
 }
 
 void KonamiClearBitmaps(UINT32 color)

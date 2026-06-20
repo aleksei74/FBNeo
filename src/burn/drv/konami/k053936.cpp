@@ -553,6 +553,10 @@ static INT32 K053936_cliprect[2][4];
 static INT32 K053936_offset[2][2];
 static INT32 K053936_enable[2] = { 0, 0 };
 static INT32 K053936_color[2] = { 0, 0 };
+static INT32 K053936_gp_wrap[2] = { 1, 1 };
+static INT32 K053936_source_width[2] = { 0x2000, 0x2000 };
+static INT32 K053936_source_height[2] = { 0x2000, 0x2000 };
+static INT32 K053936_visible_offset[2][2];
 UINT16 *m_k053936_0_ctrl_16 = NULL;
 UINT16 *m_k053936_0_linectrl_16 = NULL;
 UINT16 *m_k053936_0_ctrl = NULL;
@@ -569,8 +573,12 @@ void K053936GPExit()
 	K053936_clip_enabled[0] = K053936_clip_enabled[1] = 0;
 	K053936_enable[0] = K053936_enable[1] = 0;
 	K053936_color[0] = K053936_color[1] = 0;
+	K053936_gp_wrap[0] = K053936_gp_wrap[1] = 1;
+	K053936_source_width[0] = K053936_source_width[1] = 0x2000;
+	K053936_source_height[0] = K053936_source_height[1] = 0x2000;
 	memset(K053936_cliprect,0,sizeof(K053936_cliprect)); //2*4*sizeof(INT32));
 	memset(K053936_offset,0,sizeof(K053936_offset)); //2*2*sizeof(INT32));
+	memset(K053936_visible_offset,0,sizeof(K053936_visible_offset));
 	m_k053936_0_ctrl_16 = NULL;
 	m_k053936_0_linectrl_16 = NULL;
 	m_k053936_0_ctrl = NULL;
@@ -599,6 +607,16 @@ void K053936GP_enable(INT32 chip, INT32 enable)
 }
 
 void K053936GP_set_offset(INT32 chip, INT32 xoffs, INT32 yoffs) { K053936_offset[chip][0] = xoffs; K053936_offset[chip][1] = yoffs; }
+
+void K053936GP_set_visible_offset(INT32 chip, INT32 xoffs, INT32 yoffs) { K053936_visible_offset[chip][0] = xoffs; K053936_visible_offset[chip][1] = yoffs; }
+
+void K053936GP_wraparound_enable(INT32 chip, INT32 status) { K053936_gp_wrap[chip] = status; }
+
+void K053936GP_set_source_size(INT32 chip, INT32 width, INT32 height)
+{
+	K053936_source_width[chip] = width;
+	K053936_source_height[chip] = height;
+}
 
 void K053936GP_clip_enable(INT32 chip, INT32 status) { K053936_clip_enabled[chip] = status; }
 
@@ -664,14 +682,13 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 	pal_base = konami_palette32;
 	cmask = colormask[tilebpp];
 
-	src_pitch = 0x2000;
+	src_pitch = K053936_source_width[chip];
 	src_base = src_bitmap;
-	src_size = 0x2000 * 0x2000;
+	src_size = K053936_source_width[chip] * K053936_source_height[chip];
 	dst_size = nScreenWidth * nScreenHeight;
 	dst_ptr = 0;//dst_base;
 	cy = starty;
 	cx = startx;
-
 	if (blend > 0)
 	{
 		dst_ptr += dst_pitch;      // draw blended
@@ -684,10 +701,16 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 				INT32 srcy = (cy >> 16) & 0x1fff;
 				INT32 pixel;
 				INT32 offs;
-				offs = srcy * src_pitch + srcx;
 
 				cx += incxx;
 				cy += incxy;
+
+				if (K053936_gp_wrap[chip]) {
+					srcx &= K053936_source_width[chip] - 1;
+					srcy &= K053936_source_height[chip] - 1;
+				}
+
+				offs = srcy * src_pitch + srcx;
 
 				if (offs>=src_size||offs<0)
 					continue;
@@ -695,7 +718,7 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 				if (srcx < src_minx || srcx > src_maxx || srcy < src_miny || srcy > src_maxy)
 					continue;
 
-				pixel = BURN_ENDIAN_SWAP_INT16(src_base[offs])|color_base;
+				pixel = src_base[offs] | color_base;
 				if (!(pixel & cmask))
 					continue;
 // this one below is borked.
@@ -728,10 +751,15 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 				INT32 pixel;
 				INT32 offs;
 
-				offs = srcy * src_pitch + srcx;
-
 				cx += incxx;
 				cy += incxy;
+
+				if (K053936_gp_wrap[chip]) {
+					srcx &= K053936_source_width[chip] - 1;
+					srcy &= K053936_source_height[chip] - 1;
+				}
+
+				offs = srcy * src_pitch + srcx;
 
 				if (offs>=src_size||offs<0)
 					continue;
@@ -739,7 +767,7 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 				if (srcx < src_minx || srcx > src_maxx || srcy < src_miny || srcy > src_maxy)
 					continue;
 
-				pixel = BURN_ENDIAN_SWAP_INT16(src_base[offs])|color_base;
+				pixel = src_base[offs] | color_base;
 				if (!(pixel & cmask))
 					continue;
 
@@ -759,6 +787,7 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 			cx = startx; startx += incyx;
 		} while (--ty);
 	}
+
 }
 
 static void K053936GP_zoom_draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT16 *src_bitmap,
@@ -779,12 +808,13 @@ static void K053936GP_zoom_draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT
 
 	if (BURN_ENDIAN_SWAP_INT16(ctrl[0x07]) & 0x0040)    /* "super" mode */
 	{
-		y = 0; //cliprect.min_y;
+		y = my_clip[2];
 		maxy = my_clip[3];
 
 		while (y <= maxy)
 		{
-			lineaddr = linectrl + ( ((y - K053936_offset[chip][1]) & 0x1ff) << 2);
+			INT32 visible_y = y + K053936_visible_offset[chip][1];
+			lineaddr = linectrl + ( ((visible_y - K053936_offset[chip][1]) & 0x1ff) << 2);
 			my_clip[2] = my_clip[3] = y;
 
 			startx = (INT16)(BURN_ENDIAN_SWAP_INT16(lineaddr[0]) + BURN_ENDIAN_SWAP_INT16(ctrl[0x00])) << 8;
@@ -822,8 +852,86 @@ static void K053936GP_zoom_draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT
 		startx -= K053936_offset[chip][0] * incxx;
 		starty -= K053936_offset[chip][0] * incxy;
 
+		startx += K053936_visible_offset[chip][1] * incyx;
+		starty += K053936_visible_offset[chip][1] * incyy;
+		startx += K053936_visible_offset[chip][0] * incxx;
+		starty += K053936_visible_offset[chip][0] * incxy;
+
 		K053936GP_copyroz32clip(chip, src_bitmap, my_clip,
 				startx<<5, starty<<5, incxx<<5, incxy<<5, incyx<<5, incyy<<5,
+				tilebpp, blend, alpha, clip, pixeldouble_output);
+	}
+}
+
+static void K053936GP_zoom_draw_noswap(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT16 *src_bitmap,
+		INT32 tilebpp, INT32 blend, INT32 alpha, INT32 pixeldouble_output)
+{
+	UINT16 *lineaddr;
+
+	UINT32 startx, starty;
+	INT32 incxx, incxy, incyx, incyy, y, maxy, clip;
+
+	clip = K053936_clip_enabled[chip];
+
+	INT32 my_clip[4];
+	my_clip[0] = 0;
+	my_clip[1] = nScreenWidth - 1;
+	my_clip[2] = 0;
+	my_clip[3] = nScreenHeight - 1;
+
+	if (ctrl[0x07] & 0x0040)    /* "super" mode */
+	{
+		y = my_clip[2];
+		maxy = my_clip[3];
+
+		while (y <= maxy)
+		{
+			INT32 visible_y = y + K053936_visible_offset[chip][1];
+			lineaddr = linectrl + (((visible_y - K053936_offset[chip][1]) & 0x1ff) << 2);
+			my_clip[2] = my_clip[3] = y;
+
+			startx = (INT16)(lineaddr[0] + ctrl[0x00]) << 8;
+			starty = (INT16)(lineaddr[1] + ctrl[0x01]) << 8;
+			incxx  = (INT16)(lineaddr[2]);
+			incxy  = (INT16)(lineaddr[3]);
+
+			if (ctrl[0x06] & 0x8000) incxx <<= 8;
+			if (ctrl[0x06] & 0x0080) incxy <<= 8;
+
+			startx -= K053936_offset[chip][0] * incxx;
+			starty -= K053936_offset[chip][0] * incxy;
+
+			K053936GP_copyroz32clip(chip, src_bitmap, my_clip,
+					startx << 5, starty << 5, incxx << 5, incxy << 5, 0, 0,
+					tilebpp, blend, alpha, clip, pixeldouble_output);
+			y++;
+		}
+	}
+	else    /* "simple" mode */
+	{
+		startx = (INT16)(ctrl[0x00]) << 8;
+		starty = (INT16)(ctrl[0x01]) << 8;
+		incyx = (INT16)(ctrl[0x02]);
+		incyy = (INT16)(ctrl[0x03]);
+		incxx = (INT16)(ctrl[0x04]);
+		incxy = (INT16)(ctrl[0x05]);
+
+		if (ctrl[0x06] & 0x4000) { incyx <<= 8; incyy <<= 8; }
+		if (ctrl[0x06] & 0x0040) { incxx <<= 8; incxy <<= 8; }
+
+		startx -= K053936_offset[chip][1] * incyx;
+		starty -= K053936_offset[chip][1] * incyy;
+
+		startx -= K053936_offset[chip][0] * incxx;
+		starty -= K053936_offset[chip][0] * incxy;
+
+		startx += K053936_visible_offset[chip][1] * incyx;
+		starty += K053936_visible_offset[chip][1] * incyy;
+		startx += K053936_visible_offset[chip][0] * incxx;
+		starty += K053936_visible_offset[chip][0] * incxy;
+
+		K053936GP_copyroz32clip(chip, src_bitmap, my_clip,
+				startx << 5, starty << 5, incxx << 5, incxy << 5, incyx << 5, incyy << 5,
 				tilebpp, blend, alpha, clip, pixeldouble_output);
 	}
 }
@@ -834,10 +942,18 @@ void K053936GP_0_zoom_draw(UINT16 *bitmap, INT32 tilebpp, INT32 blend, INT32 alp
 
 	if (temp_m_k053936_0_ctrl_16)
 	{
-		K053936GP_zoom_draw(0,temp_m_k053936_0_ctrl_16,temp_m_k053936_0_linectrl_16,bitmap,tilebpp,blend,alpha, pixeldouble_output);
+		K053936GP_zoom_draw_noswap(0,temp_m_k053936_0_ctrl_16,temp_m_k053936_0_linectrl_16,bitmap,tilebpp,blend,alpha, pixeldouble_output);
 	}
 	else
 	{
 		K053936GP_zoom_draw(0,temp_m_k053936_0_ctrl,   temp_m_k053936_0_linectrl,   bitmap,tilebpp,blend,alpha, pixeldouble_output);
 	}
+}
+
+void K053936GP_0_zoom_draw_noswap(UINT16 *bitmap, INT32 tilebpp, INT32 blend, INT32 alpha, INT32 pixeldouble_output, UINT16 *ctrl, UINT16 *linectrl)
+{
+	if (K053936_enable[0] == 0) return;
+	if (ctrl == NULL || linectrl == NULL) return;
+
+	K053936GP_zoom_draw_noswap(0, ctrl, linectrl, bitmap, tilebpp, blend, alpha, pixeldouble_output);
 }

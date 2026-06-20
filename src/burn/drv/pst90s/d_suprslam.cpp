@@ -43,6 +43,8 @@ static INT32 screen_bank;
 static INT32 bg_bank;
 static INT32 sprite_ctrl;
 static UINT16 gfx_bank_reg;
+static UINT8 vs9209_latch[8];
+static UINT8 vs9209_dir[8];
 
 static struct BurnInputInfo SuprslamInputList[] = {
 	{"P1 Coin",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
@@ -227,6 +229,26 @@ static void gfx_bank_write(UINT16 data)
 	bg_bank = (data & 0x0f00) << 4;
 }
 
+static void vs9209_write(INT32 offset, UINT8 data)
+{
+	INT32 port = offset & 7;
+
+	if (offset & 8) {
+		UINT8 old_dir = vs9209_dir[port];
+		vs9209_dir[port] = data;
+
+		if (port == 6 && (data & ~old_dir)) {
+			sprite_ctrl = vs9209_latch[port];
+		}
+	} else {
+		vs9209_latch[port] = data;
+
+		if (port == 6 && vs9209_dir[port]) {
+			sprite_ctrl = data & vs9209_dir[port];
+		}
+	}
+}
+
 static void __fastcall suprslam_main_write_word(UINT32 address, UINT16 data)
 {
 	if ((address & 0xfffff000) == 0xffa000) {
@@ -245,6 +267,11 @@ static void __fastcall suprslam_main_write_word(UINT32 address, UINT16 data)
 
 		case 0xffe000:
 			gfx_bank_write(data);
+		return;
+	}
+
+	if ((address & 0xffffffe0) == 0xfff000) {
+		vs9209_write((address >> 1) & 0x0f, data & 0xff);
 		return;
 	}
 }
@@ -273,8 +300,8 @@ static void __fastcall suprslam_main_write_byte(UINT32 address, UINT8 data)
 		return;
 	}
 
-	if ((address & 0xfffffff0) == 0xfff000) {
-		if ((address & 0x0f) == 0x0e) sprite_ctrl = data;
+	if ((address & 0xffffffe0) == 0xfff000) {
+		vs9209_write((address >> 1) & 0x0f, data);
 		return;
 	}
 }
@@ -404,6 +431,8 @@ static INT32 DrvDoReset()
 	bg_bank = 0;
 	sprite_ctrl = 0;
 	gfx_bank_reg = 0;
+	memset(vs9209_latch, 0, sizeof(vs9209_latch));
+	memset(vs9209_dir, 0, sizeof(vs9209_dir));
 
 	HiscoreReset();
 
@@ -418,8 +447,8 @@ static INT32 MemIndex()
 	DrvZ80ROM		= Next; Next += 0x020000;
 
 	DrvGfxROM[0]	= Next; Next += 0x400000;
-	DrvGfxROM[1]	= Next; Next += 0x800000;
-	DrvGfxROM[2]	= Next; Next += 0x1000000;
+	DrvGfxROM[1]	= Next; Next += 0x1000000;
+	DrvGfxROM[2]	= Next; Next += 0x800000;
 
 	DrvSndROM[0]	= Next; Next += 0x200000;
 	DrvSndROM[1]	= Next; Next += 0x100000;
@@ -445,12 +474,47 @@ static INT32 MemIndex()
 	return 0;
 }
 
+static INT32 DrvGfxDecode(UINT8 *tmp)
+{
+	INT32 Plane[4] = { 0, 1, 2, 3 };
+	INT32 XOffs8x8[8] = { 4, 0, 12, 8, 20, 16, 28, 24 };
+	INT32 YOffs8x8[8] = { 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32 };
+	INT32 XOffs16x16[16] = {
+		8, 12, 0, 4, 24, 28, 16, 20,
+		32+8, 32+12, 32+0, 32+4, 32+24, 32+28, 32+16, 32+20
+	};
+	INT32 YOffs16x16[16] = {
+		0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64,
+		8*64, 9*64, 10*64, 11*64, 12*64, 13*64, 14*64, 15*64
+	};
+
+	if (BurnLoadRom(tmp + 0x000000,  5, 1)) return 1;
+
+	GfxDecode(0x10000, 4,  8,  8, Plane, XOffs8x8, YOffs8x8, 8*32, tmp, DrvGfxROM[0]);
+
+	if (BurnLoadRom(tmp + 0x000000,  6, 1)) return 1;
+	if (BurnLoadRom(tmp + 0x200000,  7, 1)) return 1;
+	if (BurnLoadRom(tmp + 0x400000,  8, 1)) return 1;
+	if (BurnLoadRom(tmp + 0x600000,  9, 1)) return 1;
+
+	GfxDecode(0x10000, 4, 16, 16, Plane, XOffs16x16, YOffs16x16, 16*64, tmp, DrvGfxROM[1]);
+
+	if (BurnLoadRom(tmp + 0x000000, 10, 1)) return 1;
+	if (BurnLoadRom(tmp + 0x200000, 11, 1)) return 1;
+
+	GfxDecode(0x08000, 4, 16, 16, Plane, XOffs16x16, YOffs16x16, 16*64, tmp, DrvGfxROM[2]);
+
+	return 0;
+}
+
 static INT32 DrvInit()
 {
 	AllMem = NULL;
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
+
 	if ((AllMem = (UINT8 *)BurnMalloc(nLen)) == NULL) return 1;
+
 	memset(AllMem, 0, nLen);
 	MemIndex();
 
@@ -462,22 +526,14 @@ static INT32 DrvInit()
 	if (BurnLoadRom(DrvSndROM[0] + 0x000000,  3, 1)) return 1;
 	if (BurnLoadRom(DrvSndROM[1] + 0x000000,  4, 1)) return 1;
 
-	if (BurnLoadRom(DrvGfxROM[0] + 0x000000,  5, 1)) return 1;
+	UINT8 *tmp = (UINT8*)BurnMalloc(0x800000);
 
-	if (BurnLoadRom(DrvGfxROM[2] + 0x000000,  6, 1)) return 1;
-	if (BurnLoadRom(DrvGfxROM[2] + 0x200000,  7, 1)) return 1;
-	if (BurnLoadRom(DrvGfxROM[2] + 0x400000,  8, 1)) return 1;
-	if (BurnLoadRom(DrvGfxROM[2] + 0x600000,  9, 1)) return 1;
+	if (tmp == NULL) return 1;
 
-	if (BurnLoadRom(DrvGfxROM[1] + 0x000000, 10, 1)) return 1;
-	if (BurnLoadRom(DrvGfxROM[1] + 0x200000, 11, 1)) return 1;
+	INT32 rc = DrvGfxDecode(tmp);
+	BurnFree(tmp);
 
-	BurnByteswap(DrvGfxROM[1], 0x400000);
-	BurnByteswap(DrvGfxROM[2], 0x800000);
-
-	BurnNibbleExpand(DrvGfxROM[0], NULL, 0x200000, 1, 0);
-	BurnNibbleExpand(DrvGfxROM[1], NULL, 0x400000, 0, 0);
-	BurnNibbleExpand(DrvGfxROM[2], NULL, 0x800000, 0, 0);
+	if (rc) return 1;
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
@@ -517,8 +573,8 @@ static INT32 DrvInit()
 	GenericTilemapInit(0, TILEMAP_SCAN_ROWS, screen_map_callback, 8, 8, 64, 32);
 	GenericTilemapInit(1, TILEMAP_SCAN_ROWS, bg_map_callback, 16, 16, 64, 64);
 	GenericTilemapSetGfx(0, DrvGfxROM[0], 4,  8,  8, 0x400000, 0x000, 0x0f);
-	GenericTilemapSetGfx(1, DrvGfxROM[1], 4, 16, 16, 0x800000, 0x100, 0x0f);
-	GenericTilemapSetGfx(2, DrvGfxROM[2], 4, 16, 16, 0x1000000, 0x200, 0x0f);
+	GenericTilemapSetGfx(1, DrvGfxROM[2], 4, 16, 16, 0x800000, 0x100, 0x0f);
+	GenericTilemapSetGfx(2, DrvGfxROM[1], 4, 16, 16, 0x1000000, 0x200, 0x0f);
 	GenericTilemapSetTransparent(0, 0x0f);
 	BurnBitmapAllocate(1, 64 * 16, 64 * 16, true);
 
@@ -552,12 +608,14 @@ static void draw_sprites()
 	GenericTilesGfx *gfx = &GenericGfxData[2];
 
 	INT32 offs;
+
 	for (offs = 0; offs < (0x2000 / 16); offs++) {
 		if (BURN_ENDIAN_SWAP_INT16(spriteram[offs]) & 0x4000) break;
 	}
 
 	INT32 end = offs;
 	offs = 0;
+
 	while (offs != end)
 	{
 		if ((BURN_ENDIAN_SWAP_INT16(spriteram[offs]) & 0x8000) == 0x0000)
@@ -606,6 +664,7 @@ static INT32 DrvDraw()
 		for (INT32 i = 0; i < 0x1000; i += 2) {
 			palette_write(i);
 		}
+
 		DrvRecalc = 0;
 	}
 
@@ -621,6 +680,7 @@ static INT32 DrvDraw()
 		GenericTilemapDraw(1, 1, TMAP_FORCEOPAQUE);
 		K053936Draw(0, ctrl, line, K053936_DRAW_16BIT | K053936_DRAW_CLIP);
 	}
+
 	if (!(sprite_ctrl & 8) && (nSpriteEnable & 1)) draw_sprites();
 	if (nBurnLayer & 2) GenericTilemapDraw(0, pTransDraw, 0);
 	if ((sprite_ctrl & 8) && (nSpriteEnable & 1)) draw_sprites();
@@ -640,11 +700,13 @@ static INT32 DrvFrame()
 	ZetNewFrame();
 
 	memset(DrvInputs, 0xff, sizeof(DrvInputs));
+
 	for (INT32 i = 0; i < 8; i++) {
 		DrvInputs[0] ^= (DrvJoy1[i] & 1) << i;
 		DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
 		DrvInputs[2] ^= (DrvJoy3[i] & 1) << i;
 	}
+
 	SekOpen(0);
 	ZetOpen(0);
 
@@ -706,6 +768,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(bg_bank);
 		SCAN_VAR(sprite_ctrl);
 		SCAN_VAR(gfx_bank_reg);
+		SCAN_VAR(vs9209_latch);
+		SCAN_VAR(vs9209_dir);
 	}
 
 	if (nAction & ACB_WRITE) {
@@ -744,7 +808,7 @@ STD_ROM_FN(suprslam)
 
 struct BurnDriver BurnDrvSuprslam = {
 	"suprslam", NULL, NULL, NULL, "1995",
-	"From TV Animation Slam Dunk - Super Slams\0", "Imperfect graphics: priorities are approximated", "Banpresto / Toei Animation / Video System Co.", "Miscellaneous",
+	"From TV Animation Slam Dunk - Super Slams\0", NULL, "Banpresto / Toei Animation / Video System Co.", "Miscellaneous",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_POST90S, GBF_SPORTSMISC, 0,
 	NULL, suprslamRomInfo, suprslamRomName, NULL, NULL, NULL, NULL, SuprslamInputInfo, SuprslamDIPInfo,
@@ -752,7 +816,7 @@ struct BurnDriver BurnDrvSuprslam = {
 	320, 224, 4, 3
 };
 
-// From TV Animation Slam Dunk - Super Slams (Korean Translation 960531)
+// From TV Animation Slam Dunk - Super Slams (Korean Translation)
 
 static struct BurnRomInfo suprslamkRomDesc[] = {
 	{ "eb26ic47k.bin",	0x080000, 0x3fa42f6e, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
@@ -779,7 +843,7 @@ STD_ROM_FN(suprslamk)
 
 struct BurnDriver BurnDrvSuprslamk = {
 	"suprslamk", "suprslam", NULL, NULL, "2023",
-	"From TV Animation Slam Dunk - Super Slams (Korean Translation)\0", "Imperfect graphics: priorities are approximated", "Banpresto / Toei Animation / Video System Co.", "Miscellaneous",
+	"From TV Animation Slam Dunk - Super Slams (Korean Translation)\0", NULL, "Banpresto / Toei Animation / Video System Co.", "Miscellaneous",
 	L"From TV Animation Slam Dunk - Super Slams (Korean Translation)\0\uD504\uB86C TV \uC560\uB2C8\uBA54\uC774\uC158 \uC2AC\uB7A8 \uB369\uD06C - \uC288\uD37C \uC2AC\uB7A8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_POST90S, GBF_SPORTSMISC, 0,
 	NULL, suprslamkRomInfo, suprslamkRomName, NULL, NULL, NULL, NULL, SuprslamInputInfo, SuprslamkDIPInfo,
