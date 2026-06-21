@@ -2343,7 +2343,15 @@ static INT32 DrvInit()
 		K056832SetLayerOffsets(2,  2, 0);
 		K056832SetLayerOffsets(3,  3, 0);
 	}
-	K056832SetAlphaTileMode(0);
+	if (config->special == GX_SPECIAL_SALMNDR2) {
+		// salmndr2 draws its background as an alpha-blended tile layer; the per-tile
+		// alpha mix code lives in attr bits 4-5 (MAME salmndr2_tile_callback). Without
+		// this the layer renders opaque and floods the screen with garbage.
+		K056832SetAlphaTileMixShift(4);
+		K056832SetAlphaTileMode(1);
+	} else {
+		K056832SetAlphaTileMode(0);
+	}
 
 	INT32 sprite_tile_count = (gx_sprite_bpp == 6) ? ((gx_type4_enable ? 0x1800000 : gx_sprite_word_size) / 0xc0) : (gx_sprite_word_size / 0x80);
 	INT32 sprite_rom_mask = ((gx_sprite_bpp == 6) ? gx_sprite_word_size : 0x1000000) - 1;

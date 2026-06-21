@@ -191,6 +191,7 @@ void K056832SetBrightness(INT32 brightness);
 void K056832SetGlobalOffsets(INT32 minx, INT32 miny);
 void K056832SetLayerOffsets(INT32 layer, INT32 xoffs, INT32 yoffs);
 void K056832SetAlphaTileMode(INT32 enable);
+void K056832SetAlphaTileMixShift(INT32 shift);
 INT32 K056832GetLastAlphaTileMixCode();
 void K056832SetExtLinescroll();
 void K056832SetLinemap();

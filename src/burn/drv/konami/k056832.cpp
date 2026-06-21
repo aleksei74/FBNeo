@@ -20,6 +20,7 @@ static INT32 K056832ColorGranularity;
 static INT32 K056832VramWordOrder;
 static INT32 K056832Brightness;
 static INT32 K056832AlphaTileMode;
+static INT32 K056832AlphaTileMixShift; // attr shift for the alpha mix code (default 6; salmndr2 uses 4)
 static INT32 K056832LastAlphaTileMixCode;
 
 static INT32 m_layer_offs[8][2];
@@ -139,6 +140,7 @@ void K056832Init(UINT8 *rom, UINT8 *romexp, INT32 rom_size, void (*cb)(INT32 lay
 	K056832VramWordOrder = 0;
 	K056832Brightness = 0xff;
 	K056832AlphaTileMode = 0;
+	K056832AlphaTileMixShift = 6;
 	K056832LastAlphaTileMixCode = 0;
 	m_num_gfx_banks = rom_size / 0x2000;
 
@@ -238,6 +240,11 @@ void K056832SetLayerOffsets(INT32 layer, INT32 xoffs, INT32 yoffs)
 void K056832SetAlphaTileMode(INT32 enable)
 {
 	K056832AlphaTileMode = enable ? 1 : 0;
+}
+
+void K056832SetAlphaTileMixShift(INT32 shift)
+{
+	K056832AlphaTileMixShift = shift;
 }
 
 INT32 K056832GetLastAlphaTileMixCode()
@@ -731,7 +738,7 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 		flip &= (attr >> smptr->flips) & 3;
 		INT32 color = (attr & smptr->palm1) | (attr >> smptr->pals2 & smptr->palm2);
 		INT32 g_flags = flip & 3;
-		INT32 mix_code = (attr >> 6) & 3;
+		INT32 mix_code = (attr >> K056832AlphaTileMixShift) & 3;
 		INT32 category = (K056832AlphaTileMode && mix_code) ? 1 : 0;
 		if (category) {
 			K056832LastAlphaTileMixCode = mix_code;
