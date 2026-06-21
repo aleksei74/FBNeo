@@ -217,6 +217,7 @@ void K056832WritebRegsWord(INT32 offset, UINT16 data);
 void K056832WritebRegsByte(INT32 offset, UINT8 data);
 UINT16 K056832mwRomWordRead(INT32 address);
 UINT8 K056832GxRomByteRead(INT32 address);
+UINT8 K056832GxRom6BppByteRead(INT32 address);
 void K056832Draw(INT32 layer, UINT32 flags, UINT32 priority);
 INT32 K056832GetLayerAssociation();
 INT32 K056832GetActiveLayer();

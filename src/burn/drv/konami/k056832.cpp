@@ -591,6 +591,27 @@ UINT8 K056832GxRomByteRead(INT32 address)
 	return K056832Rom[base];
 }
 
+// 6bpp variant of the GX ROM check read window (salmndr2 etc): 6 bytes per 4 dots.
+// Like the 5bpp K056832GxRomByteRead this is self-resetting: FBNeo does not clear
+// m_rom_half on tile-RAM reads (which is how MAME resets it), so the readback must
+// toggle the half flag itself. Unlike 5bpp there is no zero plane, so every byte is
+// real. A sticky m_rom_half desyncs the POST tile checksum, which stalls the whole
+// right-hand ROM-CHECK column on salmndr2.
+UINT8 K056832GxRom6BppByteRead(INT32 address)
+{
+	INT32 offset = (address & 0x1fff) + (m_cur_gfx_banks * 0x2000);
+	INT32 base = (offset / 4) * 6 + ((offset & 3) * 2);
+
+	if (m_rom_half) {
+		m_rom_half = 0;
+		return K056832Rom[base + 1];
+	}
+
+	m_rom_half = 1;
+
+	return K056832Rom[base];
+}
+
 
 static inline UINT32 alpha_blend(UINT32 d, UINT32 s, UINT32 p)
 {
