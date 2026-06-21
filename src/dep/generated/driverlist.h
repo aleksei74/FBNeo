@@ -18029,6 +18029,16 @@ DRV		BurnSpecRumba48en;
 DRV		BurnSpecRumba128es;
 DRV		BurnSpecRumba48es;
 DRV		BurnDrvRumba;
+DRV		BurnDrvRungunad;
+DRV		BurnDrvRunguna;
+DRV		BurnDrvRungund;
+DRV		BurnDrvRungun;
+DRV		BurnDrvRungunbd;
+DRV		BurnDrvRungunb;
+DRV		BurnDrvRungunuabd;
+DRV		BurnDrvRungunuaad;
+DRV		BurnDrvRungunubad;
+DRV		BurnDrvRungunuba;
 DRV		BurnDrvRungun2;
 DRV		BurnDrvRundeep;
 DRV		BurnDrvRunrun;
@@ -19249,6 +19259,8 @@ DRV		BurnSpecSkynetes;
 DRV		BurnSpecSlaine;
 DRV		BurnDrvnes_slalom;
 DRV		BurnDrvmd_slamshaq;
+DRV		BurnDrvSlmdunkjd;
+DRV		BurnDrvSlmdunkj;
 DRV		BurnDrvSlamdnk2;
 DRV		BurnSpecslapfigh;
 DRV		BurnDrvSlapfigha;
@@ -43681,6 +43693,16 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecRumba128es,		// Rumba (Spanish) (128K) (HB)
 	&BurnSpecRumba48es,			// Rumba (Spanish) (48K) (HB)
 	&BurnDrvRumba,				// Rumba Lumber (rev 1)
+	&BurnDrvRungunad,			// Run and Gun (ver EAA 1993 10.4) (dual screen with demux adapter)
+	&BurnDrvRunguna,			// Run and Gun (ver EAA 1993 10.4)
+	&BurnDrvRungund,			// Run and Gun (ver EAA 1993 10.8) (dual screen with demux adapter)
+	&BurnDrvRungun,				// Run and Gun (ver EAA 1993 10.8)
+	&BurnDrvRungunbd,			// Run and Gun (ver EAA 1993 9.10, prototype?) (dual screen with demux adapter)
+	&BurnDrvRungunb,			// Run and Gun (ver EAA 1993 9.10, prototype?)
+	&BurnDrvRungunuabd,			// Run and Gun (ver UAB 1993 10.12, dedicated twin cabinet)
+	&BurnDrvRungunuaad,			// Run and Gun (ver UAB 1993 9.10, dedicated twin cabinet)
+	&BurnDrvRungunubad,			// Run and Gun (ver UBA 1993 10.8) (dual screen with demux adapter)
+	&BurnDrvRungunuba,			// Run and Gun (ver UBA 1993 10.8)
 	&BurnDrvRungun2,			// Run and Gun 2 (ver UAA)
 	&BurnDrvRundeep,			// Run Deep
 	&BurnDrvRunrun,				// Run Run (Do! Run Run bootleg)
@@ -44901,6 +44923,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecSlaine,			// Slaine (48K)
 	&BurnDrvnes_slalom,			// Slalom (USA)
 	&BurnDrvmd_slamshaq,		// Slam - Shaq vs. the Legends (Prototype)
+	&BurnDrvSlmdunkjd,			// Slam Dunk (ver JAA 1993 10.8) (dual screen with demux adapter)
+	&BurnDrvSlmdunkj,			// Slam Dunk (ver JAA 1993 10.8)
 	&BurnDrvSlamdnk2,			// Slam Dunk 2 (ver JAA)
 	&BurnSpecslapfigh,			// Slap Fight (48K)
 	&BurnDrvSlapfigha,			// Slap Fight (A76 set, GX-006-A PCB)
@@ -69201,6 +69225,16 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_rumba128es", "spectrum/d_spectrum.cpp"},
 	{ "spec_rumba48es", "spectrum/d_spectrum.cpp"},
 	{ "rumba", "taito/d_flstory.cpp"},
+	{ "rungunad", "konami/d_rungun.cpp"},
+	{ "runguna", "konami/d_rungun.cpp"},
+	{ "rungund", "konami/d_rungun.cpp"},
+	{ "rungun", "konami/d_rungun.cpp"},
+	{ "rungunbd", "konami/d_rungun.cpp"},
+	{ "rungunb", "konami/d_rungun.cpp"},
+	{ "rungunuabd", "konami/d_rungun.cpp"},
+	{ "rungunuaad", "konami/d_rungun.cpp"},
+	{ "rungunubad", "konami/d_rungun.cpp"},
+	{ "rungunuba", "konami/d_rungun.cpp"},
 	{ "rungun2", "konami/d_konamigx.cpp"},
 	{ "rundeep", "pre90s/d_thedeep.cpp"},
 	{ "runrun", "pre90s/d_docastle.cpp"},
@@ -70409,6 +70443,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_slaine", "spectrum/d_spectrum.cpp"},
 	{ "nes_slalom", "nes/d_nes.cpp"},
 	{ "md_slamshaq", "megadrive/d_megadrive.cpp"},
+	{ "slmdunkjd", "konami/d_rungun.cpp"},
+	{ "slmdunkj", "konami/d_rungun.cpp"},
 	{ "slamdnk2", "konami/d_konamigx.cpp"},
 	{ "spec_slapfigh", "spectrum/d_spectrum.cpp"},
 	{ "slapfigha", "toaplan/d_slapfght.cpp"},
