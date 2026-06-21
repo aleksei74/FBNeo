@@ -1,4 +1,5 @@
 // Based on MAME sources by David Haywood
+// Generated with Codex AI (by DsNo)
 
 #include "tiles_generic.h"
 #include "konamiic.h"

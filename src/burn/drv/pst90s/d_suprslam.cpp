@@ -1,5 +1,6 @@
 // FinalBurn Neo From TV Animation Slam Dunk - Super Slams driver module
 // Based on MAME driver by David Haywood
+// Generated with Codex AI (by DsNo)
 
 #include "tiles_generic.h"
 #include "m68000_intf.h"

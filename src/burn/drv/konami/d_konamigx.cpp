@@ -384,50 +384,54 @@ static UINT8 gx_system_dsw0_read()
 }
 
 static struct BurnInputInfo GxInputList[] = {
-	{"P1 Coin",       BIT_DIGITAL,   DrvJoy1 + 0,  "p1 coin"},
-	{"P1 Start",      BIT_DIGITAL,   DrvJoy2 + 7,  "p1 start"},
-	{"P1 Up",         BIT_DIGITAL,   DrvJoy2 + 2,  "p1 up"},
-	{"P1 Down",       BIT_DIGITAL,   DrvJoy2 + 3,  "p1 down"},
-	{"P1 Left",       BIT_DIGITAL,   DrvJoy2 + 0,  "p1 left"},
-	{"P1 Right",      BIT_DIGITAL,   DrvJoy2 + 1,  "p1 right"},
-	{"P1 Button 1",   BIT_DIGITAL,   DrvJoy2 + 4,  "p1 fire 1"},
-	{"P1 Button 2",   BIT_DIGITAL,   DrvJoy2 + 5,  "p1 fire 2"},
-	{"P1 Button 3",   BIT_DIGITAL,   DrvJoy2 + 6,  "p1 fire 3"},
+	{"P1 Coin",       BIT_DIGITAL,   DrvJoy1 + 0,  "p1 coin"    },
+	{"P1 Start",      BIT_DIGITAL,   DrvJoy2 + 7,  "p1 start"   },
+	{"P1 Up",         BIT_DIGITAL,   DrvJoy2 + 2,  "p1 up"      },
+	{"P1 Down",       BIT_DIGITAL,   DrvJoy2 + 3,  "p1 down"    },
+	{"P1 Left",       BIT_DIGITAL,   DrvJoy2 + 0,  "p1 left"    },
+	{"P1 Right",      BIT_DIGITAL,   DrvJoy2 + 1,  "p1 right"   },
+	{"P1 Button 1",   BIT_DIGITAL,   DrvJoy2 + 4,  "p1 fire 1"  },
+	{"P1 Button 2",   BIT_DIGITAL,   DrvJoy2 + 5,  "p1 fire 2"  },
+	{"P1 Button 3",   BIT_DIGITAL,   DrvJoy2 + 6,  "p1 fire 3"  },
 
-	{"P2 Coin",       BIT_DIGITAL,   DrvJoy1 + 1,  "p2 coin"},
-	{"P2 Start",      BIT_DIGITAL,   DrvJoy2 + 15, "p2 start"},
-	{"P2 Up",         BIT_DIGITAL,   DrvJoy2 + 10, "p2 up"},
-	{"P2 Down",       BIT_DIGITAL,   DrvJoy2 + 11, "p2 down"},
-	{"P2 Left",       BIT_DIGITAL,   DrvJoy2 + 8,  "p2 left"},
-	{"P2 Right",      BIT_DIGITAL,   DrvJoy2 + 9,  "p2 right"},
-	{"P2 Button 1",   BIT_DIGITAL,   DrvJoy2 + 12, "p2 fire 1"},
-	{"P2 Button 2",   BIT_DIGITAL,   DrvJoy2 + 13, "p2 fire 2"},
-	{"P2 Button 3",   BIT_DIGITAL,   DrvJoy2 + 14, "p2 fire 3"},
+	{"P2 Coin",       BIT_DIGITAL,   DrvJoy1 + 1,  "p2 coin"    },
+	{"P2 Start",      BIT_DIGITAL,   DrvJoy2 + 15, "p2 start"   },
+	{"P2 Up",         BIT_DIGITAL,   DrvJoy2 + 10, "p2 up"      },
+	{"P2 Down",       BIT_DIGITAL,   DrvJoy2 + 11, "p2 down"    },
+	{"P2 Left",       BIT_DIGITAL,   DrvJoy2 + 8,  "p2 left"    },
+	{"P2 Right",      BIT_DIGITAL,   DrvJoy2 + 9,  "p2 right"   },
+	{"P2 Button 1",   BIT_DIGITAL,   DrvJoy2 + 12, "p2 fire 1"  },
+	{"P2 Button 2",   BIT_DIGITAL,   DrvJoy2 + 13, "p2 fire 2"  },
+	{"P2 Button 3",   BIT_DIGITAL,   DrvJoy2 + 14, "p2 fire 3"  },
 
-	{"Reset",         BIT_DIGITAL,   &DrvReset,    "reset"},
-	{"Service Mode",  BIT_DIGITAL,   DrvJoy1 + 7,  "diag"},
-	{"Service 1",     BIT_DIGITAL,   DrvJoy1 + 4,  "service"},
-	{"Dip A",         BIT_DIPSWITCH, DrvDips + 0,  "dip"},
-	{"Dip B",         BIT_DIPSWITCH, DrvDips + 1,  "dip"},
+	{"Reset",         BIT_DIGITAL,   &DrvReset,    "reset"      },
+	{"Service Mode",  BIT_DIGITAL,   DrvJoy1 + 7,  "diag"       },
+	{"Service 1",     BIT_DIGITAL,   DrvJoy1 + 4,  "service"    },
+	{"Dip A",         BIT_DIPSWITCH, DrvDips + 0,  "dip"        },
+	{"Dip B",         BIT_DIPSWITCH, DrvDips + 1,  "dip"        },
 };
 
 STDINPUTINFO(Gx)
 
 static struct BurnDIPInfo GxDIPList[] = {
-	{0x15, 0xff, 0xff, 0xf6, NULL},
-	{0x16, 0xff, 0xff, 0xff, NULL},
-	{0   , 0xfe, 0   ,    2, "Sound Output"},
-	{0x15, 0x01, 0x01, 0x00, "Stereo"},
-	{0x15, 0x01, 0x01, 0x01, "Mono"},
-	{0   , 0xfe, 0   ,    2, "Left Monitor Flip Screen"},
-	{0x15, 0x01, 0x02, 0x02, "Off"},
-	{0x15, 0x01, 0x02, 0x00, "On"},
-	{0   , 0xfe, 0   ,    2, "Right Monitor Flip Screen"},
-	{0x15, 0x01, 0x04, 0x04, "Off"},
-	{0x15, 0x01, 0x04, 0x00, "On"},
-	{0   , 0xfe, 0   ,    2, "Number of Screens"},
-	{0x15, 0x01, 0x08, 0x08, "1"},
-	{0x15, 0x01, 0x08, 0x00, "2"},
+	{0x15, 0xff, 0xff, 0xfe, NULL                         },
+	{0x16, 0xff, 0xff, 0xff, NULL                         },
+
+	{0   , 0xfe, 0   ,    2, "Sound Output"               },
+	{0x15, 0x01, 0x01, 0x00, "Stereo"                     },
+	{0x15, 0x01, 0x01, 0x01, "Mono"                       },
+
+	{0   , 0xfe, 0   ,    2, "Left Monitor Flip Screen"   },
+	{0x15, 0x01, 0x02, 0x02, "Off"                        },
+	{0x15, 0x01, 0x02, 0x00, "On"                         },
+
+	{0   , 0xfe, 0   ,    2, "Right Monitor Flip Screen"  },
+	{0x15, 0x01, 0x04, 0x04, "Off"                        },
+	{0x15, 0x01, 0x04, 0x00, "On"                         },
+
+	{0   , 0xfe, 0   ,    2, "Number of Screens"          },
+	{0x15, 0x01, 0x08, 0x08, "1"                          },
+	{0x15, 0x01, 0x08, 0x00, "2"                          },
 };
 
 STDDIPINFO(Gx)

@@ -1,3 +1,5 @@
+// Generated with Codex AI (by DsNo)
+
 // konamiic.cpp
 //---------------------------------------------------------------------------------------------------------------
 extern UINT32 KonamiIC_K051960InUse;
@@ -309,6 +311,7 @@ void K053247WrapEnable(INT32 status);
 
 void K053246_set_OBJCHA_line(INT32 state); // 1 assert, 0 clear
 INT32 K053246_is_IRQ_enabled();
+void K053246SetOffsetByteSwap(INT32 enable);
 
 UINT8 K053247Read(INT32 offset);
 void K053247Write(INT32 offset, INT32 data);

@@ -1,5 +1,6 @@
 // license:BSD-3-Clause
 // copyright-holders:R. Belmont, Acho A. Tang, Phil Stroffolino, Olivier Galibert
+// Generated with Codex AI (by DsNo)
 
 #include "tiles_generic.h"
 #include "konamiic.h"

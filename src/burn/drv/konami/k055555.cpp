@@ -2,6 +2,7 @@
 
 // license:BSD-3-Clause
 // copyright-holders:David Haywood
+// Generated with Codex AI (by DsNo)
 
 #include "burnint.h"
 #include "konamiic.h"

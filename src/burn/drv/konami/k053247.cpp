@@ -1,15 +1,18 @@
 // license:BSD-3-Clause
 // copyright-holders:David Haywood
+// Generated with Codex AI (by DsNo)
 
 // k053247
 
 #include "tiles_generic.h"
 #include "konamiic.h"
+
 #define K053247_CUSTOMSHADOW	0x20000000
 #define K053247_SHDSHIFT		20
 
 static UINT8  K053246Regs[8];
 static UINT8  K053246_OBJCHA_line;
+static INT32  K053246_offset_byteswap;
 UINT8 *K053247Ram;
 static UINT16 K053247Regs[16];
 
@@ -84,6 +87,7 @@ void K053247Init(UINT8 *gfxrom, UINT8 *gfxromexp, INT32 gfxlen, void (*Callback)
 	K053247_visible_x = 0;
 	K053247_visible_y = 0;
 	K053247_wraparound = 1;
+	K053246_offset_byteswap = 0;
 
 	KonamiAllocateBitmaps();
 
@@ -115,6 +119,7 @@ void K053247Exit()
 
 	K053247Flags = 0;
 	K053247RamMask = 0x0fff;
+	K053246_offset_byteswap = 0;
 
 	memset (K053247Regs, 0, sizeof(K053247Regs));
 	memset (K053246Regs, 0, sizeof(K053246Regs));
@@ -240,6 +245,11 @@ INT32 K053246_is_IRQ_enabled()
 	return K053246Regs[5] & 0x10;
 }
 
+void K053246SetOffsetByteSwap(INT32 enable)
+{
+	K053246_offset_byteswap = enable ? 1 : 0;
+}
+
 static INT32 frac_up(INT32 ff) // to next whole pixel
 {
 	if (ff & 0xfff) {
@@ -274,8 +284,8 @@ void K053247SpritesRender()
 
 	INT32 flipscreenx = K053246Regs[5] & 0x01;
 	INT32 flipscreeny = K053246Regs[5] & 0x02;
-	INT32 offx = (INT16)((K053246Regs[0] << 8) | K053246Regs[1]);
-	INT32 offy = (INT16)((K053246Regs[2] << 8) | K053246Regs[3]);
+	INT32 offx = K053246_offset_byteswap ? (INT16)((K053246Regs[1] << 8) | K053246Regs[0]) : (INT16)((K053246Regs[0] << 8) | K053246Regs[1]);
+	INT32 offy = K053246_offset_byteswap ? (INT16)((K053246Regs[3] << 8) | K053246Regs[2]) : (INT16)((K053246Regs[2] << 8) | K053246Regs[3]);
 
 	UINT16 *SprRam = (UINT16*)K053247Ram;
 
@@ -478,7 +488,10 @@ void K053247SpritesRender()
 			oy = -oy - offy;
 		}
 
-		// apply global and display window offsets
+		// apply display window offsets
+
+		ox -= K053247_visible_x;
+		oy -= K053247_visible_y;
 
 		// move ox, oy from int to the 20.12 frac realm
 		ox <<= 12;
@@ -917,8 +930,8 @@ void k053247_draw_single_sprite_gxcore(UINT8 *gx_objzbuf, UINT8 *gx_shdzbuf, INT
 		}
 
 		// get "display window" offsets
-		INT32 offx = (INT16)((K053246Regs[0] << 8) | K053246Regs[1]);
-		INT32 offy = (INT16)((K053246Regs[2] << 8) | K053246Regs[3]);
+		INT32 offx = K053246_offset_byteswap ? (INT16)((K053246Regs[1] << 8) | K053246Regs[0]) : (INT16)((K053246Regs[0] << 8) | K053246Regs[1]);
+		INT32 offy = K053246_offset_byteswap ? (INT16)((K053246Regs[3] << 8) | K053246Regs[2]) : (INT16)((K053246Regs[2] << 8) | K053246Regs[3]);
 
 		// apply wrapping and global offsets
 		temp = wrapsize-1;

@@ -11,6 +11,7 @@
 // Dec 3, 2017: anti-pop/anti-click code added: rampdown, dpcm table symmetricification, check last sample of 4bit dpcm for huge dc offset)
 // Jan 19, 2018: added cubic resampling. -dink
 // Aug 21-24, 2020: added digital delay/echo effect. -dink
+// Generated with Codex AI (by DsNo)
 
 #if defined (_MSC_VER)
 #define _USE_MATH_DEFINES
