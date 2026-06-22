@@ -470,7 +470,7 @@ static void gx_tile_callback(INT32 layer, INT32 *code, INT32 *color, INT32 *)
 	INT32 von = K055555ReadRegister(K55_VINMIX_ON) >> shift & 3;
 	INT32 pl45 = pal >> 4 & 3;
 
-	*code = ((gx_tilebanks[(d >> 13) & 7] << 13) | (d & 0x1fff)) & 0xffff;
+	*code = (gx_tilebanks[(d >> 13) & 7] << 13) | (d & 0x1fff);
 	pal &= 0x0f;
 	pal |= (pl45 & von) << 4;
 	pal |= (K055555GetPaletteIndex(layer) << 6);
@@ -512,8 +512,19 @@ static void gx_sprite_callback(INT32 *code, INT32 *color, INT32 *priority)
 	INT32 ocb = (K055555ReadRegister(K55_PALBASE_OBJ) & 7) << 10;
 
 	*color = ((c18 & opon) | (ocb & ~opon)) >> coregshift;
-	*priority = (c18 >> 8 & ~oinprion) |
-				(K055555ReadRegister(K55_PRIINP_8) & oinprion);
+
+	if (gx_special == GX_SPECIAL_SALMNDR2) {
+		// salmndr2 derives the sprite priority directly from the raw attribute
+		// word (MAME salmndr2_sprite_callback: pri = color>>4 & 0x3f) instead of
+		// the generic type2 decode_inpri path, so sprites sort against the
+		// tilemaps at the correct priority.
+		INT32 op  = K055555ReadRegister(K55_PRIINP_8) & oinprion;
+		INT32 pri = (attrib >> 4 & 0x3f) & ~oinprion;
+		*priority = pri | op;
+	} else {
+		*priority = (c18 >> 8 & ~oinprion) |
+					(K055555ReadRegister(K55_PRIINP_8) & oinprion);
+	}
 }
 
 static void gx_sound_update_irq()
