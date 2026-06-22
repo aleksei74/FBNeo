@@ -2306,6 +2306,14 @@ static INT32 DrvInit()
 			if (BurnLoadRomExt(DrvGfxROM1 + base + 4, 11 + (group * 3), 6, LD_GROUP(2))) return 1;
 		}
 		if (BurnLoadRom(DrvGfxROM2 + 0x000000, 21, 1)) return 1;
+	} else if (gx_sprite_bpp == 6) {
+		// 6bpp sprites use the _48_WORD layout: three ROMs interleaved at byte
+		// offsets 0/2/4 with a 6-byte stride (MAME konamigx_6bpp / salmndr2).
+		// The generic 5bpp path below (gap 4 + a separate "fifth" ROM) loads the
+		// data wrong, so the upper sprite-tile banks render as garbage.
+		if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0, config->sprite_pair0_a, 6, LD_GROUP(2))) return 1;
+		if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 2, config->sprite_pair0_b, 6, LD_GROUP(2))) return 1;
+		if (config->sprite_fifth   >= 0 && BurnLoadRomExt(DrvGfxROM1 + 4, config->sprite_fifth,   6, LD_GROUP(2))) return 1;
 	} else {
 		if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000000, config->sprite_pair0_a, 4, LD_GROUP(2))) return 1;
 		if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000002, config->sprite_pair0_b, 4, LD_GROUP(2))) return 1;
