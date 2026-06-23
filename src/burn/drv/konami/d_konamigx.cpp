@@ -967,15 +967,20 @@ static void gx_esc_alert_mode1()
 	const UINT8 *pcode = sal2_ptable[idx];
 
 	UINT32 dst = 0xd20000;
-	// decode Vic-Viper
+	// decode Vic-Viper (player ship). NOTE: MAME indexes srcbase (a u32*) as
+	// srcbase[0x049e/4] etc., and the integer /4 TRUNCATES to the 32-bit-aligned
+	// address 0x049c. The byte offsets here must therefore be the truncated
+	// values (0x049c/0x0500/0x0504), not the literal 0x049e/0x0502/0x0506 — using
+	// the latter read 2 bytes (one word) too far, so the ship's active bit was
+	// never seen and the player ship body was never written to sprite RAM.
 	if (gx_dma_read_long(srcbase + 0x049c) & 0xffff0000) {
-		hoffs = gx_dma_read_long(srcbase + 0x0502) & 0xffff;
-		voffs = gx_dma_read_long(srcbase + 0x0506) & 0xffff;
+		hoffs = gx_dma_read_long(srcbase + 0x0500) & 0xffff;
+		voffs = gx_dma_read_long(srcbase + 0x0504) & 0xffff;
 		hoffs -= hcorr;
 		voffs -= vcorr;
 
 		for (INT32 k = 0; k < 3; k++) {
-			obj = srcbase + 0x049e + k * 0x10;
+			obj = srcbase + 0x049c + k * 0x10;
 			data1 = gx_dma_read_long(obj);
 			if (data1 & 0x8000) {
 				INT32 zi = data1 & 7;
@@ -983,15 +988,22 @@ static void gx_esc_alert_mode1()
 				UINT32 d1 = gx_dma_read_long(obj + 4);
 				UINT32 d2 = gx_dma_read_long(obj + 8);
 				UINT32 d3 = gx_dma_read_long(obj + 12);
+				// Vic-Viper (player ship) uses MAME's EXTRACT_ODD field layout:
+				// vpos from obj[1] low word, hpos from obj[2] HIGH word, sprite
+				// code low/high split across obj[2] low + obj[3]. The previous code
+				// used the EXTRACT_EVEN layout here, garbling the player ship's code
+				// and position so it vanished once the game switched it to this path
+				// (after spawn invincibility). Enemies/options use the common-sprite
+				// EVEN path and were unaffected.
 				vpos = (d1 & 0xffff) + voffs;
-				hpos = (d1 >> 16) + hoffs;
+				hpos = (d2 >> 16) + hoffs;
 				gx_address_write_word(dst + 0, flip);
 				gx_address_write_word(dst + 2, d1 >> 16);
 				gx_address_write_word(dst + 4, vpos & vmask);
 				gx_address_write_word(dst + 6, hpos);
-				gx_address_write_word(dst + 8, d2 >> 16);
-				gx_address_write_word(dst + 10, d2);
-				gx_address_write_word(dst + 12, (d3 >> 16) | (pcode[zi] << 4));
+				gx_address_write_word(dst + 8, d2);
+				gx_address_write_word(dst + 10, d3 >> 16);
+				gx_address_write_word(dst + 12, (d3 & 0xffff) | (pcode[zi] << 4));
 				dst += 16;
 				scount++;
 				if (scount == 256) return;
