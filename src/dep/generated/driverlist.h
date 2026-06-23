@@ -17502,6 +17502,8 @@ DRV		BurnDrvMSX_renegad3;
 DRV		BurnSpecRenegade128rc;
 DRV		BurnSpecRenzait128;
 DRV		BurnSpecRenzait48;
+DRV		BurnDrvRenjuk;
+DRV		BurnDrvRenju;
 DRV		BurnDrvngp_tsunapn;
 DRV		BurnDrvngpc_tsunapnc;
 DRV		BurnDrvmd_rentheroe;
@@ -43188,6 +43190,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecRenegade128rc,		// Renegade Recoloured (128K) (Hack)
 	&BurnSpecRenzait128,		// Renenzaiter (128K) (HB)
 	&BurnSpecRenzait48,			// Renenzaiter (48K) (HB)
+	&BurnDrvRenjuk,				// Renju Kizoku - Kira Kira Gomoku Narabe (Korean Translation)
+	&BurnDrvRenju,				// Renju Kizoku - Kira Kira Gomoku Narabe (ver. 1.0)
 	&BurnDrvngp_tsunapn,		// Renketsu Puzzle Tsunagete Pon! (Japan)
 	&BurnDrvngpc_tsunapnc,		// Renketsu Puzzle Tsunagete Pon! Color (Japan)
 	&BurnDrvmd_rentheroe,		// Rent a Hero (Hack, English v0.98)
@@ -68746,6 +68750,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_renegade128rc", "spectrum/d_spectrum.cpp"},
 	{ "spec_renzait128", "spectrum/d_spectrum.cpp"},
 	{ "spec_renzait48", "spectrum/d_spectrum.cpp"},
+	{ "renjuk", "pst90s/d_st0016.cpp"},
+	{ "renju", "pst90s/d_st0016.cpp"},
 	{ "ngp_tsunapn", "pst90s/d_ngp.cpp"},
 	{ "ngp_tsunapnc", "pst90s/d_ngp.cpp"},
 	{ "md_rentheroe", "megadrive/d_megadrive.cpp"},

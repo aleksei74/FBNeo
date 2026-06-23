@@ -822,6 +822,7 @@ int BurnComputeSHA1(const UINT8 *buffer, int buffer_size, char *hash_str);
 #define HARDWARE_SETA1									(HARDWARE_PREFIX_SETA | 0x10000)
 #define HARDWARE_SETA2									(HARDWARE_PREFIX_SETA | 0x20000)
 #define HARDWARE_SETA_SSV								(HARDWARE_PREFIX_SETA | 0x30000)
+#define HARDWARE_SETA_ST0016							(HARDWARE_PREFIX_SETA | 0x40000)
 
 #define HARDWARE_TECHNOS								(HARDWARE_PREFIX_TECHNOS)
 
