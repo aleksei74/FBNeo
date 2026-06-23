@@ -572,8 +572,6 @@ static void gx_soundcom_host_write(INT32 offset, UINT8 data)
 {
 	offset &= 7;
 
-	if (getenv("GX_STRACE")) bprintf(0, _T("HOSTWR off=%d data=%02x ie=%d pc=%08x\n"), offset, data, sound_int_enabled, SekGetPC(-1));
-
 	if (offset < 4) {
 		DrvSoundCom[offset] = data;
 	} else if (offset == 7 && sound_int_enabled) {
@@ -595,7 +593,6 @@ static UINT8 gx_soundcom_host_read(INT32 offset)
 			r = 0;
 			break;
 	}
-	if (getenv("GX_STRACE")) bprintf(0, _T("HOSTRD off=%d -> %02x pc=%08x\n"), offset, r, SekGetPC(-1));
 	return r;
 }
 
@@ -608,8 +605,6 @@ static UINT8 gx_soundcom_sound_read(INT32 offset)
 static void gx_soundcom_sound_write(INT32 offset, UINT8 data)
 {
 	offset &= 7;
-
-	if (getenv("GX_STRACE")) bprintf(0, _T("SNDWR off=%d data=%02x\n"), offset, data);
 
 	if (offset < 2) {
 		DrvSoundCom[4 + offset] = data;
@@ -2849,28 +2844,6 @@ static INT32 DrvFrame()
 	}
 
 	if (pBurnDraw) DrvDraw();
-
-	if (getenv("GX_DUMP") && pBurnDraw) {
-		static INT32 dbg_frame = 0;
-		dbg_frame++;
-		INT32 want = atoi(getenv("GX_DUMP"));
-		if (dbg_frame == want) {
-			char fn[256];
-			snprintf(fn, sizeof(fn), "/tmp/gx_%s_f%d.ppm", BurnDrvGetTextA(DRV_NAME), dbg_frame);
-			FILE *f = fopen(fn, "wb");
-			if (f) {
-				INT32 w = nScreenWidth, h = nScreenHeight;
-				fprintf(f, "P6\n%d %d\n255\n", w, h);
-				for (INT32 i = 0; i < w * h; i++) {
-					UINT32 c = ((UINT32 *)pBurnDraw)[i];
-					UINT8 rgb[3] = { (UINT8)((c >> 16) & 0xff), (UINT8)((c >> 8) & 0xff), (UINT8)(c & 0xff) };
-					fwrite(rgb, 1, 3, f);
-				}
-				fclose(f);
-				bprintf(0, _T("GX_DUMP wrote %S\n"), fn);
-			}
-		}
-	}
 
 	return 0;
 }
