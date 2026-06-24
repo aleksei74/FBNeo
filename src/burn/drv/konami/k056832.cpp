@@ -681,6 +681,24 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 	}
 
 
+	// loop invariants (pageIndex, layer and the K056832 regs are constant for this
+	// call) -- hoisted out of the per-tile loop to avoid recomputing them (and a
+	// division) 2048 times per page.
+	INT32 eff_layer;
+	if (m_layer_association)
+	{
+		eff_layer = m_layer_assoc_with_page[pageIndex];
+		if (eff_layer == -1)
+			eff_layer = 0;  // use layer 0's palette info for unmapped pages
+	}
+	else
+		eff_layer = m_active_layer;
+
+	INT32 fbits = (BURN_ENDIAN_SWAP_INT16(k056832Regs[3]) >> 6) & 3;
+	INT32 flip_override = (BURN_ENDIAN_SWAP_INT16(k056832Regs[1]) >> (eff_layer << 1)) & 0x3; // tile-flip override (see p.20 3.2.2 "REG2")
+	smptr = &k056832_shiftmasks[fbits];
+	INT32 palette_colors = 0x2000 / K056832ColorGranularity;
+
 	for (INT32 offs = 0; offs < 64 * 32; offs++)
 	{
 		INT32 sx = (offs & 0x3f) * 8;
@@ -722,20 +740,7 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 		INT32 attr  = BURN_ENDIAN_SWAP_INT16(pMem[0]);
 		INT32 code  = BURN_ENDIAN_SWAP_INT16(pMem[1]);
-		if (m_layer_association)
-		{
-			layer = m_layer_assoc_with_page[pageIndex];
-			if (layer == -1)
-				layer = 0;  // use layer 0's palette info for unmapped pages
-		}
-		else
-			layer = m_active_layer;
-
-		INT32 fbits = (BURN_ENDIAN_SWAP_INT16(k056832Regs[3]) >> 6) & 3;
-		INT32 flip  = (BURN_ENDIAN_SWAP_INT16(k056832Regs[1]) >> (layer << 1)) & 0x3; // tile-flip override (see p.20 3.2.2 "REG2")
-		smptr = &k056832_shiftmasks[fbits];
-
-		flip &= (attr >> smptr->flips) & 3;
+		INT32 flip  = flip_override & ((attr >> smptr->flips) & 3);
 		INT32 color = (attr & smptr->palm1) | (attr >> smptr->pals2 & smptr->palm2);
 		INT32 g_flags = flip & 3;
 		INT32 mix_code = (attr >> K056832AlphaTileMixShift) & 3;
@@ -744,7 +749,7 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 			K056832LastAlphaTileMixCode = mix_code;
 		}
 
-		m_callback(layer, &code, &color, &g_flags);
+		m_callback(eff_layer, &code, &color, &g_flags);
 
 		if ((flags & K056832_DRAW_CATEGORY_1) && !category) continue;
 		if (!(flags & (K056832_DRAW_CATEGORY_1 | K056832_DRAW_ALL_CATEGORIES)) && category) continue;
@@ -766,12 +771,15 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 			if (tilemap_flip & 2) g_flags ^= 2;
 
 			UINT8 *rom = K056832RomExp + (code * 0x40);
-			INT32 palette_colors = 0x2000 / K056832ColorGranularity;
 			UINT32 *pal = konami_palette32 + ((color % palette_colors) * K056832ColorGranularity);
 
 			INT32 flip_tile = 0;
 			if (g_flags & 0x01) flip_tile |= 0x07;
 			if (g_flags & 0x02) flip_tile |= 0x38;
+
+			// clip the 8-pixel row to [minx,maxx] once instead of testing every pixel
+			INT32 ix0 = minx - sx; if (ix0 < 0) ix0 = 0;
+			INT32 ix1 = maxx - sx; if (ix1 > 7) ix1 = 7;
 
 			{ // blitter
 				for (INT32 iy = 0; iy < 8; iy++) {
@@ -789,10 +797,8 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 					if (yy < miny || yy > maxy) continue;
 
-					for (INT32 ix = 0; ix < 8; ix++) {
+					for (INT32 ix = ix0; ix <= ix1; ix++) {
 						INT32 xx = sx+ix;
-
-						if (xx < minx || xx > maxx) continue;
 
 						INT32 pxl = rom[((iy*8)+ix)^flip_tile];
 

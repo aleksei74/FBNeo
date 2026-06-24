@@ -120,6 +120,17 @@ static UINT8 DrvJoy3[16];
 static UINT8 DrvReset;
 static UINT16 DrvInputs[3];
 static UINT8 DrvDips[2];
+static UINT8 DrvConfig[1];   // emulation-config-only "dip" (not a hardware port)
+
+static INT32 gx_dasp_enable = 1; // TMS57002 DASP reverb on/off (config dip), can be disabled on low-end devices
+// When DASP is off we still MUST run the DSP for the boot self-test ("ROM RAM
+// CHECK"): the test loads a program and reads back the computed result via the
+// host port (0x300001). gx_dsp_force keeps the DSP running (in frames) whenever a
+// host result is requested/read; it expires during gameplay (which never reads
+// DSP results), so the CPU is only spent on the DSP when something actually needs it.
+static INT32 gx_dsp_force;
+#define GX_DSP_FORCE_BOOT   900  // frames the DSP is kept alive after a reset (covers POST)
+#define GX_DSP_FORCE_WINDOW 300  // frames the DSP is kept alive after each host read/0xfc
 
 static UINT8 gx_tilebanks[8];
 static UINT8 gx_tile_ram_bank;
@@ -218,7 +229,7 @@ static void gx_render_sound_segment(INT32 nSegmentEnd)
 		dasp_in[2] = gx_clip_int32(gx_soundbuf1[pos + 0] / 2);
 		dasp_in[3] = gx_clip_int32(gx_soundbuf1[pos + 1] / 2);
 
-		if (tms_reset) {
+		if (tms_reset && (gx_dasp_enable || gx_dsp_force > 0)) {
 			tms_cycle_frac += tms_cycle_step;
 			INT32 tms_cycles = tms_cycle_frac >> 16;
 			tms_cycle_frac &= 0xffff;
@@ -422,6 +433,7 @@ static struct BurnInputInfo GxInputList[] = {
 	{"Service 1",     BIT_DIGITAL,   DrvJoy1 + 4,  "service"    },
 	{"Dip A",         BIT_DIPSWITCH, DrvDips + 0,  "dip"        },
 	{"Dip B",         BIT_DIPSWITCH, DrvDips + 1,  "dip"        },
+	{"DASP",          BIT_DIPSWITCH, DrvConfig + 0,"dip"        },
 };
 
 STDINPUTINFO(Gx)
@@ -429,6 +441,11 @@ STDINPUTINFO(Gx)
 static struct BurnDIPInfo GxDIPList[] = {
 	{0x15, 0xff, 0xff, 0xfe, NULL                         },
 	{0x16, 0xff, 0xff, 0xff, NULL                         },
+	{0x17, 0xff, 0xff, 0x01, NULL                         },
+
+	{0   , 0xfe, 0   ,    2, "DASP (TMS57002) Reverb"     },
+	{0x17, 0x01, 0x01, 0x01, "On"                         },
+	{0x17, 0x01, 0x01, 0x00, "Off"                        },
 
 	{0   , 0xfe, 0   ,    2, "Sound Output"               },
 	{0x15, 0x01, 0x01, 0x00, "Stereo"                     },
@@ -1290,6 +1307,7 @@ static UINT8 __fastcall gx_sound_read_byte(UINT32 address)
 	}
 
 	if (address == 0x300001) {
+		gx_dsp_force = GX_DSP_FORCE_WINDOW; // host result read -> keep DSP alive
 		if (tms_host_pending) {
 			tms_host_index++;
 			if (tms_host_index >= 4) {
@@ -1370,6 +1388,7 @@ static void __fastcall gx_sound_write_byte(UINT32 address, UINT8 data)
 				tms_cload_cval = 0;
 			}
 			if (data == 0xfc && tms_pc_nonzero) {
+				gx_dsp_force = GX_DSP_FORCE_WINDOW; // host result requested -> keep DSP alive
 				tms_host_pending = 1;
 				tms_host_index = 0;
 			}
@@ -2152,6 +2171,7 @@ static INT32 DrvDoReset()
 	tms_host_pending = 0;
 	tms_host_index = 0;
 	tms_cycle_frac = 0;
+	gx_dsp_force = GX_DSP_FORCE_BOOT; // run the DSP through the boot self-test even if DASP is off
 	gx_sound_buffer_pos = 0;
 	gx_sound_cycles_total = 0;
 	gx_posthack_frames = gx_posthack_default;
@@ -2742,6 +2762,10 @@ static INT32 DrvFrame()
 		DrvInputs[2] ^= (DrvJoy3[i] & 1) << i;
 	}
 
+	gx_dasp_enable = (DrvConfig[0] & 0x01) ? 1 : 0;
+
+	if (gx_dsp_force > 0) gx_dsp_force--;
+
 	SekNewFrame();
 	timerNewFrame();
 
@@ -2894,6 +2918,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(tms_host_pending);
 		SCAN_VAR(tms_host_index);
 		SCAN_VAR(tms_cycle_frac);
+		SCAN_VAR(gx_dsp_force);
 		SCAN_VAR(gx_posthack_frames);
 		SCAN_VAR(gx_type4_enable);
 		SCAN_VAR(gx_type3_psac2_bank);
