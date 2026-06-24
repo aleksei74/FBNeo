@@ -663,6 +663,19 @@ void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32
 	INT32 shadow_bank_new = (drawmode >> 4) & 0x07;
 	drawmode &= 0x0f;
 
+	// SHDPRISEL (K055555 reg 0x29) selects, per shadow bank, how an object shadow's
+	// priority interacts with the tilemap layers. Field value 2 = compare against
+	// layer priority: suppress the shadow where a tilemap of higher-or-equal priority
+	// has already been drawn (Gokujou Parodius / Fantastic Journey opening curtain --
+	// without this the curtain is wrongly darkened to black each picture change).
+	// Other modes (e.g. 3 = always apply, used by tbyahhoo's dimmed demo background)
+	// ignore layer priority, matching the pre-existing behaviour.
+	INT32 shadow_cmp_pri = 0;
+	if (KonamiIC_K055555InUse) {
+		INT32 shd_field = (K055555ReadRegister(K55_SHD_PRI_SEL) >> ((shadow_bank_new & 3) * 2)) & 3;
+		shadow_cmp_pri = (shd_field == 2);
+	}
+
 	if (!scalex || !scaley) return;
 
 	if (zcode >= 0) {
@@ -743,6 +756,7 @@ void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32
 			} else {
 				const INT32 szbuf_offset = x * 2 + y * GX_ZBUFW * 2;
 				if (pal_idx < shdpen_new) continue;
+				if (shadow_cmp_pri && konami_priority_bitmap[(dst_left + x) + (dst_top + y) * nScreenWidth] >= pri_new) continue;
 				if (szbuf_ptr_new[szbuf_offset] < z8_new) continue;
 				if (szbuf_ptr_new[szbuf_offset + 1] <= pri_new) continue;
 				szbuf_ptr_new[szbuf_offset] = z8_new;

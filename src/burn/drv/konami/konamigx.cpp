@@ -219,14 +219,21 @@ static void gx_draw_basic_tilemaps(INT32 mixerflags, INT32 code)
 		if (mixerflags & 1<<(code+12)) k |= K056382_DRAW_FLAG_FORCE_XYSCROLL;
 
 		if (nBurnLayer & (1 << code)) {
+			INT32 layer_priority = 0;
+			switch (code) {
+				case 0: layer_priority = K055555ReadRegister(K55_PRIINP_0); break;
+				case 1: layer_priority = K055555ReadRegister(K55_PRIINP_3); break;
+				case 2: layer_priority = K055555ReadRegister(K55_PRIINP_6); break;
+				case 3: layer_priority = K055555ReadRegister(K55_PRIINP_7); break;
+			}
 			INT32 alpha2 = K054338_set_alpha_level(mix_mode_external) & 0x1ff;
 			if (alpha2 & 0x100) alpha2 = ~alpha2 & 0xff;
 
 			if (alpha2 < 255) {
-				K056832Draw(code, (k & ~K056832_LAYER_ALPHA) | K056832_SET_ALPHA(alpha2) | K056832_DRAW_CATEGORY_1, 0);
-				K056832Draw(code, k, 0);
+				K056832Draw(code, (k & ~K056832_LAYER_ALPHA) | K056832_SET_ALPHA(alpha2) | K056832_DRAW_CATEGORY_1, layer_priority);
+				K056832Draw(code, k, layer_priority);
 			} else {
-				K056832Draw(code, k | K056832_DRAW_ALL_CATEGORIES, 0);
+				K056832Draw(code, k | K056832_DRAW_ALL_CATEGORIES, layer_priority);
 			}
 		}
 		K056832SetBrightness(0xff);
