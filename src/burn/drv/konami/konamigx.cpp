@@ -7,6 +7,14 @@
 
 INT32 konamigx_mystwarr_kludge = 0; // keep layer1 enabled, even if alpha has made it completely invisible
 
+// sexyparo's per-tile alpha layer (e.g. stage-3 ink-stage blue overlay) is flagged
+// "additive" in the K054338 PBLEND register. The hardware result is a faint blue
+// GLOW (it only adds light, never darkens). MAME approximates additive by inverting
+// the alpha for an alpha-over blend, which still ends up near-opaque/dark at part of
+// the pulse. When this is set, the external (per-tile mix code) layer is drawn with a
+// true additive blend instead.
+INT32 konamigx_alpha_tile_additive = 0;
+
 static INT32 konamigx_wrport1_0 = 0;
 
 //static UINT8 m_sound_ctrl;
@@ -125,6 +133,7 @@ void konamigx_mixer_exit()
 	m_gx_objdma = 0;
 	gx_spriteram_bank_offset = 0;
 	konamigx_mystwarr_kludge = 0;
+	konamigx_alpha_tile_additive = 0;
 }
 
 void konamigx_mixer_set_spriteram_bank(INT32 bank)
@@ -226,11 +235,21 @@ static void gx_draw_basic_tilemaps(INT32 mixerflags, INT32 code)
 				case 2: layer_priority = K055555ReadRegister(K55_PRIINP_6); break;
 				case 3: layer_priority = K055555ReadRegister(K55_PRIINP_7); break;
 			}
-			INT32 alpha2 = K054338_set_alpha_level(mix_mode_external) & 0x1ff;
-			if (alpha2 & 0x100) alpha2 = ~alpha2 & 0xff;
+			INT32 alpha2raw = K054338_set_alpha_level(mix_mode_external) & 0x1ff;
+			INT32 additive2 = 0;
+			INT32 alpha2;
+			if (alpha2raw & 0x100) {
+				// K054338 "additive" mix: draw the per-tile (category 1) mix-code tiles
+				// with a real additive blend (sexyparo glow). Other games keep the
+				// legacy invert-alpha approximation.
+				if (konamigx_alpha_tile_additive) { additive2 = K056832_LAYER_ADDITIVE; alpha2 = alpha2raw & 0xff; }
+				else alpha2 = ~alpha2raw & 0xff;
+			} else {
+				alpha2 = alpha2raw & 0xff;
+			}
 
-			if (alpha2 < 255) {
-				K056832Draw(code, (k & ~K056832_LAYER_ALPHA) | K056832_SET_ALPHA(alpha2) | K056832_DRAW_CATEGORY_1, layer_priority);
+			if (alpha2 < 255 || additive2) {
+				K056832Draw(code, (k & ~K056832_LAYER_ALPHA) | K056832_SET_ALPHA(alpha2) | additive2 | K056832_DRAW_CATEGORY_1, layer_priority);
 				K056832Draw(code, k, layer_priority);
 			} else {
 				K056832Draw(code, k | K056832_DRAW_ALL_CATEGORIES, layer_priority);

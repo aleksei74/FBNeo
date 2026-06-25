@@ -2232,6 +2232,33 @@ static const GxGameConfig *gx_get_game_config()
 	return NULL;
 }
 
+// AlphaTileMode / MixShift / translucent flag are per-game CONFIG (not emulation
+// state). They are applied at init from gx_special, and re-applied after a state
+// load (KonamiICScan restores the scanned K056832AlphaTileMode, which must not be
+// allowed to override the per-game value - e.g. an older savestate had it off).
+static void gx_apply_alpha_tile_config()
+{
+	extern INT32 konamigx_alpha_tile_additive;
+	konamigx_alpha_tile_additive = 0;
+	if (gx_special == GX_SPECIAL_SALMNDR2) {
+		// salmndr2 draws its background as an alpha-blended tile layer; the per-tile
+		// alpha mix code lives in attr bits 4-5 (MAME salmndr2_tile_callback). Without
+		// this the layer renders opaque and floods the screen with garbage.
+		K056832SetAlphaTileMixShift(4);
+		K056832SetAlphaTileMode(1);
+	} else if (gx_special == GX_SPECIAL_SEXPYARO) {
+		// sexyparo uses MAME's alpha_tile_callback: the per-tile alpha mix code is in
+		// attr bits 6-7. The mix code selects a K054338 "additive" PBLEND level, so the
+		// blended layers (e.g. stage-3 ink-stage blue overlay/water) must use a real
+		// additive blend to look like the original's faint blue glow.
+		K056832SetAlphaTileMixShift(6);
+		K056832SetAlphaTileMode(1);
+		konamigx_alpha_tile_additive = 1;
+	} else {
+		K056832SetAlphaTileMode(0);
+	}
+}
+
 static INT32 DrvInit()
 {
 	const GxGameConfig *config = gx_get_game_config();
@@ -2389,15 +2416,7 @@ static INT32 DrvInit()
 		K056832SetLayerOffsets(2,  2, 0);
 		K056832SetLayerOffsets(3,  3, 0);
 	}
-	if (config->special == GX_SPECIAL_SALMNDR2) {
-		// salmndr2 draws its background as an alpha-blended tile layer; the per-tile
-		// alpha mix code lives in attr bits 4-5 (MAME salmndr2_tile_callback). Without
-		// this the layer renders opaque and floods the screen with garbage.
-		K056832SetAlphaTileMixShift(4);
-		K056832SetAlphaTileMode(1);
-	} else {
-		K056832SetAlphaTileMode(0);
-	}
+	gx_apply_alpha_tile_config();
 
 	INT32 sprite_tile_count = (gx_sprite_bpp == 6) ? ((gx_type4_enable ? 0x1800000 : gx_sprite_word_size) / 0xc0) : (gx_sprite_word_size / 0x80);
 	INT32 sprite_rom_mask = ((gx_sprite_bpp == 6) ? gx_sprite_word_size : 0x1000000) - 1;
@@ -2886,6 +2905,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SekScan(nAction);
 		KonamiICScan(nAction);
+		gx_apply_alpha_tile_config(); // re-assert per-game alpha-tile config (KonamiICScan restores scanned K056832AlphaTileMode)
 		K054539Scan(nAction, pnMin);
 		DrvTms.scan(nAction);
 		EEPROMScan(nAction, pnMin);

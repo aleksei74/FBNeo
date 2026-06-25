@@ -175,6 +175,7 @@ if (a >= nStartAddress && a <= nStartAddress + 0x7fff) {			\
 #define K056382_DRAW_FLAG_FORCE_XYSCROLL	0x00800000 // same as flag mirror
 #define K056832_DRAW_CATEGORY_1		0x01000000
 #define K056832_DRAW_ALL_CATEGORIES	0x02000000
+#define K056832_LAYER_ADDITIVE		0x04000000 // additive blend (dst += src*alpha) instead of alpha-over
 
 #define K056832_SET_ALPHA(x)			(K056832_LAYER_ALPHA | ((x)<<8))
 

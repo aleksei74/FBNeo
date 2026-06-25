@@ -630,6 +630,24 @@ static inline UINT32 alpha_blend(UINT32 d, UINT32 s, UINT32 p)
 		((((s & 0x00ff00) * p) + ((d & 0x00ff00) * a)) & 0x00ff0000)) >> 8;
 }
 
+// additive blend: dst += src * p/256, clamped per channel. Used for K054338
+// "additive mode" tile layers (e.g. sexyparo's faint blue glow overlay) which only
+// add light - they never darken the picture the way an alpha-over blend can.
+static inline UINT32 additive_blend(UINT32 d, UINT32 s, UINT32 p)
+{
+	if (p == 0) return d;
+
+	UINT32 r = ((d >> 16) & 0xff) + ((((s >> 16) & 0xff) * p) >> 8);
+	UINT32 g = ((d >>  8) & 0xff) + ((((s >>  8) & 0xff) * p) >> 8);
+	UINT32 b = ((d >>  0) & 0xff) + ((((s >>  0) & 0xff) * p) >> 8);
+
+	if (r > 0xff) r = 0xff;
+	if (g > 0xff) g = 0xff;
+	if (b > 0xff) b = 0xff;
+
+	return (r << 16) | (g << 8) | b;
+}
+
 static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32 scrollx, INT32 scrolly, INT32 flags, INT32 priority, INT32 linemap_mode)
 {
 	static const struct K056832_SHIFTMASKS
@@ -649,9 +667,10 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 	INT32 alpha_enable = flags & K056832_LAYER_ALPHA;
 	INT32 alpha = (flags >> 8) & 0xff;
+	INT32 alpha_additive = flags & K056832_LAYER_ADDITIVE;
 	INT32 opaque = flags & K056832_LAYER_OPAQUE;
 
-	if (alpha == 255) alpha_enable = 0;
+	if (alpha == 255 && !alpha_additive) alpha_enable = 0;
 
 	if (linemap_mode)
 	{
@@ -804,7 +823,10 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 						if (pxl || opaque) {
 							if (alpha_enable) {
-								dst[xx] = alpha_blend(dst[xx], K056832ApplyBrightness(pal[pxl]), alpha);
+								if (alpha_additive)
+									dst[xx] = additive_blend(dst[xx], K056832ApplyBrightness(pal[pxl]), alpha);
+								else
+									dst[xx] = alpha_blend(dst[xx], K056832ApplyBrightness(pal[pxl]), alpha);
 							} else {
 								dst[xx] = K056832ApplyBrightness(pal[pxl]);
 							}
