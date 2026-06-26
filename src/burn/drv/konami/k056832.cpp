@@ -722,6 +722,21 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 	{
 		INT32 sx = (offs & 0x3f) * 8;
 		INT32 sy = (offs / 0x40) * 8; // sy handling in blitter (down below...)
+		// The y-clip test below depends only on sy, identical for all 64 tiles in a
+		// tile row. Evaluate it once at the start of each row and skip the whole row
+		// on a miss -- this is what makes linescroll cheap (draw_layer_internal is
+		// called once per line there, each call otherwise scanning all 2048 tiles).
+		if ((offs & 0x3f) == 0) {
+			INT32 ryh, ryl;
+			if (tilemap_flip & 2) {
+				ryh = ((256 - 8) - (sy - 7) + scrolly) & 0xff;
+				ryl = ((256 - 8) - (sy - 0) + scrolly) & 0xff;
+			} else {
+				ryh = ((sy + 7) - scrolly) & 0xff;
+				ryl = ((sy + 0) - scrolly) & 0xff;
+			}
+			if ( (ryh < (miny-7) || ryh > (maxy+7)) && (ryl < (miny-7) || ryl > (maxy+7)) ) { offs += 63; continue; }
+		}
 
 		sx -= scrollx;
 		if (sx < -7) sx += 512;
