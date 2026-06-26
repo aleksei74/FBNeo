@@ -2284,7 +2284,8 @@ static INT32 DrvInit()
 		BurnTransferSetDimensions(width, 224);
 		GenericTilesSetClipRaw(0, width, 0, 224);
 		BurnDrvSetVisibleSize(width, 224);
-		BurnDrvSetAspect((width == GX_TYPE4_MONITOR_WIDTH) ? 12 : 24, 7);
+		// Each Type-4 monitor is a standard 4:3 arcade screen; two side-by-side = 8:3.
+		BurnDrvSetAspect((width == GX_TYPE4_MONITOR_WIDTH) ? 4 : 8, 3);
 	}
 
 	GenericTilesInit();
@@ -2609,7 +2610,7 @@ static INT32 gx_type4_check_screen_size()
 		BurnTransferSetDimensions(width, nScreenHeight);
 		GenericTilesSetClipRaw(0, width, 0, nScreenHeight);
 		BurnDrvSetVisibleSize(width, nScreenHeight);
-		BurnDrvSetAspect(dual_screen ? 24 : 12, 7);
+		BurnDrvSetAspect(dual_screen ? 8 : 4, 3);
 		Reinitialise();
 		BurnTransferRealloc();
 		KonamiAllocateBitmaps();
@@ -4335,7 +4336,7 @@ struct BurnDriver BurnDrvRungun2 = {
 	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungun2RomInfo, rungun2RomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
-	384, 224, 12, 7
+	384, 224, 4, 3
 };
 
 struct BurnDriver BurnDrvSlamdnk2 = {
@@ -4345,7 +4346,7 @@ struct BurnDriver BurnDrvSlamdnk2 = {
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, slamdnk2RomInfo, slamdnk2RomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
-	384, 224, 12, 7
+	384, 224, 4, 3
 };
 
 struct BurnDriver BurnDrvRushhero = {
