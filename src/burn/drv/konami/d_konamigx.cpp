@@ -2536,7 +2536,12 @@ static void DrvPaletteUpdate(INT32 use_sub_palette = 0)
 
 		for (INT32 i = 0; i < 0x2000; i++) {
 			UINT32 d = gx_ram_read_long(palram, 0xe80000 + (i << 2), 0x7fff);
-			DrvPalette[i] = BurnHighCol((d >> 16) & 0xff, (d >> 8) & 0xff, d & 0xff, 0);
+			// konami_palette32 (== DrvPalette, see DrvInit) must hold raw RGB888 for the
+			// 32-bit mixer/KonamiBlendCopy path. Using BurnHighCol here yields a depth-
+			// dependent value: in 16bpp it packs RGB565 into the slot, and KonamiBlendCopy's
+			// case-2 `palette_lut[bmp & 0xffffff]` then misreads it, dropping the red channel
+			// (type4 went all blue/green in 16bpp). Match the non-type4 path: store RGB888.
+			DrvPalette[i] = d & 0x00ffffff;
 			konami_palette32[i] = DrvPalette[i];
 		}
 
