@@ -5662,6 +5662,7 @@ DRV		BurnDrvDdpdojblkbl;
 DRV		BurnDrvDdp3blk;
 DRV		BurnDrvDdp3blka;
 DRV		BurnDrvddpdojt;
+DRV		BurnDrvddpdojtd;
 DRV		BurnDrvDdp2100j;
 DRV		BurnDrvDdp2101j;
 DRV		BurnDrvDdp2j;
@@ -9312,6 +9313,7 @@ DRV		BurnSpechammerboy1;
 DRV		BurnDrvMSX_hammerboy1;
 DRV		BurnSpechammerboy2;
 DRV		BurnDrvMSX_hammerboy2;
+DRV		BurnDrvHamboy;
 DRV		BurnSpecHammerknighten;
 DRV		BurnSpecHammerknightpt;
 DRV		BurnSpecHammerknightes;
@@ -11337,6 +11339,9 @@ DRV		BurnDrvkov2nl_302hk;
 DRV		BurnDrvkov2nl_302jp;
 DRV		BurnDrvkov2nl;
 DRV		BurnDrvkov2nl_302tw;
+DRV		BurnDrvkov2nld_300cn;
+DRV		BurnDrvkov2nld_301cn;
+DRV		BurnDrvkov2nld_302cn;
 DRV		BurnDrvKov2pemp;
 DRV		BurnDrvKov2p200;
 DRV		BurnDrvKov2p202;
@@ -11349,6 +11354,10 @@ DRV		BurnDrvkov3_100;
 DRV		BurnDrvkov3_101;
 DRV		BurnDrvkov3_102;
 DRV		BurnDrvkov3;
+DRV		BurnDrvkov3d_100;
+DRV		BurnDrvkov3d_101;
+DRV		BurnDrvkov3d_102;
+DRV		BurnDrvkov3d;
 DRV		BurnDrvkovplusq;
 DRV		BurnDrvkovplus20tx;
 DRV		BurnDrvKovplusbl;
@@ -13056,6 +13065,7 @@ DRV		BurnDrvmd_megameatboy;
 DRV		BurnDrvmd_mindtris;
 DRV		BurnDrvmd_megapang;
 DRV		BurnSpecMegaphoenix;
+DRV		BurnDrvMegaphx;
 DRV		BurnDrvmd_megaqbert12;
 DRV		BurnDrvmd_queenjour;
 DRV		BurnSpecMegaserpen;
@@ -15276,6 +15286,9 @@ DRV		BurnDrvorleg2_104hk;
 DRV		BurnDrvorleg2_104jp;
 DRV		BurnDrvorleg2;
 DRV		BurnDrvorleg2_104tw;
+DRV		BurnDrvorleg2d_101cn;
+DRV		BurnDrvorleg2d_103cn;
+DRV		BurnDrvororleg2d_104cn;
 DRV		BurnDrvoldsdsgl;
 DRV		BurnDrvOlds100;
 DRV		BurnDrvOlds100a;
@@ -19803,6 +19816,7 @@ DRV		BurnDrvnes_spacehunter;
 DRV		BurnSpecSpaceintruders;
 DRV		BurnDrvSpcinv95u;
 DRV		BurnDrvSpcinv95;
+DRV		BurnSpecSpacinv;
 DRV		BurnDrvcv_spaceinv;
 DRV		BurnDrvngpc_spaceinv;
 DRV		BurnDrvmd_spaceinv;
@@ -19825,6 +19839,7 @@ DRV		BurnDrvInvaders;
 DRV		BurnDrvmd_sinv90;
 DRV		BurnDrvmd_sinv91s;
 DRV		BurnDrvmd_sinv91;
+DRV		BurnSpecSpacinvcoop;
 DRV		BurnDrvcv_spaceinvcol;
 DRV		BurnDrvSpacedxo;
 DRV		BurnDrvSpacedxj;
@@ -22695,6 +22710,7 @@ DRV		BurnDrvKof98ult;
 DRV		BurnDrvKof98mix;
 DRV		BurnDrvkof98umh;
 DRV		BurnDrvKof99uh;
+DRV		BurnDrvkof98umhd;
 DRV		BurnDrvKof99ae;
 DRV		BurnDrvKof99cb;
 DRV		BurnDrvKof99e;
@@ -25362,6 +25378,7 @@ DRV		BurnDrvnes_youngindjonchr;
 DRV		BurnDrvmd_youngind;
 DRV		BurnDrvsnes_Youngmerline;
 DRV		BurnDrvsnes_Youngmerlin;
+DRV		BurnDrvYoyospel;
 DRV		BurnSpecYoyogreatadventure;
 DRV		BurnSpecYoyorevenge;
 DRV		BurnDrvnes_ys;
@@ -31350,6 +31367,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvDdp3blk,			// DoDonPachi Dai-Ou-Jou Black Label (Japan, 2002.10.07.Black Ver, newer)
 	&BurnDrvDdp3blka,			// DoDonPachi Dai-Ou-Jou Black Label (Japan, 2002.10.07.Black Ver, older)
 	&BurnDrvddpdojt,			// DoDonPachi Dai-Ou-Jou Tamashii (V201, China)
+	&BurnDrvddpdojtd,			// DoDonPachi Dai-Ou-Jou Tamashii (V201, China, Decrypted)
 	&BurnDrvDdp2100j,			// DoDonPachi II (Japan, ver. 100)
 	&BurnDrvDdp2101j,			// DoDonPachi II (Japan, ver. 101)
 	&BurnDrvDdp2j,				// DoDonPachi II (Japan, ver. 102)
@@ -35000,6 +35018,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_hammerboy1,		// Hammer Boy - Part 1 (Euro)
 	&BurnSpechammerboy2,		// Hammer Boy - Part 2 (128K)
 	&BurnDrvMSX_hammerboy2,		// Hammer Boy - Part 2 (Euro)
+	&BurnDrvHamboy,				// Hammer Boy
 	&BurnSpecHammerknighten,	// Hammer Knight (English) (128K) (HB)
 	&BurnSpecHammerknightpt,	// Hammer Knight (Portuguese) (128K) (HB)
 	&BurnSpecHammerknightes,	// Hammer Knight (Spanish) (128K) (HB)
@@ -37025,6 +37044,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvkov2nl_302jp,		// Knights of Valour 2 New Legend (V302, Japan)
 	&BurnDrvkov2nl,				// Knights of Valour 2 New Legend (V302, Overseas)
 	&BurnDrvkov2nl_302tw,		// Knights of Valour 2 New Legend (V302, Taiwan)
+	&BurnDrvkov2nld_300cn,		// Knights of Valour 2 New Legend / Sanguo Zhan Ji 2 Gaishi Yingxiong (V300, China, Decrypted)
+	&BurnDrvkov2nld_301cn,		// Knights of Valour 2 New Legend / Sanguo Zhan Ji 2 Gaishi Yingxiong (V301, China, Decrypted)
+	&BurnDrvkov2nld_302cn,		// Knights of Valour 2 New Legend / Sanguo Zhan Ji 2 Gaishi Yingxiong (V302, China, Decrypted)
 	&BurnDrvKov2pemp,			// Knights of Valour 2 Plus - Extend Magic Plus (Hack)
 	&BurnDrvKov2p200,			// Knights of Valour 2 Plus - Nine Dragons / Sanguo Zhan Ji 2 Qunxiong Zhengba / Sanguo Zhan Ji 2 Feilong Zai Tian / Sangoku Senki Busyou Souha (ver. M200XX, 200, 100CN)
 	&BurnDrvKov2p202,			// Knights of Valour 2 Plus - Nine Dragons / Sanguo Zhan Ji 2 Qunxiong Zhengba / Sanguo Zhan Ji 2 Feilong Zai Tian / Sangoku Senki Busyou Souha (ver. M202XX, 200, 100CN)
@@ -37037,6 +37059,10 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvkov3_101,			// Knights of Valour 3 (V101, China)
 	&BurnDrvkov3_102,			// Knights of Valour 3 (V102, China)
 	&BurnDrvkov3,				// Knights of Valour 3 (V104, China)
+	&BurnDrvkov3d_100,			// Knights of Valour 3 / Sanguo Zhan Ji 3 (V100, China, Decrypted)
+	&BurnDrvkov3d_101,			// Knights of Valour 3 / Sanguo Zhan Ji 3 (V101, China, Decrypted)
+	&BurnDrvkov3d_102,			// Knights of Valour 3 / Sanguo Zhan Ji 3 (V102, China, Decrypted)
+	&BurnDrvkov3d,				// Knights of Valour 3 / Sanguo Zhan Ji 3 (V104, China, Decrypted)
 	&BurnDrvkovplusq,			// Knights of Valour Plus - New Biography of Heroes (V120)
 	&BurnDrvkovplus20tx,		// Knights of Valour Plus - Qun Xiong Luan Wu 2020
 	&BurnDrvKovplusbl,			// Knights of Valour Plus / San Guo Zhan Ji - Zeng Zong Plus/ Sangoku Senki Masamune Plus (bootleg, V117CN?) 
@@ -38744,6 +38770,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_mindtris,		// Mega Mindtris (HB, v1.2)
 	&BurnDrvmd_megapang,		// Mega Pang (HB, v0.3 Beta)
 	&BurnSpecMegaphoenix,		// Mega Phoenix (48K-128K)
+	&BurnDrvMegaphx,			// Mega Phoenix
 	&BurnDrvmd_megaqbert12,		// Mega Q-Bert (HB, v1.2)
 	&BurnDrvmd_queenjour,		// Mega Queen Journey, The (HB)
 	&BurnSpecMegaserpen,		// Mega Serpiente (English) (48K) (HB)
@@ -40964,6 +40991,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvorleg2_104jp,		// Oriental Legend 2 (V104, Japan)
 	&BurnDrvorleg2,				// Oriental Legend 2 (V104, Overseas)
 	&BurnDrvorleg2_104tw,		// Oriental Legend 2 (V104, Taiwan)
+	&BurnDrvorleg2d_101cn,		// Oriental Legend 2 / Xi You Shi E Zhuan 2 (V101, China, Decrypted)
+	&BurnDrvorleg2d_103cn,		// Oriental Legend 2 / Xi You Shi E Zhuan 2 (V103, China, Decrypted)
+	&BurnDrvororleg2d_104cn,	// Oriental Legend 2 / Xi You Shi E Zhuan 2 (V104, China, Decrypted)
 	&BurnDrvoldsdsgl,			// Oriental Legend Special - Da Sheng Gui Lai (Hack)
 	&BurnDrvOlds100,			// Oriental Legend Special / Xiyou Shi E Zhuan Super (ver. 100, set 1)
 	&BurnDrvOlds100a,			// Oriental Legend Special / Xiyou Shi E Zhuan Super (ver. 100, set 2)
@@ -45491,6 +45521,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecSpaceintruders,	// Space Intruders (16K)
 	&BurnDrvSpcinv95u,			// Space Invaders '95: The Attack Of Lunar Loonies (Ver 2.5A 1995/06/14)
 	&BurnDrvSpcinv95,			// Space Invaders '95: The Attack Of Lunar Loonies (Ver 2.5O 1995/06/14)
+	&BurnSpecSpacinv,			// Space invaders (48K-128K) (HB, v1.4.1)
 	&BurnDrvcv_spaceinv,		// Space Invaders (HB)
 	&BurnDrvngpc_spaceinv,		// Space Invaders (HB)
 	&BurnDrvmd_spaceinv,		// Space Invaders (HB, v1.6)
@@ -45513,6 +45544,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_sinv90,			// Space Invaders 90 (Japan)
 	&BurnDrvmd_sinv91s,			// Space Invaders 91 (Hack, Spanish)
 	&BurnDrvmd_sinv91,			// Space Invaders 91 (USA)
+	&BurnSpecSpacinvcoop,		// Space Invaders Co-Op (48K-128K) (HB, v2.0.1)
 	&BurnDrvcv_spaceinvcol,		// Space Invaders Collection (HB)
 	&BurnDrvSpacedxo,			// Space Invaders DX (Japan, v2.0)
 	&BurnDrvSpacedxj,			// Space Invaders DX (Japan, v2.1)
@@ -48383,6 +48415,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvKof98mix,			// The King of Fighters '98 - The Slugfest / King of Fighters '98 - Dream Match Never Ends (Unlimited, Hack)
 	&BurnDrvkof98umh,			// The King of Fighters '98: Ultimate Match HERO (China, V100)
 	&BurnDrvKof99uh,			// The King of Fighters '99 - Millennium Battle (AES Uncensored Hack)
+	&BurnDrvkof98umhd,			// The King of Fighters '98: Ultimate Match HERO (V100, China, Decrypted)
 	&BurnDrvKof99ae,			// The King of Fighters '99 - Millennium Battle (Anniversary, Hack)
 	&BurnDrvKof99cb,			// The King of Fighters '99 - Millennium Battle (Combo, Hack)
 	&BurnDrvKof99e,				// The King of Fighters '99 - Millennium Battle (earlier)
@@ -51050,6 +51083,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_youngind,		// Young Indiana Jones Chronicles, The (USA, Prototype)
 	&BurnDrvsnes_Youngmerline,	// Young Merlin (Euro)
 	&BurnDrvsnes_Youngmerlin,	// Young Merlin (USA)
+	&BurnDrvYoyospel,			// YoYo Spell (prototype)
 	&BurnSpecYoyogreatadventure,// Yoyo's Great Adventure (128K) (HB)
 	&BurnSpecYoyorevenge,		// YoYo's Revenge (48K) (HB)
 	&BurnDrvnes_ys,				// Ys (Hack, English)
@@ -56998,6 +57032,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "ddpdojblk", "pgm/d_pgm.cpp"},
 	{ "ddpdojblka", "pgm/d_pgm.cpp"},
 	{ "ddpdojt", "pgm2/d_pgm2.cpp"},
+	{ "ddpdojtd", "pgm2/d_pgm2.cpp"},
 	{ "ddp2100j", "pgm/d_pgm.cpp"},
 	{ "ddp2101j", "pgm/d_pgm.cpp"},
 	{ "ddp2j", "pgm/d_pgm.cpp"},
@@ -60628,6 +60663,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "msx_hammerboy1", "msx/d_msx.cpp"},
 	{ "spec_hammerboy2", "spectrum/d_spectrum.cpp"},
 	{ "msx_hammerboy2", "msx/d_msx.cpp"},
+	{ "hamboy", "pst90s/d_megaphx.cpp"},
 	{ "spec_hammerknighten", "spectrum/d_spectrum.cpp"},
 	{ "spec_hammerknightpt", "spectrum/d_spectrum.cpp"},
 	{ "spec_hammerknightes", "spectrum/d_spectrum.cpp"},
@@ -62631,6 +62667,9 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "kov2nl_302jp", "pgm2/d_pgm2.cpp"},
 	{ "kov2nl", "pgm2/d_pgm2.cpp"},
 	{ "kov2nl_302tw", "pgm2/d_pgm2.cpp"},
+	{ "kov2nld_300cn", "pgm2/d_pgm2.cpp"},
+	{ "kov2nld_301cn", "pgm2/d_pgm2.cpp"},
+	{ "kov2nld_302cn", "pgm2/d_pgm2.cpp"},
 	{ "kov2pemp", "pgm/d_pgm.cpp"},
 	{ "kov2p200", "pgm/d_pgm.cpp"},
 	{ "kov2p202", "pgm/d_pgm.cpp"},
@@ -62643,6 +62682,10 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "kov3_101", "pgm2/d_pgm2.cpp"},
 	{ "kov3_102", "pgm2/d_pgm2.cpp"},
 	{ "kov3", "pgm2/d_pgm2.cpp"},
+	{ "kov3d_100", "pgm2/d_pgm2.cpp"},
+	{ "kov3d_101", "pgm2/d_pgm2.cpp"},
+	{ "kov3d_102", "pgm2/d_pgm2.cpp"},
+	{ "kov3d", "pgm2/d_pgm2.cpp"},
 	{ "kovplusq", "pgm/d_pgm.cpp"},
 	{ "kovplus20tx", "pgm/d_pgm.cpp"},
 	{ "kovplusbl", "pgm/d_pgm.cpp"},
@@ -64336,6 +64379,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_mindtris", "megadrive/d_megadrive.cpp"},
 	{ "md_megapang", "megadrive/d_megadrive.cpp"},
 	{ "spec_megaphoenix", "spectrum/d_spectrum.cpp"},
+	{ "megaphx", "pst90s/d_megaphx.cpp"},
 	{ "md_megaqbert12", "megadrive/d_megadrive.cpp"},
 	{ "md_queenjour", "megadrive/d_megadrive.cpp"},
 	{ "spec_megaserpen", "spectrum/d_spectrum.cpp"},
@@ -66540,6 +66584,9 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "orleg2_104jp", "pgm2/d_pgm2.cpp"},
 	{ "orleg2", "pgm2/d_pgm2.cpp"},
 	{ "orleg2_104tw", "pgm2/d_pgm2.cpp"},
+	{ "orleg2d_101cn", "pgm2/d_pgm2.cpp"},
+	{ "orleg2d_103cn", "pgm2/d_pgm2.cpp"},
+	{ "orleg2d_104cn", "pgm2/d_pgm2.cpp"},
 	{ "oldsdsgl", "pgm/d_pgm.cpp"},
 	{ "olds100", "pgm/d_pgm.cpp"},
 	{ "olds100a", "pgm/d_pgm.cpp"},
@@ -71031,6 +71078,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_spaceintruders", "spectrum/d_spectrum.cpp"},
 	{ "spcinv95u", "taito/d_taitof3.cpp"},
 	{ "spcinv95", "taito/d_taitof3.cpp"},
+	{ "spec_spacinv", "spectrum/d_spectrum.cpp"},
 	{ "cv_spaceinv", "coleco/d_coleco.cpp"},
 	{ "ngp_spaceinv", "pst90s/d_ngp.cpp"},
 	{ "md_spaceinv", "megadrive/d_megadrive.cpp"},
@@ -71053,6 +71101,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_sinv90", "megadrive/d_megadrive.cpp"},
 	{ "md_sinv91s", "megadrive/d_megadrive.cpp"},
 	{ "md_sinv91", "megadrive/d_megadrive.cpp"},
+	{ "spec_spacinvcoop", "spectrum/d_spectrum.cpp"},
 	{ "cv_spaceinvcol", "coleco/d_coleco.cpp"},
 	{ "spacedxo", "taito/d_taitob.cpp"},
 	{ "spacedxj", "taito/d_taitob.cpp"},
@@ -73895,6 +73944,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "kof98mix", "neogeo/d_neogeo.cpp"},
 	{ "kof98umh", "pgm2/d_pgm2.cpp"},
 	{ "kof99uh", "neogeo/d_neogeo.cpp"},
+	{ "kof98umhd", "pgm2/d_pgm2.cpp"},
 	{ "kof99ae", "neogeo/d_neogeo.cpp"},
 	{ "kof99cb", "neogeo/d_neogeo.cpp"},
 	{ "kof99e", "neogeo/d_neogeo.cpp"},
@@ -76526,6 +76576,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_youngind", "megadrive/d_megadrive.cpp"},
 	{ "snes_youngmerline", "snes/d_snes.cpp"},
 	{ "snes_youngmerlin", "snes/d_snes.cpp"},
+	{ "yoyospel", "pst90s/d_megaphx.cpp"},
 	{ "spec_yoyogreatadventure", "spectrum/d_spectrum.cpp"},
 	{ "spec_yoyorevenge", "spectrum/d_spectrum.cpp"},
 	{ "nes_ys", "nes/d_nes.cpp"},
