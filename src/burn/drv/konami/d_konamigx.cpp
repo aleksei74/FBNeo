@@ -1195,7 +1195,7 @@ static void gx_type4_prot_write(UINT32 address, UINT32 data)
 			UINT32 dst = 0xd20000;
 
 			for (INT32 spr = 0; spr < 0x100; spr++) {
-				gx_address_write_word(dst, gx_force_byteswap_word(gx_address_read_word(src)));
+				gx_address_write_word(dst, gx_address_read_word(src));
 				src += 4;
 				dst += 2;
 			}
@@ -1204,7 +1204,7 @@ static void gx_type4_prot_write(UINT32 address, UINT32 data)
 			UINT32 dst = 0xd21000;
 
 			for (INT32 spr = 0; spr < 0x400; spr++) {
-				gx_address_write_word(dst, gx_force_byteswap_word(gx_address_read_word(src)));
+				gx_address_write_word(dst, gx_address_read_word(src));
 				src += 4;
 				dst += 2;
 			}
