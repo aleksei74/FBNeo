@@ -60,7 +60,7 @@ enum {
 	GX_SPECIAL_TBYAHHOO = 8,
 	GX_SPECIAL_FANTJOUR = 9,
 	GX_SPECIAL_TYPE4SD2 = 10,
-	GX_SPECIAL_SEXPYARO = 11,
+	GX_SPECIAL_SEXYPARO = 11,
 	GX_SPECIAL_SALMNDR2 = 12
 };
 
@@ -102,8 +102,8 @@ static const GxGameConfig GxGameConfigs[] = {
 	{ "puzldama",  7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_5BPP, 5, 16,  0xa00000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -70, -38, 5, 12 * 60, 5 },
 	{ "tbyahhoo",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "mtwinbee",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
-	{ "sexyparo",  7, GX_SPECIAL_SEXPYARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -38, 0, 12 * 60, 5 },
-	{ "sexyparoa", 7, GX_SPECIAL_SEXPYARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -38, 0, 12 * 60, 5 },
+	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -38, 0, 12 * 60, 5 },
+	{ "sexyparoa", 7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -38, 0, 12 * 60, 5 },
 	{ "salmndr2",  7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
 	{ "salmndr2a", 7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
 	{ "tkmmpzdm",  7, GX_SPECIAL_TKMMPZDM, GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
@@ -900,7 +900,7 @@ static void gx_bios_vblank_tick()
 static void gx_bios_vblank_hle_check(INT32 pc)
 {
 	if (gx_type4_enable) return;
-	if (gx_special != GX_SPECIAL_SEXPYARO &&
+	if (gx_special != GX_SPECIAL_SEXYPARO &&
 	    gx_special != GX_SPECIAL_SALMNDR2 &&
 	    gx_special != GX_SPECIAL_TBYAHHOO) return;
 	if (pc >= 0x0a10 && pc <= 0x0a18)
@@ -1116,7 +1116,7 @@ static void gx_esc_write(UINT32 data)
 
 		if (subop == 1 && (gx_special == GX_SPECIAL_TBYAHHOO || gx_special == GX_SPECIAL_DAISKISS)) {
 			gx_generate_sprites(0xc00000, 0xd20000, 0x100);
-		} else if (subop == 1 && gx_special == GX_SPECIAL_SEXPYARO) {
+		} else if (subop == 1 && gx_special == GX_SPECIAL_SEXYPARO) {
 			gx_generate_sprites(0xc00604, 0xd20000, 0xfc);
 		} else if (gx_special == GX_SPECIAL_TKMMPZDM) {
 			gx_esc_alert_mode0(0x0142, 0x100);
@@ -2246,7 +2246,7 @@ static void gx_apply_alpha_tile_config()
 		// this the layer renders opaque and floods the screen with garbage.
 		K056832SetAlphaTileMixShift(4);
 		K056832SetAlphaTileMode(1);
-	} else if (gx_special == GX_SPECIAL_SEXPYARO) {
+	} else if (gx_special == GX_SPECIAL_SEXYPARO) {
 		// sexyparo uses MAME's alpha_tile_callback: the per-tile alpha mix code is in
 		// attr bits 6-7. The mix code selects a K054338 "additive" PBLEND level, so the
 		// blended layers (e.g. stage-3 ink-stage blue overlay/water) must use a real

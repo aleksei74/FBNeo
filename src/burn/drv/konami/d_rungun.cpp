@@ -95,7 +95,7 @@ static void RungunCheckScreenSize()
 	BurnTransferSetDimensions(width, 224);
 	GenericTilesSetClipRaw(0, width, 0, 224);
 	BurnDrvSetVisibleSize(width, 224);
-	BurnDrvSetAspect(dual ? 24 : 12, 7);
+	BurnDrvSetAspect(dual ? 8 : 4, 3);
 	ReinitialiseVideo();
 	BurnTransferRealloc();
 	KonamiAllocateBitmaps();
@@ -1306,7 +1306,7 @@ struct BurnDriver BurnDrvRungun = {
 	BDF_GAME_WORKING, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunRomInfo, rungunRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	384, 224, 12, 7
+	384, 224, 4, 3
 };
 
 // Run and Gun (ver EAA 1993 10.8) (dual screen with demux adapter)
@@ -1332,7 +1332,7 @@ struct BurnDriver BurnDrvRungund = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungundRomInfo, rungundRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunDualInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	768, 224, 24, 7
+	768, 224, 8, 3
 };
 
 // Run and Gun (ver EAA 1993 10.4)
@@ -1358,7 +1358,7 @@ struct BurnDriver BurnDrvRunguna = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunaRomInfo, rungunaRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	384, 224, 12, 7
+	384, 224, 4, 3
 };
 
 // Run and Gun (ver EAA 1993 10.4) (dual screen with demux adapter)
@@ -1384,7 +1384,7 @@ struct BurnDriver BurnDrvRungunad = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunadRomInfo, rungunadRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunDualInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	768, 224, 24, 7
+	768, 224, 8, 3
 };
 
 // Run and Gun (ver EAA 1993 9.10, prototype?)
@@ -1410,7 +1410,7 @@ struct BurnDriver BurnDrvRungunb = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_PROTOTYPE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunbRomInfo, rungunbRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	384, 224, 12, 7
+	384, 224, 4, 3
 };
 
 // Run and Gun (ver EAA 1993 9.10, prototype?) (dual screen with demux adapter)
@@ -1436,7 +1436,7 @@ struct BurnDriver BurnDrvRungunbd = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_PROTOTYPE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunbdRomInfo, rungunbdRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunDualInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	768, 224, 24, 7
+	768, 224, 8, 3
 };
 
 // Run and Gun (ver UBA 1993 10.8)
@@ -1462,7 +1462,7 @@ struct BurnDriver BurnDrvRungunuba = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunubaRomInfo, rungunubaRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	384, 224, 12, 7
+	384, 224, 4, 3
 };
 
 // Run and Gun (ver UBA 1993 10.8) (dual screen with demux adapter)
@@ -1488,7 +1488,7 @@ struct BurnDriver BurnDrvRungunubad = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunubadRomInfo, rungunubadRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunDualInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	768, 224, 24, 7
+	768, 224, 8, 3
 };
 
 // Slam Dunk (ver JAA 1993 10.8)
@@ -1514,7 +1514,7 @@ struct BurnDriver BurnDrvSlmdunkj = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, slmdunkjRomInfo, slmdunkjRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	384, 224, 12, 7
+	384, 224, 4, 3
 };
 
 // Slam Dunk (ver JAA 1993 10.8) (dual screen with demux adapter)
@@ -1540,7 +1540,7 @@ struct BurnDriver BurnDrvSlmdunkjd = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, slmdunkjdRomInfo, slmdunkjdRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunDualInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	768, 224, 24, 7
+	768, 224, 8, 3
 };
 
 // Run and Gun (ver UAB 1993 10.12, dedicated twin cabinet)
@@ -1566,7 +1566,7 @@ struct BurnDriver BurnDrvRungunuabd = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunuabdRomInfo, rungunuabdRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunDualInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	768, 224, 24, 7
+	768, 224, 8, 3
 };
 
 // Run and Gun (ver UAB 1993 9.10, dedicated twin cabinet)
@@ -1592,5 +1592,5 @@ struct BurnDriver BurnDrvRungunuaad = {
 	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_PREFIX_KONAMI, GBF_SPORTSMISC, 0,
 	NULL, rungunuaadRomInfo, rungunuaadRomName, NULL, NULL, NULL, NULL, RungunInputInfo, RungunDIPInfo,
 	RungunDualInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x400,
-	768, 224, 24, 7
+	768, 224, 8, 3
 };
