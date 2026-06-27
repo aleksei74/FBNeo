@@ -76,7 +76,7 @@ struct GxGameConfig {
 	UINT8 special;
 	UINT8 tile_layout;
 	UINT8 tile_bpp;
-	UINT8 tile_color_granularity;
+	UINT16 tile_color_granularity;
 	UINT32 tile_rom_size;
 	UINT32 sprite_word_size;
 	INT32 sprite_pair0_a;
@@ -135,9 +135,10 @@ static UINT8 gx_cfgport;
 static UINT32 gx_sexyparo_esc_p1;
 static UINT32 gx_sexyparo_esc_p2;
 static UINT32 gx_sexyparo_esc_p4;
+#define GX_SEXYPARO_POSTPROCESS 0
 static UINT32 gx_tile_rom_size;
 static UINT8 gx_tile_bpp;
-static UINT8 gx_tile_color_granularity;
+static UINT16 gx_tile_color_granularity;
 static UINT32 gx_sprite_word_size;
 static UINT8 gx_sprite_bpp;
 static UINT8 gx_type3_psac2_bank;
@@ -2704,6 +2705,7 @@ static void gx_type4_compose_output()
 	}
 }
 
+#if GX_SEXYPARO_POSTPROCESS
 static INT32 gx_sexyparo_has_stage3_background()
 {
 	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
@@ -2852,6 +2854,7 @@ static void gx_sexyparo_draw_space_stars()
 		}
 	}
 }
+#endif
 
 static INT32 DrvDraw()
 {
@@ -2875,8 +2878,10 @@ static INT32 DrvDraw()
 
 	konamigx_mixer(0, 0, 0, 0, K056832GetLastAlphaTileMixCode() << 30, 0, gx_rushingheroes_hack);
 
+#if GX_SEXYPARO_POSTPROCESS
 	gx_sexyparo_draw_snow();
 	gx_sexyparo_draw_space_stars();
+#endif
 
 	KonamiBlendCopy(DrvPalette);
 
