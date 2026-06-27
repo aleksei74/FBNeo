@@ -200,9 +200,14 @@ static inline INT16 gx_clip_int32(INT32 sample)
 	return BURN_SND_CLIP(sample);
 }
 
+static inline INT32 gx_tms_should_run()
+{
+	return tms_reset && (gx_dasp_enable || gx_dsp_force > 0);
+}
+
 static void gx_render_sound_segment(INT32 nSegmentEnd)
 {
-	if (!pBurnSoundOut || nBurnSoundLen <= 0) return;
+	if (nBurnSoundLen <= 0) return;
 
 	if (nSegmentEnd < gx_sound_buffer_pos) nSegmentEnd = gx_sound_buffer_pos;
 	if (nSegmentEnd > nBurnSoundLen) nSegmentEnd = nBurnSoundLen;
@@ -210,30 +215,41 @@ static void gx_render_sound_segment(INT32 nSegmentEnd)
 	INT32 nSegmentLength = nSegmentEnd - gx_sound_buffer_pos;
 	if (nSegmentLength <= 0) return;
 
-	INT16 *pSoundBuf = pBurnSoundOut + (gx_sound_buffer_pos << 1);
-	memset(gx_soundbuf0, 0, nSegmentLength * 2 * sizeof(INT16));
-	memset(gx_soundbuf1, 0, nSegmentLength * 2 * sizeof(INT16));
-	K054539Update(0, gx_soundbuf0, nSegmentLength);
-	K054539Update(1, gx_soundbuf1, nSegmentLength);
+	const INT32 bRenderAudio = (pBurnSoundOut != NULL);
+	INT16 *pSoundBuf = bRenderAudio ? pBurnSoundOut + (gx_sound_buffer_pos << 1) : NULL;
+
+	if (bRenderAudio) {
+		memset(gx_soundbuf0, 0, nSegmentLength * 2 * sizeof(INT16));
+		memset(gx_soundbuf1, 0, nSegmentLength * 2 * sizeof(INT16));
+		K054539Update(0, gx_soundbuf0, nSegmentLength);
+		K054539Update(1, gx_soundbuf1, nSegmentLength);
+	} else if (!gx_tms_should_run()) {
+		gx_sound_buffer_pos = nSegmentEnd;
+		return;
+	}
 
 	UINT32 tms_cycle_step = nBurnSoundRate ? (UINT32)(((UINT64)12000000 << 16) / nBurnSoundRate) : (250 << 16);
 
 	for (INT32 i = 0; i < nSegmentLength; i++) {
-		INT16 dasp_in[4];
+		INT16 dasp_in[4] = { 0, 0, 0, 0 };
 		INT16 dasp_out[4] = { 0, 0, 0, 0 };
 		INT32 pos = i << 1;
 
-		dasp_in[0] = gx_clip_int32(gx_soundbuf0[pos + 0] / 2);
-		dasp_in[1] = gx_clip_int32(gx_soundbuf0[pos + 1] / 2);
-		dasp_in[2] = gx_clip_int32(gx_soundbuf1[pos + 0] / 2);
-		dasp_in[3] = gx_clip_int32(gx_soundbuf1[pos + 1] / 2);
+		if (bRenderAudio) {
+			dasp_in[0] = gx_clip_int32(gx_soundbuf0[pos + 0] / 2);
+			dasp_in[1] = gx_clip_int32(gx_soundbuf0[pos + 1] / 2);
+			dasp_in[2] = gx_clip_int32(gx_soundbuf1[pos + 0] / 2);
+			dasp_in[3] = gx_clip_int32(gx_soundbuf1[pos + 1] / 2);
+		}
 
-		if (tms_reset && (gx_dasp_enable || gx_dsp_force > 0)) {
+		if (gx_tms_should_run()) {
 			tms_cycle_frac += tms_cycle_step;
 			INT32 tms_cycles = tms_cycle_frac >> 16;
 			tms_cycle_frac &= 0xffff;
 			DrvTms.process_sample(dasp_in, dasp_out, tms_cycles);
 		}
+
+		if (!bRenderAudio) continue;
 
 		INT32 left = pSoundBuf[pos + 0] + gx_soundbuf0[pos + 0] + gx_soundbuf1[pos + 0];
 		INT32 right = pSoundBuf[pos + 1] + gx_soundbuf0[pos + 1] + gx_soundbuf1[pos + 1];
@@ -252,7 +268,7 @@ static void gx_render_sound_segment(INT32 nSegmentEnd)
 
 static void gx_sync_sound_stream()
 {
-	if (!pBurnSoundOut || nBurnSoundLen <= 0 || gx_sound_cycles_total <= 0) return;
+	if (nBurnSoundLen <= 0 || gx_sound_cycles_total <= 0) return;
 
 	INT32 cycles = SekTotalCycles(1);
 	if (cycles < 0) cycles = 0;
@@ -1284,6 +1300,7 @@ static UINT8 __fastcall gx_sound_read_byte(UINT32 address)
 
 	if (address == 0x300001) {
 		gx_dsp_force = GX_DSP_FORCE_WINDOW;
+		gx_sync_sound_stream();
 		if (tms_host_pending) {
 			tms_host_index++;
 			if (tms_host_index >= 4) {
@@ -1301,6 +1318,7 @@ static UINT8 __fastcall gx_sound_read_byte(UINT32 address)
 
 	if ((address & 0xfffffe) == 0x500000) {
 		if (!(address & 1)) return 0x00;
+		gx_sync_sound_stream();
 		return tms57002_stub_status();
 	}
 
@@ -3017,7 +3035,7 @@ static INT32 DrvFrame()
 
 	if (gx_posthack_frames > 0) gx_posthack_frames--;
 
-	if (pBurnSoundOut) {
+	if (pBurnSoundOut || gx_dsp_force > 0) {
 		gx_render_sound_segment(nBurnSoundLen);
 	}
 
