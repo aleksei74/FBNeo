@@ -57,10 +57,10 @@ enum {
 	GX_SPECIAL_NONE = 0,
 	GX_SPECIAL_DAISKISS = 5,
 	GX_SPECIAL_TKMMPZDM = 2,
+	GX_SPECIAL_SEXYPARO = 4,
 	GX_SPECIAL_TBYAHHOO = 8,
 	GX_SPECIAL_FANTJOUR = 9,
 	GX_SPECIAL_TYPE4SD2 = 10,
-	GX_SPECIAL_SEXYPARO = 11,
 	GX_SPECIAL_SALMNDR2 = 12
 };
 
@@ -102,12 +102,12 @@ static const GxGameConfig GxGameConfigs[] = {
 	{ "puzldama",  7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_5BPP, 5, 16,  0xa00000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -70, -38, 5, 12 * 60, 5 },
 	{ "tbyahhoo",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "mtwinbee",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
-	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -38, 0, 12 * 60, 5 },
-	{ "sexyparoa", 7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -38, 0, 12 * 60, 5 },
-	{ "salmndr2",  7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
-	{ "salmndr2a", 7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
 	{ "tkmmpzdm",  7, GX_SPECIAL_TKMMPZDM, GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
 	{ "daiskiss",  7, GX_SPECIAL_DAISKISS, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x200000, 7, 8, -1, -1,  9, 10, -1, -1, -50, -38, 4, 0, 5 },
+	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 0, 5 },
+	{ "sexyparoa", 7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 0, 5 },
+	{ "salmndr2",  7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
+	{ "salmndr2a", 7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
 	{ "tokkae",    7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
 	{ "rungun2",   7, GX_SPECIAL_TYPE4SD2, GX_TILE_LAYOUT_8BPP, 8, 256, 0x200000, 0x1800000, -1, -1, -1, -1, -1, 22, 23, -1, -81, -23, 0, 0, 6 },
 	{ "slamdnk2",  7, GX_SPECIAL_TYPE4SD2, GX_TILE_LAYOUT_8BPP, 8, 256, 0x200000, 0x1800000, -1, -1, -1, -1, -1, 22, 23, -1, -81, -23, 0, 0, 6 },
@@ -120,23 +120,21 @@ static UINT8 DrvJoy3[16];
 static UINT8 DrvReset;
 static UINT16 DrvInputs[3];
 static UINT8 DrvDips[2];
-static UINT8 DrvConfig[1];   // emulation-config-only "dip" (not a hardware port)
+static UINT8 DrvConfig[1];
 
-static INT32 gx_dasp_enable = 1; // TMS57002 DASP reverb on/off (config dip), can be disabled on low-end devices
-// When DASP is off we still MUST run the DSP for the boot self-test ("ROM RAM
-// CHECK"): the test loads a program and reads back the computed result via the
-// host port (0x300001). gx_dsp_force keeps the DSP running (in frames) whenever a
-// host result is requested/read; it expires during gameplay (which never reads
-// DSP results), so the CPU is only spent on the DSP when something actually needs it.
+static INT32 gx_dasp_enable = 1;
 static INT32 gx_dsp_force;
-#define GX_DSP_FORCE_BOOT   900  // frames the DSP is kept alive after a reset (covers POST)
-#define GX_DSP_FORCE_WINDOW 300  // frames the DSP is kept alive after each host read/0xfc
+#define GX_DSP_FORCE_BOOT   900
+#define GX_DSP_FORCE_WINDOW 300
 
 static UINT8 gx_tilebanks[8];
 static UINT8 gx_tile_ram_bank;
 static UINT8 gx_tile_ram_page;
 static UINT8 gx_cfgport_default;
 static UINT8 gx_cfgport;
+static UINT32 gx_sexyparo_esc_p1;
+static UINT32 gx_sexyparo_esc_p2;
+static UINT32 gx_sexyparo_esc_p4;
 static UINT32 gx_tile_rom_size;
 static UINT8 gx_tile_bpp;
 static UINT8 gx_tile_color_granularity;
@@ -277,6 +275,8 @@ struct gx_sprite_entry {
 };
 
 static gx_sprite_entry gx_esc_sprites[0x100];
+static UINT8 gx_esc_program[0x1000];
+static UINT32 gx_esc_latch;
 
 static UINT8 __fastcall gx_main_read_byte(UINT32 address);
 static UINT16 __fastcall gx_main_read_word(UINT32 address);
@@ -330,13 +330,6 @@ static inline void gx_ram_write_long(UINT8 *ram, UINT32 address, UINT32 mask, UI
 	gx_ram_write_word(ram, address + 2, mask, data);
 }
 
-// DrvMainRAM at 0xc00000 is SekMapMemory'd (MAP_RAM), so the m68k core stores it
-// byte-swapped per 16-bit word on a little-endian host. These HLE helpers (used by
-// the ESC chip / fantjour DMA, not the CPU fast path) must therefore read/write
-// with the ^1 byte-swap idiom to return the true big-endian values the 68k wrote.
-// Without this, the ESC opcode read returns word-byte-swapped data (e.g. the magic
-// id 0xfef724fb reads back as 0xf7fefb24) so the ESC command never matches and no
-// sprites are generated -> black screen on tbyahhoo/sexyparo/salmndr2.
 static inline UINT8 gx_mainram_read_byte(UINT32 address)
 {
 	return DrvMainRAM[(address & 0x1ffff) ^ 1];
@@ -488,6 +481,7 @@ static void gx_tile_callback(INT32 layer, INT32 *code, INT32 *color, INT32 *)
 	INT32 pl45 = pal >> 4 & 3;
 
 	*code = (gx_tilebanks[(d >> 13) & 7] << 13) | (d & 0x1fff);
+	if (gx_special != GX_SPECIAL_SALMNDR2) *code &= 0xffff;
 	pal &= 0x0f;
 	pal |= (pl45 & von) << 4;
 	pal |= (K055555GetPaletteIndex(layer) << 6);
@@ -531,13 +525,8 @@ static void gx_sprite_callback(INT32 *code, INT32 *color, INT32 *priority)
 	*color = ((c18 & opon) | (ocb & ~opon)) >> coregshift;
 
 	if (gx_special == GX_SPECIAL_SALMNDR2) {
-		// salmndr2 derives the sprite priority directly from the raw attribute
-		// word (MAME salmndr2_sprite_callback: pri = color>>4 & 0x3f) instead of
-		// the generic type2 decode_inpri path, so sprites sort against the
-		// tilemaps at the correct priority.
-		INT32 op  = K055555ReadRegister(K55_PRIINP_8) & oinprion;
-		INT32 pri = (attrib >> 4 & 0x3f) & ~oinprion;
-		*priority = pri | op;
+		*priority = (((attrib >> 4) & 0x3f) & ~oinprion) |
+					(K055555ReadRegister(K55_PRIINP_8) & oinprion);
 	} else {
 		*priority = (c18 >> 8 & ~oinprion) |
 					(K055555ReadRegister(K55_PRIINP_8) & oinprion);
@@ -546,12 +535,6 @@ static void gx_sprite_callback(INT32 *code, INT32 *color, INT32 *priority)
 
 static void gx_sound_update_irq()
 {
-	// K054539 timer -> sound CPU IRQ2, K056800 host comm -> sound CPU IRQ1.
-	// FBNeo's SekSetIRQLine drives a single m68k IPL register (m68k_set_irq),
-	// NOT independent per-level latches like MAME. Asserting level 2 and then
-	// passing NONE for level 1 calls m68k_set_irq(0), which wipes the level-2
-	// IRQ we just set. So encode the highest pending line into one IPL value
-	// and only touch the CPU when that value changes.
 	INT32 line = 0;
 
 	if (sound_timer_irq_pending) {
@@ -585,6 +568,22 @@ static void sound_irq(INT32 state)
 	gx_sound_update_irq();
 }
 
+static UINT8 gx_soundcom_host_read(INT32 offset)
+{
+	offset &= 7;
+
+	switch (offset) {
+		case 0:
+		case 1:
+			return DrvSoundCom[4 + offset];
+
+		case 2:
+			return 0;
+	}
+
+	return 0;
+}
+
 static void gx_soundcom_host_write(INT32 offset, UINT8 data)
 {
 	offset &= 7;
@@ -595,22 +594,6 @@ static void gx_soundcom_host_write(INT32 offset, UINT8 data)
 		sound_int_pending = 1;
 		gx_sound_update_irq();
 	}
-}
-
-static UINT8 gx_soundcom_host_read(INT32 offset)
-{
-	offset &= 7;
-	UINT8 r = 0;
-	switch (offset) {
-		case 0:
-		case 1:
-			r = DrvSoundCom[4 + offset];
-			break;
-		case 2:
-			r = 0;
-			break;
-	}
-	return r;
 }
 
 static UINT8 gx_soundcom_sound_read(INT32 offset)
@@ -701,10 +684,6 @@ static UINT16 gx_address_read_word(UINT32 address)
 		return gx_mainram_read_word(address);
 	}
 
-	// ESC sprite shape tables live in the program ROM (e.g. 0x205c0c on tbyahhoo).
-	// DrvMainROM is byte-swapped per word (BurnByteswap, for the m68k MAP_ROM path),
-	// so read it big-endian with the ^1 idiom; the generic gx_main_read_byte path
-	// returns 0 for ROM addresses, which left every shape count at 0 -> no sprites.
 	if (address < 0x800000) {
 		return (DrvMainROM[(address & 0x7fffff) ^ 1] << 8) | DrvMainROM[((address + 1) & 0x7fffff) ^ 1];
 	}
@@ -881,20 +860,12 @@ next_sprite:
 	}
 }
 
-// HLE for BIOS vblank wait routine at 0x0a10-0x0a18.
-// Applies only to games whose POST uses the BIOS vblank counter but does not
-// enable the vblank IRQ early enough for real IRQ delivery to work.
-// The counter at MainRAM[0x74..0x77] is incremented once per frame when:
-//   - the CPU was observed inside the BIOS wait loop during the frame AND
-//   - no real IRQ1 fired (i.e. the counter would not be incremented by the handler).
 static void gx_bios_vblank_tick()
 {
-	UINT16 count = (DrvMainRAM[0x76] << 8) | DrvMainRAM[0x77];
+	UINT16 count = gx_mainram_read_word(0xc00076);
 	count++;
-	DrvMainRAM[0x74] = 0;
-	DrvMainRAM[0x75] = 0;
-	DrvMainRAM[0x76] = count >> 8;
-	DrvMainRAM[0x77] = count;
+	gx_mainram_write_word(0xc00074, 0);
+	gx_mainram_write_word(0xc00076, count);
 }
 
 static void gx_bios_vblank_hle_check(INT32 pc)
@@ -903,8 +874,9 @@ static void gx_bios_vblank_hle_check(INT32 pc)
 	if (gx_special != GX_SPECIAL_SEXYPARO &&
 	    gx_special != GX_SPECIAL_SALMNDR2 &&
 	    gx_special != GX_SPECIAL_TBYAHHOO) return;
-	if (pc >= 0x0a10 && pc <= 0x0a18)
+	if (pc >= 0x0a10 && pc <= 0x0a18) {
 		gx_bios_in_wait_loop = 1;
+	}
 }
 
 static void gx_esc_alert_mode0(INT32 srcoffs, INT32 count)
@@ -924,7 +896,6 @@ static void gx_esc_alert_mode0(INT32 srcoffs, INT32 count)
 	}
 }
 
-// salmndr2 ESC mode 1 - ported from MAME konamigx_esc_alert
 static const UINT8 sal2_ztable[7][8] = {
 	{ 5, 4, 3, 2, 1, 7, 6, 0 },
 	{ 4, 3, 2, 1, 0, 7, 6, 5 },
@@ -950,7 +921,6 @@ static void gx_esc_alert_mode1()
 	UINT32 srcbase = 0xc00000;
 	INT32 srcoffs = 0x1c8c;
 	INT32 count = 0x172;
-
 	INT32 data1, vpos, hpos, voffs, hoffs, vcorr, hcorr, vmask, magicid;
 	UINT32 obj;
 	INT32 scount = 0;
@@ -964,7 +934,10 @@ static void gx_esc_alert_mode1()
 			case 0x10010801: idx = 6; break;
 			case 0x11010010: idx = 5; vmask = 0x1ff; break;
 			case 0x01111018: idx = 4; break;
-			case 0x10010011: idx = 3; break;
+			case 0x10010011:
+				idx = 3;
+				if ((gx_dma_read_long(srcbase + 0x71d4) & 0xff) == 32) K055555WriteReg(K55_BLEND_ENABLES, 36);
+				break;
 			case 0x11010811: idx = 2; break;
 			case 0x10000010: idx = 1; break;
 			default:         idx = 0; break;
@@ -977,14 +950,8 @@ static void gx_esc_alert_mode1()
 
 	const UINT8 *zcode = sal2_ztable[idx];
 	const UINT8 *pcode = sal2_ptable[idx];
-
 	UINT32 dst = 0xd20000;
-	// decode Vic-Viper (player ship). NOTE: MAME indexes srcbase (a u32*) as
-	// srcbase[0x049e/4] etc., and the integer /4 TRUNCATES to the 32-bit-aligned
-	// address 0x049c. The byte offsets here must therefore be the truncated
-	// values (0x049c/0x0500/0x0504), not the literal 0x049e/0x0502/0x0506 — using
-	// the latter read 2 bytes (one word) too far, so the ship's active bit was
-	// never seen and the player ship body was never written to sprite RAM.
+
 	if (gx_dma_read_long(srcbase + 0x049c) & 0xffff0000) {
 		hoffs = gx_dma_read_long(srcbase + 0x0500) & 0xffff;
 		voffs = gx_dma_read_long(srcbase + 0x0504) & 0xffff;
@@ -1000,13 +967,6 @@ static void gx_esc_alert_mode1()
 				UINT32 d1 = gx_dma_read_long(obj + 4);
 				UINT32 d2 = gx_dma_read_long(obj + 8);
 				UINT32 d3 = gx_dma_read_long(obj + 12);
-				// Vic-Viper (player ship) uses MAME's EXTRACT_ODD field layout:
-				// vpos from obj[1] low word, hpos from obj[2] HIGH word, sprite
-				// code low/high split across obj[2] low + obj[3]. The previous code
-				// used the EXTRACT_EVEN layout here, garbling the player ship's code
-				// and position so it vanished once the game switched it to this path
-				// (after spawn invincibility). Enemies/options use the common-sprite
-				// EVEN path and were unaffected.
 				vpos = (d1 & 0xffff) + voffs;
 				hpos = (d2 >> 16) + hoffs;
 				gx_address_write_word(dst + 0, flip);
@@ -1023,7 +983,6 @@ static void gx_esc_alert_mode1()
 		}
 	}
 
-	// decode Lord British
 	if (gx_dma_read_long(srcbase + 0x0848) & 0x0000ffff) {
 		hoffs = gx_dma_read_long(srcbase + 0x08b0) >> 16;
 		voffs = gx_dma_read_long(srcbase + 0x08b4) >> 16;
@@ -1056,7 +1015,6 @@ static void gx_esc_alert_mode1()
 		}
 	}
 
-	// decode common sprites
 	UINT32 src = srcbase + srcoffs * 4;
 	UINT32 srcend = src + count * 0x30 * 4;
 	do {
@@ -1096,7 +1054,6 @@ static void gx_esc_alert_mode1()
 		} while (objptr < objend);
 	} while ((src += 0x30 * 4) < srcend);
 
-	// clear residual data
 	while (scount < 256) {
 		gx_address_write_word(dst, scount);
 		scount++;
@@ -1113,15 +1070,33 @@ static void gx_esc_write(UINT32 data)
 
 	if (opcode == ESC_OBJECT_MAGIC_ID) {
 		UINT8 subop = gx_main_read_byte(data + 8);
+		UINT32 params = (gx_main_read_word(data + 12) << 16) | gx_main_read_word(data + 14);
 
-		if (subop == 1 && (gx_special == GX_SPECIAL_TBYAHHOO || gx_special == GX_SPECIAL_DAISKISS)) {
-			gx_generate_sprites(0xc00000, 0xd20000, 0x100);
-		} else if (subop == 1 && gx_special == GX_SPECIAL_SEXYPARO) {
-			gx_generate_sprites(0xc00604, 0xd20000, 0xfc);
-		} else if (gx_special == GX_SPECIAL_TKMMPZDM) {
-			gx_esc_alert_mode0(0x0142, 0x100);
-		} else if (subop == 1 && gx_special == GX_SPECIAL_SALMNDR2) {
-			gx_esc_alert_mode1();
+		switch (subop) {
+			case 1:
+				if (gx_special == GX_SPECIAL_SEXYPARO) {
+					gx_sexyparo_esc_p1 = (gx_address_read_word(params + 0) << 16) | gx_address_read_word(params + 2);
+					gx_sexyparo_esc_p2 = (gx_address_read_word(params + 4) << 16) | gx_address_read_word(params + 6);
+					gx_sexyparo_esc_p4 = (gx_address_read_word(params + 12) << 16) | gx_address_read_word(params + 14);
+					gx_generate_sprites(0xc00604, 0xd20000, 0xfc);
+				} else if (gx_special == GX_SPECIAL_TBYAHHOO || gx_special == GX_SPECIAL_DAISKISS) {
+					gx_generate_sprites(0xc00000, 0xd20000, 0x100);
+				} else if (gx_special == GX_SPECIAL_TKMMPZDM) {
+					gx_esc_alert_mode0(0x0142, 0x100);
+				} else if (gx_special == GX_SPECIAL_SALMNDR2) {
+					gx_esc_alert_mode1();
+				}
+				break;
+
+			case 2:
+				for (INT32 i = 0; i < 0x1000; i++) {
+					gx_esc_program[i] = gx_address_read_byte(params + i);
+				}
+				break;
+
+			case 5:
+			default:
+				break;
 		}
 
 		gx_main_write_byte(data + 9, ESTATE_END);
@@ -1307,7 +1282,7 @@ static UINT8 __fastcall gx_sound_read_byte(UINT32 address)
 	}
 
 	if (address == 0x300001) {
-		gx_dsp_force = GX_DSP_FORCE_WINDOW; // host result read -> keep DSP alive
+		gx_dsp_force = GX_DSP_FORCE_WINDOW;
 		if (tms_host_pending) {
 			tms_host_index++;
 			if (tms_host_index >= 4) {
@@ -1388,7 +1363,7 @@ static void __fastcall gx_sound_write_byte(UINT32 address, UINT8 data)
 				tms_cload_cval = 0;
 			}
 			if (data == 0xfc && tms_pc_nonzero) {
-				gx_dsp_force = GX_DSP_FORCE_WINDOW; // host result requested -> keep DSP alive
+				gx_dsp_force = GX_DSP_FORCE_WINDOW;
 				tms_host_pending = 1;
 				tms_host_index = 0;
 			}
@@ -1466,14 +1441,19 @@ static UINT16 gx_sprite_rom_word_read(INT32 offset)
 	return 0;
 }
 
+static UINT8 gx_tile_rom_byte_read(INT32 address)
+{
+	if (gx_special == GX_SPECIAL_SALMNDR2) {
+		return K056832GxRomByteRead6bpp(address);
+	}
+
+	return K056832GxRomByteRead(address);
+}
+
 static UINT16 gx_tile_rom_word_read(INT32 address)
 {
-	if (gx_tile_bpp == 6) {
-		return (K056832GxRom6BppByteRead((address + 0) & 0x1fff) << 8) |
-				K056832GxRom6BppByteRead((address + 1) & 0x1fff);
-	}
-	return (K056832GxRomByteRead((address + 0) & 0x1fff) << 8) |
-			K056832GxRomByteRead((address + 1) & 0x1fff);
+	return (gx_tile_rom_byte_read((address + 0) & 0x1fff) << 8) |
+			gx_tile_rom_byte_read((address + 1) & 0x1fff);
 }
 
 static UINT32 gx_tile_rom_long_read(INT32 address)
@@ -1489,8 +1469,7 @@ static UINT8 __fastcall gx_main_read_byte(UINT32 address)
 	}
 
 	if ((address & 0xffe000) == 0xd00000) {
-		if (gx_tile_bpp == 6) return K056832GxRom6BppByteRead(address & 0x1fff);
-		return K056832GxRomByteRead(address & 0x1fff);
+		return gx_tile_rom_byte_read(address & 0x1fff);
 	}
 
 	if ((address & 0xffc000) == 0xd20000) {
@@ -1639,7 +1618,9 @@ static void __fastcall gx_main_write_byte(UINT32 address, UINT8 data)
 		if (gx_type4_enable) {
 			gx_type4_prot_write(address, data << (((~address) & 3) * 8));
 		} else {
-			gx_esc_write(data << 24);
+			UINT32 shift = ((~address) & 3) * 8;
+			gx_esc_latch = (gx_esc_latch & ~(0xff << shift)) | (data << shift);
+			if ((address & 3) == 3) gx_esc_write(gx_esc_latch);
 		}
 		return;
 	}
@@ -1762,7 +1743,9 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 		if (gx_type4_enable) {
 			gx_type4_prot_write(address, data << ((address & 2) ? 0 : 16));
 		} else {
-			gx_esc_write(data << 16);
+			UINT32 shift = (address & 2) ? 0 : 16;
+			gx_esc_latch = (gx_esc_latch & ~(0xffff << shift)) | (data << shift);
+			if (address & 2) gx_esc_write(gx_esc_latch);
 		}
 		return;
 	}
@@ -1859,6 +1842,7 @@ static void __fastcall gx_main_write_long(UINT32 address, UINT32 data)
 		if (gx_type4_enable) {
 			gx_type4_prot_write(address, data);
 		} else {
+			gx_esc_latch = data;
 			gx_esc_write(data);
 		}
 		return;
@@ -2127,6 +2111,11 @@ static void gx_type4_update_k053936_regs()
 static INT32 DrvDoReset()
 {
 	memset(AllRam, 0, RamEnd - AllRam);
+	memset(gx_esc_program, 0, sizeof(gx_esc_program));
+	gx_esc_latch = 0;
+	gx_sexyparo_esc_p1 = 0;
+	gx_sexyparo_esc_p2 = 0;
+	gx_sexyparo_esc_p4 = 0;
 
 	SekReset(0);
 	SekReset(1);
@@ -2171,7 +2160,7 @@ static INT32 DrvDoReset()
 	tms_host_pending = 0;
 	tms_host_index = 0;
 	tms_cycle_frac = 0;
-	gx_dsp_force = GX_DSP_FORCE_BOOT; // run the DSP through the boot self-test even if DASP is off
+	gx_dsp_force = GX_DSP_FORCE_BOOT;
 	gx_sound_buffer_pos = 0;
 	gx_sound_cycles_total = 0;
 	gx_posthack_frames = gx_posthack_default;
@@ -2244,14 +2233,12 @@ static void gx_apply_alpha_tile_config()
 		// salmndr2 draws its background as an alpha-blended tile layer; the per-tile
 		// alpha mix code lives in attr bits 4-5 (MAME salmndr2_tile_callback). Without
 		// this the layer renders opaque and floods the screen with garbage.
-		K056832SetAlphaTileMixShift(4);
-		K056832SetAlphaTileMode(1);
+		K056832SetAlphaTileMode(2);
 	} else if (gx_special == GX_SPECIAL_SEXYPARO) {
 		// sexyparo uses MAME's alpha_tile_callback: the per-tile alpha mix code is in
 		// attr bits 6-7. The mix code selects a K054338 "additive" PBLEND level, so the
 		// blended layers (e.g. stage-3 ink-stage blue overlay/water) must use a real
 		// additive blend to look like the original's faint blue glow.
-		K056832SetAlphaTileMixShift(6);
 		K056832SetAlphaTileMode(1);
 		konamigx_alpha_tile_additive = 1;
 	} else {
@@ -2284,7 +2271,6 @@ static INT32 DrvInit()
 		BurnTransferSetDimensions(width, 224);
 		GenericTilesSetClipRaw(0, width, 0, 224);
 		BurnDrvSetVisibleSize(width, 224);
-		// Each Type-4 monitor is a standard 4:3 arcade screen; two side-by-side = 8:3.
 		BurnDrvSetAspect((width == GX_TYPE4_MONITOR_WIDTH) ? 4 : 8, 3);
 	}
 
@@ -2349,14 +2335,12 @@ static INT32 DrvInit()
 		if (BurnLoadRom(DrvGfxROM0 + 0x000000, 7, 2)) return 1;
 		if (BurnLoadRom(DrvGfxROM0 + 0x000001, 8, 2)) return 1;
 	} else if (config->tile_layout == GX_TILE_LAYOUT_6BPP) {
-		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000, 5, 6, LD_GROUP(4))) return 1;
-		if (config->special == GX_SPECIAL_SALMNDR2) {
-			// salmndr2 has three tile ROMs (521-a09/a11/a13). The generic 6bpp
-			// path only loads two and leaves the font garbled, so place the
-			// extra ROM (idx 7) and the smaller one (idx 6) explicitly.
-			if (BurnLoadRomExt(DrvGfxROM0 + 0x000004, 7, 6, LD_GROUP(2))) return 1;
+		if (gx_special == GX_SPECIAL_SALMNDR2) {
+			if (BurnLoadRomExt(DrvGfxROM0 + 0x000000, 5, 6, LD_GROUP(4))) return 1;
 			if (BurnLoadRomExt(DrvGfxROM0 + 0x300000, 6, 6, LD_GROUP(4))) return 1;
+			if (BurnLoadRomExt(DrvGfxROM0 + 0x000004, 7, 6, LD_GROUP(2))) return 1;
 		} else {
+			if (BurnLoadRomExt(DrvGfxROM0 + 0x000000, 5, 6, LD_GROUP(4))) return 1;
 			if (BurnLoadRomExt(DrvGfxROM0 + 0x000004, 6, 6, LD_GROUP(2))) return 1;
 		}
 	} else {
@@ -2372,20 +2356,18 @@ static INT32 DrvInit()
 			if (BurnLoadRomExt(DrvGfxROM1 + base + 4, 11 + (group * 3), 6, LD_GROUP(2))) return 1;
 		}
 		if (BurnLoadRom(DrvGfxROM2 + 0x000000, 21, 1)) return 1;
-	} else if (gx_sprite_bpp == 6) {
-		// 6bpp sprites use the _48_WORD layout: three ROMs interleaved at byte
-		// offsets 0/2/4 with a 6-byte stride (MAME konamigx_6bpp / salmndr2).
-		// The generic 5bpp path below (gap 4 + a separate "fifth" ROM) loads the
-		// data wrong, so the upper sprite-tile banks render as garbage.
-		if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0, config->sprite_pair0_a, 6, LD_GROUP(2))) return 1;
-		if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 2, config->sprite_pair0_b, 6, LD_GROUP(2))) return 1;
-		if (config->sprite_fifth   >= 0 && BurnLoadRomExt(DrvGfxROM1 + 4, config->sprite_fifth,   6, LD_GROUP(2))) return 1;
 	} else {
-		if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000000, config->sprite_pair0_a, 4, LD_GROUP(2))) return 1;
-		if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000002, config->sprite_pair0_b, 4, LD_GROUP(2))) return 1;
-		if (config->sprite_pair1_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x400000, config->sprite_pair1_a, 4, LD_GROUP(2))) return 1;
-		if (config->sprite_pair1_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x400002, config->sprite_pair1_b, 4, LD_GROUP(2))) return 1;
-		if (config->sprite_fifth >= 0 && BurnLoadRom(DrvGfxROM1 + config->sprite_word_size, config->sprite_fifth, 1)) return 1;
+		if (gx_sprite_bpp == 6) {
+			if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000000, config->sprite_pair0_a, 6, LD_GROUP(2))) return 1;
+			if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000002, config->sprite_pair0_b, 6, LD_GROUP(2))) return 1;
+			if (config->sprite_fifth >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000004, config->sprite_fifth, 6, LD_GROUP(2))) return 1;
+		} else {
+			if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000000, config->sprite_pair0_a, 4, LD_GROUP(2))) return 1;
+			if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000002, config->sprite_pair0_b, 4, LD_GROUP(2))) return 1;
+			if (config->sprite_pair1_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x400000, config->sprite_pair1_a, 4, LD_GROUP(2))) return 1;
+			if (config->sprite_pair1_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x400002, config->sprite_pair1_b, 4, LD_GROUP(2))) return 1;
+			if (config->sprite_fifth >= 0 && BurnLoadRom(DrvGfxROM1 + config->sprite_word_size, config->sprite_fifth, 1)) return 1;
+		}
 	}
 
 	if (config->sample0 >= 0 && BurnLoadRom(DrvSndROM + 0x000000, config->sample0, 1)) return 1;
@@ -2418,6 +2400,9 @@ static INT32 DrvInit()
 		K056832SetLayerOffsets(3,  3, 0);
 	}
 	gx_apply_alpha_tile_config();
+
+//	K056832SetAlphaTileMode(gx_special == GX_SPECIAL_SALMNDR2 ? 2 : (gx_special == GX_SPECIAL_SEXYPARO ? 1 : 0));
+//	K056832SetAlphaTileCallback(NULL);
 
 	INT32 sprite_tile_count = (gx_sprite_bpp == 6) ? ((gx_type4_enable ? 0x1800000 : gx_sprite_word_size) / 0xc0) : (gx_sprite_word_size / 0x80);
 	INT32 sprite_rom_mask = ((gx_sprite_bpp == 6) ? gx_sprite_word_size : 0x1000000) - 1;
@@ -2536,12 +2521,7 @@ static void DrvPaletteUpdate(INT32 use_sub_palette = 0)
 
 		for (INT32 i = 0; i < 0x2000; i++) {
 			UINT32 d = gx_ram_read_long(palram, 0xe80000 + (i << 2), 0x7fff);
-			// konami_palette32 (== DrvPalette, see DrvInit) must hold raw RGB888 for the
-			// 32-bit mixer/KonamiBlendCopy path. Using BurnHighCol here yields a depth-
-			// dependent value: in 16bpp it packs RGB565 into the slot, and KonamiBlendCopy's
-			// case-2 `palette_lut[bmp & 0xffffff]` then misreads it, dropping the red channel
-			// (type4 went all blue/green in 16bpp). Match the non-type4 path: store RGB888.
-			DrvPalette[i] = d & 0x00ffffff;
+			DrvPalette[i] = BurnHighCol((d >> 16) & 0xff, (d >> 8) & 0xff, d & 0xff, 0);
 			konami_palette32[i] = DrvPalette[i];
 		}
 
@@ -2724,6 +2704,155 @@ static void gx_type4_compose_output()
 	}
 }
 
+static INT32 gx_sexyparo_has_stage3_background()
+{
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
+
+	INT32 stage3 = 0;
+	INT32 ink = 0;
+	INT32 red_pillar = 0;
+	INT32 red_column_max = 0;
+	INT32 total = 0;
+
+	for (INT32 x = 16; x < nScreenWidth - 16; x += 8) {
+		INT32 red_column = 0;
+
+		for (INT32 y = 32; y < nScreenHeight - 24; y += 8) {
+			UINT32 color = konami_bitmap32[(y * nScreenWidth) + x];
+			INT32 r = (color >> 16) & 0xff;
+			INT32 g = (color >> 8) & 0xff;
+			INT32 b = color & 0xff;
+
+			if (r > 150 && g > 120 && b > 80 && r > b + 20 && r - g < 80) {
+				stage3++;
+			}
+			if (r < 48 && g < 48 && b < 56) {
+				ink++;
+			}
+			if (r > 120 && g < 64 && b < 64) {
+				red_pillar++;
+				red_column++;
+			}
+			total++;
+		}
+
+		if (red_column > red_column_max) {
+			red_column_max = red_column;
+		}
+	}
+
+	if (total == 0) return 0;
+
+	return (stage3 * 100 / total >= 25 && ink * 100 / total >= 8 && red_pillar * 100 / total >= 2 && red_column_max >= 6);
+}
+
+static inline void gx_sexyparo_plot_snow_pixel(INT32 x, INT32 y, UINT32 color)
+{
+	if ((UINT32)x >= (UINT32)nScreenWidth || (UINT32)y >= (UINT32)nScreenHeight) return;
+
+	konami_bitmap32[(y * nScreenWidth) + x] = color;
+}
+
+static inline INT32 gx_sexyparo_snow_jitter(UINT32 frame, INT32 index, INT32 block)
+{
+	const UINT32 step = frame >> 16;
+
+	if ((step & 1) == 0) return 0;
+
+	UINT32 seed = 0x6d2b79f5 ^ ((UINT32)index * 0x45d9f3b) ^ ((UINT32)block * 0x27d4eb2d) ^ (step * 0x165667b1);
+
+	return (INT32)(seed % 3) - 1;
+}
+
+static inline void gx_sexyparo_plot_snow(INT32 x, INT32 y, UINT32 color, UINT32 frame, INT32 index)
+{
+	gx_sexyparo_plot_snow_pixel(x + 0 + gx_sexyparo_snow_jitter(frame, index, 0), y, color);
+	gx_sexyparo_plot_snow_pixel(x + 0 + gx_sexyparo_snow_jitter(frame, index, 1), y + 1, color);
+}
+
+static void gx_sexyparo_draw_snow()
+{
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return;
+	if (gx_sexyparo_esc_p1 < 2 || gx_sexyparo_esc_p1 > 4) return;
+	if (gx_sexyparo_has_stage3_background()) return;
+
+	const UINT32 frame = gx_sexyparo_esc_p4;
+	const UINT32 phase = gx_sexyparo_esc_p2;
+	if (frame >= 45 * 60) return;
+
+	const INT32 count = (gx_sexyparo_esc_p1 == 4) ? 18 : ((gx_sexyparo_esc_p1 == 3) ? 22 : 26);
+	const INT32 drift = (((INT32)frame * 5) >> 3) + ((INT32)phase >> 7);
+	const INT32 wrap_width = nScreenWidth + 80;
+
+	for (INT32 i = 0; i < count; i++) {
+		UINT32 seed = 0x53300000 ^ (i * 0x1f123bb5);
+		INT32 base_x = (seed >> 9) % wrap_width;
+		INT32 base_y = (seed >> 18) % nScreenHeight;
+		INT32 local_drift = drift + (((INT32)frame + i) & 1);
+		INT32 sway_phase = (((INT32)frame >> 2) + i) & 15;
+		INT32 sway = ((sway_phase < 8) ? sway_phase : (15 - sway_phase)) - 4;
+		INT32 x = (base_x - (local_drift >> 1) + wrap_width + sway) % wrap_width;
+		INT32 y = (base_y + local_drift) % nScreenHeight;
+		UINT32 color = (((i + (frame >> 4)) & 7) == 0) ? 0xd8d8ff : 0xffffff;
+
+		x -= 40;
+
+		gx_sexyparo_plot_snow(x, y, color, frame, i);
+	}
+}
+
+static INT32 gx_sexyparo_has_black_space_background()
+{
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
+
+	INT32 black = 0;
+	INT32 total = 0;
+
+	for (INT32 y = 24; y < nScreenHeight - 24; y += 8) {
+		for (INT32 x = 16; x < nScreenWidth - 16; x += 8) {
+			if ((konami_bitmap32[(y * nScreenWidth) + x] & 0xf8f8f8) == 0) {
+				black++;
+			}
+			total++;
+		}
+	}
+
+	return (total > 0 && black * 100 / total >= 70);
+}
+
+static void gx_sexyparo_draw_space_stars()
+{
+	if (gx_sexyparo_esc_p1 == 0 && gx_sexyparo_esc_p2 == 0 && gx_sexyparo_esc_p4 == 0) return;
+	if (!gx_sexyparo_has_black_space_background()) return;
+
+	const UINT32 frame = gx_sexyparo_esc_p4 + nCurrentFrame;
+	static const UINT32 colors[6] = { 0xffffff, 0x88c8ff, 0xffd060, 0xff70ff, 0x70e8a0, 0xc8c8ff };
+
+	for (INT32 i = 0; i < 54; i++) {
+		UINT32 seed = 0x5e787061 ^ (i * 0x45d9f3b) ^ (gx_sexyparo_esc_p2 * 0x10204081);
+		INT32 speed = 1 + ((seed >> 30) & 1);
+		INT32 x = ((seed >> 8) - ((frame * speed) >> 3)) % nScreenWidth;
+		INT32 y = (seed >> 18) % nScreenHeight;
+		INT32 blink = (frame + (seed >> 24)) & 0x1f;
+
+		if (x < 0) x += nScreenWidth;
+		if (y < 16 || y >= nScreenHeight - 16) continue;
+		if (blink == 0 || blink > 24) continue;
+
+		UINT32 *dst = konami_bitmap32 + (y * nScreenWidth) + x;
+		if ((*dst & 0xf8f8f8) != 0) continue;
+
+		UINT32 color = colors[(seed + (frame >> 4)) % 6];
+		*dst = color;
+
+		if (blink >= 10 && blink <= 12) {
+			if (x < nScreenWidth - 1 && (dst[1] & 0xf8f8f8) == 0) dst[1] = color;
+		} else if (blink == 16) {
+			if (y < nScreenHeight - 1 && (dst[nScreenWidth] & 0xf8f8f8) == 0) dst[nScreenWidth] = color;
+		}
+	}
+}
+
 static INT32 DrvDraw()
 {
 	if (gx_type4_enable) {
@@ -2745,6 +2874,9 @@ static INT32 DrvDraw()
 	sprite_colorbase = K055555GetPaletteIndex(4) << 5;
 
 	konamigx_mixer(0, 0, 0, 0, K056832GetLastAlphaTileMixCode() << 30, 0, gx_rushingheroes_hack);
+
+	gx_sexyparo_draw_snow();
+	gx_sexyparo_draw_space_stars();
 
 	KonamiBlendCopy(DrvPalette);
 
@@ -2788,7 +2920,6 @@ static INT32 DrvFrame()
 	}
 
 	gx_dasp_enable = (DrvConfig[0] & 0x01) ? 1 : 0;
-
 	if (gx_dsp_force > 0) gx_dsp_force--;
 
 	SekNewFrame();
@@ -2842,13 +2973,7 @@ static INT32 DrvFrame()
 				}
 			}
 
-			// ds.patch: fire the BIOS vblank IRQ1 unconditionally. The K053252
-			// generates vblank independently on the Type-2 games, so gating on
-			// (gx_syncen & 0x20) starves the BIOS vblank counter and the POST
-			// ROM/RAM checksum loop fails (chips report BAD). Setting
-			// gx_bios_vblank_pending here also stops the HLE backup tick from
-			// double-counting the frame counter.
-			if (1) {
+			if (gx_type4_enable || (gx_syncen & 0x20) || gx_special == GX_SPECIAL_SEXYPARO || gx_special == GX_SPECIAL_SALMNDR2 || gx_special == GX_SPECIAL_TBYAHHOO) {
 				gx_syncen &= ~0x20;
 				if (((gx_irq_control & 0x81) == 0x81) || (gx_syncen & 0x01)) {
 					gx_syncen &= ~0x01;
@@ -2881,10 +3006,9 @@ static INT32 DrvFrame()
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
 	nExtraCycles[1] = nCyclesDone[1] - nCyclesTotal[1];
 
-	// HLE vblank tick: if CPU was stuck in BIOS wait loop and no real IRQ1 fired,
-	// advance the BIOS vblank frame counter manually (once per frame).
-	if (gx_bios_in_wait_loop && !gx_bios_vblank_pending)
+	if (gx_bios_in_wait_loop && !gx_bios_vblank_pending) {
 		gx_bios_vblank_tick();
+	}
 
 	if (gx_posthack_frames > 0) gx_posthack_frames--;
 
@@ -2964,6 +3088,11 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(gx_type4_psac_dirty);
 		SCAN_VAR(gx_type4_psac_tile_dirty);
 		SCAN_VAR(fantjour_dma);
+		SCAN_VAR(gx_esc_program);
+		SCAN_VAR(gx_esc_latch);
+		SCAN_VAR(gx_sexyparo_esc_p1);
+		SCAN_VAR(gx_sexyparo_esc_p2);
+		SCAN_VAR(gx_sexyparo_esc_p4);
 		SCAN_VAR(nExtraCycles);
 	}
 
@@ -4158,7 +4287,7 @@ struct BurnDriver BurnDrvSexyparoebl = {
 	"sexyparoebl", "sexyparo", "konamigx", NULL, "1996",
 	"Sexy Parodius (ver EAA, bootleg)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_NOT_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, sexyparoeblRomInfo, sexyparoeblRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
@@ -4188,7 +4317,7 @@ struct BurnDriver BurnDrvSalmndr2 = {
 	"salmndr2", NULL, "konamigx", NULL, "1996",
 	"Salamander 2 (ver JAA)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, salmndr2RomInfo, salmndr2RomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
@@ -4198,7 +4327,7 @@ struct BurnDriver BurnDrvSalmndr2a = {
 	"salmndr2a", "salmndr2", "konamigx", NULL, "1996",
 	"Salamander 2 (ver AAB)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, salmndr2aRomInfo, salmndr2aRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
