@@ -44462,7 +44462,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvcv_sewersam,		// Sewer Sam (USA)
 	&BurnDrvfds_sexyinvaders,	// Sexy Invaders (Japan) (Unl)
 	&BurnDrvSexyparoa,			// Sexy Parodius (ver AAA)
-	&BurnDrvSexyparoebl,		// Sexy Parodius (ver EAA, bootleg)
+	&BurnDrvSexyparoebl,		// Sexy Parodius (ver EAA, bootleg) [no comment, NOT WORKING]
 	&BurnDrvSexyparo,			// Sexy Parodius (ver JAA)
 	&BurnSpecSeymmovi,			// Seymour at the Movies (128K)
 	&BurnSpecseymmovi,			// Seymour at the Movies (48K)
