@@ -2686,6 +2686,8 @@ static void gx_type4_render_monitor(INT32 use_sub_palette, INT32 spriteram_bank,
 		} else {
 			memcpy(dst, src, GX_TYPE4_MONITOR_WIDTH * sizeof(UINT32));
 		}
+
+		dst[GX_TYPE4_MONITOR_WIDTH - 1] = dst[GX_TYPE4_MONITOR_WIDTH - 2];
 	}
 
 	nScreenWidth = screen_width;
