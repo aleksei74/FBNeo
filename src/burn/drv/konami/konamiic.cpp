@@ -256,6 +256,14 @@ void KonamiAllocateBitmaps()
 	konami_bitmap_height = height;
 }
 
+INT32 KonamiBitmapReady()
+{
+	if (nScreenWidth <= 0 || nScreenHeight <= 0) return 0;
+	if (konami_bitmap32 == NULL || konami_priority_bitmap == NULL) return 0;
+
+	return (konami_bitmap_width == nScreenWidth && konami_bitmap_height == nScreenHeight);
+}
+
 void KonamiClearBitmaps(UINT32 color)
 {
 	if (konami_priority_bitmap && konami_bitmap32) {

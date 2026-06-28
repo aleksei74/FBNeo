@@ -692,10 +692,9 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 	cx = startx;
 	if (blend > 0)
 	{
-		dst_ptr += dst_pitch;      // draw blended
+		dst_ptr += dst_pitch;
 		starty += incyy;
 		startx += incyx;
-
 		do {
 			do {
 				INT32 srcx = (cx >> 16) & 0x1fff;
@@ -735,8 +734,10 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 
 			ecx = tx;
 			dst_ptr += dst_pitch;
-			cy = starty; starty += incyy;
-			cx = startx; startx += incyx;
+			cy = starty;
+			starty += incyy;
+			cx = startx;
+			startx += incyx;
 		} while (--ty);
 	}
 	else    //  draw solid
@@ -744,7 +745,6 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 		dst_ptr += dst_pitch;
 		starty += incyy;
 		startx += incyx;
-
 		do {
 			do {
 				INT32 srcx = (cx >> 16) & 0x1fff;
@@ -784,8 +784,10 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 
 			ecx = tx;
 			dst_ptr += dst_pitch;
-			cy = starty; starty += incyy;
-			cx = startx; startx += incyx;
+			cy = starty;
+			starty += incyy;
+			cx = startx;
+			startx += incyx;
 		} while (--ty);
 	}
 

@@ -76,7 +76,7 @@ struct GxGameConfig {
 	UINT8 special;
 	UINT8 tile_layout;
 	UINT8 tile_bpp;
-	UINT16 tile_color_granularity;
+	UINT8 tile_color_granularity;
 	UINT32 tile_rom_size;
 	UINT32 sprite_word_size;
 	INT32 sprite_pair0_a;
@@ -104,8 +104,8 @@ static const GxGameConfig GxGameConfigs[] = {
 	{ "mtwinbee",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "tkmmpzdm",  7, GX_SPECIAL_TKMMPZDM, GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
 	{ "daiskiss",  7, GX_SPECIAL_DAISKISS, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x200000, 7, 8, -1, -1,  9, 10, -1, -1, -50, -38, 4, 0, 5 },
-	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 0, 5 },
-	{ "sexyparoa", 7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 0, 5 },
+	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 12 * 60, 5 },
+	{ "sexyparoa", 7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 12 * 60, 5 },
 	{ "salmndr2",  7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
 	{ "salmndr2a", 7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
 	{ "tokkae",    7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
@@ -135,10 +135,9 @@ static UINT8 gx_cfgport;
 static UINT32 gx_sexyparo_esc_p1;
 static UINT32 gx_sexyparo_esc_p2;
 static UINT32 gx_sexyparo_esc_p4;
-#define GX_SEXYPARO_POSTPROCESS 0
 static UINT32 gx_tile_rom_size;
 static UINT8 gx_tile_bpp;
-static UINT16 gx_tile_color_granularity;
+static UINT8 gx_tile_color_granularity;
 static UINT32 gx_sprite_word_size;
 static UINT8 gx_sprite_bpp;
 static UINT8 gx_type3_psac2_bank;
@@ -207,7 +206,7 @@ static inline INT32 gx_tms_should_run()
 
 static void gx_render_sound_segment(INT32 nSegmentEnd)
 {
-	if (nBurnSoundLen <= 0) return;
+	if (!pBurnSoundOut || nBurnSoundLen <= 0) return;
 
 	if (nSegmentEnd < gx_sound_buffer_pos) nSegmentEnd = gx_sound_buffer_pos;
 	if (nSegmentEnd > nBurnSoundLen) nSegmentEnd = nBurnSoundLen;
@@ -766,6 +765,8 @@ static void gx_address_write_byte(UINT32 address, UINT8 data)
 
 static void gx_generate_sprites(UINT32 src, UINT32 spr, INT32 count)
 {
+	if ((spr & 0xffc000) != 0xd20000) return;
+
 	INT32 scount = 0;
 	INT32 ecount = 0;
 
@@ -852,6 +853,7 @@ static void gx_generate_sprites(UINT32 src, UINT32 spr, INT32 count)
 				if (color_set) col = (col & 0xffe0) | color_set;
 				if (color_rotate) col = (col & 0xffe0) | ((col + color_rotate) & 0x1f);
 
+				if ((spr & 0xffc000) != 0xd20000) return;
 				gx_address_write_word(spr + 0, (flip ^ glob_f) | gx_esc_sprites[i].pri);
 				gx_address_write_word(spr + 2, idx);
 				gx_address_write_word(spr + 4, y);
@@ -871,6 +873,7 @@ next_sprite:
 	}
 
 	while (scount < 256) {
+		if ((spr & 0xffc000) != 0xd20000) return;
 		gx_address_write_word(spr, scount);
 		scount++;
 		spr += 16;
@@ -1072,7 +1075,7 @@ static void gx_esc_alert_mode1()
 	} while ((src += 0x30 * 4) < srcend);
 
 	while (scount < 256) {
-		gx_address_write_word(dst, scount);
+		gx_address_write_word(dst, 0);
 		scount++;
 		dst += 16;
 	}
@@ -1796,6 +1799,12 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 		return;
 	}
 
+	if ((address & 0xfffff8) == 0xd48000) {
+		K053246Write((address + 0) & 7, data >> 8);
+		K053246Write((address + 1) & 7, data);
+		return;
+	}
+
 	if ((address & 0xfffff0) == 0xd4a010) {
 		K053247WriteRegsWord(address & 0x0f, data);
 		return;
@@ -1902,6 +1911,14 @@ static void __fastcall gx_main_write_long(UINT32 address, UINT32 data)
 		gx_tilebanks[(address + 1) & 7] = data >> 16;
 		gx_tilebanks[(address + 2) & 7] = data >> 8;
 		gx_tilebanks[(address + 3) & 7] = data;
+		return;
+	}
+
+	if ((address & 0xfffff8) == 0xd48000) {
+		K053246Write((address + 0) & 7, data >> 24);
+		K053246Write((address + 1) & 7, data >> 16);
+		K053246Write((address + 2) & 7, data >> 8);
+		K053246Write((address + 3) & 7, data);
 		return;
 	}
 
@@ -2723,10 +2740,9 @@ static void gx_type4_compose_output()
 	}
 }
 
-#if GX_SEXYPARO_POSTPROCESS
 static INT32 gx_sexyparo_has_stage3_background()
 {
-	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
+	if (gx_special != GX_SPECIAL_SEXYPARO || !KonamiBitmapReady()) return 0;
 
 	INT32 stage3 = 0;
 	INT32 ink = 0;
@@ -2792,7 +2808,7 @@ static inline void gx_sexyparo_plot_snow(INT32 x, INT32 y, UINT32 color, UINT32 
 
 static void gx_sexyparo_draw_snow()
 {
-	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return;
+	if (gx_special != GX_SPECIAL_SEXYPARO || !KonamiBitmapReady()) return;
 	if (gx_sexyparo_esc_p1 < 2 || gx_sexyparo_esc_p1 > 4) return;
 	if (gx_sexyparo_has_stage3_background()) return;
 
@@ -2823,7 +2839,7 @@ static void gx_sexyparo_draw_snow()
 
 static INT32 gx_sexyparo_has_black_space_background()
 {
-	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
+	if (gx_special != GX_SPECIAL_SEXYPARO || !KonamiBitmapReady()) return 0;
 
 	INT32 black = 0;
 	INT32 total = 0;
@@ -2872,7 +2888,6 @@ static void gx_sexyparo_draw_space_stars()
 		}
 	}
 }
-#endif
 
 static INT32 DrvDraw()
 {
@@ -2896,7 +2911,7 @@ static INT32 DrvDraw()
 
 	konamigx_mixer(0, 0, 0, 0, K056832GetLastAlphaTileMixCode() << 30, 0, gx_rushingheroes_hack);
 
-#if GX_SEXYPARO_POSTPROCESS
+#ifndef __LIBRETRO__
 	gx_sexyparo_draw_snow();
 	gx_sexyparo_draw_space_stars();
 #endif
@@ -2948,8 +2963,15 @@ static INT32 DrvFrame()
 	SekNewFrame();
 	timerNewFrame();
 
+	const INT32 main_clock =
+#ifdef __LIBRETRO__
+		24000000;
+#else
+		(!gx_type4_enable && gx_posthack_frames > 0) ? 16000000 : 24000000;
+#endif
+
 	INT32 nCyclesTotal[3] = {
-		(INT32)(((!gx_type4_enable && gx_posthack_frames > 0) ? 16000000 : 24000000) / gx_frame_rate),
+		(INT32)(main_clock / gx_frame_rate),
 		(INT32)( 8000000 / gx_frame_rate),
 		(INT32)(18432000 / gx_frame_rate)
 	};

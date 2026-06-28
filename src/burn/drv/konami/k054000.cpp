@@ -69,7 +69,7 @@ static UINT8 axis_check(UINT32 m_Ac, UINT32 m_Bc, UINT32 m_Aa, UINT32 m_Ba)
 	INT32 sub = m_Ac - m_Bc;
 
 	// MSB check
-	if ((sub > 511) || (sub <= -1024))
+	if ((sub > 511) || (sub < -1024))
 		res |= 1;
 
 	// LSB check

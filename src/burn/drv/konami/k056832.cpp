@@ -586,12 +586,10 @@ UINT8 K056832GxRomByteRead(INT32 address)
 	INT32 base = (offset / 4) * 5 + ((offset & 3) * 2);
 
 	if (m_rom_half && ((address & 3) == 3)) {
-		m_rom_half = 0;
 		return 0;
 	}
 
 	if (m_rom_half) {
-		m_rom_half = 0;
 		return K056832Rom[base + 1];
 	}
 
@@ -606,7 +604,6 @@ UINT8 K056832GxRomByteRead6bpp(INT32 address)
 	INT32 base = (offset / 4) * 6 + ((offset & 3) * 2);
 
 	if (m_rom_half) {
-		m_rom_half = 0;
 		return K056832Rom[base + 1];
 	}
 
@@ -761,6 +758,8 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 		m_callback(layer, &code, &color, &g_flags);
 
+		if (code < 0 || code > K056832RomExpMask) continue;
+
 		if ((flags & K056832_DRAW_CATEGORY_1) && !category) continue;
 		if (!(flags & (K056832_DRAW_CATEGORY_1 | K056832_DRAW_ALL_CATEGORIES)) && category) continue;
 
@@ -799,10 +798,10 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 						yy = (yy - scrolly) & 0xff;
 					}
 
+					if (yy < miny || yy > maxy) continue;
+
 					UINT32 *dst = konami_bitmap32 + ((yy - CLIP_MINY) * nScreenWidth) - CLIP_MINX;
 					UINT8 *pri = konami_priority_bitmap + ((yy - CLIP_MINY) * nScreenWidth) - CLIP_MINX;
-
-					if (yy < miny || yy > maxy) continue;
 
 					for (INT32 ix = 0; ix < 8; ix++) {
 						INT32 xx = sx+ix;

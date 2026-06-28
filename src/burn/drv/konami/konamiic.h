@@ -36,6 +36,7 @@ void konami_rom_deinterleave_4(UINT8 *src, INT32 len);
 
 // internal
 void KonamiAllocateBitmaps();
+INT32 KonamiBitmapReady();
 void konami_draw_16x16_tile(UINT8 *gfx, INT32 code, INT32 bpp, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy);
 void konami_draw_16x16_prio_sprite(UINT8 *gfx, INT32 code, INT32 bpp, INT32 color, INT32 sx, INT32 sy, INT32 flipx, INT32 flipy, UINT32 priority);
 void konami_draw_16x16_zoom_tile(UINT8 *gfx, INT32 code, INT32 bpp, INT32 color, INT32 t, INT32 sx, INT32 sy, INT32 fx, INT32 fy, INT32 width, INT32 height, INT32 zoomx, INT32 zoomy);

@@ -654,6 +654,7 @@ struct BurnDriver BurnDrvRenju = {
 
 
 // Korean translation (clone of renju, modified main program ROM)
+
 static struct BurnRomInfo renjukRomDesc[] = {
 	{ "renjyu-1k.u31", 0x200000, 0x2bd052c5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
 	{ "rnj2.u32",      0x080000, 0x2015289c, 1 | BRF_PRG | BRF_ESS }, //  1
