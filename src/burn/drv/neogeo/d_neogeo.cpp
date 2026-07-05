@@ -32381,7 +32381,7 @@ struct BurnDriver BurnDrvMslug5uh = {
 // SNK vs. Capcom - SVC Chaos (AES Uncensored Hack)
 
 static struct BurnRomInfo svcuhRomDesc[] = {
-	{ "269-p1uh.p1",    0x600000, 0x3d772f9e, 1 | BRF_ESS | BRF_PRG },
+	{ "269-p1uh.p1",    0x800000, 0x8b0b01b0, 1 | BRF_ESS | BRF_PRG },
 
 	{ "269-s1d.s1",     0x080000, 0xad184232, 2 | BRF_GRA },
 

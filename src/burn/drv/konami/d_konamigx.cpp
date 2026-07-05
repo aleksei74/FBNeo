@@ -1628,46 +1628,6 @@ static UINT32 __fastcall gx_main_read_long(UINT32 address)
 	return (gx_main_read_word(address) << 16) | gx_main_read_word(address + 2);
 }
 
-// ---- LOCAL DEBUG (strip before shipping): sprite-write watch ----
-// GX_SPRWATCH=4dd7[,4de1...] logs 68020 PC+regs when a watched 16-bit value
-// is written to K053247 sprite RAM (0xd20000). Raw write(2): libretro hijacks FILE*.
-#include <fcntl.h>
-#include <unistd.h>
-static void gx_sprwatch(UINT32 address, UINT32 data, INT32 bits)
-{
-	static int inited = 0; static UINT32 watch[8]; static int nwatch = 0; static int fd = -1;
-	if (!inited) {
-		inited = 1;
-		const char *e = getenv("GX_SPRWATCH");
-		if (e) {
-			char *tmp = strdup(e), *tok = strtok(tmp, ",");
-			while (tok && nwatch < 8) { watch[nwatch++] = strtoul(tok, NULL, 16); tok = strtok(NULL, ","); }
-			free(tmp);
-			const char *out = getenv("GX_SPRWATCH_OUT");
-			fd = open(out ? out : "/tmp/sprwatch.log", O_WRONLY|O_CREAT|O_TRUNC, 0644);
-		}
-	}
-	if (fd < 0) return;
-	UINT32 vals[2]; INT32 nv = 0;
-	if (bits == 32) { vals[nv++] = data >> 16; vals[nv++] = data & 0xffff; }
-	else vals[nv++] = data & 0xffff;
-	for (INT32 v = 0; v < nv; v++) {
-		for (INT32 i = 0; i < nwatch; i++) {
-			if (vals[v] == watch[i]) {
-				char buf[256];
-				int n = snprintf(buf, sizeof(buf),
-					"adr=%06x data=%08x bits=%d pc=%08x a0=%08x a1=%08x a2=%08x a3=%08x a4=%08x d0=%08x\n",
-					address + ((bits == 32 && v == 1) ? 2 : 0), data, bits, SekGetPC(-1),
-					m68k_get_reg(NULL, M68K_REG_A0), m68k_get_reg(NULL, M68K_REG_A1), m68k_get_reg(NULL, M68K_REG_A2),
-					m68k_get_reg(NULL, M68K_REG_A3), m68k_get_reg(NULL, M68K_REG_A4), m68k_get_reg(NULL, M68K_REG_D0));
-				write(fd, buf, n);
-				break;
-			}
-		}
-	}
-}
-// ---- END LOCAL DEBUG ----
-
 static void __fastcall gx_main_write_byte(UINT32 address, UINT8 data)
 {
 	if (address >= 0xc00000 && address <= 0xc1ffff) {
@@ -1694,7 +1654,6 @@ static void __fastcall gx_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if ((address & 0xffc000) == 0xd20000) {
-		gx_sprwatch(address, data, 8);
 		K053247Write((address & 0x3fff) ^ 1, data);
 		return;
 	}
@@ -1819,7 +1778,6 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if ((address & 0xffc000) == 0xd20000) {
-		gx_sprwatch(address, data, 16);
 		K053247WriteWord(address & 0x3fff, data);
 		return;
 	}
@@ -1919,7 +1877,6 @@ static void __fastcall gx_main_write_long(UINT32 address, UINT32 data)
 	}
 
 	if ((address & 0xffc000) == 0xd20000) {
-		gx_sprwatch(address, data, 32);
 		K053247WriteWord((address + 0) & 0x3fff, data >> 16);
 		K053247WriteWord((address + 2) & 0x3fff, data);
 		return;
@@ -2439,33 +2396,6 @@ static INT32 DrvInit()
 	if (DecodeTiles()) return 1;
 	if (DecodeSprites()) return 1;
 	if (gx_type4_enable && DecodePsacTiles()) return 1;
-
-	// ---- LOCAL DEBUG (strip before shipping): GX_PATCH=/path/file applies
-	// overlay records after decode. Record: u8 kind, u32le offset, u32le len,
-	// len bytes. kind 0 = DrvMainROM as BE stream (bytes swapped into the
-	// LE-word layout Musashi reads), kind 1 = DrvGfxROMExp1 raw (1 byte/pixel,
-	// 256 bytes per 16x16 sprite tile).
-	if (getenv("GX_PATCH")) {
-		int pfd = open(getenv("GX_PATCH"), O_RDONLY);
-		if (pfd >= 0) {
-			UINT8 hdr[9];
-			while (read(pfd, hdr, 9) == 9) {
-				UINT32 off = hdr[1] | (hdr[2] << 8) | (hdr[3] << 16) | ((UINT32)hdr[4] << 24);
-				UINT32 len = hdr[5] | (hdr[6] << 8) | (hdr[7] << 16) | ((UINT32)hdr[8] << 24);
-				UINT8 *buf = (UINT8*)BurnMalloc(len);
-				if ((UINT32)read(pfd, buf, len) != len) { BurnFree(buf); break; }
-				if (hdr[0] == 0) {
-					for (UINT32 i = 0; i < len; i++)
-						DrvMainROM[(off + i) ^ 1] = buf[i];
-				} else if (hdr[0] == 1) {
-					memcpy(DrvGfxROMExp1 + off, buf, len);
-				}
-				BurnFree(buf);
-			}
-			close(pfd);
-		}
-	}
-	// ---- END LOCAL DEBUG ----
 
 	K055555Init();
 	K054338Init();
