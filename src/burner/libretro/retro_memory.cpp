@@ -1,8 +1,5 @@
 #include "retro_common.h"
 #include "retro_memory.h"
-// LOCAL DEBUG (GX_STATEMAP): raw fd i/o for savestate area map logging
-#include <fcntl.h>
-#include <unistd.h>
 
 // Cheevos support
 static void* pMainRamData = NULL;
@@ -227,18 +224,6 @@ static int nSavestateContext = RETRO_SAVESTATE_CONTEXT_NORMAL;
 
 static int StateWriteAcb(BurnArea *pba)
 {
-	// LOCAL DEBUG (GX_STATEMAP=/path): log each area's name/offset/len via raw
-	// write(2) -- fprintf/FILE are hijacked by file_stream_transforms here.
-	if (getenv("GX_STATEMAP")) {
-		static int smfd = -2;
-		if (smfd == -2) smfd = open(getenv("GX_STATEMAP"), O_WRONLY|O_CREAT|O_TRUNC, 0644);
-		if (smfd >= 0) {
-			char smbuf[256];
-			int n = snprintf(smbuf, sizeof(smbuf), "0x%08x len 0x%08x %s\n",
-				nStateTmpLen[nSavestateContext], pba->nLen, pba->szName ? pba->szName : "?");
-			write(smfd, smbuf, n);
-		}
-	}
 	nStateTmpLen[nSavestateContext] += pba->nLen;
 	// size is bigger than the buffer we are writing to, abort
 	if (nStateTmpLen[nSavestateContext] > nTempSize)
