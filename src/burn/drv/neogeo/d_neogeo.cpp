@@ -31193,7 +31193,7 @@ STD_ROM_FN(aof3kr)
 struct BurnDriver BurnDrvAof3kr = {
 	"aof3kr", "aof3", "neogeo", NULL, "1996",
 	"Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\uC544\uD2B8 \uC624\uBE0C \uB354 \uD30C\uC774\uD305 3 - \uB354 \uD328\uC2A4 \uC624\uBE0C \uB354 \uC6CC\uB9AC\uC5B4 / \uC544\uD2B8 \uC624\uBE0C \uB354 \uD30C\uC774\uD305 - \uC6A9\uD638\uC758 \uAD8C \uC678\uC804 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	L"Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (Korean Translation)\0\uC544\uD2B8 \uC624\uBE0C \uB354 \uD30C\uC774\uD305 3 - \uB354 \uD328\uC2A4 \uC624\uBE0C \uB354 \uC6CC\uB9AC\uC5B4 / \uC544\uD2B8 \uC624\uBE0C \uB354 \uD30C\uC774\uD305 - \uC6A9\uD638\uC758 \uAD8C \uC678\uC804 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
 	NULL, aof3krRomInfo, aof3krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
@@ -31824,7 +31824,7 @@ struct BurnDriver BurnDrvKof98kr = {
 // The King of Fighters '98 - The Slugfest / King of Fighters '98 - Dream Match Never Ends (AES Uncensored Hack)
 
 static struct BurnRomInfo kof98uhRomDesc[] = {
-	{ "242-p1uh.p1",  0x100000, 0xdeec68bd, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "242-p1uh.p1",  0x100000, 0xb6bf3726, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
 	{ "242-p2.sp2",   0x400000, 0x980aba4c, 1 | BRF_ESS | BRF_PRG }, //  1
 
 	{ "242-s1.s1",    0x020000, 0x7f7b4805, 2 | BRF_GRA },           //  2 Text layer tiles
@@ -32381,7 +32381,7 @@ struct BurnDriver BurnDrvMslug5uh = {
 // SNK vs. Capcom - SVC Chaos (AES Uncensored Hack)
 
 static struct BurnRomInfo svcuhRomDesc[] = {
-	{ "269-p1uh.p1",    0x600000, 0x1994da99, 1 | BRF_ESS | BRF_PRG },
+	{ "269-p1uh.p1",    0x800000, 0x8b0b01b0, 1 | BRF_ESS | BRF_PRG },
 
 	{ "269-s1d.s1",     0x080000, 0xad184232, 2 | BRF_GRA },
 
@@ -32391,8 +32391,8 @@ static struct BurnRomInfo svcuhRomDesc[] = {
 	{ "269-c4d.c4",     0x800000, 0xa69d523a, 3 | BRF_GRA },
 	{ "269-c5d.c5",     0x800000, 0xba2a7892, 3 | BRF_GRA },
 	{ "269-c6d.c6",     0x800000, 0x37371ca1, 3 | BRF_GRA },
-	{ "269-c7d.c7",     0x800000, 0x5595b6cc, 3 | BRF_GRA },
-	{ "269-c8d.c8",     0x800000, 0xb17dfcf9, 3 | BRF_GRA },
+	{ "269-c7uh.c7",    0x800000, 0xd8418412, 3 | BRF_GRA },
+	{ "269-c8uh.c8",    0x800000, 0xe327a78c, 3 | BRF_GRA },
 
 	{ "269-m1d.m1",     0x020000, 0x447b3123, 4 | BRF_ESS | BRF_PRG },
 
@@ -32410,6 +32410,40 @@ struct BurnDriver BurnDrvSvcuh = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_ALTERNATE_TEXT, GBF_VSFIGHT, FBF_KOF | FBF_SF,
 	NULL, svcuhRomInfo, svcuhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Samurai Shodown V / Samurai Spirits Zero (Korean Translation)
+
+static struct BurnRomInfo samsho5kRomDesc[] = {
+	{ "270-p1k.p1",   0x400000, 0xea49d798, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "270-p2k.sp2",  0x400000, 0xccd52e28, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "270-c1k.c1",   0x800000, 0xe3c43209, 3 | BRF_GRA },           //  2 Sprite data
+	{ "270-c2k.c2",   0x800000, 0xb97979ec, 3 | BRF_GRA },           //  3
+	{ "270-c3k.c3",   0x800000, 0x9e27bfaf, 3 | BRF_GRA },           //  4
+	{ "270-c4k.c4",   0x800000, 0x349bceb7, 3 | BRF_GRA },           //  5
+	{ "270-c5k.c5",   0x800000, 0xe720cfb3, 3 | BRF_GRA },           //  6
+	{ "270-c6k.c6",   0x800000, 0x4b4380d5, 3 | BRF_GRA },           //  7
+	{ "270-c7k.c7",   0x800000, 0x3cd5ffa9, 3 | BRF_GRA },           //  8
+	{ "270-c8k.c8",   0x800000, 0xf7b5e9bf, 3 | BRF_GRA },           //  9
+
+	{ "270-m1.m1",    0x080000, 0x49c9901a, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
+
+	{ "270-v1.v1",    0x800000, 0x62e434eb, 5 | BRF_SND },           // 11 Sound data
+	{ "270-v2.v2",    0x800000, 0x180f3c9a, 5 | BRF_SND },           // 12
+};
+
+STDROMPICKEXT(samsho5k, samsho5k, neogeo)
+STD_ROM_FN(samsho5k)
+
+struct BurnDriver BurnDrvSamsho5k = {
+	"samsho5k", "samsho5", "neogeo", NULL, "2003",
+	"Samurai Shodown V / Samurai Spirits Zero (Korean Translation)\0", NULL, "Yuki Enterprise / SNK Playmore", "Neo Geo MVS",
+	L"Samurai Shodown V / Samurai Spirits Zero (Korean Translation)\0\uC0AC\uBB34\uB77C\uC774 \uC1FC\uB2E4\uC6B4 V / \uC0AC\uBB34\uB77C\uC774 \uC2A4\uD53C\uB9AC\uCE20 \uC81C\uB85C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_SAMSHO,
+	NULL, samsho5kRomInfo, samsho5kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	samsho5Init, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
 

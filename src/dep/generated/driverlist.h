@@ -9751,6 +9751,8 @@ DRV		BurnDrvpce_haniiskye;
 DRV		BurnDrvRedfoxwp2;
 DRV		BurnDrvRedfoxwp2a;
 DRV		BurnDrvsms_hongkildong;
+DRV		BurnDrvmd_hongkong97;
+DRV		BurnDrvsnes_Hongkong97;
 DRV		BurnSpecHkphooey;
 DRV		BurnDrvAblast;
 DRV		BurnDrvnes_ddball;
@@ -18339,6 +18341,7 @@ DRV		BurnDrvSamsho5b;
 DRV		BurnDrvSamsh5bs;
 DRV		BurnDrvSamsh5fd;
 DRV		BurnDrvSamsho5x;
+DRV		BurnDrvSamsho5k;
 DRV		BurnDrvSamsho5h;
 DRV		BurnDrvSamsho5;
 DRV		BurnDrvSamsho5a;
@@ -35488,6 +35491,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvRedfoxwp2,			// Hong Hu Zhanji II (China, set 1)
 	&BurnDrvRedfoxwp2a,			// Hong Hu Zhanji II (China, set 2)
 	&BurnDrvsms_hongkildong,	// Hong Kil Dong (Korea)
+	&BurnDrvmd_hongkong97,		// Hong Kong '97 (HB, Beta 01)
+	&BurnDrvsnes_Hongkong97,	// Hong Kong '97 (Japan) (Unl)
 	&BurnSpecHkphooey,			// Hong Kong Phooey (48K)
 	&BurnDrvAblast,				// Hong Tian Lei (A-Blast) (Japan)
 	&BurnDrvnes_ddball,			// Honoo no Doukyuuji - Dan's Dodge Ball (Hack, English v1.0b)
@@ -42638,7 +42643,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecPyracurse,			// Pyracurse (48K)
 	&BurnDrvnes_pyramid,		// Pyramid (Unl)
 	&BurnSpecPyramidescape,		// Pyramid Escape (128K) (HB, v0.8.0)
-	&BurnDrvsms_pyramidescape,	// Pyramid Escape (HB, v1.2.2)
+	&BurnDrvsms_pyramidescape,	// Pyramid Escape (HB, v1.2.3)
 	&BurnDrvnes_pyramidii,		// Pyramid II (Unl)
 	&BurnDrvmd_pyramidgnk,		// Pyramid Magic (Japan, Game no Kandume MegaCD Rip)
 	&BurnDrvmd_pyramid,			// Pyramid Magic (Japan, SegaNet)
@@ -44076,6 +44081,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSamsh5bs,			// Samurai Shodown V / Samurai Spirits Zero (Boss, Hack)
 	&BurnDrvSamsh5fd,			// Samurai Shodown V / Samurai Spirits Zero (Fully Decrypted)
 	&BurnDrvSamsho5x,			// Samurai Shodown V / Samurai Spirits Zero (hack of XBOX version)
+	&BurnDrvSamsho5k,			// Samurai Shodown V / Samurai Spirits Zero (Korean Translation)
 	&BurnDrvSamsho5h,			// Samurai Shodown V / Samurai Spirits Zero (NGH-2700)
 	&BurnDrvSamsho5,			// Samurai Shodown V / Samurai Spirits Zero (NGM-2700, set 1)
 	&BurnDrvSamsho5a,			// Samurai Shodown V / Samurai Spirits Zero (NGM-2700, set 2)
@@ -50983,7 +50989,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvXeviousa,			// Xevious (Atari, harder)
 	&BurnDrvXeviousc,			// Xevious (Atari, Namco PCB)
 	&BurnDrvXeviousd,			// Xevious (Atari, set 4)
-	&BurnDrvmd_xevious,			// Xevious (HB, alpha-0.02)
+	&BurnDrvmd_xevious,			// Xevious (HB, alpha-0.03)
 	&BurnDrvXevious,			// Xevious (Namco)
 	&BurnDrvXeviousng,			// Xevious - Neo Geo Conversion (HB, Beta1)
 	&BurnDrvnes_xevious,		// Xevious - The Avenger (USA)
@@ -61163,6 +61169,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "redfoxwp2", "pst90s/d_nmk16.cpp"},
 	{ "redfoxwp2a", "pst90s/d_nmk16.cpp"},
 	{ "sms_hongkildong", "sms/d_sms.cpp"},
+	{ "md_hongkong97", "megadrive/d_megadrive.cpp"},
+	{ "snes_hongkong97", "snes/d_snes.cpp"},
 	{ "spec_hkphooey", "spectrum/d_spectrum.cpp"},
 	{ "ablast", "pst90s/d_seta2.cpp"},
 	{ "nes_ddball", "nes/d_nes.cpp"},
@@ -69677,6 +69685,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "samsh5bs", "neogeo/d_neogeo.cpp"},
 	{ "samsh5fd", "neogeo/d_neogeo.cpp"},
 	{ "samsho5x", "neogeo/d_neogeo.cpp"},
+	{ "samsho5k", "neogeo/d_neogeo.cpp"},
 	{ "samsho5h", "neogeo/d_neogeo.cpp"},
 	{ "samsho5", "neogeo/d_neogeo.cpp"},
 	{ "samsho5a", "neogeo/d_neogeo.cpp"},
