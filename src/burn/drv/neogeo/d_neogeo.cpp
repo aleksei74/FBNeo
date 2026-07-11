@@ -30233,6 +30233,38 @@ struct BurnDriver BurnDrvCyberlipk = {
 	0x1000, 304, 224, 4, 3
 };
 
+// King of the Monsters (Korean Translation)
+
+static struct BurnRomInfo kotmkRomDesc[] = {
+	{ "016-hp1k.p1",  0x080000, 0x2589096d, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
+	{ "016-p2.p2",    0x020000, 0x12afdc2b, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC531024
+
+	{ "016-s1k.s1",   0x020000, 0x3f42d6db, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "016-c1k.c1",   0x100000, 0xe8984364, 3 | BRF_GRA },           //  3 Sprite data 		/ TC538200
+	{ "016-c2k.c2",   0x100000, 0xf35a4ba7, 3 | BRF_GRA },           //  4 					/ TC538200
+	{ "016-c3k.c3",   0x100000, 0x4809bedd, 3 | BRF_GRA },           //  5 					/ TC538200
+	{ "016-c4k.c4",   0x100000, 0xd6d4192d, 3 | BRF_GRA },           //  6 					/ TC538200
+
+	{ "016-m1k.m1",   0x020000, 0x7db78230, 4 | BRF_ESS | BRF_PRG }, //  7 Z80 code 		/ TC531001
+
+	{ "016-v1.v1",    0x100000, 0x86c0a502, 5 | BRF_SND },           //  8 Sound data 		/ TC538200
+	{ "016-v2k.v2",   0x100000, 0xca1abba4, 5 | BRF_SND },           //  9 					/ TC538200
+};
+
+STDROMPICKEXT(kotmk, kotmk, neogeo)
+STD_ROM_FN(kotmk)
+
+struct BurnDriver BurnDrvKotmk = {
+	"kotmk", "kotm", "neogeo", NULL, "1991",
+	"King of the Monsters (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
+	NULL, kotmkRomInfo, kotmkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Blue's Journey / Raguy (Korean Translation)
 
 static struct BurnRomInfo bjourneykRomDesc[] = {
@@ -32419,14 +32451,14 @@ static struct BurnRomInfo samsho5kRomDesc[] = {
 	{ "270-p1k.p1",   0x400000, 0xea49d798, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
 	{ "270-p2k.sp2",  0x400000, 0xccd52e28, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "270-c1k.c1",   0x800000, 0xe3c43209, 3 | BRF_GRA },           //  2 Sprite data
-	{ "270-c2k.c2",   0x800000, 0xb97979ec, 3 | BRF_GRA },           //  3
-	{ "270-c3k.c3",   0x800000, 0x9e27bfaf, 3 | BRF_GRA },           //  4
-	{ "270-c4k.c4",   0x800000, 0x349bceb7, 3 | BRF_GRA },           //  5
-	{ "270-c5k.c5",   0x800000, 0xe720cfb3, 3 | BRF_GRA },           //  6
-	{ "270-c6k.c6",   0x800000, 0x4b4380d5, 3 | BRF_GRA },           //  7
-	{ "270-c7k.c7",   0x800000, 0x3cd5ffa9, 3 | BRF_GRA },           //  8
-	{ "270-c8k.c8",   0x800000, 0xf7b5e9bf, 3 | BRF_GRA },           //  9
+	{ "270-c1k.c1",   0x800000, 0x3d8af61f, 3 | BRF_GRA },           //  2 Sprite data
+	{ "270-c2k.c2",   0x800000, 0x20a62760, 3 | BRF_GRA },           //  3
+	{ "270-c3k.c3",   0x800000, 0x3b829cac, 3 | BRF_GRA },           //  4
+	{ "270-c4k.c4",   0x800000, 0x0e444ef1, 3 | BRF_GRA },           //  5
+	{ "270-c5k.c5",   0x800000, 0x0cb5e20e, 3 | BRF_GRA },           //  6
+	{ "270-c6k.c6",   0x800000, 0x09992bd8, 3 | BRF_GRA },           //  7
+	{ "270-c7k.c7",   0x800000, 0x9be80e8c, 3 | BRF_GRA },           //  8
+	{ "270-c8k.c8",   0x800000, 0x03791a08, 3 | BRF_GRA },           //  9
 
 	{ "270-m1.m1",    0x080000, 0x49c9901a, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
 

@@ -6719,7 +6719,8 @@ DRV		BurnSpecEnchanted;
 DRV		BurnDrvnes_smbendssmbha1;
 DRV		BurnSpecefmb;
 DRV		BurnDrvMSX_endurance;
-DRV		BurnSpecenduro;
+DRV		BurnSpecEnduro;
+DRV		BurnSpecEndurora;
 DRV		BurnDrvEndurord;
 DRV		BurnDrvEnduror1d;
 DRV		BurnDrvEndurobl;
@@ -11183,6 +11184,7 @@ DRV		BurnDrvnes_kingkin;
 DRV		BurnDrvmd_kotm;
 DRV		BurnDrvsnes_Kotme;
 DRV		BurnDrvmd_kotmj;
+DRV		BurnDrvKotmk;
 DRV		BurnDrvKotm;
 DRV		BurnDrvKotmh;
 DRV		BurnDrvmd_kotmu;
@@ -17708,6 +17710,9 @@ DRV		BurnDrvgg_ristarp1;
 DRV		BurnDrvgg_ristar;
 DRV		BurnSpecRivgangsext;
 DRV		BurnDrvsnes_Rivalturf;
+DRV		BurnSpecRivrelicen;
+DRV		BurnSpecRivrelicpt;
+DRV		BurnSpecRivrelices;
 DRV		BurnDrvmd_sor2rcgor;
 DRV		BurnDrvnes_rivercitran;
 DRV		BurnDrvnes_rivercitrannek;
@@ -17715,8 +17720,10 @@ DRV		BurnDrvRpatrolb;
 DRV		BurnDrvRpatrol;
 DRV		BurnDrvRpatroln;
 DRV		BurnSpecRiverrad;
+DRV		BurnSpecRiveraid;
 DRV		BurnDrvMSX_riveraid;
 DRV		BurnDrvcv_riveraid;
+DRV		BurnSpecRiveraidplus;
 DRV		BurnDrvMSX_riyadh;
 DRV		BurnDrvmd_rrash3imp;
 DRV		BurnDrvmd_rrash3;
@@ -24420,6 +24427,7 @@ DRV		BurnSpecWackydarts;
 DRV		BurnSpecwackrace;
 DRV		BurnDrvnes_wackyraces;
 DRV		BurnDrvmd_wackyrac;
+DRV		BurnSpecWackyrobot;
 DRV		BurnDrvmd_wworldsp1;
 DRV		BurnDrvmd_wworlds;
 DRV		BurnDrvnes_waddles;
@@ -32467,7 +32475,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_smbendssmbha1,	// Ende's Super Mario Bros. (Hack)
 	&BurnSpecefmb,				// Endless Forms Most Beautiful (48K) (HB)
 	&BurnDrvMSX_endurance,		// Endurance (HB)
-	&BurnSpecenduro,			// Enduro Racer (48K-128K)
+	&BurnSpecEnduro,			// Enduro (48K)
+	&BurnSpecEndurora,			// Enduro Racer (48K-128K)
 	&BurnDrvEndurord,			// Enduro Racer (bootleg of Rev A, YM2151, FD1089B 317-0013A set)
 	&BurnDrvEnduror1d,			// Enduro Racer (bootleg of YM2203, FD1089B 317-0013A set)
 	&BurnDrvEndurobl,			// Enduro Racer (bootleg set 1)
@@ -36931,6 +36940,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_kotm,			// King of the Monsters (Euro)
 	&BurnDrvsnes_Kotme,			// King of the Monsters (Euro)
 	&BurnDrvmd_kotmj,			// King of the Monsters (Japan)
+	&BurnDrvKotmk,				// King of the Monsters (Korean Translation)
 	&BurnDrvKotm,				// King of the Monsters (set 1)
 	&BurnDrvKotmh,				// King of the Monsters (set 2)
 	&BurnDrvmd_kotmu,			// King of the Monsters (USA)
@@ -43456,6 +43466,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgg_ristar,			// Ristar: The Shooting Star (World)
 	&BurnSpecRivgangsext,		// Rival Gangs EXT (128K) (HB)
 	&BurnDrvsnes_Rivalturf,		// Rival Turf (USA)
+	&BurnSpecRivrelicen,		// Rivenor Relic, The (English) (128K) (HB)
+	&BurnSpecRivrelicpt,		// Rivenor Relic, The (Portuguese) (128K) (HB)
+	&BurnSpecRivrelices,		// Rivenor Relic, The (Spanish) (128K) (HB)
 	&BurnDrvmd_sor2rcgor,		// River City Girls... of Rage (Hack, v0.9.82)
 	&BurnDrvnes_rivercitran,	// River City Ransom (USA)
 	&BurnDrvnes_rivercitrannek,	// River City Ransom - Nekketsu Hack (Hack, v1.2)
@@ -43463,8 +43476,10 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvRpatrol,			// River Patrol (Japan)
 	&BurnDrvRpatroln,			// River Patrol (Japan, unprotected)
 	&BurnSpecRiverrad,			// River Rad (128K) (HB)
+	&BurnSpecRiveraid,			// River Raid (48K)
 	&BurnDrvMSX_riveraid,		// River Raid (Japan)
 	&BurnDrvcv_riveraid,		// River Raid (USA)
+	&BurnSpecRiveraidplus,		// River Raid+ (48K) (Hack, v0.2)
 	&BurnDrvMSX_riyadh,			// Riyadh (HB, Tech-Demo)
 	&BurnDrvmd_rrash3imp,		// Road 3 Rash Improvement (Hack, v1.04)
 	&BurnDrvmd_rrash3,			// Road 3 Rash: Tour de Force (Euro, USA)
@@ -50168,6 +50183,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecwackrace,			// Wacky Races (48K-128K)
 	&BurnDrvnes_wackyraces,		// Wacky Races (USA)
 	&BurnDrvmd_wackyrac,		// Wacky Races (USA, Prototype)
+	&BurnSpecWackyrobot,		// Wacky Robot (16K) (HB, v1.1)
 	&BurnDrvmd_wworldsp1,		// Wacky Worlds (Prototype)
 	&BurnDrvmd_wworlds,			// Wacky Worlds (USA)
 	&BurnDrvnes_waddles,		// Waddles the Duck (HB)
@@ -58170,6 +58186,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_efmb", "spectrum/d_spectrum.cpp"},
 	{ "msx_endurance", "msx/d_msx.cpp"},
 	{ "spec_enduro", "spectrum/d_spectrum.cpp"},
+	{ "spec_endurora", "spectrum/d_spectrum.cpp"},
 	{ "endurord", "sega/d_hangon.cpp"},
 	{ "enduror1d", "sega/d_hangon.cpp"},
 	{ "endurobl", "sega/d_hangon.cpp"},
@@ -62599,6 +62616,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_kotm", "megadrive/d_megadrive.cpp"},
 	{ "snes_kotme", "snes/d_snes.cpp"},
 	{ "md_kotmj", "megadrive/d_megadrive.cpp"},
+	{ "kotmk", "neogeo/d_neogeo.cpp"},
 	{ "kotm", "neogeo/d_neogeo.cpp"},
 	{ "kotmh", "neogeo/d_neogeo.cpp"},
 	{ "md_kotmu", "megadrive/d_megadrive.cpp"},
@@ -69076,6 +69094,9 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gg_ristar", "sms/d_sms.cpp"},
 	{ "spec_rivgangsext", "spectrum/d_spectrum.cpp"},
 	{ "snes_rivalturf", "snes/d_snes.cpp"},
+	{ "spec_rivrelicen", "spectrum/d_spectrum.cpp"},
+	{ "spec_rivrelicpt", "spectrum/d_spectrum.cpp"},
+	{ "spec_rivrelices", "spectrum/d_spectrum.cpp"},
 	{ "md_sor2rcgor", "megadrive/d_megadrive.cpp"},
 	{ "nes_rivercitran", "nes/d_nes.cpp"},
 	{ "nes_rivercitrannek", "nes/d_nes.cpp"},
@@ -69083,8 +69104,10 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "rpatrol", "pre90s/d_cclimber.cpp"},
 	{ "rpatroln", "pre90s/d_cclimber.cpp"},
 	{ "spec_riverrad", "spectrum/d_spectrum.cpp"},
+	{ "spec_riveraid", "spectrum/d_spectrum.cpp"},
 	{ "msx_riveraid", "msx/d_msx.cpp"},
 	{ "cv_riveraid", "coleco/d_coleco.cpp"},
+	{ "spec_riveraidplus", "spectrum/d_spectrum.cpp"},
 	{ "msx_riyadh", "msx/d_msx.cpp"},
 	{ "md_rrash3imp", "megadrive/d_megadrive.cpp"},
 	{ "md_rrash3", "megadrive/d_megadrive.cpp"},
@@ -75720,6 +75743,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_wackrace", "spectrum/d_spectrum.cpp"},
 	{ "nes_wackyraces", "nes/d_nes.cpp"},
 	{ "md_wackyrac", "megadrive/d_megadrive.cpp"},
+	{ "spec_wackyrobot", "spectrum/d_spectrum.cpp"},
 	{ "md_wworldsp1", "megadrive/d_megadrive.cpp"},
 	{ "md_wworlds", "megadrive/d_megadrive.cpp"},
 	{ "nes_waddles", "nes/d_nes.cpp"},
