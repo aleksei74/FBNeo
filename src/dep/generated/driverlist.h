@@ -6567,8 +6567,11 @@ DRV		BurnDrvsnes_Earthwormjim2e;
 DRV		BurnDrvsnes_Earthwormjim2tp;
 DRV		BurnDrvmd_ejim2s;
 DRV		BurnDrvmd_ejim2p;
+DRV		BurnDrvnes_ewjim2;
 DRV		BurnDrvmd_ejim2u;
 DRV		BurnDrvsnes_Earthwormjim2;
+DRV		BurnDrvnes_ewjim3;
+DRV		BurnDrvnes_ewjimnes;
 DRV		BurnDrvcv_easterbunny;
 DRV		BurnDrvMSX_eatblue;
 DRV		BurnDrvMSX_eatit;
@@ -8615,6 +8618,8 @@ DRV		BurnDrvmd_gleylancc;
 DRV		BurnDrvMSX_glider;
 DRV		BurnDrvMSX_glidera;
 DRV		BurnSpecGliderr;
+DRV		BurnSpecGlitchsisten;
+DRV		BurnSpecGlitchsistes;
 DRV		BurnDrvGblchmp;
 DRV		BurnDrvsms_globald;
 DRV		BurnDrvsms_globaldp;
@@ -14555,6 +14560,7 @@ DRV		BurnDrvNbajamr4j;
 DRV		BurnDrvmd_nbashow;
 DRV		BurnDrvmd_nbashowp;
 DRV		BurnDrvsnes_Nbashowdown;
+DRV		BurnDrvNbamhtx;
 DRV		BurnDrvsnes_Ncaabasketball;
 DRV		BurnDrvmd_ncaabask;
 DRV		BurnDrvsnes_Ncaaf4basketball;
@@ -20861,6 +20867,7 @@ DRV		BurnDrvmd_strider2;
 DRV		BurnDrvsms_strider2;
 DRV		BurnDrvmd_strider2s;
 DRV		BurnDrvmd_strider2u;
+DRV		BurnDrvSbowling;
 DRV		BurnDrvStrkfgtrj;
 DRV		BurnDrvStrkfgtr;
 DRV		BurnDrvStrkforc;
@@ -25322,6 +25329,7 @@ DRV		BurnDrvsg1k_yawi;
 DRV		BurnSpecyazzie;
 DRV		BurnDrvmd_yazzie;
 DRV		BurnDrvMSX_yazzie;
+DRV		BurnSpecYazziejr;
 DRV		BurnDrvMSX_yazzier;
 DRV		BurnDrvnesnes_yybeebissii;
 DRV		BurnDrvYellowcbb;
@@ -30252,9 +30260,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvCrasha,				// Crash (set 2)
 	&BurnDrvmd_crash,			// Crash Bandicoot (Russia) (Unl)
 	&BurnDrvsnes_Crashband2en,	// Crash Bandicoot and the Retro Dimension 2 - The Crystal Hunt (GlobalHack, English v1.02)
-	&BurnDrvsnes_Crashbanden,	// Crash Bandicoot and the Retro Dimension Enhanced (GlobalHack, English v1.22)
+	&BurnDrvsnes_Crashbanden,	// Crash Bandicoot and the Retro Dimension Enhanced (GlobalHack, English v1.23)
 	&BurnDrvsnes_Crashband2pt,	// Crash Bandicoot e a Dimensao Retro 2 - A Busca pelos Cristais (GlobalHack, Portuguese v1.02)
-	&BurnDrvsnes_Crashbandpt,	// Crash Bandicoot e a Dimensao Retro Versao Melhorada (GlobalHack, Portuguese v1.22)
+	&BurnDrvsnes_Crashbandpt,	// Crash Bandicoot e a Dimensao Retro Versao Melhorada (GlobalHack, Portuguese v1.23)
 #if defined FBNEO_DEBUG
 	&BurnDrvCrater,				// Crater Raider [Graphics Issues, NOT WORKING]
 #endif
@@ -32307,8 +32315,11 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Earthwormjim2tp,// Earthworm Jim 2 (Hack, Portuguese)
 	&BurnDrvmd_ejim2s,			// Earthworm Jim 2 (Hack, Spanish)
 	&BurnDrvmd_ejim2p,			// Earthworm Jim 2 (Protoype)
+	&BurnDrvnes_ewjim2,			// Earthworm Jim 2 (Taiwan) (Unl)
 	&BurnDrvmd_ejim2u,			// Earthworm Jim 2 (USA)
 	&BurnDrvsnes_Earthwormjim2,	// Earthworm Jim 2 (USA)
+	&BurnDrvnes_ewjim3,			// Earthworm Jim 3 (Taiwan) (Unl)
+	&BurnDrvnes_ewjimnes,		// Earthworm Jim NES Edition (Hack)
 	&BurnDrvcv_easterbunny,		// Easter Bunny (HB)
 	&BurnDrvMSX_eatblue,		// Eat Blue! (HB, v2)
 	&BurnDrvMSX_eatit,			// Eat It (Euro)
@@ -34355,6 +34366,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_glider,			// Glider (Japan)
 	&BurnDrvMSX_glidera,		// Glider (Japan, Alt)
 	&BurnSpecGliderr,			// Glider Rider (48K-128K)
+	&BurnSpecGlitchsisten,		// GlitchSist (English) (128K) (HB)
+	&BurnSpecGlitchsistes,		// GlitchSist (Spanish) (128K) (HB)
 	&BurnDrvGblchmp,			// Global Champion (Ver 2.1A 1994/07/29)
 	&BurnDrvsms_globald,		// Global Defense (Euro, USA)
 	&BurnDrvsms_globaldp,		// Global Defense (Euro, USA, Prototype)
@@ -37609,7 +37622,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvLegionna,			// Legionnaire (World)
 	&BurnDrvmd_legobatman,		// Lego Batman (Russia) (Unl)
 	&BurnDrvmd_legopoc,			// Lego Pirates of the Caribbean (Russia) (Unl)
-	&BurnDrvnes_leidiahuabikaqiuchs,// Lei Dian Huang Bi Ka Qiu Chuan Shuo (China)
+	&BurnDrvnes_leidiahuabikaqiuchs,// Lei Dian Huang Bi Ka Qiu Chuan Shuo (China) (Unl)
 	&BurnDrvBgareggabla,		// Leishen Chuan / Thunder Deity Biography (Chinese hack of Battle Garegga)
 	&BurnSpecLemmings,			// Lemmings (48K)
 	&BurnDrvmd_lemmings,		// Lemmings (Euro)
@@ -40295,6 +40308,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_nbashow,			// NBA Showdown '94 (Euro, USA)
 	&BurnDrvmd_nbashowp,		// NBA Showdown '94 (USA, Prototype)
 	&BurnDrvsnes_Nbashowdown,	// NBA Showdown (USA)
+	&BurnDrvNbamhtx,			// NBA Super Maximum Hangtime (Custom Rebuild 07/02/26)
 	&BurnDrvsnes_Ncaabasketball,// NCAA Basketball (USA, Rev. 1)
 	&BurnDrvmd_ncaabask,		// NCAA Final Four Basketball (USA)
 	&BurnDrvsnes_Ncaaf4basketball,// NCAA Final Four Basketball (USA)
@@ -46601,6 +46615,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsms_strider2,		// Strider II (Euro, Brazil)
 	&BurnDrvmd_strider2s,		// Strider Returns - Journey from Darkness (Hack, Spanish)
 	&BurnDrvmd_strider2u,		// Strider Returns: Journey from Darkness (USA)
+	&BurnDrvSbowling,			// Strike Bowling
 	&BurnDrvStrkfgtrj,			// Strike Fighter (Japan)
 	&BurnDrvStrkfgtr,			// Strike Fighter (World)
 	&BurnDrvStrkforc,			// Strike Force (rev 1 02/25/91)
@@ -51062,6 +51077,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecyazzie,			// Yazzie (128K) (HB)
 	&BurnDrvmd_yazzie,			// Yazzie (HB)
 	&BurnDrvMSX_yazzie,			// Yazzie (HB)
+	&BurnSpecYazziejr,			// Yazzie Junior (128K) (HB)
 	&BurnDrvMSX_yazzier,		// Yazzie Remastered (HB)
 	&BurnDrvnesnes_yybeebissii,	// Yeah Yeah Beebiss II (HB)
 	&BurnDrvYellowcbb,			// Yellow Cab (bootleg)
@@ -58001,8 +58017,11 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_earthwormjim2tp", "snes/d_snes.cpp"},
 	{ "md_ejim2s", "megadrive/d_megadrive.cpp"},
 	{ "md_ejim2p", "megadrive/d_megadrive.cpp"},
+	{ "nes_ewjim2", "nes/d_nes.cpp"},
 	{ "md_ejim2u", "megadrive/d_megadrive.cpp"},
 	{ "snes_earthwormjim2", "snes/d_snes.cpp"},
+	{ "nes_ewjim3", "nes/d_nes.cpp"},
+	{ "nes_ewjimnes", "nes/d_nes.cpp"},
 	{ "cv_easterbunny", "coleco/d_coleco.cpp"},
 	{ "msx_eatblue", "msx/d_msx.cpp"},
 	{ "msx_eatit", "msx/d_msx.cpp"},
@@ -60037,6 +60056,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "msx_glider", "msx/d_msx.cpp"},
 	{ "msx_glidera", "msx/d_msx.cpp"},
 	{ "spec_gliderr", "spectrum/d_spectrum.cpp"},
+	{ "spec_glitchsisten", "spectrum/d_spectrum.cpp"},
+	{ "spec_glitchsistes", "spectrum/d_spectrum.cpp"},
 	{ "gblchmp", "taito/d_taitof3.cpp"},
 	{ "sms_globald", "sms/d_sms.cpp"},
 	{ "sms_globaldp", "sms/d_sms.cpp"},
@@ -65927,6 +65948,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_nbashow", "megadrive/d_megadrive.cpp"},
 	{ "md_nbashowp", "megadrive/d_megadrive.cpp"},
 	{ "snes_nbashowdown", "snes/d_snes.cpp"},
+	{ "nbamhtx", "midway/d_wunit.cpp"},
 	{ "snes_ncaabasketball", "snes/d_snes.cpp"},
 	{ "md_ncaabask", "megadrive/d_megadrive.cpp"},
 	{ "snes_ncaaf4basketball", "snes/d_snes.cpp"},
@@ -72181,6 +72203,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sms_strider2", "sms/d_sms.cpp"},
 	{ "md_strider2s", "megadrive/d_megadrive.cpp"},
 	{ "md_strider2u", "megadrive/d_megadrive.cpp"},
+	{ "sbowling", "taito/d_sbowling.cpp"},
 	{ "strkfgtrj", "sega/d_ybrd.cpp"},
 	{ "strkfgtr", "sega/d_ybrd.cpp"},
 	{ "strkforc", "midway/d_yunit.cpp"},
@@ -76594,6 +76617,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_yazzie", "spectrum/d_spectrum.cpp"},
 	{ "md_yazzie", "megadrive/d_megadrive.cpp"},
 	{ "msx_yazzie", "msx/d_msx.cpp"},
+	{ "spec_yazziejr", "spectrum/d_spectrum.cpp"},
 	{ "msx_yazzier", "msx/d_msx.cpp"},
 	{ "nes_yybeebissii", "nes/d_nes.cpp"},
 	{ "yellowcbb", "dataeast/d_liberate.cpp"},
