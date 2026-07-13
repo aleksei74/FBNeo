@@ -68,6 +68,11 @@ UINT16 K056832GetVram(INT32 address)
 	return K056832VideoRAM[address];
 }
 
+void K056832SetVram(INT32 address, UINT16 data)
+{
+	K056832VideoRAM[address] = data;
+}
+
 void K056832Reset()
 {
 	memset (K056832VideoRAM, 0, 0x2000 * 0x11 * 2);

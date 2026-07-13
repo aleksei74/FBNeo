@@ -2726,6 +2726,67 @@ static void gx_type4_compose_output()
 	}
 }
 
+// --- tbyahhoo Korean-logo tilemap fixup -------------------------------------
+// The title logo (K056832 page 0) reuses a few tile codes across cells that
+// the Japanese art drew identically, and leaves some cells blank (0x400).
+// The Korean redraw needs those cells to differ, so we redirect them to spare
+// tile codes (0x5e1..) whose pixels come from the Korean ROM patch.  The
+// tilemap is generated at runtime by the game (it exists in no ROM table), so
+// this can only be done here.
+//
+// Gating: (a) the patch writes a MAGIC pattern into spare tile 0x5fe; the
+// remap fires only on an exact 64-byte match.  The original ROM holds fully
+// inked X-marker placeholder tiles in the spare region, so an any-ink check
+// would misfire on unpatched ROMs (it did) — an exact match cannot.
+// (b) the anchor cells must still hold the logo's Japanese shared codes
+// (i.e. the logo screen is being displayed).  Cell colours are preserved.
+static void tby_logo_tilemap_fix()
+{
+	const GxGameConfig *cfg = gx_get_game_config();
+	if (cfg == NULL || cfg->special != GX_SPECIAL_TBYAHHOO) return;
+
+	static const struct { INT32 row, col; UINT16 oldcode, newcode; } fix[] = {
+		// shared glyph tiles the JP art reused across differing Korean cells
+		{  6, 16, 0x0408, 0x05e1 },
+		{ 11,  8, 0x0417, 0x05e2 },
+		{ 11,  9, 0x0425, 0x05e3 },
+		{ 10, 14, 0x0428, 0x05e4 },
+		{ 11, 14, 0x0428, 0x05e5 },
+		{ 13,  4, 0x043a, 0x05e6 },
+		{ 11,  5, 0x043a, 0x05e7 },
+		// blank (0x400) cells the Korean art paints into
+		{  6, 11, 0x0400, 0x05e8 },
+		{  6, 17, 0x0400, 0x05e9 },
+		{  6, 18, 0x0400, 0x05ea },
+		{  7, 13, 0x0400, 0x05eb },
+		{ 13, 11, 0x0400, 0x05ec },
+		{ 16,  8, 0x0400, 0x05ed },
+		{ 16, 25, 0x0400, 0x05ee },
+		{ 17, 13, 0x0400, 0x05ef },
+		{ 17, 19, 0x0400, 0x05f0 },
+		{ 17, 20, 0x0400, 0x05f1 },
+	};
+	const INT32 nfix = sizeof(fix) / sizeof(fix[0]);
+
+	const UINT8 *exp = DrvGfxROMExp0 + 0x05fe * 0x40;
+	for (INT32 i = 0; i < 0x40; i++) {
+		if (exp[i] != (UINT8)((3 * (i >> 3) + 5 * (i & 7) + 7) % 32)) return;
+	}
+
+	#define TBY_CODEIDX(r,c) ((((r) * 64 + (c)) * 2) + 1)
+	if ((BURN_ENDIAN_SWAP_INT16(K056832GetVram(TBY_CODEIDX( 6, 16))) & 0x1fff) != 0x0408) return;
+	if ((BURN_ENDIAN_SWAP_INT16(K056832GetVram(TBY_CODEIDX(11, 14))) & 0x1fff) != 0x0428) return;
+
+	for (INT32 i = 0; i < nfix; i++) {
+		INT32 idx = TBY_CODEIDX(fix[i].row, fix[i].col);
+		UINT16 cur = BURN_ENDIAN_SWAP_INT16(K056832GetVram(idx));
+		if ((cur & 0x1fff) != fix[i].oldcode) continue;
+		UINT16 nw = (UINT16)((cur & 0xe000) | fix[i].newcode);
+		K056832SetVram(idx, BURN_ENDIAN_SWAP_INT16(nw));
+	}
+	#undef TBY_CODEIDX
+}
+
 static INT32 DrvDraw()
 {
 	if (gx_type4_enable) {
@@ -2737,6 +2798,8 @@ static INT32 DrvDraw()
 		KonamiBlendCopy(DrvPalette);
 		return 0;
 	}
+
+	tby_logo_tilemap_fix();
 
 	DrvPaletteUpdate();
 	KonamiClearBitmaps(0);

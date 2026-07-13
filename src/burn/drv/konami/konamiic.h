@@ -197,6 +197,7 @@ INT32 K056832GetLastAlphaTileMixCode();
 void K056832SetExtLinescroll();
 void K056832SetLinemap();
 UINT16 K056832GetVram(INT32 address);
+void K056832SetVram(INT32 address, UINT16 data);
 INT32 K056832IsIrqEnabled();
 void K056832ReadAvac(INT32 *mode, INT32 *data);
 UINT16 K056832ReadRegister(int reg);
