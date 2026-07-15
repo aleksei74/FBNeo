@@ -23773,6 +23773,7 @@ DRV		BurnDrvMSX_twinbee;
 DRV		BurnDrvMSX_twinbeeb;
 DRV		BurnDrvMSX_twinbeec;
 DRV		BurnDrvMSX_twinbeea;
+DRV		BurnDrvTbyahhok;
 DRV		BurnDrvTbyahhoo;
 DRV		BurnDrvTwinbrat;
 DRV		BurnDrvTwinbrata;
@@ -49529,6 +49530,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvMSX_twinbeeb,		// Twin Bee (Japan, Alt 2)
 	&BurnDrvMSX_twinbeec,		// Twin Bee (Japan, Alt 3)
 	&BurnDrvMSX_twinbeea,		// Twin Bee (Japan, Alt)
+	&BurnDrvTbyahhok,			// Twin Bee Yahhoo! (Korean translation)
 	&BurnDrvTbyahhoo,			// Twin Bee Yahhoo! (ver JAA)
 	&BurnDrvTwinbrat,			// Twin Brats (set 1)
 	&BurnDrvTwinbrata,			// Twin Brats (set 2)
@@ -75093,6 +75095,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "msx_twinbeeb", "msx/d_msx.cpp"},
 	{ "msx_twinbeec", "msx/d_msx.cpp"},
 	{ "msx_twinbeea", "msx/d_msx.cpp"},
+	{ "tbyahhok", "konami/d_konamigx.cpp"},
 	{ "tbyahhoo", "konami/d_konamigx.cpp"},
 	{ "twinbrat", "pst90s/d_mwarr.cpp"},
 	{ "twinbrata", "pst90s/d_mwarr.cpp"},

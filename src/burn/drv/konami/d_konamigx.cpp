@@ -101,6 +101,7 @@ static const GxGameConfig GxGameConfigs[] = {
 	{ "crzcross",  7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_5BPP, 5, 16,  0xa00000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -70, -38, 5, 12 * 60, 5 },
 	{ "puzldama",  7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_5BPP, 5, 16,  0xa00000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -70, -38, 5, 12 * 60, 5 },
 	{ "tbyahhoo",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
+	{ "tbyahhok",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "mtwinbee",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 12 * 60, 5 },
 	{ "sexyparoa", 7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 12 * 60, 5 },
@@ -3407,6 +3408,25 @@ static struct BurnRomInfo tbyahhooRomDesc[] = {
 STD_ROM_PICK(tbyahhoo)
 STD_ROM_FN(tbyahhoo)
 
+static struct BurnRomInfo tbyahhokRomDesc[] = {
+	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
+	{ "424jaa02k.31b", 0x00080000, 0xd46fa4fd, 1 | BRF_PRG | BRF_ESS }, //  1 maincpu
+	{ "424jaa04k.27b", 0x00080000, 0x36f22216, 1 | BRF_PRG | BRF_ESS }, //  2 maincpu
+	{ "424a06.9c", 0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS }, //  3 soundcpu
+	{ "424a07.7c", 0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS }, //  4 soundcpu
+	{ "424a14k.17h", 0x00200000, 0x95c666d0, 3 | BRF_GRA }, //  5 k056832
+	{ "424a12k.13g", 0x00080000, 0x4a7c489f, 3 | BRF_GRA }, //  6 k056832
+	{ "424a11k.25g", 0x00200000, 0xfa4b85f3, 4 | BRF_GRA }, //  7 k055673
+	{ "424a10k.28g", 0x00200000, 0xc1f77a2a, 4 | BRF_GRA }, //  8 k055673
+	{ "424a09k.30g", 0x00100000, 0xf1f730e7, 4 | BRF_GRA }, //  9 k055673
+	{ "424a17.9g", 0x00200000, 0xe9dd9692, 5 | BRF_SND }, // 10 k054539
+	{ "424a18.7g", 0x00200000, 0x0f0d9f3a, 5 | BRF_SND }, // 11 k054539
+	{ "tbyahhoo.nv", 0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS }, // 12 eeprom
+};
+
+STD_ROM_PICK(tbyahhok)
+STD_ROM_FN(tbyahhok)
+
 static struct BurnRomInfo mtwinbeeRomDesc[] = {
 	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
 	{ "424eaa02.31b", 0x00080000, 0x34659905, 1 | BRF_PRG | BRF_ESS }, //  1 maincpu
@@ -4155,6 +4175,16 @@ struct BurnDriver BurnDrvTbyahhoo = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, tbyahhooRomInfo, tbyahhooRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
+	288, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvTbyahhok = {
+	"tbyahhok", "tbyahhoo", "konamigx", NULL, "1995",
+	"Twin Bee Yahhoo! (Korean translation)\0", NULL, "hack", "Konami System GX",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	NULL, tbyahhokRomInfo, tbyahhokRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
 };
