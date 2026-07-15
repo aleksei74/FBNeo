@@ -2739,33 +2739,38 @@ static void gx_type4_compose_output()
 // remap fires only on an exact 64-byte match.  The original ROM holds fully
 // inked X-marker placeholder tiles in the spare region, so an any-ink check
 // would misfire on unpatched ROMs (it did) — an exact match cannot.
-// (b) the anchor cells must still hold the logo's Japanese shared codes
-// (i.e. the logo screen is being displayed).  Cell colours are preserved.
+// (b) three anchor cells must hold the logo's Japanese shared codes in the
+// logo's relative geometry.  The game rebuilds this tilemap per scene at
+// different pages/offsets (title screen page 0, attract vocal-song title
+// page 1 shifted 4 columns left), so the whole VRAM is scanned for the
+// anchor pattern and the fix table is applied relative to each match.
+// Cell colours are preserved.
 static void tby_logo_tilemap_fix()
 {
 	const GxGameConfig *cfg = gx_get_game_config();
 	if (cfg == NULL || cfg->special != GX_SPECIAL_TBYAHHOO) return;
 
-	static const struct { INT32 row, col; UINT16 oldcode, newcode; } fix[] = {
+	// row/col offsets from the anchor cell (title screen: row 6, col 16)
+	static const struct { INT32 dr, dc; UINT16 oldcode, newcode; } fix[] = {
 		// shared glyph tiles the JP art reused across differing Korean cells
-		{  6, 16, 0x0408, 0x05e1 },
-		{ 11,  8, 0x0417, 0x05e2 },
-		{ 11,  9, 0x0425, 0x05e3 },
-		{ 10, 14, 0x0428, 0x05e4 },
-		{ 11, 14, 0x0428, 0x05e5 },
-		{ 13,  4, 0x043a, 0x05e6 },
-		{ 11,  5, 0x043a, 0x05e7 },
+		{  0,   0, 0x0408, 0x05e1 },
+		{  5,  -8, 0x0417, 0x05e2 },
+		{  5,  -7, 0x0425, 0x05e3 },
+		{  4,  -2, 0x0428, 0x05e4 },
+		{  5,  -2, 0x0428, 0x05e5 },
+		{  7, -12, 0x043a, 0x05e6 },
+		{  5, -11, 0x043a, 0x05e7 },
 		// blank (0x400) cells the Korean art paints into
-		{  6, 11, 0x0400, 0x05e8 },
-		{  6, 17, 0x0400, 0x05e9 },
-		{  6, 18, 0x0400, 0x05ea },
-		{  7, 13, 0x0400, 0x05eb },
-		{ 13, 11, 0x0400, 0x05ec },
-		{ 16,  8, 0x0400, 0x05ed },
-		{ 16, 25, 0x0400, 0x05ee },
-		{ 17, 13, 0x0400, 0x05ef },
-		{ 17, 19, 0x0400, 0x05f0 },
-		{ 17, 20, 0x0400, 0x05f1 },
+		{  0,  -5, 0x0400, 0x05e8 },
+		{  0,   1, 0x0400, 0x05e9 },
+		{  0,   2, 0x0400, 0x05ea },
+		{  1,  -3, 0x0400, 0x05eb },
+		{  7,  -5, 0x0400, 0x05ec },
+		{ 10,  -8, 0x0400, 0x05ed },
+		{ 10,   9, 0x0400, 0x05ee },
+		{ 11,  -3, 0x0400, 0x05ef },
+		{ 11,   3, 0x0400, 0x05f0 },
+		{ 11,   4, 0x0400, 0x05f1 },
 	};
 	const INT32 nfix = sizeof(fix) / sizeof(fix[0]);
 
@@ -2774,17 +2779,25 @@ static void tby_logo_tilemap_fix()
 		if (exp[i] != (UINT8)((3 * (i >> 3) + 5 * (i & 7) + 7) % 32)) return;
 	}
 
+	// 16 pages of 64x32 cells, addressed as 512 linear rows of 64
 	#define TBY_CODEIDX(r,c) ((((r) * 64 + (c)) * 2) + 1)
-	if ((BURN_ENDIAN_SWAP_INT16(K056832GetVram(TBY_CODEIDX( 6, 16))) & 0x1fff) != 0x0408) return;
-	if ((BURN_ENDIAN_SWAP_INT16(K056832GetVram(TBY_CODEIDX(11, 14))) & 0x1fff) != 0x0428) return;
+	#define TBY_CODE(r,c) (BURN_ENDIAN_SWAP_INT16(K056832GetVram(TBY_CODEIDX(r,c))) & 0x1fff)
+	for (INT32 ar = 0; ar <= 512 - 12; ar++) {
+		for (INT32 ac = 12; ac <= 63 - 9; ac++) {
+			if (TBY_CODE(ar, ac) != 0x0408) continue;
+			if (TBY_CODE(ar + 5, ac - 2) != 0x0428) continue;
+			if (TBY_CODE(ar + 5, ac - 8) != 0x0417) continue;
 
-	for (INT32 i = 0; i < nfix; i++) {
-		INT32 idx = TBY_CODEIDX(fix[i].row, fix[i].col);
-		UINT16 cur = BURN_ENDIAN_SWAP_INT16(K056832GetVram(idx));
-		if ((cur & 0x1fff) != fix[i].oldcode) continue;
-		UINT16 nw = (UINT16)((cur & 0xe000) | fix[i].newcode);
-		K056832SetVram(idx, BURN_ENDIAN_SWAP_INT16(nw));
+			for (INT32 i = 0; i < nfix; i++) {
+				INT32 idx = TBY_CODEIDX(ar + fix[i].dr, ac + fix[i].dc);
+				UINT16 cur = BURN_ENDIAN_SWAP_INT16(K056832GetVram(idx));
+				if ((cur & 0x1fff) != fix[i].oldcode) continue;
+				UINT16 nw = (UINT16)((cur & 0xe000) | fix[i].newcode);
+				K056832SetVram(idx, BURN_ENDIAN_SWAP_INT16(nw));
+			}
+		}
 	}
+	#undef TBY_CODE
 	#undef TBY_CODEIDX
 }
 
