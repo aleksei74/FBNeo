@@ -10,9 +10,6 @@
 #ifndef K053936_H
 #define K053936_H
 
-#define K053936_DRAW_16BIT	(1 << 24)
-#define K053936_DRAW_CLIP	(1 << 25)
-
 void K053936Init(INT32 chip, UINT8 *ram, INT32 len, INT32 w, INT32 h, void (*pCallback)(INT32 offset, UINT16 *ram, INT32 *code, INT32 *color, INT32 *sx, INT32 *sy, INT32 *fx, INT32 *fy));
 
 void K053936Reset();
@@ -25,6 +22,9 @@ void K053936PredrawTiles3(INT32 chip, UINT8 *gfx, INT32 tile_size_x, INT32 tile_
 void K053936PredrawTiles2(INT32 chip, UINT8 *gfx);
 void K053936PredrawTiles(INT32 chip, UINT8 *gfx, INT32 transparent, INT32 tcol /*transparent color*/);
 void K053936Draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, INT32 transp);
+
+#define K053936_DRAW_16BIT	(1 << 24)
+#define K053936_DRAW_CLIP	(1 << 25)
 
 extern UINT16 *m_k053936_0_ctrl_16;
 extern UINT16 *m_k053936_0_linectrl_16;

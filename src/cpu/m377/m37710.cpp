@@ -775,6 +775,10 @@ static void m37710_recalc_timer(int timer)
 static void m37710_adc_cb()
 {
 	INT32 line = m377.m37710_regs[0x1e] & 0x07;
+
+	m377.m37710_regs[0x20 + (line * 2)] = io_read_byte(M37710_ADC0_L + (line * 2));
+	m377.m37710_regs[0x21 + (line * 2)] = io_read_byte(M37710_ADC0_H + (line * 2));
+
 	if (m377.m37710_regs[0x1e] & 0x10) {
 		m377.m37710_regs[0x1e] = (m377.m37710_regs[0x1e] & 0xf8) | ((line + 1) & 0x07);
 	}
@@ -850,37 +854,37 @@ static UINT8 m37710_internal_r(int offset)
 
 		// A-D regs
 		case 0x20:
-			return io_read_byte(M37710_ADC0_L);
+			return m377.m37710_regs[offset];
 		case 0x21:
-			return io_read_byte(M37710_ADC0_H);
+			return m377.m37710_regs[offset];
 		case 0x22:
-			return io_read_byte(M37710_ADC1_L);
+			return m377.m37710_regs[offset];
 		case 0x23:
-			return io_read_byte(M37710_ADC1_H);
+			return m377.m37710_regs[offset];
 		case 0x24:
-			return io_read_byte(M37710_ADC2_L);
+			return m377.m37710_regs[offset];
 		case 0x25:
-			return io_read_byte(M37710_ADC2_H);
+			return m377.m37710_regs[offset];
 		case 0x26:
-			return io_read_byte(M37710_ADC3_L);
+			return m377.m37710_regs[offset];
 		case 0x27:
-			return io_read_byte(M37710_ADC3_H);
+			return m377.m37710_regs[offset];
 		case 0x28:
-			return io_read_byte(M37710_ADC4_L);
+			return m377.m37710_regs[offset];
 		case 0x29:
-			return io_read_byte(M37710_ADC4_H);
+			return m377.m37710_regs[offset];
 		case 0x2a:
-			return io_read_byte(M37710_ADC5_L);
+			return m377.m37710_regs[offset];
 		case 0x2b:
-			return io_read_byte(M37710_ADC5_H);
+			return m377.m37710_regs[offset];
 		case 0x2c:
-			return io_read_byte(M37710_ADC6_L);
+			return m377.m37710_regs[offset];
 		case 0x2d:
-			return io_read_byte(M37710_ADC6_H);
+			return m377.m37710_regs[offset];
 		case 0x2e:
-			return io_read_byte(M37710_ADC7_L);
+			return m377.m37710_regs[offset];
 		case 0x2f:
-			return io_read_byte(M37710_ADC7_H);
+			return m377.m37710_regs[offset];
 
 		// UART control (not hooked up yet)
 		case 0x34: case 0x3c:
@@ -989,14 +993,14 @@ static void m37710_internal_w(int offset, UINT8 data)
 		case 0x76: case 0x77: case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c:
 			//bprintf(0, _T("Internal Interrupt Control %x\n"), offset);
 			//m37710_set_irq_line(offset, (data & 8) ? HOLD_LINE : CLEAR_LINE);
-			//m37710i_update_irqs();
+			m37710i_update_irqs();
 			break;
 
 		// external interrupt control
 		case 0x7d: case 0x7e: case 0x7f:
 			//bprintf(0, _T("External Interrupt Control %x\n"), offset);
 			//m37710_set_irq_line(offset, (data & 8) ? HOLD_LINE : CLEAR_LINE);
-			//m37710i_update_irqs();
+			m37710i_update_irqs();
 
 			// level-sense interrupts are not implemented yet
 			//if (data & 0x20) logerror("error M37710: INT%d level-sense\n",offset-0x7d);

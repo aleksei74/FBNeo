@@ -138,6 +138,9 @@ static UINT8 gx_tile_ram_bank;
 static UINT8 gx_tile_ram_page;
 static UINT8 gx_cfgport_default;
 static UINT8 gx_cfgport;
+static UINT32 gx_sexyparo_esc_p1;
+static UINT32 gx_sexyparo_esc_p2;
+static UINT32 gx_sexyparo_esc_p4;
 static UINT32 gx_tile_rom_size;
 static UINT8 gx_tile_bpp;
 static UINT8 gx_tile_color_granularity;
@@ -278,6 +281,8 @@ struct gx_sprite_entry {
 };
 
 static gx_sprite_entry gx_esc_sprites[0x100];
+static UINT8 gx_esc_program[0x1000];
+static UINT32 gx_esc_latch;
 
 static UINT8 __fastcall gx_main_read_byte(UINT32 address);
 static UINT16 __fastcall gx_main_read_word(UINT32 address);
@@ -1114,15 +1119,31 @@ static void gx_esc_write(UINT32 data)
 
 	if (opcode == ESC_OBJECT_MAGIC_ID) {
 		UINT8 subop = gx_main_read_byte(data + 8);
+		UINT32 params = (gx_main_read_word(data + 12) << 16) | gx_main_read_word(data + 14);
 
-		if (subop == 1 && (gx_special == GX_SPECIAL_TBYAHHOO || gx_special == GX_SPECIAL_DAISKISS)) {
-			gx_generate_sprites(0xc00000, 0xd20000, 0x100);
-		} else if (subop == 1 && gx_special == GX_SPECIAL_SEXYPARO) {
-			gx_generate_sprites(0xc00604, 0xd20000, 0xfc);
-		} else if (gx_special == GX_SPECIAL_TKMMPZDM) {
-			gx_esc_alert_mode0(0x0142, 0x100);
-		} else if (subop == 1 && gx_special == GX_SPECIAL_SALMNDR2) {
-			gx_esc_alert_mode1();
+		switch (subop) {
+			case 1:
+				if (gx_special == GX_SPECIAL_SEXYPARO) {
+					gx_sexyparo_esc_p1 = (gx_address_read_word(params + 0) << 16) | gx_address_read_word(params + 2);
+					gx_sexyparo_esc_p2 = (gx_address_read_word(params + 4) << 16) | gx_address_read_word(params + 6);
+					gx_sexyparo_esc_p4 = (gx_address_read_word(params + 12) << 16) | gx_address_read_word(params + 14);
+					UINT32 spr = (gx_address_read_word(params + 8) << 16) | gx_address_read_word(params + 10);
+					if (spr != 0xd20000 && spr != 0xd21000) spr = 0xd20000;
+					gx_generate_sprites(0xc00604, spr, 0xfc);
+				} else if (gx_special == GX_SPECIAL_TBYAHHOO || gx_special == GX_SPECIAL_DAISKISS) {
+					gx_generate_sprites(0xc00000, 0xd20000, 0x100);
+				} else if (gx_special == GX_SPECIAL_TKMMPZDM) {
+					gx_esc_alert_mode0(0x0142, 0x100);
+				} else if (gx_special == GX_SPECIAL_SALMNDR2) {
+					gx_esc_alert_mode1();
+				}
+				break;
+
+			case 2:
+				for (INT32 i = 0; i < 0x1000; i++) {
+					gx_esc_program[i] = gx_address_read_byte(params + i);
+				}
+				break;
 		}
 
 		gx_main_write_byte(data + 9, ESTATE_END);
@@ -1640,7 +1661,9 @@ static void __fastcall gx_main_write_byte(UINT32 address, UINT8 data)
 		if (gx_type4_enable) {
 			gx_type4_prot_write(address, data << (((~address) & 3) * 8));
 		} else {
-			gx_esc_write(data << 24);
+			UINT32 shift = ((~address) & 3) * 8;
+			gx_esc_latch = (gx_esc_latch & ~(0xff << shift)) | (data << shift);
+			if ((address & 3) == 3) gx_esc_write(gx_esc_latch);
 		}
 		return;
 	}
@@ -1763,7 +1786,9 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 		if (gx_type4_enable) {
 			gx_type4_prot_write(address, data << ((address & 2) ? 0 : 16));
 		} else {
-			gx_esc_write(data << 16);
+			UINT32 shift = (2 - (address & 2)) * 8;
+			gx_esc_latch = (gx_esc_latch & ~(0xffff << shift)) | (data << shift);
+			if (address & 2) gx_esc_write(gx_esc_latch);
 		}
 		return;
 	}
@@ -1860,6 +1885,7 @@ static void __fastcall gx_main_write_long(UINT32 address, UINT32 data)
 		if (gx_type4_enable) {
 			gx_type4_prot_write(address, data);
 		} else {
+			gx_esc_latch = data;
 			gx_esc_write(data);
 		}
 		return;
@@ -2128,6 +2154,11 @@ static void gx_type4_update_k053936_regs()
 static INT32 DrvDoReset()
 {
 	memset(AllRam, 0, RamEnd - AllRam);
+	memset(gx_esc_program, 0, sizeof(gx_esc_program));
+	gx_esc_latch = 0;
+	gx_sexyparo_esc_p1 = 0;
+	gx_sexyparo_esc_p2 = 0;
+	gx_sexyparo_esc_p4 = 0;
 
 	SekReset(0);
 	SekReset(1);
@@ -2801,6 +2832,155 @@ static void tby_logo_tilemap_fix()
 	#undef TBY_CODEIDX
 }
 
+static INT32 gx_sexyparo_has_stage3_background()
+{
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
+
+	INT32 stage3 = 0;
+	INT32 ink = 0;
+	INT32 red_pillar = 0;
+	INT32 red_column_max = 0;
+	INT32 total = 0;
+
+	for (INT32 x = 16; x < nScreenWidth - 16; x += 8) {
+		INT32 red_column = 0;
+
+		for (INT32 y = 32; y < nScreenHeight - 24; y += 8) {
+			UINT32 color = konami_bitmap32[(y * nScreenWidth) + x];
+			INT32 r = (color >> 16) & 0xff;
+			INT32 g = (color >> 8) & 0xff;
+			INT32 b = color & 0xff;
+
+			if (r > 150 && g > 120 && b > 80 && r > b + 20 && r - g < 80) {
+				stage3++;
+			}
+			if (r < 48 && g < 48 && b < 56) {
+				ink++;
+			}
+			if (r > 120 && g < 64 && b < 64) {
+				red_pillar++;
+				red_column++;
+			}
+			total++;
+		}
+
+		if (red_column > red_column_max) {
+			red_column_max = red_column;
+		}
+	}
+
+	if (total == 0) return 0;
+
+	return (stage3 * 100 / total >= 25 && ink * 100 / total >= 8 && red_pillar * 100 / total >= 2 && red_column_max >= 6);
+}
+
+static inline void gx_sexyparo_plot_snow_pixel(INT32 x, INT32 y, UINT32 color)
+{
+	if ((UINT32)x >= (UINT32)nScreenWidth || (UINT32)y >= (UINT32)nScreenHeight) return;
+
+	konami_bitmap32[(y * nScreenWidth) + x] = color;
+}
+
+static inline INT32 gx_sexyparo_snow_jitter(UINT32 frame, INT32 index, INT32 block)
+{
+	const UINT32 step = frame >> 16;
+
+	if ((step & 1) == 0) return 0;
+
+	UINT32 seed = 0x6d2b79f5 ^ ((UINT32)index * 0x45d9f3b) ^ ((UINT32)block * 0x27d4eb2d) ^ (step * 0x165667b1);
+
+	return (INT32)(seed % 3) - 1;
+}
+
+static inline void gx_sexyparo_plot_snow(INT32 x, INT32 y, UINT32 color, UINT32 frame, INT32 index)
+{
+	gx_sexyparo_plot_snow_pixel(x + 0 + gx_sexyparo_snow_jitter(frame, index, 0), y, color);
+	gx_sexyparo_plot_snow_pixel(x + 0 + gx_sexyparo_snow_jitter(frame, index, 1), y + 1, color);
+}
+
+static void gx_sexyparo_draw_snow()
+{
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return;
+	if (gx_sexyparo_esc_p1 < 2 || gx_sexyparo_esc_p1 > 4) return;
+	if (gx_sexyparo_has_stage3_background()) return;
+
+	const UINT32 frame = gx_sexyparo_esc_p4;
+	const UINT32 phase = gx_sexyparo_esc_p2;
+	if (frame >= 45 * 60) return;
+
+	const INT32 count = (gx_sexyparo_esc_p1 == 4) ? 18 : ((gx_sexyparo_esc_p1 == 3) ? 22 : 26);
+	const INT32 drift = (((INT32)frame * 5) >> 3) + ((INT32)phase >> 7);
+	const INT32 wrap_width = nScreenWidth + 80;
+
+	for (INT32 i = 0; i < count; i++) {
+		UINT32 seed = 0x53300000 ^ (i * 0x1f123bb5);
+		INT32 base_x = (seed >> 9) % wrap_width;
+		INT32 base_y = (seed >> 18) % nScreenHeight;
+		INT32 local_drift = drift + (((INT32)frame + i) & 1);
+		INT32 sway_phase = (((INT32)frame >> 2) + i) & 15;
+		INT32 sway = ((sway_phase < 8) ? sway_phase : (15 - sway_phase)) - 4;
+		INT32 x = (base_x - (local_drift >> 1) + wrap_width + sway) % wrap_width;
+		INT32 y = (base_y + local_drift) % nScreenHeight;
+		UINT32 color = (((i + (frame >> 4)) & 7) == 0) ? 0xd8d8ff : 0xffffff;
+
+		x -= 40;
+
+		gx_sexyparo_plot_snow(x, y, color, frame, i);
+	}
+}
+
+static INT32 gx_sexyparo_has_black_space_background()
+{
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
+
+	INT32 black = 0;
+	INT32 total = 0;
+
+	for (INT32 y = 24; y < nScreenHeight - 24; y += 8) {
+		for (INT32 x = 16; x < nScreenWidth - 16; x += 8) {
+			if ((konami_bitmap32[(y * nScreenWidth) + x] & 0xf8f8f8) == 0) {
+				black++;
+			}
+			total++;
+		}
+	}
+
+	return (total > 0 && black * 100 / total >= 70);
+}
+
+static void gx_sexyparo_draw_space_stars()
+{
+	if (gx_sexyparo_esc_p1 == 0 && gx_sexyparo_esc_p2 == 0 && gx_sexyparo_esc_p4 == 0) return;
+	if (!gx_sexyparo_has_black_space_background()) return;
+
+	const UINT32 frame = gx_sexyparo_esc_p4 + nCurrentFrame;
+	static const UINT32 colors[6] = { 0xffffff, 0x88c8ff, 0xffd060, 0xff70ff, 0x70e8a0, 0xc8c8ff };
+
+	for (INT32 i = 0; i < 54; i++) {
+		UINT32 seed = 0x5e787061 ^ (i * 0x45d9f3b) ^ (gx_sexyparo_esc_p2 * 0x10204081);
+		INT32 speed = 1 + ((seed >> 30) & 1);
+		INT32 x = ((seed >> 8) - ((frame * speed) >> 3)) % nScreenWidth;
+		INT32 y = (seed >> 18) % nScreenHeight;
+		INT32 blink = (frame + (seed >> 24)) & 0x1f;
+
+		if (x < 0) x += nScreenWidth;
+		if (y < 16 || y >= nScreenHeight - 16) continue;
+		if (blink == 0 || blink > 24) continue;
+
+		UINT32 *dst = konami_bitmap32 + (y * nScreenWidth) + x;
+		if ((*dst & 0xf8f8f8) != 0) continue;
+
+		UINT32 color = colors[(seed + (frame >> 4)) % 6];
+		*dst = color;
+
+		if (blink >= 10 && blink <= 12) {
+			if (x < nScreenWidth - 1 && (dst[1] & 0xf8f8f8) == 0) dst[1] = color;
+		} else if (blink == 16) {
+			if (y < nScreenHeight - 1 && (dst[nScreenWidth] & 0xf8f8f8) == 0) dst[nScreenWidth] = color;
+		}
+	}
+}
+
 static INT32 DrvDraw()
 {
 	if (gx_type4_enable) {
@@ -2824,6 +3004,9 @@ static INT32 DrvDraw()
 	sprite_colorbase = K055555GetPaletteIndex(4) << 5;
 
 	konamigx_mixer(0, 0, 0, 0, K056832GetLastAlphaTileMixCode() << 30, 0, gx_rushingheroes_hack);
+
+	gx_sexyparo_draw_snow();
+	gx_sexyparo_draw_space_stars();
 
 	KonamiBlendCopy(DrvPalette);
 
@@ -3002,6 +3185,11 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(gx_irq_status);
 		SCAN_VAR(gx_syncen);
 		SCAN_VAR(gx_control);
+		SCAN_VAR(gx_esc_program);
+		SCAN_VAR(gx_esc_latch);
+		SCAN_VAR(gx_sexyparo_esc_p1);
+		SCAN_VAR(gx_sexyparo_esc_p2);
+		SCAN_VAR(gx_sexyparo_esc_p4);
 		SCAN_VAR(gx_current_scanline);
 		SCAN_VAR(gx_bios_vblank_pending);
 		SCAN_VAR(gx_bios_in_wait_loop);

@@ -1,6 +1,5 @@
 // license:BSD-3-Clause
 // copyright-holders:David Haywood
-// Generated with Codex AI (by DsNo)
 
 #include "tiles_generic.h"
 #include "k053936.h"
@@ -29,6 +28,8 @@ static UINT8 *rambuf[MAX_K053936] = { NULL, NULL };
 
 static INT32 K053936Wrap[MAX_K053936] = { 0, 0 };
 static INT32 K053936Offset[MAX_K053936][2] = { { 0, 0 }, { 0, 0 } };
+
+static INT32 glfgreat_mode = 0;
 
 static void (*pTileCallback0)(INT32 offset, UINT16 *ram, INT32 *code, INT32 *color, INT32 *sx, INT32 *sy, INT32 *fx, INT32 *fy);
 static void (*pTileCallback1)(INT32 offset, UINT16 *ram, INT32 *code, INT32 *color, INT32 *sx, INT32 *sy, INT32 *fx, INT32 *fy);
@@ -70,8 +71,6 @@ void K053936Init(INT32 chip, UINT8 *ram, INT32 len, INT32 w, INT32 h, void (*pCa
 	if (chip == 1) {
 		pTileCallback1 = pCallback;
 	}
-
-
 }
 
 void K053936Exit()
@@ -87,6 +86,7 @@ void K053936Exit()
 		K053936Offset[i][0] = K053936Offset[i][1] = 0;
 	}
 
+	K053936SetRenderTarget(NULL, NULL, NULL);
 }
 
 void K053936PredrawTiles3(INT32 chip, UINT8 *gfx, INT32 tile_size_x, INT32 tile_size_y, INT32 transparent)
@@ -239,6 +239,7 @@ void K053936PredrawTiles(INT32 chip, UINT8 *gfx, INT32 transparent, INT32 tcol)
 static inline void copy_roz32(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, INT32 maxy, UINT32 startx, UINT32 starty, INT32 incxx, INT32 incxy, INT32 incyx, INT32 incyy, INT32 transp, INT32 priority)
 {
 	if (k053936_bitmap32 == NULL) return; // no high-color render target set
+
 	if (incxx == (1 << 16) && incxy == 0 && incyx == 0 && incyy == (1 << 16) && K053936Wrap[chip])
 	{
 		INT32 scrollx = startx >> 16;
@@ -569,6 +570,8 @@ static INT32 K053936_gp_wrap[2] = { 1, 1 };
 static INT32 K053936_source_width[2] = { 0x2000, 0x2000 };
 static INT32 K053936_source_height[2] = { 0x2000, 0x2000 };
 static INT32 K053936_visible_offset[2][2];
+
+#define K053936GP_PALETTE_ENTRIES 0x2000
 UINT16 *m_k053936_0_ctrl_16 = NULL;
 UINT16 *m_k053936_0_linectrl_16 = NULL;
 UINT16 *m_k053936_0_ctrl = NULL;
@@ -596,6 +599,7 @@ void K053936GPExit()
 	m_k053936_0_ctrl = NULL;
 	m_k053936_0_linectrl = NULL;
 	K053936_external_bitmap = NULL;
+	K053936SetRenderTarget(NULL, NULL, NULL);
 }
 
 static inline UINT32 alpha_blend(UINT32 d, UINT32 s, UINT32 p)
@@ -644,6 +648,7 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 		INT32 tilebpp, INT32 blend, INT32 alpha, INT32 clip, INT32 pixeldouble_output)
 {
 	if (k053936_bitmap32 == NULL) return; // no high-color render target set
+
 	static const INT32 colormask[8]={1,3,7,0xf,0x1f,0x3f,0x7f,0xff};
 	INT32 cy, cx;
 	INT32 ecx;
@@ -702,6 +707,7 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 	dst_ptr = 0;//dst_base;
 	cy = starty;
 	cx = startx;
+
 	if (blend > 0)
 	{
 		dst_ptr += dst_pitch;      // draw blended
@@ -734,13 +740,17 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 				pixel = src_base[offs] | color_base;
 				if (!(pixel & cmask))
 					continue;
+				if (pixel >= K053936GP_PALETTE_ENTRIES)
+					continue;
 // this one below is borked.
-				if ((dst_ptr+ecx+dst_base2)<dst_size) dst_base[dst_ptr+ecx+dst_base2] = alpha_blend(pal_base[pixel], dst_base[dst_ptr+ecx+dst_base2], alpha);
+				INT32 dst_index = dst_ptr + ecx + dst_base2;
+				if ((UINT32)dst_index < (UINT32)dst_size) dst_base[dst_index] = alpha_blend(pal_base[pixel], dst_base[dst_index], alpha);
 
 				if (pixeldouble_output)
 				{
 					ecx++;
-					if ((dst_ptr+ecx+dst_base2)<dst_size) dst_base[dst_ptr+ecx+dst_base2] = alpha_blend(pal_base[pixel], dst_base[dst_ptr+ecx+dst_base2], alpha);
+					dst_index = dst_ptr + ecx + dst_base2;
+					if ((UINT32)dst_index < (UINT32)dst_size) dst_base[dst_index] = alpha_blend(pal_base[pixel], dst_base[dst_index], alpha);
 				}
 			}
 			while (++ecx < 0);
@@ -783,13 +793,17 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 				pixel = src_base[offs] | color_base;
 				if (!(pixel & cmask))
 					continue;
+				if (pixel >= K053936GP_PALETTE_ENTRIES)
+					continue;
 
-				if ((dst_ptr+ecx+dst_base2)<dst_size) dst_base[dst_ptr+ecx+dst_base2] = pal_base[pixel];
+				INT32 dst_index = dst_ptr + ecx + dst_base2;
+				if ((UINT32)dst_index < (UINT32)dst_size) dst_base[dst_index] = pal_base[pixel];
 
 				if (pixeldouble_output)
 				{
 					ecx++;
-					if ((dst_ptr+ecx+dst_base2)<dst_size) dst_base[dst_ptr+ecx+dst_base2] = pal_base[pixel];
+					dst_index = dst_ptr + ecx + dst_base2;
+					if ((UINT32)dst_index < (UINT32)dst_size) dst_base[dst_index] = pal_base[pixel];
 				}
 			}
 			while (++ecx < 0);
@@ -800,7 +814,6 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 			cx = startx; startx += incyx;
 		} while (--ty);
 	}
-
 }
 
 static void K053936GP_zoom_draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT16 *src_bitmap,

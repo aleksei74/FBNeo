@@ -993,6 +993,7 @@ static INT32 DrvInitCommon(INT32 dual)
 
 	GenericTilesInit();
 	konami_palette32 = DrvPalette;
+	K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 
 	K053247Init(DrvGfxROM1, DrvGfxROMExp1, 0x7fffff, sprite_callback, 1);
 	K053247SetBpp(4);
