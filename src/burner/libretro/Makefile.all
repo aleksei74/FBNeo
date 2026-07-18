@@ -55,6 +55,8 @@ BURN_BLACKLIST += $(ADSP2100_CPU_DIR)/2100ops.c \
 	$(I8051_CPU_DIR)/mcs51ops.c \
 	$(UPD7810_CPU_DIR)/7810ops.c \
 	$(UPD7810_CPU_DIR)/7810tbl.c \
+	$(T11_CPU_DIR)/t11ops.c \
+	$(T11_CPU_DIR)/t11table.c \
 	$(I8X41_CPU_DIR)/8x41dasm.c \
 	$(Z180_CPU_DIR)/z180xy.c \
 	$(Z180_CPU_DIR)/z180fd.c \

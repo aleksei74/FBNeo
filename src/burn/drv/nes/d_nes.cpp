@@ -8020,6 +8020,25 @@ struct BurnDriver BurnDrvnes_chipndalresra2c = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
+// Chip 'n Dale ~ Tico E Teco: Defensores da Lei 2 (Hack, Portuguese v1.1)
+// https://www.romhacking.net/translations/7614/
+static struct BurnRomInfo nes_chipndalresra2tpRomDesc[] = {
+	{ "Tico E Teco - Defensores da Lei 2 T-Por v1.1 (2026)(xThiiix).nes",          262160, 0x5eb965bf, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(nes_chipndalresra2tp)
+STD_ROM_FN(nes_chipndalresra2tp)
+
+struct BurnDriver BurnDrvnes_chipndalresra2tp = {
+	"nes_chipndalresra2tp", "nes_chipndalresra2", NULL, NULL, "2026",
+	"Chip 'n Dale ~ Tico E Teco: Defensores da Lei 2 (Hack, Portuguese v1.1)\0", NULL, "xThiiix", "NES / Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_NES, GBF_PLATFORM, 0,
+	NESGetZipName, nes_chipndalresra2tpRomInfo, nes_chipndalresra2tpRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
+	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
+	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
+};
+
 // Contra (Hack, Spanish)
 // https://www.romhacking.net/translations/4947/
 static struct BurnRomInfo nes_contracastRomDesc[] = {
@@ -21108,9 +21127,9 @@ struct BurnDriver BurnDrvnes_lupin3gt = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Machine Cave (HB, v1.9)
+// Machine Cave (HB, v1.19)
 static struct BurnRomInfo nes_machinecaveRomDesc[] = {
-	{ "Machine Cave v1.9 (2018)(Simo Sievanen).nes",          40976, 0x2d904baf, BRF_ESS | BRF_PRG },
+	{ "Machine Cave v1.19 (2018)(Simo Sievanen).nes",          40976, 0x2d904baf, BRF_ESS | BRF_PRG },
 };
 
 STD_ROM_PICK(nes_machinecave)
@@ -21118,7 +21137,7 @@ STD_ROM_FN(nes_machinecave)
 
 struct BurnDriver BurnDrvnes_machinecave = {
 	"nes_machinecave", NULL, NULL, NULL, "2018",
-	"Machine Cave (HB, v1.9)\0", NULL, "Simo Sievanen", "NES / Famicom",
+	"Machine Cave (HB, v1.19)\0", NULL, "Simo Sievanen", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_NES, GBF_MULTISHOOT | GBF_PUZZLE, 0,
 	NESGetZipName, nes_machinecaveRomInfo, nes_machinecaveRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
