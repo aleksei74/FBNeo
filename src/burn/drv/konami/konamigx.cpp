@@ -305,6 +305,7 @@ static void gx_draw_basic_extended_tilemaps_1(INT32 mixerflags, INT32 code, INT3
 				pixeldouble_output = 1;
 
 			if (((nSpriteEnable & 4) || rushingheroes_hack) && K053936_external_bitmap) {
+				K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 				K053936GP_0_zoom_draw(K053936_external_bitmap, l, k, alpha, pixeldouble_output, m_k053936_0_ctrl_16, m_k053936_0_linectrl_16, m_k053936_0_ctrl, m_k053936_0_linectrl);
 			}
 		}

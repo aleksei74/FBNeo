@@ -11952,6 +11952,26 @@ struct BurnDriver BurnDrvnes_chinarabbab = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
+// City Fighter IV - The World Warrior
+// mapper 266
+// UNIF does not have an iNES header
+static struct BurnRomInfo nes_cityfigivRomDesc[] = {
+	{ "City Fighter IV - The World Warrior (Unl)(1993)(Towa Soft).unf",          262263, 0xf6ecda86, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(nes_cityfigiv)
+STD_ROM_FN(nes_cityfigiv)
+
+struct BurnDriver BurnDrvnes_cityfigiv = {
+	"nes_cityfigiv", "nes_streefigii", NULL, NULL, "1993",
+	"City Fighter IV - The World Warrior\0", NULL, "Towa Soft", "NES / Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_NES, GBF_VSFIGHT, 0,
+	NESGetZipName, nes_cityfigivRomInfo, nes_cityfigivRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
+	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
+	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
+};
+
 // Contra 2-in-1 (Hack)
 static struct BurnRomInfo nes_contra2in1RomDesc[] = {
 	{ "Contra 2-in-1 (2023)(FlameCyclone).nes",          524304, 0xdb96ef78, BRF_ESS | BRF_PRG },
@@ -12350,6 +12370,7 @@ struct BurnDriver BurnDrvnes_dringle = {
 };
 
 // Earthworm Jim 2 (Taiwan) (Unl)
+// mapper 215 (MMC3 variant)
 static struct BurnRomInfo nes_ewjim2RomDesc[] = {
 	{ "Earthworm Jim 2 (Taiwan)(Unl)(1997)(Realtec).nes",          524304, 0x34023f7d, BRF_ESS | BRF_PRG },
 };
@@ -19760,6 +19781,24 @@ struct BurnDriver BurnDrvnes_inversion = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
+// Ironsword: Wizards & Warriors II - Overhaul (Hack)
+static struct BurnRomInfo nes_ironsohRomDesc[] = {
+	{ "Ironsword - Wizards and Warriors II - Overhaul (2022)(Rani Baker).nes",          262160, 0x0436edfe, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(nes_ironsoh)
+STD_ROM_FN(nes_ironsoh)
+
+struct BurnDriver BurnDrvnes_ironsoh = {
+	"nes_ironsoh", "nes_irons", NULL, NULL, "2022",
+	"Ironsword: Wizards & Warriors II - Overhaul (Hack)\0", NULL, "Rani Baker", "NES / Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_NES, GBF_ADV | GBF_PLATFORM, 0,
+	NESGetZipName, nes_ironsohRomInfo, nes_ironsohRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
+	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
+	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
+};
+
 // Irritating Ship (HB)
 static struct BurnRomInfo nes_irritshipRomDesc[] = {
 	{ "Irritating Ship (2022)(Fiskbit).nes",          40976, 0xacab29f4, BRF_ESS | BRF_PRG },
@@ -23066,6 +23105,24 @@ struct BurnDriver BurnDrvnes_panicdizzy = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
+// Paladins Quest (HB)
+static struct BurnRomInfo nes_paladquestRomDesc[] = {
+	{ "Paladins Quest (2026)(Skull and Candle Games).nes",          40976, 0x509269b6, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(nes_paladquest)
+STD_ROM_FN(nes_paladquest)
+
+struct BurnDriver BurnDrvnes_paladquest = {
+	"nes_paladquest", NULL, NULL, NULL, "2026",
+	"Paladins Quest (HB)\0", NULL, "Skull and Candle Games", "NES / Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_NES, GBF_MAZE | GBF_RPG, 0,
+	NESGetZipName, nes_paladquestRomInfo, nes_paladquestRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
+	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
+	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
+};
+
 // Paper Plane, The (HB, v2)
 static struct BurnRomInfo nes_pplanev2RomDesc[] = {
 	{ "Paper Plane, The v2 (2022)(5cinq).nes",          524304, 0x9fe3d96e, BRF_ESS | BRF_PRG },
@@ -23084,7 +23141,7 @@ struct BurnDriver BurnDrvnes_pplanev2 = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Pelusa Saga - Kaji's Trials (HB)
+// Pelusa Saga: Kaji's Trials (HB)
 static struct BurnRomInfo nes_pelusagaRomDesc[] = {
 	{ "Pelusa Saga - Kaji's Trials (2023)(Broke Studio).nes",          524304, 0xbc461bfe, BRF_ESS | BRF_PRG },
 };
@@ -23094,7 +23151,7 @@ STD_ROM_FN(nes_pelusaga)
 
 struct BurnDriver BurnDrvnes_pelusaga = {
 	"nes_pelusaga", NULL, NULL, NULL, "2023",
-	"Pelusa Saga - Kaji's Trials (HB)\0", NULL, "Broke Studio", "NES / Famicom",
+	"Pelusa Saga: Kaji's Trials (HB)\0", NULL, "Broke Studio", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_NES, GBF_ACTION | GBF_ADV, 0,
 	NESGetZipName, nes_pelusagaRomInfo, nes_pelusagaRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
@@ -23102,7 +23159,7 @@ struct BurnDriver BurnDrvnes_pelusaga = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Penguin - Sokoban Adventure (HB, v1.1)
+// Penguin: Sokoban Adventure (HB, v1.1)
 static struct BurnRomInfo nes_pengsokoadvRomDesc[] = {
 	{ "Penguin - Sokoban Adventure v1.1 (2024)(AJP Games).nes",          65552, 0xd9e2d07b, BRF_ESS | BRF_PRG },
 };
@@ -23112,7 +23169,7 @@ STD_ROM_FN(nes_pengsokoadv)
 
 struct BurnDriver BurnDrvnes_pengsokoadv = {
 	"nes_pengsokoadv", NULL, NULL, NULL, "2024",
-	"Penguin - Sokoban Adventure (HB, v1.1)\0", NULL, "AJP Games", "NES / Famicom",
+	"Penguin: Sokoban Adventure (HB, v1.1)\0", NULL, "AJP Games", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_NES, GBF_PUZZLE, 0,
 	NESGetZipName, nes_pengsokoadvRomInfo, nes_pengsokoadvRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
@@ -40669,7 +40726,7 @@ struct BurnDriver BurnDrvnes_imposmisii = {
 	"nes_imposmisii", NULL, NULL, NULL, "1989",
 	"Impossible Mission II (USA)\0", NULL, "American Video Entertainment", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_PLATFORM | GBF_ADV, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_ADV | GBF_PLATFORM, 0,
 	NESGetZipName, nes_imposmisiiRomInfo, nes_imposmisiiRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -40705,7 +40762,7 @@ struct BurnDriver BurnDrvnes_indiajonandlascrt = {
 	"nes_indiajonandlascrt", "nes_indiajonandlascr", NULL, NULL, "1991",
 	"Indiana Jones and the Last Crusade (USA) (Taito)\0", NULL, "Taito", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_NES, GBF_PLATFORM | GBF_ADV, 0,
+	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_NES, GBF_ADV | GBF_PLATFORM, 0,
 	NESGetZipName, nes_indiajonandlascrtRomInfo, nes_indiajonandlascrtRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -40759,7 +40816,7 @@ struct BurnDriver BurnDrvnes_infiltrator = {
 	"nes_infiltrator", NULL, NULL, NULL, "1990",
 	"Infiltrator (USA)\0", NULL, "Mindscape", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_SIM | GBF_ADV, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_ADV | GBF_SIM, 0,
 	NESGetZipName, nes_infiltratorRomInfo, nes_infiltratorRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -40801,7 +40858,7 @@ struct BurnDriver BurnDrvnes_intercri = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Iron Tank - The Invasion of Normandy (USA)
+// Iron Tank: The Invasion of Normandy (USA)
 static struct BurnRomInfo nes_irontanRomDesc[] = {
 	{ "Iron Tank - The Invasion of Normandy (USA)(1988)(SNK).nes",          262160, 0xdcfd85fc, BRF_ESS | BRF_PRG },
 };
@@ -40811,7 +40868,7 @@ STD_ROM_FN(nes_irontan)
 
 struct BurnDriver BurnDrvnes_irontan = {
 	"nes_irontan", NULL, NULL, NULL, "1988",
-	"Iron Tank - The Invasion of Normandy (USA)\0", NULL, "SNK", "NES / Famicom",
+	"Iron Tank: The Invasion of Normandy (USA)\0", NULL, "SNK", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_RUNGUN, 0,
 	NESGetZipName, nes_irontanRomInfo, nes_irontanRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
@@ -40819,7 +40876,7 @@ struct BurnDriver BurnDrvnes_irontan = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Ironsword - Wizards & Warriors II (USA)
+// Ironsword: Wizards & Warriors II (USA)
 static struct BurnRomInfo nes_ironsRomDesc[] = {
 	{ "Ironsword - Wizards & Warriors II (USA)(1989)(Acclaim).nes",          262160, 0xbe2e7055, BRF_ESS | BRF_PRG },
 };
@@ -40829,9 +40886,9 @@ STD_ROM_FN(nes_irons)
 
 struct BurnDriver BurnDrvnes_irons = {
 	"nes_irons", NULL, NULL, NULL, "1989",
-	"Ironsword - Wizards & Warriors II (USA)\0", NULL, "Acclaim Entertainment", "NES / Famicom",
+	"Ironsword: Wizards & Warriors II (USA)\0", NULL, "Acclaim Entertainment", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_PLATFORM | GBF_ADV, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_ADV | GBF_PLATFORM, 0,
 	NESGetZipName, nes_ironsRomInfo, nes_ironsRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -40981,7 +41038,7 @@ struct BurnDriver BurnDrvnes_jackiechan = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Jajamaru Gekimaden - Maboroshi no Kinmajou (Japan)
+// Jajamaru Gekimaden: Maboroshi no Kinmajou (Japan)
 static struct BurnRomInfo nes_jajamgekjRomDesc[] = {
 	{ "Jajamaru Gekimaden - Maboroshi no Kinmajou (Japan)(1990)(Jaleco).nes",          262160, 0x44902c90, BRF_ESS | BRF_PRG },
 };
@@ -40991,15 +41048,15 @@ STD_ROM_FN(nes_jajamgekj)
 
 struct BurnDriver BurnDrvnes_jajamgekj = {
 	"nes_jajamgekj", "nes_jajamgek", NULL, NULL, "1990",
-	"Jajamaru Gekimaden - Maboroshi no Kinmajou (Japan)\0", NULL, "Jaleco", "NES / Famicom",
-	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_NES, GBF_RPG, 0,
+	"Jajamaru Gekimaden: Maboroshi no Kinmajou (Japan)\0", NULL, "Jaleco", "NES / Famicom",
+	L"Jajamaru Gekimaden: Maboroshi no Kinmajou (Japan)\0\u3058\u3083\u3058\u3083\u4e38 \u6483\u9b54\u4f1d \u5e7b\u306e\u91d1\u9b54\u57ce\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_NES, GBF_ACTION | GBF_RPG, 0,
 	NESGetZipName, nes_jajamgekjRomInfo, nes_jajamgekjRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Jajamaru Gekimaden - Maboroshi no Kinmajou (Hack, English)
+// Jajamaru Gekimaden: Maboroshi no Kinmajou (Hack, English)
 // https://www.romhacking.net/translations/1444/
 static struct BurnRomInfo nes_jajamgekeRomDesc[] = {
 	{ "Jajamaru Gekimaden - Maboroshi no Kinmajou T-Eng (2009)(Stardust Crusaders).nes",          262160, 0x367df135, BRF_ESS | BRF_PRG },
@@ -41010,15 +41067,15 @@ STD_ROM_FN(nes_jajamgeke)
 
 struct BurnDriver BurnDrvnes_jajamgeke = {
 	"nes_jajamgeke", "nes_jajamgek", NULL, NULL, "2009",
-	"Jajamaru Gekimaden - Maboroshi no Kinmajou (Hack, English)\0", NULL, "Stardust Crusaders", "NES / Famicom",
+	"Jajamaru Gekimaden: Maboroshi no Kinmajou (Hack, English)\0", NULL, "Stardust Crusaders", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_NES, GBF_RPG, 0,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_NES, GBF_ACTION | GBF_RPG, 0,
 	NESGetZipName, nes_jajamgekeRomInfo, nes_jajamgekeRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Ninja JaJaMaru - Legend of The Golden Castle (English)
+// Ninja JaJaMaru: Legend of The Golden Castle (English)
 static struct BurnRomInfo nes_jajamgekRomDesc[] = {
 	{ "Ninja JaJaMaru - Legend of The Golden Castle - English (1990-2023)(Jaleco).nes",          458240, 0xd243a931, BRF_ESS | BRF_PRG },
 };
@@ -41028,9 +41085,9 @@ STD_ROM_FN(nes_jajamgek)
 
 struct BurnDriver BurnDrvnes_jajamgek = {
 	"nes_jajamgek", NULL, NULL, NULL, "2023",
-	"Ninja JaJaMaru - Legend of The Golden Castle (English)\0", "Official Translation", "Jaleco", "NES / Famicom",
+	"Ninja JaJaMaru: Legend of The Golden Castle (English)\0", "Official Translation", "Jaleco", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_RPG, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_ACTION | GBF_RPG, 0,
 	NESGetZipName, nes_jajamgekRomInfo, nes_jajamgekRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -41047,8 +41104,8 @@ STD_ROM_FN(nes_jajamninchoj)
 struct BurnDriver BurnDrvnes_jajamninchoj = {
 	"nes_jajamninchoj", "nes_jajamnincho", NULL, NULL, "1989",
 	"Jajamaru Ninpou Chou (Japan)\0", NULL, "Jaleco", "NES / Famicom",
-	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_NES, GBF_RPG, 0,
+	L"Jajamaru Ninpou Chou (Japan)\0\u3058\u3083\u3058\u3083\u4e38 \u5fcd\u6cd5\u5e33\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_NES, GBF_ACTION | GBF_RPG, 0,
 	NESGetZipName, nes_jajamninchojRomInfo, nes_jajamninchojRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -41067,13 +41124,13 @@ struct BurnDriver BurnDrvnes_jajamninchoe = {
 	"nes_jajamninchoe", "nes_jajamnincho", NULL, NULL, "2020",
 	"Jajamaru Ninpou Chou (Hack, English)\0", NULL, "Stardust Crusaders", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_NES, GBF_RPG, 0,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_NES, GBF_ACTION | GBF_RPG, 0,
 	NESGetZipName, nes_jajamninchoeRomInfo, nes_jajamninchoeRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Ninja JaJaMaru - The Ninja Skill Book (English)
+// Ninja JaJaMaru: The Ninja Skill Book (English)
 static struct BurnRomInfo nes_jajamninchoRomDesc[] = {
 	{ "Ninja JaJaMaru - The Ninja Skill Book - English (1989-2023)(Jaleco).nes",          458752, 0x3fb34ddc, BRF_ESS | BRF_PRG },
 };
@@ -41083,9 +41140,9 @@ STD_ROM_FN(nes_jajamnincho)
 
 struct BurnDriver BurnDrvnes_jajamnincho = {
 	"nes_jajamnincho", NULL, NULL, NULL, "2023",
-	"Ninja JaJaMaru - The Ninja Skill Book (English)\0", "Official Translation", "Jaleco", "NES / Famicom",
+	"Ninja JaJaMaru: The Ninja Skill Book (English)\0", "Official Translation", "Jaleco", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_RPG, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_ACTION | GBF_RPG, 0,
 	NESGetZipName, nes_jajamninchoRomInfo, nes_jajamninchoRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -41102,7 +41159,7 @@ STD_ROM_FN(nes_jajamnodaij)
 struct BurnDriver BurnDrvnes_jajamnodaij = {
 	"nes_jajamnodaij", "nes_jajamnodai", NULL, NULL, "1986",
 	"Ninja Jajamaru no Daibouken (Japan)\0", NULL, "Jaleco", "NES / Famicom",
-	NULL, NULL, NULL, NULL,
+	L"Ninja Jajamaru no Daibouken (Japan)\0\u3058\u3083\u3058\u3083\u4e38\u306e\u5927\u5192\u967a\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_NES, GBF_PLATFORM, 0,
 	NESGetZipName, nes_jajamnodaijRomInfo, nes_jajamnodaijRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
@@ -46993,7 +47050,7 @@ struct BurnDriver BurnDrvnes_ninjacrusaders = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Ninja Crusaders - Ryuuga (Japan)
+// Ninja Crusaders: Ryuuga (Japan)
 static struct BurnRomInfo nes_ninjacrusadersjRomDesc[] = {
 	{ "Ninja Crusaders - Ryuuga (Japan)(1990)(Sammy).nes",          131088, 0x547ad500, BRF_ESS | BRF_PRG },
 };
@@ -47003,8 +47060,8 @@ STD_ROM_FN(nes_ninjacrusadersj)
 
 struct BurnDriver BurnDrvnes_ninjacrusadersj = {
 	"nes_ninjacrusadersj", "nes_ninjacrusaders", NULL, NULL, "1990",
-	"Ninja Crusaders - Ryuuga (Japan)\0", NULL, "Sammy", "NES / Famicom",
-	L"Ninja Crusaders - Ryuuga (Japan)\0\u5fcd\u8005\u30af\u30eb\u30bb\u30a4\u30c0\u30fc\u30ba \u9f8d\u7259\0", NULL, NULL, NULL,
+	"Ninja Crusaders: Ryuuga (Japan)\0", NULL, "Sammy", "NES / Famicom",
+	L"Ninja Crusaders: Ryuuga (Japan)\0\u5fcd\u8005\u30af\u30eb\u30bb\u30a4\u30c0\u30fc\u30ba \u9f8d\u7259\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_NES, GBF_RUNGUN, 0,
 	NESGetZipName, nes_ninjacrusadersjRomInfo, nes_ninjacrusadersjRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
@@ -47023,7 +47080,7 @@ struct BurnDriver BurnDrvnes_ninjagaiden = {
 	"nes_ninjagaiden", NULL, NULL, NULL, "1989",
 	"Ninja Gaiden (USA)\0", NULL, "Tecmo", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_PLATFORM | GBF_SCRFIGHT, 0,
 	NESGetZipName, nes_ninjagaidenRomInfo, nes_ninjagaidenRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -47041,7 +47098,7 @@ struct BurnDriver BurnDrvnes_ninjagaiii = {
 	"nes_ninjagaiii", NULL, NULL, NULL, "1990",
 	"Ninja Gaiden II: The Dark Sword of Chaos (USA)\0", NULL, "Tecmo", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_PLATFORM | GBF_SCRFIGHT, 0,
 	NESGetZipName, nes_ninjagaiiiRomInfo, nes_ninjagaiiiRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -47059,7 +47116,7 @@ struct BurnDriver BurnDrvnes_ninjagaiiii = {
 	"nes_ninjagaiiii", NULL, NULL, NULL, "1991",
 	"Ninja Gaiden III: The Ancient Ship of Doom (USA)\0", NULL, "Tecmo", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_PLATFORM | GBF_SCRFIGHT, 0,
 	NESGetZipName, nes_ninjagaiiiiRomInfo, nes_ninjagaiiiiRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
@@ -47076,14 +47133,14 @@ STD_ROM_FN(nes_ninjahatkun)
 struct BurnDriver BurnDrvnes_ninjahatkun = {
 	"nes_ninjahatkun", NULL, NULL, NULL, "1986",
 	"Ninja Hattori-kun: Ninja wa Syugyou de Gozaru (Japan)\0", NULL, "Hudson Soft", "NES / Famicom",
-	NULL, NULL, NULL, NULL,
+	L"Ninja Hattori-kun: Ninja wa Syugyou de Gozaru (Japan)\0\u5fcd\u8005\u30cf\u30c3\u30c8\u30ea\u304f\u3093\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_NES, GBF_PLATFORM, 0,
 	NESGetZipName, nes_ninjahatkunRomInfo, nes_ninjahatkunRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Ninja Jajamaru - Ginga Daisakusen (Japan)
+// Ninja Jajamaru: Ginga Daisakusen (Japan)
 static struct BurnRomInfo nes_ninjajajjRomDesc[] = {
 	{ "Ninja Jajamaru - Ginga Daisakusen (Japan)(1991)(Jaleco).nes",          262160, 0x7934c198, BRF_ESS | BRF_PRG },
 };
@@ -47093,15 +47150,15 @@ STD_ROM_FN(nes_ninjajajj)
 
 struct BurnDriver BurnDrvnes_ninjajajj = {
 	"nes_ninjajajj", "nes_ninjajaj", NULL, NULL, "1991",
-	"Ninja Jajamaru - Ginga Daisakusen (Japan)\0", NULL, "Jaleco", "NES / Famicom",
-	NULL, NULL, NULL, NULL,
+	"Ninja Jajamaru: Ginga Daisakusen (Japan)\0", NULL, "Jaleco", "NES / Famicom",
+	L"Ninja Jajamaru: Ginga Daisakusen (Japan)\0\u5fcd\u8005\u3058\u3083\u3058\u3083\u4e38 \u9280\u6cb3\u5927\u4f5c\u6226\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_NES, GBF_PLATFORM, 0,
 	NESGetZipName, nes_ninjajajjRomInfo, nes_ninjajajjRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Ninja Jajamaru - Ginga Daisakusen (Hack, English)
+// Ninja Jajamaru: Ginga Daisakusen (Hack, English)
 // https://www.romhacking.net/translations/615/
 static struct BurnRomInfo nes_ninjajajeRomDesc[] = {
 	{ "Ninja Jajamaru - Ginga Daisakusen T-Eng (2002)(HTI).nes",          262160, 0x89ee0ed9, BRF_ESS | BRF_PRG },
@@ -47112,7 +47169,7 @@ STD_ROM_FN(nes_ninjajaje)
 
 struct BurnDriver BurnDrvnes_ninjajaje = {
 	"nes_ninjajaje", "nes_ninjajaj", NULL, NULL, "2002",
-	"Ninja Jajamaru - Ginga Daisakusen (Hack, English)\0", NULL, "HTI", "NES / Famicom",
+	"Ninja Jajamaru: Ginga Daisakusen (Hack, English)\0", NULL, "HTI", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_NES, GBF_PLATFORM, 0,
 	NESGetZipName, nes_ninjajajeRomInfo, nes_ninjajajeRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
@@ -47120,7 +47177,7 @@ struct BurnDriver BurnDrvnes_ninjajaje = {
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
 
-// Ninja JaJaMaru - Operation Milky Way (English)
+// Ninja JaJaMaru: Operation Milky Way (English)
 static struct BurnRomInfo nes_ninjajajRomDesc[] = {
 	{ "Ninja JaJaMaru - Operation Milky Way T-Eng (1991-2023)(Jaleco).nes",          262160, 0xf438e54a, BRF_ESS | BRF_PRG },
 };
@@ -47130,7 +47187,7 @@ STD_ROM_FN(nes_ninjajaj)
 
 struct BurnDriver BurnDrvnes_ninjajaj = {
 	"nes_ninjajaj", NULL, NULL, NULL, "2023",
-	"Ninja JaJaMaru - Operation Milky Way (English)\0", "Official Translation", "Jaleco", "NES / Famicom",
+	"Ninja JaJaMaru: Operation Milky Way (English)\0", "Official Translation", "Jaleco", "NES / Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_NES, GBF_PLATFORM, 0,
 	NESGetZipName, nes_ninjajajRomInfo, nes_ninjajajRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
@@ -47149,7 +47206,7 @@ STD_ROM_FN(nes_ninjajajkunj)
 struct BurnDriver BurnDrvnes_ninjajajkunj = {
 	"nes_ninjajajkunj", "nes_ninjajajkun", NULL, NULL, "1985",
 	"Ninja Jajamaru-kun (Japan)\0", NULL, "Jaleco", "NES / Famicom",
-	NULL, NULL, NULL, NULL,
+	L"Ninja Jajamaru-kun (Japan)\0\u5fcd\u8005\u3058\u3083\u3058\u3083\u4e38\u304f\u3093\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_NES, GBF_ACTION, 0,
 	NESGetZipName, nes_ninjajajkunjRomInfo, nes_ninjajajkunjRomName, NULL, NULL, NULL, NULL, NESInputInfo, NESDIPInfo,
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
@@ -58206,4 +58263,3 @@ struct BurnDriver BurnDrvnes_zunousengal = {
 	NESInit, NESExit, NESFrame, NESDraw, NESScan, &NESRecalc, 0x40,
 	SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, SCREEN_HEIGHT
 };
-
