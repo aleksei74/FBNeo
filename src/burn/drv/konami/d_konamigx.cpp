@@ -3429,9 +3429,9 @@ static struct BurnRomInfo tbyahhokRomDesc[] = {
 	{ "424a07.7c", 0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS }, //  4 soundcpu
 	{ "424a14k.17h", 0x00200000, 0x95c666d0, 3 | BRF_GRA }, //  5 k056832
 	{ "424a12k.13g", 0x00080000, 0x4a7c489f, 3 | BRF_GRA }, //  6 k056832
-	{ "424a11k.25g", 0x00200000, 0xb443c787, 4 | BRF_GRA }, //  7 k055673
-	{ "424a10k.28g", 0x00200000, 0xaff5d5fb, 4 | BRF_GRA }, //  8 k055673
-	{ "424a09k.30g", 0x00100000, 0xb9404383, 4 | BRF_GRA }, //  9 k055673
+	{ "424a11k.25g", 0x00200000, 0x2f96de9f, 4 | BRF_GRA }, //  7 k055673
+	{ "424a10k.28g", 0x00200000, 0xe7bcd822, 4 | BRF_GRA }, //  8 k055673
+	{ "424a09k.30g", 0x00100000, 0xdcae531c, 4 | BRF_GRA }, //  9 k055673
 	{ "424a17.9g", 0x00200000, 0xe9dd9692, 5 | BRF_SND }, // 10 k054539
 	{ "424a18.7g", 0x00200000, 0x0f0d9f3a, 5 | BRF_SND }, // 11 k054539
 	{ "tbyahhoo.nv", 0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS }, // 12 eeprom
