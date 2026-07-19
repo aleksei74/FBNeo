@@ -1990,6 +1990,7 @@ bladestll:
 
 ;@s:blktiger.cpp
 
+blkdrgnk:
 blkdrgon:
 blkdrgonb:
 @:maincpu,program,e200,50,00,26
@@ -3381,7 +3382,9 @@ mmancp2u:
 mmancp2ur1:
 mmancp2ur2:
 rmancp2j:
+rmancp2k:
 rockmanj:
+rockmank:
 @:maincpu,program,ffeed0,28,00,00
 @:maincpu,program,ffef10,28,00,02
 
@@ -3464,6 +3467,9 @@ wofa:
 wofabl:
 wofhfh:
 wofj:
+wofj103:
+wofk:
+wofk103:
 wofpic:
 wofr1:
 wofr1bl:
@@ -3544,6 +3550,7 @@ ffightj2:
 
 
 ffightj4:
+ffightk4:
 ffightub:
 ffightuc:
 @:maincpu,program,ff850e,39,85,50
@@ -3568,6 +3575,7 @@ knightsb2:
 knightsb3:
 knightsj:
 knightsja:
+knightsk:
 knightsu:
 @:maincpu,program,ffe53a,257,00,00
 @:maincpu,program,ffe78f,1,05,05
@@ -3581,6 +3589,7 @@ captcommb:
 captcommb2:
 captcommj:
 captcommjr1:
+captcommk:
 captcommr1:
 captcommu:
 @:maincpu,program,ff0000,190,08,00
@@ -3621,6 +3630,7 @@ qtono2j:
 
 
 daimakai:
+daimakaik:
 daimakair:
 ghouls:
 ghoulsu:
@@ -3650,6 +3660,7 @@ punisher:
 punisherbz:
 punisherh:
 punisherj:
+punisherk:
 punisheru:
 @:maincpu,program,ff7896,258,ff,01
 @:maincpu,program,ff5b92,004,01,00
@@ -3693,6 +3704,7 @@ kod:
 kodb:
 kodj:
 kodja:
+kodk:
 kodr2:
 kodu:
 @:maincpu,program,ff9d94,28,00,04
@@ -3744,6 +3756,7 @@ sf2v004:
 ;*0,923004,08,00,00 Stage: <secret>
 strider:
 striderj:
+striderk:
 striderua:
 strideruc:
 @:maincpu,program,ff89aa,78,ff,20
@@ -3765,6 +3778,7 @@ nemor1:
 3wondersr1:
 3wondersu:
 wonder3:
+wonder3k:
 @:maincpu,program,ffd0ce,14,ff,36
 @:maincpu,program,ffd0f6,50,00,00
 @:maincpu,program,ffd196,28,ff,06
@@ -3785,6 +3799,8 @@ mswordu:
 
 ;unsquad:******u.n. squadren
 area88:
+area88ka:
+area88kb:
 area88r:
 unsquad:
 @:maincpu,program,ff101c,50,00,26
@@ -3797,6 +3813,7 @@ dino:
 dinoa:
 dinohunt:
 dinoj:
+dinok:
 dinou:
 jurassic99:
 @:maincpu,program,fff03e,310,00,00
@@ -3845,6 +3862,7 @@ sfz2alb:
 sfz2ald:
 sfz2alh:
 sfz2alj:
+sfz2alk:
 sfz2alr1:
 sfz2b:
 sfz2br1:
@@ -3852,6 +3870,7 @@ sfz2h:
 sfz2j:
 sfz2jd:
 sfz2jr1:
+sfz2k:
 sfz2n:
 @:maincpu,program,ffdf6a,ad,00,01
 
@@ -3949,10 +3968,12 @@ ddsomh:
 ddsomj:
 ddsomjr1:
 ddsomjr2:
+ddsomk:
 ddsomr1:
 ddsomr2:
 ddsomr3:
 ddsomu:
+ddsomkd:
 ddsomud:
 ddsomur1:
 @:maincpu,program,ff0fd0,8b,12,09
@@ -3980,6 +4001,7 @@ megaman2a:
 megaman2h:
 megamn2d:
 rockman2j:
+rockman2k:
 @:maincpu,program,ffefc0,118,00,02
 @:maincpu,program,fff047,1,01,01
 
@@ -4027,6 +4049,7 @@ sfzhr1:
 sfzj:
 sfzjr1:
 sfzjr2:
+sfzk:
 @:maincpu,program,ffaea0,9f,01,16
 
 
@@ -4056,6 +4079,7 @@ cscluba:
 csclubh:
 csclubj:
 csclubjy:
+csclubk:
 @:maincpu,program,ff9894,50,00,b2
 @:maincpu,program,ff98e4,dc,1a,01
 
@@ -4076,6 +4100,7 @@ vhuntjr2:
 
 
 pfghtj:
+pfghtk:
 sgemf:
 sgemfa:
 sgemfd:
@@ -4098,6 +4123,7 @@ spf2td:
 spf2th:
 spf2tu:
 spf2xj:
+spf2xk:
 spf2xjd:
 @:maincpu,program,ffd7aa,4e,00,02
 @:maincpu,program,ff8081,1,01,01
@@ -4191,6 +4217,7 @@ avspa:
 avspd:
 avsph:
 avspj:
+avspk:
 avspu:
 @:maincpu,program,ffeac0,31d,01,01
 @:maincpu,program,ffedda,1,44,44
@@ -4246,6 +4273,7 @@ ddtodhr2:
 ddtodj:
 ddtodjr1:
 ddtodjr2:
+ddtodk:
 ddtodr1:
 ddtodu:
 ddtodur1:
@@ -7366,6 +7394,7 @@ gijoeua:
 ;ginganina:******Ginga NinkyouDen (set 2)
 ginganin:
 ginganina:
+ginganink:
 @:maincpu,program,20291,50,00,59
 @:maincpu,program,202e1,83,20,09
 @:maincpu,program,2011d,3,00,00
@@ -8893,6 +8922,7 @@ crossbld:
 
 uccopsar:
 uccopsj:
+uccopsk:
 @:maincpu,program,e3e7c,49,30,01
 
 
@@ -8939,6 +8969,7 @@ gunforc2:
 
 ;(ninja baseball batman (us))
 leaguemn:
+leaguemk:
 nbbatman:
 nbbatmanu:
 @:maincpu,program,e25d4,4f,00,03
@@ -8962,6 +8993,7 @@ gunforceu:
 
 
 hook:
+hookk:
 hooku:
 @:maincpu,program,ea6ad,ec,00,4f
 
@@ -12146,6 +12178,8 @@ s1945nj:
 
 
 sngkace:
+sngkacea:
+sngkacek:
 @:maincpu,program,fe7d88,9e,00,04
 
 
@@ -12157,12 +12191,14 @@ samuraia:
 ;(tengai) (by tamphax)
 tengai:
 tengaij:
+tengaik:
 @:maincpu,program,fe4cb0,48,2d,98
 
 
 gunbird:
 gunbirdj:
 gunbirdk:
+gunbirdka:
 @:maincpu,program,fe3dd0,75,00,2d
 
 
