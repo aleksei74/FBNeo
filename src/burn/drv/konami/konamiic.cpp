@@ -121,6 +121,7 @@ void konami_rom_deinterleave_4(UINT8 *src, INT32 len)
 void KonamiRecalcPalette(UINT8 *src, UINT32 *dst, INT32 len)
 {
 	konami_palette32 = dst;
+	K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 
 	UINT8 r,g,b;
 	UINT16 *p = (UINT16*)src;
@@ -254,14 +255,8 @@ void KonamiAllocateBitmaps()
 
 	konami_bitmap_width = width;
 	konami_bitmap_height = height;
-}
 
-INT32 KonamiBitmapReady()
-{
-	if (nScreenWidth <= 0 || nScreenHeight <= 0) return 0;
-	if (konami_bitmap32 == NULL || konami_priority_bitmap == NULL) return 0;
-
-	return (konami_bitmap_width == nScreenWidth && konami_bitmap_height == nScreenHeight);
+	K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 }
 
 void KonamiClearBitmaps(UINT32 color)

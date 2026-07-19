@@ -1,5 +1,6 @@
 // FinalBurn Neo Seta ST-0016 driver
 // Based on the MAME driver by David Haywood, Tomasz Slanina, R. Belmont et al.
+// Generated with Claude AI (by aleksei74)
 //
 // ST-0016 = Z80 CPU + integrated video (RAM-based sprites/tilemaps) + 8ch PCM sound.
 // First target: Renju Kizoku (Visco, 1994) - the simplest ST-0016 board.
@@ -633,6 +634,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 }
 
 // ---------------------------------------------------------------------------
+
+// Renju Kizoku - Kira Kira Gomoku Narabe (ver. 1.0)
 
 static struct BurnRomInfo renjuRomDesc[] = {
 	{ "renjyu-1.u31", 0x200000, 0xe0fdbe9b, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu

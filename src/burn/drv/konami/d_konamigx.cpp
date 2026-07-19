@@ -1,6 +1,7 @@
 // FB Neo Konami System GX (Type 2) driver
 // Based on the MAME driver by R. Belmont, Acho A. Tang, Phil Stroffolino
 // and Olivier Galibert.
+// Generated with Codex AI (by DsNo) & Claude AI (by aleksei74)
 //
 // The two K054539 chips are mixed directly and through the TMS57002 DASP,
 // matching the GX audio routing used by MAME.
@@ -765,8 +766,6 @@ static void gx_address_write_byte(UINT32 address, UINT8 data)
 
 static void gx_generate_sprites(UINT32 src, UINT32 spr, INT32 count)
 {
-	if ((spr & 0xffc000) != 0xd20000) return;
-
 	INT32 scount = 0;
 	INT32 ecount = 0;
 
@@ -853,7 +852,6 @@ static void gx_generate_sprites(UINT32 src, UINT32 spr, INT32 count)
 				if (color_set) col = (col & 0xffe0) | color_set;
 				if (color_rotate) col = (col & 0xffe0) | ((col + color_rotate) & 0x1f);
 
-				if ((spr & 0xffc000) != 0xd20000) return;
 				gx_address_write_word(spr + 0, (flip ^ glob_f) | gx_esc_sprites[i].pri);
 				gx_address_write_word(spr + 2, idx);
 				gx_address_write_word(spr + 4, y);
@@ -873,7 +871,6 @@ next_sprite:
 	}
 
 	while (scount < 256) {
-		if ((spr & 0xffc000) != 0xd20000) return;
 		gx_address_write_word(spr, scount);
 		scount++;
 		spr += 16;
@@ -1098,7 +1095,9 @@ static void gx_esc_write(UINT32 data)
 					gx_sexyparo_esc_p1 = (gx_address_read_word(params + 0) << 16) | gx_address_read_word(params + 2);
 					gx_sexyparo_esc_p2 = (gx_address_read_word(params + 4) << 16) | gx_address_read_word(params + 6);
 					gx_sexyparo_esc_p4 = (gx_address_read_word(params + 12) << 16) | gx_address_read_word(params + 14);
-					gx_generate_sprites(0xc00604, 0xd20000, 0xfc);
+					UINT32 spr = (gx_address_read_word(params + 8) << 16) | gx_address_read_word(params + 10);
+					if (spr != 0xd20000 && spr != 0xd21000) spr = 0xd20000;
+					gx_generate_sprites(0xc00604, spr, 0xfc);
 				} else if (gx_special == GX_SPECIAL_TBYAHHOO || gx_special == GX_SPECIAL_DAISKISS) {
 					gx_generate_sprites(0xc00000, 0xd20000, 0x100);
 				} else if (gx_special == GX_SPECIAL_TKMMPZDM) {
@@ -2517,6 +2516,7 @@ static INT32 DrvInit()
 	DrvTms.init(DrvTmsRAM);
 
 	konami_palette32 = DrvPalette;
+	K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 
 	DrvDoReset();
 
@@ -2742,7 +2742,7 @@ static void gx_type4_compose_output()
 
 static INT32 gx_sexyparo_has_stage3_background()
 {
-	if (gx_special != GX_SPECIAL_SEXYPARO || !KonamiBitmapReady()) return 0;
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
 
 	INT32 stage3 = 0;
 	INT32 ink = 0;
@@ -2808,7 +2808,7 @@ static inline void gx_sexyparo_plot_snow(INT32 x, INT32 y, UINT32 color, UINT32 
 
 static void gx_sexyparo_draw_snow()
 {
-	if (gx_special != GX_SPECIAL_SEXYPARO || !KonamiBitmapReady()) return;
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return;
 	if (gx_sexyparo_esc_p1 < 2 || gx_sexyparo_esc_p1 > 4) return;
 	if (gx_sexyparo_has_stage3_background()) return;
 
@@ -2839,7 +2839,7 @@ static void gx_sexyparo_draw_snow()
 
 static INT32 gx_sexyparo_has_black_space_background()
 {
-	if (gx_special != GX_SPECIAL_SEXYPARO || !KonamiBitmapReady()) return 0;
+	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
 
 	INT32 black = 0;
 	INT32 total = 0;
@@ -3498,42 +3498,73 @@ STD_ROM_PICK(puzldama)
 STD_ROM_FN(puzldama)
 
 static struct BurnRomInfo tbyahhooRomDesc[] = {
-	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
-	{ "424jaa02.31b", 0x00080000, 0x0416ad78, 1 | BRF_PRG | BRF_ESS }, //  1 maincpu
-	{ "424jaa04.27b", 0x00080000, 0xbcbe0e40, 1 | BRF_PRG | BRF_ESS }, //  2 maincpu
-	{ "424a06.9c", 0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS }, //  3 soundcpu
-	{ "424a07.7c", 0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS }, //  4 soundcpu
-	{ "424a14.17h", 0x00200000, 0xb1d9fce8, 3 | BRF_GRA }, //  5 k056832
-	{ "424a12.13g", 0x00080000, 0x7f9cb8b1, 3 | BRF_GRA }, //  6 k056832
-	{ "424a11.25g", 0x00200000, 0x29592688, 4 | BRF_GRA }, //  7 k055673
-	{ "424a10.28g", 0x00200000, 0xcf24e5e3, 4 | BRF_GRA }, //  8 k055673
-	{ "424a09.30g", 0x00100000, 0xdaa07224, 4 | BRF_GRA }, //  9 k055673
-	{ "424a17.9g", 0x00200000, 0xe9dd9692, 5 | BRF_SND }, // 10 k054539
-	{ "424a18.7g", 0x00200000, 0x0f0d9f3a, 5 | BRF_SND }, // 11 k054539
-	{ "tbyahhoo.nv", 0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS }, // 12 eeprom
+	{ "300a01.34k",   0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS },      //  0 maincpu
+	{ "424jaa02.31b", 0x00080000, 0x0416ad78, 1 | BRF_PRG | BRF_ESS },      //  1 maincpu
+	{ "424jaa04.27b", 0x00080000, 0xbcbe0e40, 1 | BRF_PRG | BRF_ESS },      //  2 maincpu
+
+	{ "424a06.9c",    0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS },      //  3 soundcpu
+	{ "424a07.7c",    0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS },      //  4 soundcpu
+
+	{ "424a14.17h",   0x00200000, 0xb1d9fce8, 3 | BRF_GRA },                //  5 k056832
+	{ "424a12.13g",   0x00080000, 0x7f9cb8b1, 3 | BRF_GRA },                //  6 k056832
+	{ "424a11.25g",   0x00200000, 0x29592688, 4 | BRF_GRA },                //  7 k055673
+	{ "424a10.28g",   0x00200000, 0xcf24e5e3, 4 | BRF_GRA },                //  8 k055673
+	{ "424a09.30g",   0x00100000, 0xdaa07224, 4 | BRF_GRA },                //  9 k055673
+
+	{ "424a17.9g",    0x00200000, 0xe9dd9692, 5 | BRF_SND },                // 10 k054539
+	{ "424a18.7g",    0x00200000, 0x0f0d9f3a, 5 | BRF_SND },                // 11 k054539
+
+	{ "tbyahhoo.nv",  0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS },      // 12 eeprom
 };
 
 STD_ROM_PICK(tbyahhoo)
 STD_ROM_FN(tbyahhoo)
 
 static struct BurnRomInfo mtwinbeeRomDesc[] = {
-	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
-	{ "424eaa02.31b", 0x00080000, 0x34659905, 1 | BRF_PRG | BRF_ESS }, //  1 maincpu
-	{ "424eaa04.27b", 0x00080000, 0xf42d3139, 1 | BRF_PRG | BRF_ESS }, //  2 maincpu
-	{ "424a06.9c", 0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS }, //  3 soundcpu
-	{ "424a07.7c", 0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS }, //  4 soundcpu
-	{ "424a14.17h", 0x00200000, 0xb1d9fce8, 3 | BRF_GRA }, //  5 k056832
-	{ "424a12.13g", 0x00080000, 0x7f9cb8b1, 3 | BRF_GRA }, //  6 k056832
-	{ "424a11.25g", 0x00200000, 0x29592688, 4 | BRF_GRA }, //  7 k055673
-	{ "424a10.28g", 0x00200000, 0xcf24e5e3, 4 | BRF_GRA }, //  8 k055673
-	{ "424a09.30g", 0x00100000, 0xdaa07224, 4 | BRF_GRA }, //  9 k055673
-	{ "424a17.9g", 0x00200000, 0xe9dd9692, 5 | BRF_SND }, // 10 k054539
-	{ "424a18.7g", 0x00200000, 0x0f0d9f3a, 5 | BRF_SND }, // 11 k054539
-	{ "mtwinbee.nv", 0x00000080, 0x942b4323, 6 | BRF_PRG | BRF_ESS }, // 12 eeprom
+	{ "300a01.34k",   0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS },      //  0 maincpu
+	{ "424eaa02.31b", 0x00080000, 0x34659905, 1 | BRF_PRG | BRF_ESS },      //  1 maincpu
+	{ "424eaa04.27b", 0x00080000, 0xf42d3139, 1 | BRF_PRG | BRF_ESS },      //  2 maincpu
+
+	{ "424a06.9c",    0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS },      //  3 soundcpu
+	{ "424a07.7c",    0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS },      //  4 soundcpu
+
+	{ "424a14.17h",   0x00200000, 0xb1d9fce8, 3 | BRF_GRA },                //  5 k056832
+	{ "424a12.13g",   0x00080000, 0x7f9cb8b1, 3 | BRF_GRA },                //  6 k056832
+	{ "424a11.25g",   0x00200000, 0x29592688, 4 | BRF_GRA },                //  7 k055673
+	{ "424a10.28g",   0x00200000, 0xcf24e5e3, 4 | BRF_GRA },                //  8 k055673
+	{ "424a09.30g",   0x00100000, 0xdaa07224, 4 | BRF_GRA },                //  9 k055673
+
+	{ "424a17.9g",    0x00200000, 0xe9dd9692, 5 | BRF_SND },                // 10 k054539
+	{ "424a18.7g",    0x00200000, 0x0f0d9f3a, 5 | BRF_SND },                // 11 k054539
+
+	{ "mtwinbee.nv",  0x00000080, 0x942b4323, 6 | BRF_PRG | BRF_ESS },      // 12 eeprom
 };
 
 STD_ROM_PICK(mtwinbee)
 STD_ROM_FN(mtwinbee)
+
+static struct BurnRomInfo tbyahhookRomDesc[] = {
+	{ "300a01.34k",    0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS },     //  0 maincpu
+	{ "424jaa02k.31b", 0x00080000, 0xd46fa4fd, 1 | BRF_PRG | BRF_ESS },     //  1 maincpu
+	{ "424jaa04k.27b", 0x00080000, 0x36f22216, 1 | BRF_PRG | BRF_ESS },     //  2 maincpu
+
+	{ "424a06.9c",     0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS },     //  3 soundcpu
+	{ "424a07.7c",     0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS },     //  4 soundcpu
+
+	{ "424a14k.17h",   0x00200000, 0x95c666d0, 3 | BRF_GRA },               //  5 k056832
+	{ "424a12k.13g",   0x00080000, 0x4a7c489f, 3 | BRF_GRA },               //  6 k056832
+	{ "424a11k.25g",   0x00200000, 0xb65b68b3, 4 | BRF_GRA },               //  7 k055673
+	{ "424a10k.28g",   0x00200000, 0x75240d40, 4 | BRF_GRA },               //  8 k055673
+	{ "424a09k.30g",   0x00100000, 0xdcae531c, 4 | BRF_GRA },               //  9 k055673
+
+	{ "424a17.9g",     0x00200000, 0xe9dd9692, 5 | BRF_SND },               // 10 k054539
+	{ "424a18.7g",     0x00200000, 0x0f0d9f3a, 5 | BRF_SND },               // 11 k054539
+
+	{ "tbyahhoo.nv",   0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS },     // 12 eeprom
+};
+
+STD_ROM_PICK(tbyahhook)
+STD_ROM_FN(tbyahhook)
 
 static struct BurnRomInfo tkmmpzdmRomDesc[] = {
 	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
@@ -4274,6 +4305,16 @@ struct BurnDriver BurnDrvMtwinbee = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, mtwinbeeRomInfo, mtwinbeeRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
+	288, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvTbyahhook = {
+	"tbyahhook", "tbyahhoo", "konamigx", NULL, "2026",
+	"Twin Bee Yahhoo! (ver JAA)\0", NULL, "Konami", "Konami System GX",
+	L"Twin Bee Yahhoo! (ver JAA)\0\uD2B8\uC708\uBE44 \uC58F\uD638! - \uC774\uC0C1\uD55C \uB098\uB77C\uC5D0\uC11C\uC758 \uB300\uC18C\uB3D9!! (ver JAA, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	NULL, tbyahhookRomInfo, tbyahhookRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
 };

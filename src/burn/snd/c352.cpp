@@ -82,9 +82,9 @@ void c352_set_sync(INT32 (*pCPUCyclesCB)(), INT32 nCPUMhz)
 	stream.set_buffered(pCPUCyclesCB, nCPUMhz);
 }
 
-static INT8 read_byte(INT32 pos)
+static INT8 read_byte(UINT32 pos)
 {
-	if (pos >= m_romsize) {
+	if (pos >= (UINT32)m_romsize) {
 		return 0;
 	}
 
@@ -355,4 +355,3 @@ void c352_reset()
 	m_random = 0x1234;
 	m_control = 0;
 }
-
