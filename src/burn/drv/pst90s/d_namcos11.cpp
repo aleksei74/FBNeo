@@ -11,7 +11,7 @@
 static UINT8 DrvJoy1[16];
 static UINT8 DrvJoy2[16];
 static UINT8 DrvJoy3[16];
-static UINT8 DrvDips[2];
+static UINT8 DrvDips[3];
 static UINT8 DrvReset;
 static UINT8 DrvTestSwitch;
 static UINT8 DrvTestSwitchLast;
@@ -727,6 +727,7 @@ static void Namcos11C76NewFrame()
 static void Namcos11C76Run(INT32 cycles)
 {
 	M377Open(0);
+	M377SetIdleLoop((DrvDips[2] & 1) ? 0x82 : ~0U, 0xc153, 0xff00, 0);
 
 	while (cycles > 0) {
 		INT32 segment = cycles;
@@ -2532,7 +2533,6 @@ static void Namcos11GpuExecutePacket()
 			break;
 	}
 
-
 	DrvGpuPacketPos = 0;
 	DrvGpuPacketLen = 0;
 }
@@ -3625,6 +3625,7 @@ static struct BurnInputInfo Namcos11InputList[] = {
 	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
 };
 
 STDINPUTINFO(Namcos11)
@@ -3648,6 +3649,7 @@ static struct BurnInputInfo Myangel3InputList[] = {
 	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
 };
 
 STDINPUTINFO(Myangel3)
@@ -3670,6 +3672,7 @@ static struct BurnInputInfo Ptblank2InputList[] = {
 	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
 };
 
 STDINPUTINFO(Ptblank2)
@@ -3678,6 +3681,11 @@ static struct BurnDIPInfo Namcos11DIPList[]=
 {
 	{0x16, 0xff, 0xff, 0xff, NULL},
 	{0x17, 0xff, 0xff, 0xff, NULL},
+	{0x18, 0xff, 0xff, 0x00, NULL},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
+	{0x18, 0x01, 0x01, 0x00, "Off"},
+	{0x18, 0x01, 0x01, 0x01, "On"},
 };
 
 STDDIPINFO(Namcos11)
@@ -3686,6 +3694,11 @@ static struct BurnDIPInfo Myangel3DIPList[]=
 {
 	{0x0e, 0xff, 0xff, 0xff, NULL},
 	{0x0f, 0xff, 0xff, 0xff, NULL},
+	{0x10, 0xff, 0xff, 0x00, NULL},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
+	{0x10, 0x01, 0x01, 0x00, "Off"},
+	{0x10, 0x01, 0x01, 0x01, "On"},
 };
 
 STDDIPINFO(Myangel3)
@@ -3694,6 +3707,11 @@ static struct BurnDIPInfo Ptblank2DIPList[]=
 {
 	{0x0d, 0xff, 0xff, 0xff, NULL},
 	{0x0e, 0xff, 0xff, 0xff, NULL},
+	{0x0f, 0xff, 0xff, 0x00, NULL},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
+	{0x0f, 0x01, 0x01, 0x00, "Off"},
+	{0x0f, 0x01, 0x01, 0x01, "On"},
 };
 
 STDDIPINFO(Ptblank2)
@@ -3709,6 +3727,7 @@ static struct BurnInputInfo PocketrcInputList[] = {
 	{ "Reset",         BIT_DIGITAL,    &DrvReset,     "reset"     },
 	{ "Dip A",         BIT_DIPSWITCH,  DrvDips + 0,  "dip"       },
 	{ "Dip B",         BIT_DIPSWITCH,  DrvDips + 1,  "dip"       },
+	{ "Dip C",         BIT_DIPSWITCH,  DrvDips + 2,  "dip"       },
 };
 #undef A
 
@@ -3718,6 +3737,11 @@ static struct BurnDIPInfo PocketrcDIPList[]=
 {
 	{0x07, 0xff, 0xff, 0xff, NULL},
 	{0x08, 0xff, 0xff, 0xff, NULL},
+	{0x09, 0xff, 0xff, 0x00, NULL},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
+	{0x09, 0x01, 0x01, 0x00, "Off"},
+	{0x09, 0x01, 0x01, 0x01, "On"},
 };
 
 STDDIPINFO(Pocketrc)
@@ -4195,12 +4219,6 @@ static void Namcos11RemoveTopBorder()
 	if (DrvKeycusType != 406) return;
 
 	const INT32 border = 10;
-
-	for (INT32 y = 0; y < border; y++) {
-		for (INT32 x = 0; x < nScreenWidth; x++) {
-			if (pTransDraw[(y * nScreenWidth) + x] != 0) return;
-		}
-	}
 
 	for (INT32 y = 0; y < nScreenHeight; y++) {
 		INT32 sourceY = border + (y * (nScreenHeight - border)) / nScreenHeight;

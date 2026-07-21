@@ -54080,6 +54080,25 @@ struct BurnDriver BurnDrvmd_gunstark = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Bukduui Gwon - Sinsegimal Guseju Jeonseol (Korean Translation)
+// https://teammp.diskstation.me/139.php
+static struct BurnRomInfo md_hokutokRomDesc[] = {
+	{ "Bukduui Gwon - Sinsegimal Guseju Jeonseol (Korean Translation)(1989)(Sega).bin", 0x100000, 0x4b1449c7, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_hokutok)
+STD_ROM_FN(md_hokutok)
+
+struct BurnDriver BurnDrvmd_hokutok = {
+	"md_hokutok", "md_lastbtle", NULL, NULL, "2026",
+	"Bukduui Gwon: Sinsegimal Guseju Jeonseol (Hack, Korean Translation)\0", NULL, "Sega", "Genesis / Mega Drive",
+	L"Bukduui Gwon: Sinsegimal Guseju Jeonseol (Hack, Korean Translation)\0\uBD81\uB450\uC758 \uAD8C: \uC2E0 \uC138\uAE30\uB9D0 \uAD6C\uC138\uC8FC \uC804\uC124 (\uD575, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV | GBF_SCRFIGHT, 0,
+	MegadriveGetZipName, md_hokutokRomInfo, md_hokutokRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Landstalker: Hwangjeui Jaebo (Korean Translation)
 // Source : https://www.hangulogame.com/post/patch/md/205/
 static struct BurnRomInfo md_landstlkkRomDesc[] = {
@@ -54366,7 +54385,7 @@ struct BurnDriver BurnDrvmd_supshin2k = {
 
 // Suraui Mun (Korean Translation)
 static struct BurnRomInfo md_shuramonkRomDesc[] = {
-	{ "Suraui Mun (Korean Translation)(1992)(Sega).bin", 0x200000, 0x21d1a269, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Suraui Mun (Korean Translation)(1992)(Sega).bin", 0x104000, 0x480bbec3, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_shuramonk)
@@ -54440,6 +54459,7 @@ struct BurnDriver BurnDrvmd_immortalk = {
 };
 
 // Vampire Killer (Korean Translation)
+// https://teammp.diskstation.me/018.php
 static struct BurnRomInfo md_akumajokRomDesc[] = {
 	{ "Vampire Killer (Korean Translation)(1994)(Konami).bin", 0x200000, 0x67a5f4ba, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
@@ -54496,6 +54516,7 @@ struct BurnDriver BurnDrvmd_ys3k = {
 };
 
 // Zero Wing (Korean Translation)
+// https://teammp.diskstation.me/053.php
 static struct BurnRomInfo md_zerowingkRomDesc[] = {
 	{ "Zero Wing (Korean Translation)(1991)(Toaplan).bin", 0x100000, 0x87bcaf81, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };

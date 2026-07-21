@@ -2850,6 +2850,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="hokutok" cloneof="lastbtle" romof="lastbtle" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Bukduui Gwon: Sinsegimal Guseju Jeonseol (Hack, Korean Translation)</description>
+		<year>2026</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Bukduui Gwon - Sinsegimal Guseju Jeonseol (Korean Translation)(1989)(Sega).bin" size="1048576" crc="4b1449c7"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="bullvsla" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Bulls vs Lakers and the NBA Playoffs (Euro, USA)</description>
 		<year>1992</year>
@@ -21105,7 +21114,7 @@
 		<description>Suraui Mun (Hack, Korean Translation)</description>
 		<year>2022</year>
 		<manufacturer>Sega</manufacturer>
-		<rom name="Suraui Mun (Korean Translation)(1992)(Sega).bin" size="2097152" crc="21d1a269"/>
+		<rom name="Suraui Mun (Korean Translation)(1992)(Sega).bin" size="1064960" crc="480bbec3"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>

@@ -30,6 +30,12 @@
 #define PSX_DELAY_PC	32
 #define PSX_DELAY_NOTPC	33
 
+#define MULTIPLIER_OPERATION_IDLE	0
+#define MULTIPLIER_OPERATION_MULT	1
+#define MULTIPLIER_OPERATION_MULTU	2
+#define MULTIPLIER_OPERATION_DIV		3
+#define MULTIPLIER_OPERATION_DIVU	4
+
 #define BIU_LOCK	0x00000001
 #define BIU_INV		0x00000002
 #define BIU_TAG		0x00000004
@@ -61,6 +67,9 @@ struct psx_core_state {
 	UINT32 cp0[32];
 	UINT32 hi;
 	UINT32 lo;
+	UINT32 multiplier_operand1;
+	UINT32 multiplier_operand2;
+	INT32 multiplier_operation;
 	UINT32 delay_reg;
 	UINT32 delay_value;
 	UINT32 commit_reg;
@@ -103,6 +112,72 @@ static inline UINT32 op_imm(UINT32 op) { return op & 0xffff; }
 static inline UINT32 op_target(UINT32 op) { return op & 0x03ffffff; }
 
 static void take_exception(INT32 code);
+
+static void multiplier_update()
+{
+	switch (psx.multiplier_operation)
+	{
+		case MULTIPLIER_OPERATION_MULT: {
+			INT64 result = (INT64)(INT32)psx.multiplier_operand1 * (INT64)(INT32)psx.multiplier_operand2;
+			psx.lo = (UINT32)result;
+			psx.hi = (UINT32)(result >> 32);
+			break;
+		}
+
+		case MULTIPLIER_OPERATION_MULTU: {
+			UINT64 result = (UINT64)psx.multiplier_operand1 * (UINT64)psx.multiplier_operand2;
+			psx.lo = (UINT32)result;
+			psx.hi = (UINT32)(result >> 32);
+			break;
+		}
+
+		case MULTIPLIER_OPERATION_DIV:
+			if (psx.multiplier_operand1 == 0x80000000 && psx.multiplier_operand2 == 0xffffffff) {
+				psx.lo = 0x80000000;
+				psx.hi = 0;
+			} else if (psx.multiplier_operand2 == 0) {
+				psx.lo = ((INT32)psx.multiplier_operand1 < 0) ? 1 : 0xffffffff;
+				psx.hi = psx.multiplier_operand1;
+			} else {
+				psx.lo = (INT32)psx.multiplier_operand1 / (INT32)psx.multiplier_operand2;
+				psx.hi = (INT32)psx.multiplier_operand1 % (INT32)psx.multiplier_operand2;
+			}
+			break;
+
+		case MULTIPLIER_OPERATION_DIVU:
+			if (psx.multiplier_operand2 == 0) {
+				psx.lo = 0xffffffff;
+				psx.hi = psx.multiplier_operand1;
+			} else {
+				psx.lo = psx.multiplier_operand1 / psx.multiplier_operand2;
+				psx.hi = psx.multiplier_operand1 % psx.multiplier_operand2;
+			}
+			break;
+	}
+
+	psx.multiplier_operation = MULTIPLIER_OPERATION_IDLE;
+}
+
+static inline UINT32 get_hi()
+{
+	if (psx.multiplier_operation != MULTIPLIER_OPERATION_IDLE) multiplier_update();
+	return psx.hi;
+}
+
+static inline UINT32 get_lo()
+{
+	if (psx.multiplier_operation != MULTIPLIER_OPERATION_IDLE) multiplier_update();
+	return psx.lo;
+}
+
+static inline void start_multiplier(INT32 operation, UINT32 operand1, UINT32 operand2)
+{
+	psx.multiplier_operation = operation;
+	psx.multiplier_operand1 = operand1;
+	psx.multiplier_operand2 = operand2;
+	psx.lo = operand1;
+	if (operation == MULTIPLIER_OPERATION_DIV || operation == MULTIPLIER_OPERATION_DIVU) psx.hi = 0;
+}
 
 static inline UINT32 cache_read_word(UINT32 address)
 {
@@ -420,10 +495,38 @@ static void take_external_interrupt()
 {
 	UINT32 op = fetch_word(psx.pc);
 
-	// A GTE command already in the execution stage cannot be stopped by an
-	// interrupt. Complete it without advancing the PC, then enter the handler.
-	if (psx_external_interrupt_gte_completion &&
-		(op >> 26) == 0x12 && (op & 0x02000000) && (psx.cp0[PSX_STATUS] & SR_CU2)) {
+	// Multiply/divide register writes and a GTE command already in the
+	// execution stage cannot be stopped by an interrupt.
+	if ((op >> 26) == 0x00) {
+		switch (op & 0x3f)
+		{
+			case 0x11:
+				psx.multiplier_operation = MULTIPLIER_OPERATION_IDLE;
+				psx.hi = psx.r[op_rs(op)];
+				break;
+
+			case 0x13:
+				psx.multiplier_operation = MULTIPLIER_OPERATION_IDLE;
+				psx.lo = psx.r[op_rs(op)];
+				break;
+
+			case 0x18:
+				start_multiplier(MULTIPLIER_OPERATION_MULT, psx.r[op_rs(op)], psx.r[op_rt(op)]);
+				break;
+
+			case 0x19:
+				start_multiplier(MULTIPLIER_OPERATION_MULTU, psx.r[op_rs(op)], psx.r[op_rt(op)]);
+				break;
+
+			case 0x1a:
+				start_multiplier(MULTIPLIER_OPERATION_DIV, psx.r[op_rs(op)], psx.r[op_rt(op)]);
+				break;
+
+			case 0x1b:
+				start_multiplier(MULTIPLIER_OPERATION_DIVU, psx.r[op_rs(op)], psx.r[op_rt(op)]);
+				break;
+		}
+	} else if ((op >> 26) == 0x12 && (op & 0x02000000) && (psx.cp0[PSX_STATUS] & SR_CU2)) {
 		psx_gte.docop2(psx.pc, op & 0x01ffffff);
 	}
 
@@ -470,35 +573,14 @@ static void execute_special(UINT32 op)
 		}
 		case 0x0c: take_exception(8); break;
 		case 0x0d: take_exception(9); break;
-		case 0x10: set_reg(op_rd(op), psx.hi); break;
-		case 0x11: psx.hi = psx.r[op_rs(op)]; advance_pc(); break;
-		case 0x12: set_reg(op_rd(op), psx.lo); break;
-		case 0x13: psx.lo = psx.r[op_rs(op)]; advance_pc(); break;
-		case 0x18: { INT64 r = (INT64)(INT32)psx.r[op_rs(op)] * (INT64)(INT32)psx.r[op_rt(op)]; psx.lo = (UINT32)r; psx.hi = (UINT32)(r >> 32); advance_pc(); break; }
-		case 0x19: { UINT64 r = (UINT64)psx.r[op_rs(op)] * (UINT64)psx.r[op_rt(op)]; psx.lo = (UINT32)r; psx.hi = (UINT32)(r >> 32); advance_pc(); break; }
-		case 0x1a:
-			if (psx.r[op_rt(op)] == 0) {
-				psx.lo = (psx.r[op_rs(op)] & 0x80000000) ? 1 : 0xffffffff;
-				psx.hi = psx.r[op_rs(op)];
-			} else if (psx.r[op_rs(op)] == 0x80000000 && psx.r[op_rt(op)] == 0xffffffff) {
-				psx.lo = 0x80000000;
-				psx.hi = 0;
-			} else {
-				psx.lo = (INT32)psx.r[op_rs(op)] / (INT32)psx.r[op_rt(op)];
-				psx.hi = (INT32)psx.r[op_rs(op)] % (INT32)psx.r[op_rt(op)];
-			}
-			advance_pc();
-			break;
-		case 0x1b:
-			if (psx.r[op_rt(op)] == 0) {
-				psx.lo = 0xffffffff;
-				psx.hi = psx.r[op_rs(op)];
-			} else {
-				psx.lo = psx.r[op_rs(op)] / psx.r[op_rt(op)];
-				psx.hi = psx.r[op_rs(op)] % psx.r[op_rt(op)];
-			}
-			advance_pc();
-			break;
+		case 0x10: set_reg(op_rd(op), get_hi()); break;
+		case 0x11: psx.multiplier_operation = MULTIPLIER_OPERATION_IDLE; psx.hi = psx.r[op_rs(op)]; advance_pc(); break;
+		case 0x12: set_reg(op_rd(op), get_lo()); break;
+		case 0x13: psx.multiplier_operation = MULTIPLIER_OPERATION_IDLE; psx.lo = psx.r[op_rs(op)]; advance_pc(); break;
+		case 0x18: start_multiplier(MULTIPLIER_OPERATION_MULT, psx.r[op_rs(op)], psx.r[op_rt(op)]); advance_pc(); break;
+		case 0x19: start_multiplier(MULTIPLIER_OPERATION_MULTU, psx.r[op_rs(op)], psx.r[op_rt(op)]); advance_pc(); break;
+		case 0x1a: start_multiplier(MULTIPLIER_OPERATION_DIV, psx.r[op_rs(op)], psx.r[op_rt(op)]); advance_pc(); break;
+		case 0x1b: start_multiplier(MULTIPLIER_OPERATION_DIVU, psx.r[op_rs(op)], psx.r[op_rt(op)]); advance_pc(); break;
 		case 0x20: {
 			UINT32 rs = psx.r[op_rs(op)];
 			UINT32 rt = psx.r[op_rt(op)];
@@ -617,6 +699,12 @@ static void execute_cop2(UINT32 op, UINT32 pc)
 		case 0x02: set_delayed_reg(op_rt(op), psx_gte.getcp2cr(pc, op_rd(op))); break; // CFC2
 		case 0x04: psx_gte.setcp2dr(pc, op_rd(op), psx.r[op_rt(op)]); advance_pc(); break; // MTC2
 		case 0x06: psx_gte.setcp2cr(pc, op_rd(op), psx.r[op_rt(op)]); advance_pc(); break; // CTC2
+		case 0x08: // BC2
+		case 0x09: {
+			INT32 condition = (op >> 16) & 1;
+			conditional_branch(op, condition == 0);
+			break;
+		}
 		default:
 			if ((op >> 25) & 1) {
 				psx_gte.docop2(pc, op & 0x01ffffff);
@@ -854,6 +942,7 @@ static void execute_one()
 	UINT32 op = fetch_word(current_pc);
 	psx_current_pc = current_pc;
 	psx_current_op = op;
+
 	psx.exception_taken = 0;
 
 	psx.bus_error = 0;
@@ -941,8 +1030,7 @@ static void execute_one()
 				take_address_exception(PSX_EXC_ADES, address);
 				break;
 			}
-			UINT32 shift = (address & 2) << 3;
-			write_word_masked(address, (psx.r[op_rt(op)] & 0xffff) << shift, 0xffff << shift);
+			write_half(address, psx.r[op_rt(op)] & 0xffff);
 			advance_pc();
 			break;
 		}
@@ -1004,6 +1092,9 @@ void psx_core_reset()
 	psx.next_pc = psx.pc + 4;
 	psx.hi = 0;
 	psx.lo = 0;
+	psx.multiplier_operand1 = 0;
+	psx.multiplier_operand2 = 0;
+	psx.multiplier_operation = MULTIPLIER_OPERATION_IDLE;
 	psx.delay_reg = 0;
 	psx.delay_value = 0;
 	psx.commit_reg = 0;
@@ -1128,6 +1219,9 @@ void psx_core_scan(INT32 nAction)
 		SCAN_VAR(psx_gte.m_cp2cr);
 		SCAN_VAR(psx.hi);
 		SCAN_VAR(psx.lo);
+		SCAN_VAR(psx.multiplier_operand1);
+		SCAN_VAR(psx.multiplier_operand2);
+		SCAN_VAR(psx.multiplier_operation);
 		SCAN_VAR(psx.delay_reg);
 		SCAN_VAR(psx.delay_value);
 		SCAN_VAR(psx.commit_reg);

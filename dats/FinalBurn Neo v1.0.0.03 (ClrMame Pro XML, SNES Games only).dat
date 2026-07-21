@@ -5510,7 +5510,7 @@
 		<description>E.V.O. - Em Busca do Paraiso (Hack, Portuguese)</description>
 		<year>2011</year>
 		<manufacturer>PO.B.R.E.</manufacturer>
-		<rom name="E.V.O. - Em Busca do Paraiso PR-BR (2011)(PO.B.R.E.).sfc" size="2097152" crc="6291ff7c"/>
+		<rom name="E.V.O. - Em Busca do Paraiso PT-BR (2011)(PO.B.R.E.).sfc" size="2097152" crc="6291ff7c"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -6053,6 +6053,15 @@
 		<year>2023</year>
 		<manufacturer>blizzz</manufacturer>
 		<rom name="Fantastic Parodius T-Eng v1.1a (2023)(blizzz).sfc" size="2621440" crc="e5ad7e53"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tengaim0te" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Far East of Eden Zero (Hack, English v7.0)</description>
+		<year>2021</year>
+		<manufacturer>Tom</manufacturer>
+		<rom name="Far East of Eden Zero T-Eng v7.0 (2021)(Tom).sfc" size="7340032" crc="3a39548a"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -11688,6 +11697,14 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="momohappy" sourcefile="snes/d_snes.cpp">
+		<description>Momotarou Dentetsu Happy (Japan)</description>
+		<year>1996</year>
+		<manufacturer>Hudson Soft</manufacturer>
+		<rom name="Momotarou Dentetsu Happy (J)(1996)(Hudson).sfc" size="3145728" crc="0b8d1474"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="monopoly" sourcefile="snes/d_snes.cpp">
 		<description>Monopoly (USA, Rev. 1)</description>
 		<year>1992</year>
@@ -14642,6 +14659,32 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="romsaga2tsc" cloneof="romsaga2" romof="romsaga2" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Romancing Sa-Ga 2 (Hack, Simplified Chinese v1.1)</description>
+		<year>2026</year>
+		<manufacturer>Meltina</manufacturer>
+		<rom name="Romancing Sa-Ga 2 T-Chs v1.1 (2026)(Meltina).smc" size="2621440" crc="c61dc65e"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="romsaga2ttc" cloneof="romsaga2" romof="romsaga2" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Romancing Sa-Ga 2 (Hack, Traditional Chinese v1.1)</description>
+		<year>2026</year>
+		<manufacturer>Meltina</manufacturer>
+		<rom name="Romancing Sa-Ga 2 T-Cht v1.1 (2026)(Meltina).smc" size="2621440" crc="4211bff7"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="romsaga2" sourcefile="snes/d_snes.cpp">
+		<description>Romancing Sa-Ga 2 (Japan)</description>
+		<year>1993</year>
+		<manufacturer>Squaresoft</manufacturer>
+		<rom name="Romancing Sa-Ga 2 (J)(1993)(Squaresoft).sfc" size="2097152" crc="54a585bc"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="romasaga3tsc" cloneof="romasaga3j" romof="romasaga3j" sourcefile="snes/d_snes.cpp">
 		<comment>Hack</comment>
 		<description>Romancing Sa-Ga 3 (Hack, Simplified Chinese v1.01)</description>
@@ -14990,7 +15033,7 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="secrevertsc" cloneof="secrever" romof="secrever" sourcefile="snes/d_snes.cpp">
+	<game name="evermoretsc" cloneof="secrever" romof="secrever" sourcefile="snes/d_snes.cpp">
 		<comment>Hack</comment>
 		<description>Secret of Evermore (Hack, Simplified Chinese v1.01)</description>
 		<year>2025</year>
@@ -14999,7 +15042,7 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="secreverttc" cloneof="secrever" romof="secrever" sourcefile="snes/d_snes.cpp">
+	<game name="evermorettc" cloneof="secrever" romof="secrever" sourcefile="snes/d_snes.cpp">
 		<comment>Hack</comment>
 		<description>Secret of Evermore (Hack, Traditional Chinese v1.01)</description>
 		<year>2025</year>
@@ -16192,6 +16235,15 @@
 		<year>2017</year>
 		<manufacturer>Nintendo</manufacturer>
 		<rom name="Star Fox 2 (U, E)(2017)(Nintendo).sfc" size="1048576" crc="87653732"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="starfoxex" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Star Fox EX (Hack, v1.11.02b)</description>
+		<year>2025</year>
+		<manufacturer>kandowontu, Sunlitspace542</manufacturer>
+		<rom name="Star Fox EX v1.11.02b (2025)(kandowontu, Sunlitspace542).sfc" size="2097152" crc="667bea0d"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -17951,6 +18003,15 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="smw2de" cloneof="smw2" romof="smw2" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Super Mario World 2: Yoshi's Island - The Definitive Edition (Hack, v0.5)</description>
+		<year>2026</year>
+		<manufacturer>T-Bone</manufacturer>
+		<rom name="Super Mario World 2 - Yoshi's Island - The Definitive Edition v0.5 (2026)(T-Bone).sfc" size="2097152" crc="0c46bc60"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="supermarioworldj" cloneof="supermarioworld" romof="supermarioworld" sourcefile="snes/d_snes.cpp">
 		<description>Super Mario World ~ Super Mario Bros. 4 (Japan)</description>
 		<year>1990</year>
@@ -17999,6 +18060,24 @@
 		<year>1994</year>
 		<manufacturer>Nintendo</manufacturer>
 		<rom name="Super Metroid (E)(1994)(Nintendo).sfc" size="3145728" crc="ad2cbf9c"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="smetroidtsc" cloneof="supermetroid" romof="supermetroid" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Super Metroid (Hack, Simplified Chinese v1.00)</description>
+		<year>2025</year>
+		<manufacturer>aGuGu</manufacturer>
+		<rom name="Super Metroid T-Chs v1.0 (2025)(aGuGu).sfc" size="4194304" crc="84d1428a"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="smetroidttc" cloneof="supermetroid" romof="supermetroid" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Super Metroid (Hack, Traditional Chinese v1.00)</description>
+		<year>2025</year>
+		<manufacturer>aGuGu</manufacturer>
+		<rom name="Super Metroid T-Cht v1.0 (2025)(aGuGu).sfc" size="4194304" crc="283eced5"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -18249,6 +18328,14 @@
 		<year>1992</year>
 		<manufacturer>Nintendo</manufacturer>
 		<rom name="Super Play Action Football (U)(1992)(Nintendo).sfc" size="1048576" crc="0f359a60"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="spl4" sourcefile="snes/d_snes.cpp">
+		<description>Super Power League 4 (Japan)</description>
+		<year>1996</year>
+		<manufacturer>Hudson Soft</manufacturer>
+		<rom name="Super Power League 4 (J)(1996)(Hudson).sfc" size="2097152" crc="c07f099d"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -19429,6 +19516,49 @@
 		<year>1996</year>
 		<manufacturer>Enix</manufacturer>
 		<rom name="Tenchi Souzou (J)(1996)(Enix).sfc" size="4194304" crc="3cc7fdf4"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tengaim0tp" cloneof="tengaim0te" romof="tengaim0te" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Tengai Makyou Zero (Hack, Portuguese)</description>
+		<year>2026</year>
+		<manufacturer>Dindo</manufacturer>
+		<rom name="Far East of Eden Zero PT-BR (2026)(Dindo).sfc" size="7340032" crc="a6c370b7"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tengaim0tsc" cloneof="tengaim0te" romof="tengaim0te" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Tengai Makyou Zero (Hack, Simplified Chinese v1.0)</description>
+		<year>2026</year>
+		<manufacturer>hlken &amp; ACG &amp; Star Team</manufacturer>
+		<rom name="Tengai Makyou Zero T-Chs v1.0 (hlken &amp; ACG &amp; Star Team)(2026).sfc" size="5242880" crc="91003230"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tengaim0ttc" cloneof="tengaim0te" romof="tengaim0te" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Tengai Makyou Zero (Hack, Traditional Chinese v1.0)</description>
+		<year>2013</year>
+		<manufacturer>ACG &amp; Star Team</manufacturer>
+		<rom name="Tengai Makyou Zero T-Cht v1.0 (ACG &amp; Star Team)(2013).sfc" size="5242880" crc="57e5939b"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tengaim0" cloneof="tengaim0te" romof="tengaim0te" sourcefile="snes/d_snes.cpp">
+		<description>Tengai Makyou Zero (Japan)</description>
+		<year>1995</year>
+		<manufacturer>Hudson Soft</manufacturer>
+		<rom name="Tengai Makyou Zero (J)(1995)(Hudson).sfc" size="5242880" crc="1e327bd9"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tengaim0sj" cloneof="tengaim0te" romof="tengaim0te" sourcefile="snes/d_snes.cpp">
+		<description>Tengai Makyou Zero: Shonen Jump no Shou (Japan)</description>
+		<year>1995</year>
+		<manufacturer>Hudson Soft</manufacturer>
+		<rom name="Tengai Makyou Zero - Shonen Jump no Shou (J)(1995)(Hudson).sfc" size="5242880" crc="bf8fef7a"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -21703,5 +21833,11 @@
 		<year>x</year>
 		<manufacturer>ST011 microcode</manufacturer>
 		<rom name="st011.bin" size="69632" crc="34d2952c"/>
+	</game>
+	<game isbios="yes" name="st018" sourcefile="snes/d_snes.cpp">
+		<description>Seta ST018</description>
+		<year>x</year>
+		<manufacturer>ST018 microcode</manufacturer>
+		<rom name="st018.bin" size="163840" crc="5c403cc5"/>
 	</game>
 </datafile>

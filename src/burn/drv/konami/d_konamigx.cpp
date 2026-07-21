@@ -121,7 +121,7 @@ static UINT8 DrvJoy3[16];
 static UINT8 DrvReset;
 static UINT16 DrvInputs[3];
 static UINT8 DrvDips[2];
-static UINT8 DrvConfig[1];
+static UINT8 DrvConfig[2];
 
 static INT32 gx_dasp_enable = 1;
 static INT32 gx_dsp_force;
@@ -194,6 +194,9 @@ static INT16 gx_soundbuf0[4096 * 2];
 static INT16 gx_soundbuf1[4096 * 2];
 static INT32 gx_sound_buffer_pos;
 static INT32 gx_sound_cycles_total;
+static UINT32 gx_speedhack_pc[32];
+static INT32 gx_speedhack_pc_count;
+static INT32 gx_speedhack_wake;
 
 static inline INT16 gx_clip_int32(INT32 sample)
 {
@@ -444,6 +447,7 @@ static struct BurnInputInfo GxInputList[] = {
 	{"Dip A",         BIT_DIPSWITCH, DrvDips + 0,  "dip"        },
 	{"Dip B",         BIT_DIPSWITCH, DrvDips + 1,  "dip"        },
 	{"DASP",          BIT_DIPSWITCH, DrvConfig + 0,"dip"        },
+	{"Speed Hack",    BIT_DIPSWITCH, DrvConfig + 1,"dip"        },
 };
 
 STDINPUTINFO(Gx)
@@ -452,10 +456,15 @@ static struct BurnDIPInfo GxDIPList[] = {
 	{0x15, 0xff, 0xff, 0xfe, NULL                         },
 	{0x16, 0xff, 0xff, 0xff, NULL                         },
 	{0x17, 0xff, 0xff, 0x01, NULL                         },
+	{0x18, 0xff, 0xff, 0x00, NULL                         },
 
 	{0   , 0xfe, 0   ,    2, "DASP (TMS57002) Reverb"     },
 	{0x17, 0x01, 0x01, 0x01, "On"                         },
 	{0x17, 0x01, 0x01, 0x00, "Off"                        },
+
+	{0   , 0xfe, 0   ,    2, "CPU Speed Hack"              },
+	{0x18, 0x01, 0x01, 0x00, "Off"                        },
+	{0x18, 0x01, 0x01, 0x01, "On"                         },
 
 	{0   , 0xfe, 0   ,    2, "Sound Output"               },
 	{0x15, 0x01, 0x01, 0x00, "Stereo"                     },
@@ -656,6 +665,78 @@ static UINT32 gx_dma_read_long(UINT32 address)
 	}
 
 	return gx_main_read_long(address);
+}
+
+static UINT16 gx_speedhack_rom_word(UINT32 address)
+{
+	return BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvMainROM + address)));
+}
+
+static void gx_speedhack_add_pc(UINT32 pc)
+{
+	for (INT32 i = 0; i < gx_speedhack_pc_count; i++) {
+		if (gx_speedhack_pc[i] == pc) return;
+	}
+
+	if (gx_speedhack_pc_count < (INT32)(sizeof(gx_speedhack_pc) / sizeof(gx_speedhack_pc[0]))) {
+		gx_speedhack_pc[gx_speedhack_pc_count++] = pc;
+	}
+}
+
+static void gx_speedhack_find_range(UINT32 start, UINT32 end)
+{
+	for (UINT32 pc = start + 4; pc + 4 < end; pc += 2) {
+		UINT16 op = gx_speedhack_rom_word(pc);
+
+		// A self-branch can only be left by an interrupt.
+		if ((op == 0x6000 && gx_speedhack_rom_word(pc + 2) == 0xfffc) || op == 0x60fe) {
+			gx_speedhack_add_pc(pc);
+			continue;
+		}
+
+		// GX games commonly wait for the IRQ task scheduler with:
+		// tst.w displacement(An); beq.w <earlier tst.w (An)>.
+		if (op != 0x6700) continue;
+
+		UINT16 waitop = gx_speedhack_rom_word(pc - 4);
+		if ((waitop & 0xfff8) != 0x4a68) continue;
+
+		INT32 displacement = (INT16)gx_speedhack_rom_word(pc + 2);
+		UINT32 target = pc + 2 + displacement;
+		if (target < start || target >= pc) continue;
+		if (pc - target < 0x60 || pc - target > 0x180) continue;
+
+		UINT16 loopop = gx_speedhack_rom_word(target);
+		if (loopop == (0x4a50 | (waitop & 7))) {
+			gx_speedhack_add_pc(pc);
+		}
+	}
+}
+
+static void gx_speedhack_init()
+{
+	gx_speedhack_pc_count = 0;
+
+	// The common BIOS waits here for its VBlank task.
+	if (gx_speedhack_rom_word(0x0a16) == 0x67f6) {
+		gx_speedhack_add_pc(0x0a16);
+	}
+
+	gx_speedhack_find_range(0x200000, 0x300000);
+	if (gx_type4_enable) {
+		gx_speedhack_find_range(0x400000, 0x600000);
+	}
+}
+
+static INT32 gx_speedhack_active(INT32 pc)
+{
+	if ((DrvConfig[1] & 0x01) == 0) return 0;
+
+	for (INT32 i = 0; i < gx_speedhack_pc_count; i++) {
+		if (gx_speedhack_pc[i] == (UINT32)pc) return 1;
+	}
+
+	return 0;
 }
 
 static void gx_dma_write_long(UINT32 address, UINT32 data)
@@ -1123,6 +1204,7 @@ static void gx_esc_write(UINT32 data)
 		if (gx_irq_control & 0x10) {
 			gx_irq_status &= ~0x08;
 			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
+			gx_speedhack_wake = 1;
 		}
 		return;
 	}
@@ -1215,6 +1297,7 @@ static void gx_type4_prot_write(UINT32 address, UINT32 data)
 		if (gx_irq_control & 0x10) {
 			gx_irq_status &= ~0x08;
 			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
+			gx_speedhack_wake = 1;
 		}
 
 		gx_last_prot_op = -1;
@@ -2177,6 +2260,7 @@ static INT32 DrvDoReset()
 	gx_current_scanline = 0;
 	gx_bios_vblank_pending = 0;
 	gx_bios_in_wait_loop = 0;
+	gx_speedhack_wake = 0;
 	sound_control = 0;
 	sound_irq_state = 0;
 	sound_timer_irq_pending = 0;
@@ -2356,6 +2440,8 @@ static INT32 DrvInit()
 		gx_patch_mainrom_long(0x810f1 * 4, 0x00000000, 0x00000001);
 		gx_patch_mainrom_long(0x872ea * 4, 0x000e0000, 0x00000000);
 	}
+
+	gx_speedhack_init();
 
 	INT32 sound0 = gx_type4_enable ? 5 : 3;
 	INT32 sound1 = gx_type4_enable ? 6 : 4;
@@ -2994,7 +3080,13 @@ static INT32 DrvFrame()
 
 		SekOpen(0);
 		gx_bios_vblank_hle_check(SekGetPC(-1));
-		CPU_RUN(0, Sek);
+		INT32 main_segment = ((i + 1) * nCyclesTotal[0] / nInterleave) - nCyclesDone[0];
+		if (!gx_speedhack_wake && gx_speedhack_active(SekGetPC(-1))) {
+			nCyclesDone[0] += SekIdle(main_segment);
+		} else {
+			gx_speedhack_wake = 0;
+			nCyclesDone[0] += SekRun(main_segment);
+		}
 		gx_bios_vblank_hle_check(SekGetPC(-1));
 
 		if (((gx_type4_enable && scanline < 240) || (!gx_type4_enable && scanline == 48)) && (gx_syncen & 0x40)) {
@@ -3002,6 +3094,7 @@ static INT32 DrvFrame()
 			if (((gx_irq_control & 0x82) == 0x82) || (gx_syncen & 0x02)) {
 				gx_syncen &= ~0x02;
 				SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
+				gx_speedhack_wake = 1;
 			}
 		}
 		if (scanline == 240) {
@@ -3024,6 +3117,7 @@ static INT32 DrvFrame()
 					gx_syncen &= ~0x01;
 					SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 					gx_bios_vblank_pending = 1;
+					gx_speedhack_wake = 1;
 				}
 			}
 			gx_irq_status |= 0x04;
@@ -3034,6 +3128,7 @@ static INT32 DrvFrame()
 				gx_irq_status &= ~0x80;
 				gx_syncen &= ~0x04;
 				SekSetIRQLine(3, CPU_IRQSTATUS_AUTO);
+				gx_speedhack_wake = 1;
 			}
 		}
 		SekClose();
@@ -3095,6 +3190,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(gx_current_scanline);
 		SCAN_VAR(gx_bios_vblank_pending);
 		SCAN_VAR(gx_bios_in_wait_loop);
+		SCAN_VAR(gx_speedhack_wake);
 		SCAN_VAR(sound_control);
 		SCAN_VAR(sound_irq_state);
 		SCAN_VAR(sound_timer_irq_pending);

@@ -4,7 +4,6 @@
 
 #include "tiles_generic.h"
 #include "psx_intf.h"
-#include "m377_intf.h"
 #include "c352.h"
 #include "burn_gun.h"
 #include "h83002/h83002.h"
@@ -22,7 +21,6 @@ static UINT8 *AllMem;
 static UINT8 *MemEnd;
 static UINT8 *DrvMainROM;
 static UINT8 *DrvBankROM;
-static UINT8 *DrvC76BIOS;
 static UINT8 *DrvC76ROM;
 static UINT8 *DrvC352ROM;
 static UINT8 *DrvMainRAM;
@@ -74,6 +72,7 @@ static UINT32 DrvDmaDpcr;
 static UINT32 DrvDmaDicr;
 static UINT32 DrvDmaFinishCycle[7];
 static UINT8 DrvDmaPending;
+static UINT8 DrvDmaResume;
 static UINT32 DrvGpuPacket[16];
 static UINT32 DrvGpuPacketPos;
 static UINT32 DrvGpuPacketLen;
@@ -111,6 +110,13 @@ static INT32 DrvGpuDrawOffsetY;
 static INT32 DrvGpuDefaultType = 1;
 static INT32 DrvMainRomLinear;
 static INT32 DrvTekken3Inputs;
+static INT32 DrvLbgrande;
+static INT32 DrvToukon3;
+static INT32 DrvSoulclbr;
+static INT32 DrvEhrgeiz;
+static INT32 DrvFgtlayer;
+static INT32 DrvPtblank2;
+static INT32 DrvMrdrillr;
 static INT32 DrvTektagt;
 static INT32 DrvTektagtRomType;
 static UINT32 DrvBankRomSize = 0x2000000;
@@ -118,16 +124,10 @@ static UINT32 DrvTektagtDmaOffset;
 static UINT32 DrvTektagtProtValue[2];
 static INT32 DrvTektagtProtCount;
 static INT32 DrvTektagtDmaPending;
-static INT32 DrvBankRomPairs = 3;
-static INT32 DrvBankRomDuplicateHalves;
 static INT32 DrvBankRom64;
 static INT32 DrvBankRomCompact64;
 static UINT32 DrvBankRomPairStride;
 static INT32 DrvUseBootDecompressHook;
-static UINT32 DrvC352LoadOffset;
-static UINT32 DrvC352MirrorOffset;
-static UINT32 DrvC352MirrorSize;
-static INT32 DrvC352WordSwap;
 static INT32 DrvGpuVpos;
 static UINT16 DrvSioStatus[2];
 static UINT16 DrvSioMode[2];
@@ -144,7 +144,6 @@ static INT32 DrvLightgunGame;
 static INT32 DrvEEPROMBusy;
 static UINT8 DrvEEPROMBusyData;
 static UINT32 DrvEEPROMBusyUntil;
-
 #define NAMCOS11_MDEC_DCTSIZE2 64
 #define NAMCOS11_MDEC_COS_BITS 21
 
@@ -168,12 +167,7 @@ static UINT32 DrvMdecStatus1;
 static const INT32 NAMCOS11_PSX_CLOCK = 100000000;
 // The PSX CPU core executes one cycle for every four input clocks, as in MAME.
 static const INT32 NAMCOS11_PSX_CPU_CLOCK = NAMCOS11_PSX_CLOCK / 4;
-static const INT32 NAMCOS11_C76_OSC = 16934400;
-static const INT32 NAMCOS11_C76_CLOCK = NAMCOS11_C76_OSC / 2;
 static const INT32 NAMCOS11_C352_CLOCK = 25401600;
-
-static INT32 DrvC76ExtraCycles;
-static INT32 DrvC76IrqTimer;
 
 static const UINT8 Namcos11MdecZigzag[NAMCOS11_MDEC_DCTSIZE2] = {
 	 0,  1,  8, 16,  9,  2,  3, 10, 17, 24, 32, 25, 18, 11,  4,  5,
@@ -474,68 +468,6 @@ static void Namcos11GpuUpdateVisibleArea()
 #define PSX_SIO_CONTROL_DSR_IENA	0x1000
 #define PSX_SIO_CONTROL_DTR			0x2000
 
-static UINT8 Namcos11C76ReadAdc(UINT32 address)
-{
-	UINT8 data = 0xff;
-
-	if (address & 1) {
-		return 0x00;
-	}
-
-	if (DrvKeycusType == 432) {
-		switch (address)
-		{
-			case M37710_ADC0_L:
-			{
-				INT16 steering = (DrvAnalog[0] * 3) / 4;
-				return ProcessAnalog(steering, 1, INPUT_DEADZONE, 0x38, 0xc8);
-			}
-
-			case M37710_ADC1_L:
-			{
-				return DrvJoy1[4] ? 0x00 : ProcessAnalog(DrvAnalog[1], 1, INPUT_DEADZONE | INPUT_LINEAR | INPUT_MIGHTBEDIGITAL, 0x00, 0x7f);
-			}
-		}
-	}
-
-	if (DrvKeycusType == 409) {
-		switch (address)
-		{
-			case M37710_ADC2_L:
-				data ^= (DrvJoy1[7] & 1) ? 0xff : 0x00; // P1 button 4
-				break;
-		}
-
-		return data;
-	}
-
-	switch (address)
-	{
-		case M37710_ADC1_L:
-			data ^= (DrvJoy1[7] & 1) ? 0xff : 0x00; // P1 button 4
-			break;
-
-		case M37710_ADC2_L:
-			data ^= (DrvJoy1[6] & 1) ? 0xff : 0x00; // P1 button 3
-			break;
-	}
-
-	return data;
-}
-
-static UINT8 Namcos11C76ReadPortOrAdc(UINT32 address)
-{
-	if (address >= M37710_ADC0_L && address <= M37710_ADC7_H) {
-		return Namcos11C76ReadAdc(address);
-	}
-
-	return 0xff;
-}
-
-static void Namcos11C76WritePort(UINT32, UINT8)
-{
-}
-
 static UINT8 Namcos11MakePlayerInput(UINT8 *joy, UINT8 start)
 {
 	UINT8 data = 0xff;
@@ -550,215 +482,6 @@ static UINT8 Namcos11MakePlayerInput(UINT8 *joy, UINT8 start)
 	data ^= (start & 1) << 7;
 
 	return data;
-}
-
-static UINT8 Namcos11MakeQuizInput(UINT8 *joy, UINT8 start)
-{
-	UINT8 data = 0xff;
-
-	data ^= (joy[7] & 1) << 0; // button 4
-	data ^= (joy[6] & 1) << 1; // button 3
-	data ^= (joy[5] & 1) << 2; // button 2
-	data ^= (joy[4] & 1) << 3; // button 1
-	data ^= (start & 1) << 7;
-
-	return data;
-}
-
-static UINT16 Namcos11C76ReadInput(UINT32 address)
-{
-	UINT16 data = 0xffff;
-
-	switch (address & 6)
-	{
-		case 0:
-			data = 0xffff;
-			if (DrvKeycusType == 409) {
-				data ^= (DrvJoy2[7] & 1) << 4; // P2 button 4
-			} else {
-				data ^= (DrvJoy2[6] & 1) << 4; // P2 button 3
-				data ^= (DrvJoy2[7] & 1) << 5; // P2 button 4
-			}
-			break;
-
-		case 2: {
-			UINT8 sw = DrvDips[0];
-			sw ^= (DrvJoy3[5] & 1) << 7; // service
-			sw ^= (DrvJoy3[0] & 1) << 5; // coin 1
-			sw ^= (DrvJoy3[1] & 1) << 4; // coin 2
-			sw ^= (DrvTestSwitch & 1) << 6; // test switch
-			data = 0xff00 | sw;
-			break;
-		}
-
-		case 4:
-			data = 0xff00 | ((DrvKeycusType == 443 && !DrvLightgunGame) ? Namcos11MakeQuizInput(DrvJoy1, DrvJoy3[2]) : Namcos11MakePlayerInput(DrvJoy1, DrvJoy3[2]));
-			break;
-
-		case 6:
-			data = 0xff00 | ((DrvKeycusType == 443 && !DrvLightgunGame) ? Namcos11MakeQuizInput(DrvJoy2, DrvJoy3[3]) : Namcos11MakePlayerInput(DrvJoy2, DrvJoy3[3]));
-			break;
-	}
-
-	return data;
-}
-
-static UINT8 Namcos11C76ReadByte(UINT32 address)
-{
-	if (address >= 0x004000 && address <= 0x00bfff) {
-		UINT32 offset = address - 0x004000;
-		return DrvSharedRAM[offset];
-	}
-
-	if (address >= 0x001000 && address <= 0x001007) {
-		return Namcos11C76ReadInput(address) >> ((address & 1) << 3);
-	}
-
-	if ((address & 0xfff000) == 0x002000) {
-		return c352_read((address & 0x0fff) >> 1) >> ((address & 1) << 3);
-	}
-
-	if (address >= 0x510000 && address <= 0x51ffff) {
-		return 0x80;
-	}
-
-	return 0xff;
-}
-
-static UINT16 Namcos11C76ReadWord(UINT32 address)
-{
-	if (address >= 0x004000 && address <= 0x00bfff) {
-		UINT32 offset = address - 0x004000;
-		return DrvSharedRAM[offset] | (DrvSharedRAM[(offset + 1) & 0x7fff] << 8);
-	}
-
-	if (address >= 0x001000 && address <= 0x001007) {
-		return Namcos11C76ReadInput(address);
-	}
-
-	if ((address & 0xfff000) == 0x002000) {
-		return c352_read((address & 0x0fff) >> 1);
-	}
-
-	if (address >= 0x510000 && address <= 0x51ffff) {
-		return 0x8080;
-	}
-
-	return 0xffff;
-}
-
-static void Namcos11C76WriteByte(UINT32 address, UINT8 data)
-{
-	if (address >= 0x004000 && address <= 0x00bfff) {
-		address -= 0x004000;
-		DrvSharedRAM[address] = data;
-		return;
-	}
-
-	if ((address & 0xfff000) == 0x002000) {
-		UINT32 offset = (address & 0x0fff) >> 1;
-		UINT16 old = c352_read(offset);
-		if (address & 1) {
-			old = (old & 0x00ff) | (data << 8);
-		} else {
-			old = (old & 0xff00) | data;
-		}
-		c352_write(offset, old);
-		return;
-	}
-}
-
-static void Namcos11C76WriteWord(UINT32 address, UINT16 data)
-{
-	if (address >= 0x004000 && address <= 0x00bfff) {
-		address -= 0x004000;
-		DrvSharedRAM[address + 0] = data & 0xff;
-		DrvSharedRAM[(address + 1) & 0x7fff] = data >> 8;
-		return;
-	}
-
-	if ((address & 0xfff000) == 0x002000) {
-		c352_write((address & 0x0fff) >> 1, data);
-		return;
-	}
-}
-
-static void Namcos11C76Init()
-{
-	M377Init(0, M37702);
-	M377Open(0);
-	M377MapMemory(DrvC76BIOS,   0x00c000, 0x00ffff, MAP_ROM);
-	M377MapMemory(DrvC76ROM,    0x080000, 0x0fffff, MAP_ROM);
-	M377MapMemory(DrvC76ROM,    0x200000, 0x27ffff, MAP_ROM);
-	M377MapMemory(DrvC76ROM,    0x280000, 0x2fffff, MAP_ROM);
-	M377MapMemory(DrvSharedRAM,  0x004000, 0x00bfff, MAP_READ);
-	M377SetWritePortHandler(Namcos11C76WritePort);
-	M377SetReadPortHandler(Namcos11C76ReadPortOrAdc);
-	M377SetWriteByteHandler(Namcos11C76WriteByte);
-	M377SetWriteWordHandler(Namcos11C76WriteWord);
-	M377SetReadByteHandler(Namcos11C76ReadByte);
-	M377SetReadWordHandler(Namcos11C76ReadWord);
-	M377Close();
-
-	c352_init(NAMCOS11_C352_CLOCK, 288, DrvC352ROM, 0x1000000, 0);
-	c352_set_sync(M377TotalCycles, NAMCOS11_C76_CLOCK);
-}
-
-static void Namcos11C76Reset()
-{
-	DrvC76ExtraCycles = 0;
-	DrvC76IrqTimer = NAMCOS11_C76_CLOCK / 60;
-
-	M377Open(0);
-	M377Reset();
-	M377Close();
-
-	c352_reset();
-}
-
-static void Namcos11C76Exit()
-{
-	M377Exit();
-	c352_exit();
-}
-
-static void Namcos11C76NewFrame()
-{
-	M377NewFrame();
-}
-
-static void Namcos11C76Run(INT32 cycles)
-{
-	M377Open(0);
-
-	while (cycles > 0) {
-		INT32 segment = cycles;
-		if (segment > DrvC76IrqTimer) {
-			segment = DrvC76IrqTimer;
-		}
-
-		INT32 start = M377TotalCycles();
-		M377Run(segment);
-		INT32 ran = M377TotalCycles() - start;
-
-		if (ran <= 0) {
-			M377Idle(segment);
-		} else if (ran < segment) {
-			M377Idle(segment - ran);
-		}
-
-		cycles -= segment;
-		DrvC76IrqTimer -= segment;
-
-		if (DrvC76IrqTimer <= 0) {
-			DrvC76IrqTimer += NAMCOS11_C76_CLOCK / 60;
-			M377SetIRQLine(M37710_LINE_IRQ0, CPU_IRQSTATUS_HOLD);
-			M377SetIRQLine(M37710_LINE_IRQ2, CPU_IRQSTATUS_HOLD);
-		}
-
-	}
-
-	M377Close();
 }
 
 static UINT8 *Namcos11Scratchpad()
@@ -824,7 +547,6 @@ static INT32 MemIndex()
 
 	DrvMainROM		= Next; Next += 0x0400000;
 	DrvBankROM		= Next; Next += 0x4000000;
-	DrvC76BIOS		= Next; Next += 0x0004000;
 	DrvC76ROM		= Next; Next += 0x0080000;
 	DrvC352ROM		= Next; Next += 0x1000000;
 	DrvMainRAM		= Next; Next += 0x0400000;
@@ -875,6 +597,7 @@ static void Namcos11ResetIo()
 	DrvDmaDicr = 0;
 	memset(DrvDmaFinishCycle, 0, sizeof(DrvDmaFinishCycle));
 	DrvDmaPending = 0;
+	DrvDmaResume = 0;
 	Namcos11MdecReset();
 	DrvGpuPacketPos = 0;
 	DrvGpuPacketLen = 0;
@@ -929,7 +652,7 @@ static void Namcos11ResetIo()
 
 static void Namcos12ApplyBootState()
 {
-	if (DrvTektagt) {
+	if (DrvFgtlayer || DrvPtblank2 || DrvMrdrillr || DrvTektagt) {
 		memcpy(DrvMainRAM + 0x10000, DrvMainROM + 0x20280, 12);
 	}
 }
@@ -958,6 +681,22 @@ static UINT32 Namcos11PsxTotalCycles()
 	if ((UINT32)remaining > DrvPsxRunSegment) remaining = DrvPsxRunSegment;
 
 	return DrvPsxRunBaseCycles + (DrvPsxRunSegment - remaining);
+}
+
+static UINT32 Namcos11GpuFrameCycles()
+{
+	if (DrvGpuStatus & (1 << 20)) return NAMCOS11_PSX_CPU_CLOCK / 50;
+	if (DrvGpuStatus & (1 << 19)) return 417083;
+
+	return 417871;
+}
+
+static INT32 Namcos11GpuCurrentVpos()
+{
+	UINT32 frameCycles = Namcos11GpuFrameCycles();
+	UINT32 elapsed = Namcos11PsxTotalCycles() % frameCycles;
+
+	return (INT32)(((UINT64)elapsed * DrvGpuScreenHeight) / frameCycles);
 }
 
 static void Namcos11EEPROMUpdateBusy()
@@ -1356,7 +1095,11 @@ static UINT32 Namcos11ReadIo(UINT32 address)
 			}
 			return DrvGpuInfo;
 		case 0x1f801814:
-			return DrvGpuStatus | ((((DrvGpuStatus & (1 << 22)) && (DrvGpuStatus & (1 << 13))) || (!(DrvGpuStatus & (1 << 22)) && (DrvGpuVpos & 1))) ? (1u << 31) : 0);
+		{
+			DrvGpuVpos = Namcos11GpuCurrentVpos();
+			UINT32 data = DrvGpuStatus | ((((DrvGpuStatus & (1 << 22)) && (DrvGpuStatus & (1 << 13))) || (!(DrvGpuStatus & (1 << 22)) && (DrvGpuVpos & 1))) ? (1u << 31) : 0);
+			return data;
+		}
 		case 0x1f801820:
 			return 0;
 		case 0x1f801824:
@@ -1418,8 +1161,8 @@ static INT32 Namcos11GpuPacketLen(UINT8 command)
 	if (command >= 0x34 && command <= 0x37) return 9;
 	if (command >= 0x38 && command <= 0x3b) return 8;
 	if (command >= 0x3c && command <= 0x3f) return 12;
-	if (command >= 0x40 && command <= 0x47) return 3;
-	if (command >= 0x50 && command <= 0x57) return 4;
+	if (command >= 0x40 && command <= 0x43) return 3;
+	if (command >= 0x50 && command <= 0x53) return 4;
 	if (command >= 0x60 && command <= 0x63) return 3;
 	if (command >= 0x64 && command <= 0x67) return 4;
 	if (command >= 0x68 && command <= 0x6b) return 2;
@@ -1792,6 +1535,17 @@ static inline UINT16 Namcos11GpuFetchTexture(INT32 u, INT32 v, UINT32 clut, UINT
 
 static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
 {
+	if (DrvToukon3 && points == 4) {
+		INT32 tx0[3] = { px[0], px[1], px[2] };
+		INT32 ty0[3] = { py[0], py[1], py[2] };
+		INT32 tx1[3] = { px[2], px[1], px[3] };
+		INT32 ty1[3] = { py[2], py[1], py[3] };
+
+		Namcos11GpuDrawFlatPoly(tx0, ty0, 3, color, semi);
+		Namcos11GpuDrawFlatPoly(tx1, ty1, 3, color, semi);
+		return;
+	}
+
 	static const INT32 next3[3] = { 1, 2, 0 };
 	static const INT32 prev3[3] = { 2, 0, 1 };
 	static const INT32 next4[4] = { 1, 3, 0, 2 };
@@ -1865,14 +1619,16 @@ static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 poin
 			x2 = swap;
 		}
 		INT32 distance = x2 - x1;
-		if (distance > 0 && y >= clipy1 && y <= clipy2) {
-			if (x1 < clipx1) {
-				distance -= clipx1 - x1;
-				x1 = clipx1;
+		INT32 drawx = x1 + DrvGpuDrawOffsetX;
+		INT32 drawy = y + DrvGpuDrawOffsetY;
+		if (distance > 0 && drawy >= clipy1 && drawy <= clipy2) {
+			if (drawx < clipx1) {
+				distance -= clipx1 - drawx;
+				drawx = clipx1;
 			}
-			if (x1 + distance > clipx2 + 1) distance = clipx2 - x1 + 1;
-			for (INT32 x = x1; distance > 0; x++, distance--) {
-				Namcos11GpuPutSolidPixel(x, y, color, semi);
+			if (drawx + distance > clipx2 + 1) distance = clipx2 - drawx + 1;
+			for (INT32 x = drawx; distance > 0; x++, distance--) {
+				Namcos11GpuPutSolidPixel(x, drawy, color, semi);
 			}
 		}
 
@@ -1892,6 +1648,19 @@ static void Namcos11GpuDrawTriangleFlat(INT32 x0, INT32 y0, INT32 x1, INT32 y1, 
 
 static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
 {
+	if (DrvToukon3 && points == 4) {
+		INT32 tx0[3] = { px[0], px[1], px[2] };
+		INT32 ty0[3] = { py[0], py[1], py[2] };
+		UINT32 tc0[3] = { pc[0], pc[1], pc[2] };
+		INT32 tx1[3] = { px[2], px[1], px[3] };
+		INT32 ty1[3] = { py[2], py[1], py[3] };
+		UINT32 tc1[3] = { pc[2], pc[1], pc[3] };
+
+		Namcos11GpuDrawGouraudPolyMame(tx0, ty0, tc0, 3, semi);
+		Namcos11GpuDrawGouraudPolyMame(tx1, ty1, tc1, 3, semi);
+		return;
+	}
+
 	static const INT32 next3[3] = { 1, 2, 0 };
 	static const INT32 prev3[3] = { 2, 0, 1 };
 	static const INT32 next4[4] = { 1, 3, 0, 2 };
@@ -1983,24 +1752,27 @@ static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, con
 			b = cb2;
 		}
 		INT32 distance = x2 - x1;
-		if (distance > 0 && y >= clipy1 && y <= clipy2) {
+		INT32 drawx = x1 + DrvGpuDrawOffsetX;
+		INT32 drawy = y + DrvGpuDrawOffsetY;
+		if (distance > 0 && drawy >= clipy1 && drawy <= clipy2) {
 			INT32 side1 = x1 == (INT16)(cx1 >> 16);
 			INT32 dr = (INT32)(side1 ? (cr2 - cr1) : (cr1 - cr2)) / distance;
 			INT32 dg = (INT32)(side1 ? (cg2 - cg1) : (cg1 - cg2)) / distance;
 			INT32 db = (INT32)(side1 ? (cb2 - cb1) : (cb1 - cb2)) / distance;
-			if (x1 < clipx1) {
-				r += dr * (clipx1 - x1);
-				g += dg * (clipx1 - x1);
-				b += db * (clipx1 - x1);
-				distance -= clipx1 - x1;
-				x1 = clipx1;
+			if (drawx < clipx1) {
+				INT32 clipped = clipx1 - drawx;
+				r += dr * clipped;
+				g += dg * clipped;
+				b += db * clipped;
+				distance -= clipped;
+				drawx = clipx1;
 			}
-			if (x1 + distance > clipx2 + 1) distance = clipx2 - x1 + 1;
-			for (INT32 x = x1; distance > 0; x++, distance--, r += dr, g += dg, b += db) {
+			if (drawx + distance > clipx2 + 1) distance = clipx2 - drawx + 1;
+			for (INT32 x = drawx; distance > 0; x++, distance--, r += dr, g += dg, b += db) {
 				INT32 rr = (r >> 16) & 0xff;
 				INT32 gg = (g >> 16) & 0xff;
 				INT32 bb = (b >> 16) & 0xff;
-				Namcos11GpuPutSolidPixel(x, y, Namcos11GpuShadeComponent(rr) |
+				Namcos11GpuPutSolidPixel(x, drawy, Namcos11GpuShadeComponent(rr) |
 					(Namcos11GpuShadeComponent(gg) << 5) |
 					(Namcos11GpuShadeComponent(bb) << 10), semi);
 			}
@@ -2016,22 +1788,22 @@ static void Namcos11GpuDrawGouraudPoly(INT32 quad)
 {
 	UINT32 c0 = DrvGpuPacket[0] & 0x00ffffff;
 	INT32 semi = DrvGpuPacket[0] & 0x02000000;
-	INT32 x0 = Namcos11GpuPolyX(DrvGpuPacket[1]);
-	INT32 y0 = Namcos11GpuPolyY(DrvGpuPacket[1]);
+	INT32 x0 = Namcos11GpuS11Coord(DrvGpuPacket[1]);
+	INT32 y0 = Namcos11GpuS11Coord(DrvGpuPacket[1] >> 16);
 	UINT32 c1 = DrvGpuPacket[2] & 0x00ffffff;
-	INT32 x1 = Namcos11GpuPolyX(DrvGpuPacket[3]);
-	INT32 y1 = Namcos11GpuPolyY(DrvGpuPacket[3]);
+	INT32 x1 = Namcos11GpuS11Coord(DrvGpuPacket[3]);
+	INT32 y1 = Namcos11GpuS11Coord(DrvGpuPacket[3] >> 16);
 	UINT32 c2 = DrvGpuPacket[4] & 0x00ffffff;
-	INT32 x2 = Namcos11GpuPolyX(DrvGpuPacket[5]);
-	INT32 y2 = Namcos11GpuPolyY(DrvGpuPacket[5]);
+	INT32 x2 = Namcos11GpuS11Coord(DrvGpuPacket[5]);
+	INT32 y2 = Namcos11GpuS11Coord(DrvGpuPacket[5] >> 16);
 
 	INT32 px[4] = { x0, x1, x2, 0 };
 	INT32 py[4] = { y0, y1, y2, 0 };
 	UINT32 pc[4] = { c0, c1, c2, 0 };
 	if (quad) {
 		pc[3] = DrvGpuPacket[6] & 0x00ffffff;
-		px[3] = Namcos11GpuPolyX(DrvGpuPacket[7]);
-		py[3] = Namcos11GpuPolyY(DrvGpuPacket[7]);
+		px[3] = Namcos11GpuS11Coord(DrvGpuPacket[7]);
+		py[3] = Namcos11GpuS11Coord(DrvGpuPacket[7] >> 16);
 	}
 
 	Namcos11GpuDrawGouraudPolyMame(px, py, pc, quad ? 4 : 3, semi);
@@ -2040,14 +1812,14 @@ static void Namcos11GpuDrawGouraudPoly(INT32 quad)
 static void Namcos11GpuDrawFlatQuad()
 {
 	UINT16 color = Namcos11GpuColor(DrvGpuPacket[0]);
-	INT32 x0 = Namcos11GpuPolyX(DrvGpuPacket[1]);
-	INT32 y0 = Namcos11GpuPolyY(DrvGpuPacket[1]);
-	INT32 x1 = Namcos11GpuPolyX(DrvGpuPacket[2]);
-	INT32 y1 = Namcos11GpuPolyY(DrvGpuPacket[2]);
-	INT32 x2 = Namcos11GpuPolyX(DrvGpuPacket[3]);
-	INT32 y2 = Namcos11GpuPolyY(DrvGpuPacket[3]);
-	INT32 x3 = Namcos11GpuPolyX(DrvGpuPacket[4]);
-	INT32 y3 = Namcos11GpuPolyY(DrvGpuPacket[4]);
+	INT32 x0 = Namcos11GpuS11Coord(DrvGpuPacket[1]);
+	INT32 y0 = Namcos11GpuS11Coord(DrvGpuPacket[1] >> 16);
+	INT32 x1 = Namcos11GpuS11Coord(DrvGpuPacket[2]);
+	INT32 y1 = Namcos11GpuS11Coord(DrvGpuPacket[2] >> 16);
+	INT32 x2 = Namcos11GpuS11Coord(DrvGpuPacket[3]);
+	INT32 y2 = Namcos11GpuS11Coord(DrvGpuPacket[3] >> 16);
+	INT32 x3 = Namcos11GpuS11Coord(DrvGpuPacket[4]);
+	INT32 y3 = Namcos11GpuS11Coord(DrvGpuPacket[4] >> 16);
 
 	INT32 px[4] = { x0, x1, x2, x3 };
 	INT32 py[4] = { y0, y1, y2, y3 };
@@ -2058,6 +1830,23 @@ static void Namcos11GpuDrawFlatQuad()
 static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
 	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
 {
+	if (DrvToukon3 && points == 4) {
+		INT32 tx0[3] = { px[0], px[1], px[2] };
+		INT32 ty0[3] = { py[0], py[1], py[2] };
+		INT32 tu0[3] = { pu[0], pu[1], pu[2] };
+		INT32 tv0[3] = { pv[0], pv[1], pv[2] };
+		UINT32 tc0[3] = { pc[0], pc[1], pc[2] };
+		INT32 tx1[3] = { px[2], px[1], px[3] };
+		INT32 ty1[3] = { py[2], py[1], py[3] };
+		INT32 tu1[3] = { pu[2], pu[1], pu[3] };
+		INT32 tv1[3] = { pv[2], pv[1], pv[3] };
+		UINT32 tc1[3] = { pc[2], pc[1], pc[3] };
+
+		Namcos11GpuDrawTexturedPolyMame(tx0, ty0, tu0, tv0, tc0, 3, clut, tpage, raw, semi, gouraud);
+		Namcos11GpuDrawTexturedPolyMame(tx1, ty1, tu1, tv1, tc1, 3, clut, tpage, raw, semi, gouraud);
+		return;
+	}
+
 	static const INT32 next3[3] = { 1, 2, 0 };
 	static const INT32 prev3[3] = { 2, 0, 1 };
 	static const INT32 next4[4] = { 1, 3, 0, 2 };
@@ -2317,7 +2106,6 @@ static void Namcos11GpuDrawTexturedRect(INT32 width, INT32 height)
 static void Namcos11GpuExecutePacket()
 {
 	UINT8 command = DrvGpuPacket[0] >> 24;
-
 	switch (command)
 	{
 		case 0x02:
@@ -2328,9 +2116,9 @@ static void Namcos11GpuExecutePacket()
 		case 0x21:
 		case 0x22:
 		case 0x23:
-			Namcos11GpuDrawTriangleFlat(Namcos11GpuPolyX(DrvGpuPacket[1]), Namcos11GpuPolyY(DrvGpuPacket[1]),
-				Namcos11GpuPolyX(DrvGpuPacket[2]), Namcos11GpuPolyY(DrvGpuPacket[2]),
-				Namcos11GpuPolyX(DrvGpuPacket[3]), Namcos11GpuPolyY(DrvGpuPacket[3]), Namcos11GpuColor(DrvGpuPacket[0]),
+			Namcos11GpuDrawTriangleFlat(Namcos11GpuS11Coord(DrvGpuPacket[1]), Namcos11GpuS11Coord(DrvGpuPacket[1] >> 16),
+				Namcos11GpuS11Coord(DrvGpuPacket[2]), Namcos11GpuS11Coord(DrvGpuPacket[2] >> 16),
+				Namcos11GpuS11Coord(DrvGpuPacket[3]), Namcos11GpuS11Coord(DrvGpuPacket[3] >> 16), Namcos11GpuColor(DrvGpuPacket[0]),
 				DrvGpuPacket[0] & 0x02000000);
 			break;
 
@@ -2373,11 +2161,14 @@ static void Namcos11GpuExecutePacket()
 		case 0x41:
 		case 0x42:
 		case 0x43:
-		case 0x44:
-		case 0x45:
-		case 0x46:
-		case 0x47:
 			Namcos11GpuDrawLine();
+			break;
+
+		case 0x50:
+		case 0x51:
+		case 0x52:
+		case 0x53:
+			Namcos11GpuDrawGouraudLine();
 			break;
 
 		case 0x34:
@@ -2571,7 +2362,8 @@ static void Namcos11GpuWrite(UINT32 data)
 
 	if (DrvGpuPacketPos == 0) {
 		UINT8 command = data >> 24;
-		if ((command >= 0x48 && command <= 0x4f) || (command >= 0x58 && command <= 0x5f)) {
+		if (command == 0x48 || command == 0x4a || command == 0x4c || command == 0x4e ||
+			command == 0x58 || command == 0x5a || command == 0x5c || command == 0x5e) {
 			DrvGpuPolyline = command;
 			DrvGpuPacket[0] = data;
 			DrvGpuPacketPos = 1;
@@ -2625,6 +2417,7 @@ static void Namcos11GpuControl(UINT32 data)
 			DrvGpuPacketPos = 0;
 			DrvGpuPacketLen = 0;
 			DrvGpuPolyline = 0;
+			DrvGpuImageCount = 0;
 			break;
 
 		case 0x02:
@@ -2720,6 +2513,14 @@ static void Namcos11DmaScheduleFinish(INT32 channel, UINT32 cycles)
 {
 	DrvDmaFinishCycle[channel] = Namcos11PsxTotalCycles() + cycles;
 	DrvDmaPending |= 1 << channel;
+	DrvDmaResume &= ~(1 << channel);
+}
+
+static void Namcos11DmaScheduleResume(INT32 channel, UINT32 cycles)
+{
+	DrvDmaFinishCycle[channel] = Namcos11PsxTotalCycles() + cycles;
+	DrvDmaPending |= 1 << channel;
+	DrvDmaResume |= 1 << channel;
 }
 
 static UINT32 Namcos11DmaTicksToCpuCycles(UINT32 ticks)
@@ -2728,13 +2529,20 @@ static UINT32 Namcos11DmaTicksToCpuCycles(UINT32 ticks)
 	return (UINT32)(((UINT64)ticks * NAMCOS11_PSX_CPU_CLOCK + 33868799) / 33868800);
 }
 
+static void Namcos11DmaStart(INT32 channel);
+
 static void Namcos11DmaAdvance()
 {
 	UINT32 now = Namcos11PsxTotalCycles();
 	for (INT32 channel = 0; channel < 7; channel++) {
 		if ((DrvDmaPending & (1 << channel)) && (INT32)(now - DrvDmaFinishCycle[channel]) >= 0) {
 			DrvDmaPending &= ~(1 << channel);
-			Namcos11DmaFinish(channel);
+			if (DrvDmaResume & (1 << channel)) {
+				DrvDmaResume &= ~(1 << channel);
+				Namcos11DmaStart(channel);
+			} else {
+				Namcos11DmaFinish(channel);
+			}
 		}
 	}
 }
@@ -2773,7 +2581,7 @@ static void Namcos11DmaStart(INT32 channel)
 
 				if (total > 65535) {
 					DrvDmaBase[channel] = address;
-					Namcos11DmaScheduleFinish(channel, Namcos11DmaTicksToCpuCycles(16000));
+					Namcos11DmaScheduleResume(channel, Namcos11DmaTicksToCpuCycles(16000));
 					return;
 				}
 
@@ -2825,7 +2633,7 @@ static void Namcos11DmaStart(INT32 channel)
 
 	if (channel == 5 && (control & 0x01000000)) {
 		UINT32 address = DrvDmaBase[channel] & 0x3fffff;
-		UINT32 size = DrvDmaBlock[channel];
+		UINT32 size = DrvDmaBlock[channel] & 0xffff;
 		UINT32 source = (DrvTektagt && DrvTektagtDmaPending) ? DrvTektagtDmaOffset : DrvDmaOffset;
 		UINT8 *region;
 		UINT32 regionSize;
@@ -2835,7 +2643,10 @@ static void Namcos11DmaStart(INT32 channel)
 		if (control & 0x00000200) {
 			UINT32 blocks = DrvDmaBlock[channel] >> 16;
 			if (blocks == 0) blocks = 0x10000;
-			size = (DrvDmaBlock[channel] & 0xffff) * blocks;
+			if (size == 0) size = 0x10000;
+			size *= blocks;
+		} else if (size == 0) {
+			size = 0x10000;
 		}
 
 		if ((source & 0x80000000) || DrvExpBase == 0x1f300000) {
@@ -3379,6 +3190,23 @@ static INT32 Namcos12TektagtProtectionWrite(UINT32 address, UINT16 data)
 	return 0;
 }
 
+static UINT16 Namcos12GunRead(UINT32 address)
+{
+	address &= ~0x00800000;
+	UINT32 offset = (address - 0x1f780000) >> 1;
+	UINT16 gun[4] = {
+		(UINT16)(0x00dc + (BurnGunReturnX(0) * (0x0387 - 0x00dc)) / 0xff),
+		(UINT16)(0x0028 + (BurnGunReturnY(0) * (0x011b - 0x0028)) / 0xff),
+		(UINT16)(0x00dc + (BurnGunReturnX(1) * (0x0387 - 0x00dc)) / 0xff),
+		(UINT16)(0x0028 + (BurnGunReturnY(1) * (0x011b - 0x0028)) / 0xff)
+	};
+	UINT16 data = gun[offset >> 1];
+
+	if ((data & 3) == 3) data++;
+
+	return data;
+}
+
 static UINT8 Namcos11ReadByte(UINT32 address)
 {
 	UINT32 raw = address;
@@ -3393,6 +3221,11 @@ static UINT8 Namcos11ReadByte(UINT32 address)
 	if (DrvTektagt && ((address >= 0x1fb00000 && address <= 0x1fb00fff) ||
 		(address >= 0x1fb80000 && address <= 0x1fb80fff))) {
 		return Namcos12TektagtBankReadByte(address);
+	}
+
+	UINT32 gunAddress = address & ~0x00800000;
+	if (DrvLightgunGame && gunAddress >= 0x1f780000 && gunAddress <= 0x1f78000f) {
+		return Namcos12GunRead(address & ~1) >> ((address & 1) << 3);
 	}
 
 	if (address >= 0x1f800000 && address <= 0x1f8003ff) {
@@ -3445,26 +3278,9 @@ static UINT16 Namcos11ReadHalf(UINT32 address)
 		return Namcos12TektagtProtectionRead(address);
 	}
 
-	if (DrvLightgunGame && address >= 0x1f780000 && address <= 0x1f78000f) {
-		UINT32 offset = (address - 0x1f780000) >> 1;
-		UINT16 gun[4] = {
-			(UINT16)(0x00d8 + (BurnGunReturnX(0) * (0x0387 - 0x00d8)) / 0xff),
-			(UINT16)(0x002c + (BurnGunReturnY(0) * (0x011b - 0x002c)) / 0xff),
-			(UINT16)(0x00d8 + (BurnGunReturnX(1) * (0x0387 - 0x00d8)) / 0xff),
-			(UINT16)(0x002c + (BurnGunReturnY(1) * (0x011b - 0x002c)) / 0xff)
-		};
-
-		switch (offset)
-		{
-			case 0: return gun[0];
-			case 2: return gun[1];
-			case 3: return gun[1] + 1;
-			case 4: return gun[2];
-			case 6: return gun[3];
-			case 7: return gun[3] + 1;
-		}
-
-		return 0;
+	UINT32 gunAddress = address & ~0x00800000;
+	if (DrvLightgunGame && gunAddress >= 0x1f780000 && gunAddress <= 0x1f78000f) {
+		return Namcos12GunRead(address);
 	}
 
 	if (address >= 0x1f080000 && address <= 0x1f083fff) {
@@ -3538,6 +3354,11 @@ static void Namcos11WriteByte(UINT32 address, UINT8 data)
 
 	if (DrvTektagt && address >= 0x1fb80000 && address <= 0x1fb80003) {
 		Namcos12TektagtProtectionWrite(address & ~1, data);
+		return;
+	}
+
+	UINT32 gunAddress = address & ~0x00800000;
+	if (DrvLightgunGame && gunAddress >= 0x1f788000 && gunAddress <= 0x1f788003) {
 		return;
 	}
 
@@ -3633,7 +3454,8 @@ static void Namcos11WriteHalf(UINT32 address, UINT16 data)
 		return;
 	}
 
-	if (DrvLightgunGame && address >= 0x1f788000 && address <= 0x1f788003) {
+	UINT32 gunAddress = address & ~0x00800000;
+	if (DrvLightgunGame && gunAddress >= 0x1f788000 && gunAddress <= 0x1f788003) {
 		return;
 	}
 
@@ -3802,6 +3624,66 @@ static struct BurnInputInfo Namcos11InputList[] = {
 
 STDINPUTINFO(Namcos11)
 
+static struct BurnInputInfo LbgrandeInputList[] = {
+	{"P1 Coin",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
+	{"P1 Start",		BIT_DIGITAL,	DrvJoy3 + 2,	"p1 start"	},
+	{"P1 Up",			BIT_DIGITAL,	DrvJoy1 + 0,	"p1 up"		},
+	{"P1 Down",			BIT_DIGITAL,	DrvJoy1 + 1,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	DrvJoy1 + 2,	"p1 left"	},
+	{"P1 Right",		BIT_DIGITAL,	DrvJoy1 + 3,	"p1 right"	},
+	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy1 + 4,	"p1 fire 1"	},
+	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy1 + 5,	"p1 fire 2"	},
+	{"P1 Button 3",		BIT_DIGITAL,	DrvJoy1 + 6,	"p1 fire 3"	},
+	{"P1 Button 4",		BIT_DIGITAL,	DrvJoy1 + 7,	"p1 fire 4"	},
+	{"P1 Button 5",		BIT_DIGITAL,	DrvJoy1 + 8,	"p1 fire 5"	},
+	{"P1 Button 6",		BIT_DIGITAL,	DrvJoy1 + 9,	"p1 fire 6"	},
+
+	{"P2 Coin",			BIT_DIGITAL,	DrvJoy3 + 1,	"p2 coin"	},
+	{"P2 Start",		BIT_DIGITAL,	DrvJoy3 + 3,	"p2 start"	},
+	{"P2 Up",			BIT_DIGITAL,	DrvJoy2 + 0,	"p2 up"		},
+	{"P2 Down",			BIT_DIGITAL,	DrvJoy2 + 1,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	DrvJoy2 + 2,	"p2 left"	},
+	{"P2 Right",		BIT_DIGITAL,	DrvJoy2 + 3,	"p2 right"	},
+	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy2 + 4,	"p2 fire 1"	},
+	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy2 + 5,	"p2 fire 2"	},
+	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy2 + 6,	"p2 fire 3"	},
+	{"P2 Button 4",		BIT_DIGITAL,	DrvJoy2 + 7,	"p2 fire 4"	},
+	{"P2 Button 5",		BIT_DIGITAL,	DrvJoy2 + 8,	"p2 fire 5"	},
+	{"P2 Button 6",		BIT_DIGITAL,	DrvJoy2 + 9,	"p2 fire 6"	},
+
+	{"Service Mode",	BIT_DIGITAL,	DrvJoy3 + 4,	"diag"		},
+	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
+	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
+	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+};
+
+STDINPUTINFO(Lbgrande)
+
+static struct BurnInputInfo MrdrillrInputList[] = {
+	{"P1 Coin",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
+	{"P1 Start",		BIT_DIGITAL,	DrvJoy3 + 2,	"p1 start"	},
+	{"P1 Up",			BIT_DIGITAL,	DrvJoy1 + 0,	"p1 up"		},
+	{"P1 Down",			BIT_DIGITAL,	DrvJoy1 + 1,	"p1 down"	},
+	{"P1 Left",			BIT_DIGITAL,	DrvJoy1 + 2,	"p1 left"	},
+	{"P1 Right",		BIT_DIGITAL,	DrvJoy1 + 3,	"p1 right"	},
+	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy1 + 4,	"p1 fire 1"	},
+
+	{"P2 Coin",			BIT_DIGITAL,	DrvJoy3 + 1,	"p2 coin"	},
+	{"P2 Start",		BIT_DIGITAL,	DrvJoy3 + 3,	"p2 start"	},
+	{"P2 Up",			BIT_DIGITAL,	DrvJoy2 + 0,	"p2 up"		},
+	{"P2 Down",			BIT_DIGITAL,	DrvJoy2 + 1,	"p2 down"	},
+	{"P2 Left",			BIT_DIGITAL,	DrvJoy2 + 2,	"p2 left"	},
+	{"P2 Right",		BIT_DIGITAL,	DrvJoy2 + 3,	"p2 right"	},
+	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy2 + 4,	"p2 fire 1"	},
+
+	{"Service Mode",	BIT_DIGITAL,	DrvJoy3 + 4,	"diag"		},
+	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
+	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
+	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+};
+
+STDINPUTINFO(Mrdrillr)
+
 static struct BurnInputInfo TektagtInputList[] = {
 	{"P1 Coin",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
 	{"P1 Start",		BIT_DIGITAL,	DrvJoy3 + 2,	"p1 start"	},
@@ -3888,6 +3770,42 @@ static struct BurnDIPInfo Namcos11DIPList[]=
 
 STDDIPINFO(Namcos11)
 
+static struct BurnDIPInfo LbgrandeDIPList[]=
+{
+	{0x1a, 0xff, 0xff, 0xff, NULL},
+	{0x1b, 0xff, 0xff, 0xff, NULL},
+
+	{0,    0xfe, 0,    2,    "DIP SW2:2"		},
+	{0x1b, 0x01, 0x40, 0x40, "Off"			},
+	{0x1b, 0x01, 0x40, 0x00, "On"			},
+};
+
+STDDIPINFO(Lbgrande)
+
+static struct BurnDIPInfo Toukon3DIPList[]=
+{
+	{0x1a, 0xff, 0xff, 0xff, NULL},
+	{0x1b, 0xff, 0xff, 0xff, NULL},
+
+	{0,    0xfe, 0,    2,    "DIP SW2:2"		},
+	{0x1b, 0x01, 0x40, 0x40, "Off"			},
+	{0x1b, 0x01, 0x40, 0x00, "On"			},
+
+	{0,    0xfe, 0,    2,    "Resolution Type"	},
+	{0x1b, 0x01, 0x80, 0x80, "240p"			},
+	{0x1b, 0x01, 0x80, 0x00, "480p"			},
+};
+
+STDDIPINFO(Toukon3)
+
+static struct BurnDIPInfo MrdrillrDIPList[]=
+{
+	{0x10, 0xff, 0xff, 0xff, NULL},
+	{0x11, 0xff, 0xff, 0xff, NULL},
+};
+
+STDDIPINFO(Mrdrillr)
+
 static struct BurnDIPInfo TektagtDIPList[]=
 {
 	{0x18, 0xff, 0xff, 0xff, NULL},
@@ -3940,7 +3858,6 @@ static INT32 DrvLoadRoms()
 {
 	memset(DrvMainROM, 0xff, 0x0400000);
 	memset(DrvBankROM, 0xff, 0x4000000);
-	memset(DrvC76BIOS, 0xff, 0x0004000);
 	memset(DrvC76ROM,  0xff, 0x0080000);
 	memset(DrvC352ROM, 0xff, 0x1000000);
 	memset(DrvEEPROM,  0xff, 0x0000800);
@@ -3948,10 +3865,65 @@ static INT32 DrvLoadRoms()
 	if (BurnLoadRom(DrvMainROM + 0x0000000, 0, 2)) return 1;
 	if (BurnLoadRom(DrvMainROM + 0x0000001, 1, 2)) return 1;
 
+	if (DrvPtblank2) {
+		*((UINT32 *)(DrvMainROM + 0x331c4)) = 0;
+	}
+
 	INT32 subRom;
 	INT32 soundRom;
 
-	if (DrvTektagtRomType == 1) {
+	if (DrvSoulclbr) {
+		if (BurnLoadRom(DrvBankROM + 0x0000000, 2, 1)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x0800000, 3, 1)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1000000, 4, 1)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1800000, 5, 1)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1c00000, 6, 1)) return 1;
+		subRom = 7;
+		soundRom = 8;
+	} else if (DrvToukon3) {
+		if (BurnLoadRom(DrvBankROM + 0x0000000, 2, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x0000001, 3, 2)) return 1;
+		subRom = 4;
+		soundRom = 5;
+	} else if (DrvLbgrande) {
+		if (BurnLoadRom(DrvBankROM + 0x0000000, 2, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x0000001, 3, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1800000, 4, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1800001, 5, 2)) return 1;
+		subRom = 6;
+		soundRom = 7;
+	} else if (DrvEhrgeiz) {
+		if (BurnLoadRom(DrvBankROM + 0x0000000, 2, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x0000001, 3, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1000000, 4, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1000001, 5, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1400000, 6, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1400001, 7, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1800000, 8, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1800001, 9, 2)) return 1;
+		subRom = 10;
+		soundRom = 11;
+	} else if (DrvFgtlayer) {
+		if (BurnLoadRom(DrvBankROM + 0x0000000, 2, 1)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x0800000, 3, 1)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1000000, 4, 1)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1800000, 5, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1800001, 6, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1c00000, 7, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x1c00001, 8, 2)) return 1;
+		subRom = 9;
+		soundRom = 10;
+	} else if (DrvPtblank2) {
+		if (BurnLoadRom(DrvBankROM + 0x0000000, 2, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x0000001, 3, 2)) return 1;
+		subRom = 4;
+		soundRom = 5;
+	} else if (DrvMrdrillr) {
+		if (BurnLoadRom(DrvBankROM + 0x0000000, 2, 2)) return 1;
+		if (BurnLoadRom(DrvBankROM + 0x0000001, 3, 2)) return 1;
+		subRom = 4;
+		soundRom = 5;
+	} else if (DrvTektagtRomType == 1) {
 		for (INT32 pair = 0; pair < 3; pair++) {
 			UINT32 offset = pair * 0x1000000;
 			if (BurnLoadRomExt(DrvBankROM + offset + 0, 2 + (pair * 2), 4, LD_GROUP(2))) return 1;
@@ -3992,7 +3964,24 @@ static INT32 DrvLoadRoms()
 		}
 	}
 
-	if (DrvTektagtRomType == 1) {
+	if (DrvSoulclbr) {
+		if (BurnLoadRom(DrvC352ROM + 0x0000000, soundRom, 1)) return 1;
+	} else if (DrvToukon3) {
+		if (BurnLoadRom(DrvC352ROM + 0x0000000, soundRom + 0, 1)) return 1;
+		if (BurnLoadRom(DrvC352ROM + 0x0400000, soundRom + 1, 1)) return 1;
+	} else if (DrvLbgrande) {
+		if (BurnLoadRom(DrvC352ROM + 0x0000000, soundRom, 1)) return 1;
+	} else if (DrvEhrgeiz) {
+		if (BurnLoadRom(DrvC352ROM + 0x0000000, soundRom, 1)) return 1;
+	} else if (DrvFgtlayer) {
+		if (BurnLoadRom(DrvC352ROM + 0x0000000, soundRom + 0, 1)) return 1;
+		if (BurnLoadRom(DrvC352ROM + 0x0800000, soundRom + 1, 1)) return 1;
+	} else if (DrvPtblank2) {
+		if (BurnLoadRom(DrvC352ROM + 0x0000000, soundRom, 1)) return 1;
+		memcpy(DrvC352ROM + 0x0800000, DrvC352ROM, 0x400000);
+	} else if (DrvMrdrillr) {
+		if (BurnLoadRom(DrvC352ROM + 0x0000000, soundRom, 1)) return 1;
+	} else if (DrvTektagtRomType == 1) {
 		if (BurnLoadRom(DrvC352ROM + 0x0000000, soundRom + 0, 1)) return 1;
 		if (BurnLoadRom(DrvC352ROM + 0x0800000, soundRom + 1, 1)) return 1;
 	} else if (DrvTektagtRomType == 2) {
@@ -4165,6 +4154,13 @@ static UINT8 __fastcall Namcos12H8Read(UINT32 address)
 					data ^= (DrvJoy2[8] & 1) << 6;
 					data ^= (DrvJoy1[7] & 1) << 1;
 					data ^= (DrvJoy1[8] & 1) << 2;
+				} else if (DrvFgtlayer || DrvLbgrande || DrvToukon3) {
+					data ^= (DrvJoy2[7] & 1) << 5;
+					data ^= (DrvJoy2[8] & 1) << 6;
+					data ^= (DrvJoy2[9] & 1) << 7;
+					data ^= (DrvJoy1[7] & 1) << 1;
+					data ^= (DrvJoy1[8] & 1) << 2;
+					data ^= (DrvJoy1[9] & 1) << 3;
 				} else {
 					data ^= (DrvJoy2[7] & 1) << 5;
 					data ^= (DrvJoy1[7] & 1) << 1;
@@ -4224,7 +4220,7 @@ static INT32 DrvInit()
 	DrvH8PortB = 0x50;
 	DrvBankRom64 = (DrvKeycusType == 443);
 	DrvBankRomPairStride = DrvBankRom64 ? (DrvBankRomCompact64 ? 0x0800000 : 0x1000000) : 0x0400000;
-	DrvBankRomSize = DrvTektagt ? 0x3800000 : 0x2000000;
+	DrvBankRomSize = DrvTektagt ? 0x3800000 : (DrvToukon3 ? 0x0800000 : ((DrvLbgrande || DrvEhrgeiz) ? 0x1c00000 : (DrvPtblank2 ? 0x1000000 : (DrvMrdrillr ? 0x0800000 : 0x2000000))));
 
 	BurnAllocMemIndex();
 	GenericTilesInit();
@@ -4259,15 +4255,146 @@ static INT32 DrvInit()
 		H83002Init(Namcos12H8Read, Namcos12H8Write);
 		H83002Reset();
 	}
+	if (DrvLightgunGame) {
+		BurnGunInit(2, true);
+	}
 
 	return 0;
 }
 
 static INT32 Tekken3Init()
 {
+	BurnSetRefreshRate(59.8260978565);
+
 	DrvGpuDefaultType = 2;
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 1;
+	DrvKeycusType = 0;
+	DrvUseBootDecompressHook = 0;
+	DrvLightgunGame = 0;
+
+	return DrvInit();
+}
+
+static INT32 LbgrandeInit()
+{
+	BurnSetRefreshRate(59.8260978565);
+
+	DrvGpuDefaultType = 2;
+	DrvMainRomLinear = 2;
+	DrvTekken3Inputs = 0;
+	DrvLbgrande = 1;
+	DrvKeycusType = 0;
+	DrvUseBootDecompressHook = 0;
+	DrvLightgunGame = 0;
+
+	return DrvInit();
+}
+
+static INT32 Toukon3SetResolution()
+{
+	INT32 height = (DrvDips[1] & 0x80) ? 240 : 480;
+
+	if (height == nScreenHeight) return 0;
+
+	BurnTransferSetDimensions(640, height);
+	GenericTilesSetClipRaw(0, 640, 0, height);
+	BurnDrvSetVisibleSize(640, height);
+	BurnDrvSetAspect(4, 3);
+	ReinitialiseVideo();
+	BurnTransferRealloc();
+
+	return 1;
+}
+
+static INT32 Toukon3Init()
+{
+	BurnSetRefreshRate(59.8260978565);
+
+	DrvGpuDefaultType = 2;
+	DrvMainRomLinear = 2;
+	DrvTekken3Inputs = 0;
+	DrvToukon3 = 1;
+	DrvKeycusType = 0;
+	DrvUseBootDecompressHook = 0;
+	DrvLightgunGame = 0;
+
+	INT32 result = DrvInit();
+	if (result == 0) {
+		Toukon3SetResolution();
+	}
+
+	return result;
+}
+
+static INT32 SoulclbrInit()
+{
+	BurnSetRefreshRate(59.8260978565);
+
+	DrvGpuDefaultType = 2;
+	DrvMainRomLinear = 2;
+	DrvTekken3Inputs = 1;
+	DrvSoulclbr = 1;
+	DrvKeycusType = 0;
+	DrvUseBootDecompressHook = 0;
+	DrvLightgunGame = 0;
+
+	return DrvInit();
+}
+
+static INT32 EhrgeizInit()
+{
+	BurnSetRefreshRate(59.8260978565);
+
+	DrvGpuDefaultType = 2;
+	DrvMainRomLinear = 2;
+	DrvTekken3Inputs = 0;
+	DrvEhrgeiz = 1;
+	DrvKeycusType = 0;
+	DrvUseBootDecompressHook = 0;
+	DrvLightgunGame = 0;
+
+	return DrvInit();
+}
+
+static INT32 FgtlayerInit()
+{
+	BurnSetRefreshRate(59.8260978565);
+
+	DrvGpuDefaultType = 2;
+	DrvMainRomLinear = 2;
+	DrvTekken3Inputs = 0;
+	DrvFgtlayer = 1;
+	DrvKeycusType = 0;
+	DrvUseBootDecompressHook = 0;
+	DrvLightgunGame = 0;
+
+	return DrvInit();
+}
+
+static INT32 Ptblank2Init()
+{
+	BurnSetRefreshRate(60.0);
+
+	DrvGpuDefaultType = 2;
+	DrvMainRomLinear = 2;
+	DrvTekken3Inputs = 0;
+	DrvPtblank2 = 1;
+	DrvKeycusType = 0;
+	DrvUseBootDecompressHook = 0;
+	DrvLightgunGame = 1;
+
+	return DrvInit();
+}
+
+static INT32 MrdrillrInit()
+{
+	BurnSetRefreshRate(59.8260978565);
+
+	DrvGpuDefaultType = 2;
+	DrvMainRomLinear = 2;
+	DrvTekken3Inputs = 0;
+	DrvMrdrillr = 1;
 	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
@@ -4300,9 +4427,17 @@ static INT32 TektagtC1aInit()
 
 static INT32 DrvExit()
 {
+	if (DrvLightgunGame) BurnGunExit();
 	DrvLightgunGame = 0;
 	DrvBankRomCompact64 = 0;
 	DrvTekken3Inputs = 0;
+	DrvLbgrande = 0;
+	DrvToukon3 = 0;
+	DrvSoulclbr = 0;
+	DrvEhrgeiz = 0;
+	DrvFgtlayer = 0;
+	DrvPtblank2 = 0;
+	DrvMrdrillr = 0;
 	DrvTektagt = 0;
 	DrvTektagtRomType = 0;
 	DrvBankRomSize = 0x2000000;
@@ -4320,6 +4455,10 @@ static INT32 DrvDraw();
 
 static INT32 DrvFrame()
 {
+	if (DrvToukon3 && Toukon3SetResolution()) {
+		return 0;
+	}
+
 	if (DrvLightgunGame) {
 		BurnGunMakeInputs(0, DrvAnalog[0], DrvAnalog[1]);
 		BurnGunMakeInputs(1, DrvAnalog[2], DrvAnalog[3]);
@@ -4351,20 +4490,16 @@ static INT32 DrvFrame()
 	DrvPsxFrameStartCycles = DrvPsxTotalCycles;
 	if (!DrvUseH83002) Namcos12H8RunFrame();
 
-	if (DrvGpuStatus & (1 << 22)) {
-		DrvGpuStatus ^= 1 << 13;
-	} else {
-		DrvGpuStatus |= 1 << 13;
-	}
-
 	const INT32 nInterleave = 960;
-	const INT32 nPsxCycles = (INT32)(((INT64)NAMCOS11_PSX_CPU_CLOCK * 100) / nBurnFPS);
-	const INT32 nH8Cycles = (INT32)(((INT64)16934400 * 100) / nBurnFPS);
+	const INT32 nPsxCycles = Namcos11GpuFrameCycles();
+	const INT32 nH8Cycles = (INT32)(((INT64)16934400 * nPsxCycles) / NAMCOS11_PSX_CPU_CLOCK);
+	const INT32 nVblankSlices = (INT32)(((INT64)nInterleave * 2500 * nBurnFPS + 99999999) / 100000000);
+	const INT32 nVblankSlice = nInterleave - nVblankSlices;
 	INT32 nPsxDone = 0;
 	INT32 nH8Done = 0;
 
 	for (INT32 i = 0; i < nInterleave; i++) {
-		DrvGpuVpos = i;
+		DrvGpuVpos = (i * DrvGpuScreenHeight) / nInterleave;
 
 		INT32 nPsxSegment = ((i + 1) * nPsxCycles / nInterleave) - nPsxDone;
 
@@ -4381,12 +4516,15 @@ static INT32 DrvFrame()
 			Namcos11RootAdvance();
 		}
 
-		if (i == (nInterleave - 20)) {
+		if (i == nVblankSlice) {
+			if (DrvGpuStatus & (1 << 22)) {
+				DrvGpuStatus ^= 1 << 13;
+			} else {
+				DrvGpuStatus |= 1 << 13;
+			}
+
 			if (DrvUseH83002) H83002SetIRQLine(1, 1);
 			DrvH8PortB |= 0x80;
-		}
-
-		if (i == (nInterleave - 1)) {
 			DrvIrqStatus |= 0x0001;
 			Namcos11UpdateIrq();
 		}
@@ -4433,80 +4571,56 @@ static void Namcos11RemoveTopBorder()
 
 	const INT32 border = 10;
 
-	for (INT32 y = 0; y < border; y++) {
-		for (INT32 x = 0; x < nScreenWidth; x++) {
-			if (pTransDraw[(y * nScreenWidth) + x] != 0) return;
-		}
-	}
-
 	for (INT32 y = 0; y < nScreenHeight; y++) {
 		INT32 sourceY = border + (y * (nScreenHeight - border)) / nScreenHeight;
 		memcpy(pTransDraw + (y * nScreenWidth), pTransDraw + (sourceY * nScreenWidth), nScreenWidth * sizeof(UINT16));
 	}
 }
 
-static INT32 Namcos12BlackRow(INT32 y)
+static void Namcos12FixedDisplayRange(INT32 sourceTop, INT32 sourceBottom)
 {
-	UINT32 sy = (DrvGpuDisplayY + y) & 0x3ff;
+	INT32 sourceHeight = nScreenHeight - sourceTop - sourceBottom;
+	if (sourceHeight <= 0 || sourceHeight >= nScreenHeight) return;
 
-	for (UINT32 x = 0; x < DrvGpuScreenWidth; x++) {
-		UINT32 sx = (DrvGpuDisplayX + x) & 0x3ff;
-		if ((DrvGpuVram[(sy << 10) | sx] & 0x7fff) != 0) return 0;
-	}
-
-	return 1;
-}
-
-static void Namcos12DisplayRange(INT32 &sourceTop, INT32 &sourceHeight)
-{
-	if ((!DrvTekken3Inputs && !DrvTektagt) || (DrvGpuStatus & (1 << 21))) return;
-
-	INT32 lineStep = (DrvGpuStatus & (1 << 22)) ? 2 : 1;
-	INT32 topLine = 0;
-	INT32 bottomLine = 240;
-
-	while (topLine < 32 && Namcos12BlackRow(topLine * lineStep)) topLine++;
-	while (bottomLine > 208 && Namcos12BlackRow((bottomLine - 1) * lineStep)) bottomLine--;
-
-	if (bottomLine > topLine && (topLine != 0 || bottomLine != 240)) {
-		sourceTop = topLine * lineStep;
-		sourceHeight = (bottomLine - topLine) * lineStep;
-	}
-}
-
-static INT32 Namcos12OutputBlackRow(INT32 y)
-{
-	for (INT32 x = 0; x < nScreenWidth; x++) {
-		if (pTransDraw[(y * nScreenWidth) + x] != 0) return 0;
-	}
-
-	return 1;
-}
-
-static void Namcos12RemoveMdecBorders()
-{
-	if (!DrvTektagt || !(DrvGpuStatus & (1 << 21))) return;
-
-	INT32 topLine = 0;
-	INT32 bottomLine = nScreenHeight;
-
-	while (topLine < 32 && Namcos12OutputBlackRow(topLine)) topLine++;
-	while (bottomLine > nScreenHeight - 32 && Namcos12OutputBlackRow(bottomLine - 1)) bottomLine--;
-
-	if (bottomLine <= topLine || (topLine == 0 && bottomLine == nScreenHeight)) return;
-
-	INT32 sourceHeight = bottomLine - topLine;
 	INT32 splitLine = 0;
 
 	for (; splitLine < nScreenHeight; splitLine++) {
-		INT32 sourceY = topLine + (splitLine * sourceHeight) / nScreenHeight;
+		INT32 sourceY = sourceTop + (splitLine * sourceHeight) / nScreenHeight;
 		if (sourceY < splitLine) break;
 		memcpy(pTransDraw + (splitLine * nScreenWidth), pTransDraw + (sourceY * nScreenWidth), nScreenWidth * sizeof(UINT16));
 	}
 
 	for (INT32 y = nScreenHeight - 1; y >= splitLine; y--) {
-		INT32 sourceY = topLine + (y * sourceHeight) / nScreenHeight;
+		INT32 sourceY = sourceTop + (y * sourceHeight) / nScreenHeight;
 		memcpy(pTransDraw + (y * nScreenWidth), pTransDraw + (sourceY * nScreenWidth), nScreenWidth * sizeof(UINT16));
+	}
+}
+
+static void Namcos12RemoveMdecBorders()
+{
+	if (DrvToukon3 && !(DrvGpuStatus & (1 << 21)) && DrvGpuScreenHeight == 240) {
+		INT32 border = (nScreenHeight == 480) ? 20 : 10;
+		Namcos12FixedDisplayRange(border, border);
+		return;
+	}
+
+	if (DrvPtblank2) {
+		Namcos12FixedDisplayRange(12, 4);
+		return;
+	}
+
+	if (DrvSoulclbr) {
+		Namcos12FixedDisplayRange(0, 20);
+		return;
+	}
+
+	if (DrvEhrgeiz) {
+		Namcos12FixedDisplayRange(6, 5);
+		return;
+	}
+
+	if (DrvTektagt || DrvTekken3Inputs) {
+		Namcos12FixedDisplayRange(10, 2);
 	}
 }
 
@@ -4524,10 +4638,16 @@ static INT32 DrvDraw()
 	}
 
 	if (DrvGpuStatus & (1 << 21)) {
+		INT32 sourceHeight = DrvGpuScreenHeight;
 		INT32 height = DrvGpuScreenHeight;
-		if (height > nScreenHeight) height = nScreenHeight;
+		INT32 scaleToOutput = DrvToukon3 && nScreenHeight == 480;
+		if (scaleToOutput) {
+			height = nScreenHeight;
+		} else if (height > nScreenHeight) {
+			height = nScreenHeight;
+		}
 		for (INT32 y = 0; y < height; y++) {
-			UINT32 sy = (DrvGpuDisplayY + y) & 0x3ff;
+			UINT32 sy = (DrvGpuDisplayY + (scaleToOutput ? ((y * sourceHeight) / height) : y)) & 0x3ff;
 			for (INT32 x = 0; x < nScreenWidth; x++) {
 				UINT32 sourcePixel = (x * DrvGpuScreenWidth) / nScreenWidth;
 				UINT32 sourceByte = sourcePixel * 3;
@@ -4549,16 +4669,17 @@ static INT32 DrvDraw()
 		}
 	} else {
 		INT32 height = DrvTekken3Inputs ? ((DrvGpuStatus & (1 << 22)) ? 480 : 240) : DrvGpuScreenHeight;
-		INT32 sourceTop = 0;
 		INT32 sourceHeight = height;
 
-		Namcos12DisplayRange(sourceTop, sourceHeight);
-
-		if (height > nScreenHeight) height = nScreenHeight;
+		if (DrvToukon3 && nScreenHeight == 480) {
+			height = nScreenHeight;
+		} else if (height > nScreenHeight) {
+			height = nScreenHeight;
+		}
 		for (INT32 y = 0; y < height; y++) {
 			for (INT32 x = 0; x < nScreenWidth; x++) {
 				UINT32 sx = (DrvGpuDisplayX + ((x * DrvGpuScreenWidth) / nScreenWidth)) & 0x3ff;
-				UINT32 sy = (DrvGpuDisplayY + sourceTop + ((y * sourceHeight) / height)) & 0x3ff;
+				UINT32 sy = (DrvGpuDisplayY + ((y * sourceHeight) / height)) & 0x3ff;
 				UINT16 pixel = DrvGpuVram[(sy << 10) | sx] & 0x7fff;
 				pTransDraw[(y * nScreenWidth) + x] = pixel;
 			}
@@ -4660,6 +4781,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(DrvDmaDicr);
 		SCAN_VAR(DrvDmaFinishCycle);
 		SCAN_VAR(DrvDmaPending);
+		SCAN_VAR(DrvDmaResume);
 		SCAN_VAR(DrvMdecDecoded);
 		SCAN_VAR(DrvMdecOffset);
 		SCAN_VAR(DrvMdecOutput);
@@ -4965,6 +5087,404 @@ struct BurnDriver BurnDrvTekken3je1 = {
 	512, 240, 4, 3
 };
 
+static struct BurnRomInfo lbgrandeRomDesc[] = {
+	{ "lg2vera.2l",  0x200000, 0x5ed6b152, 1 | BRF_PRG | BRF_ESS },
+	{ "lg2vera.2p",  0x200000, 0x97c57149, 1 | BRF_PRG | BRF_ESS },
+
+	{ "lg1rom0l.6",  0x400000, 0xc5df7f27, 2 | BRF_PRG | BRF_ESS },
+	{ "lg1rom0u.9",  0x400000, 0x74607817, 2 | BRF_PRG | BRF_ESS },
+	{ "lg1fl3l.12",  0x200000, 0xc9947d3e, 2 | BRF_PRG | BRF_ESS },
+	{ "lg1fl3u.13",  0x200000, 0xf3d69f45, 2 | BRF_PRG | BRF_ESS },
+
+	{ "lg1vera.11s", 0x080000, 0xde717a09, 3 | BRF_PRG | BRF_ESS },
+	{ "lg1wave0.5",  0x400000, 0x4647fada, 4 | BRF_SND },
+};
+
+STD_ROM_PICK(lbgrande)
+STD_ROM_FN(lbgrande)
+
+struct BurnDriver BurnDrvLbgrande = {
+	"lbgrande", NULL, NULL, NULL, "1997",
+	"Libero Grande (World, LG2/VER.A)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, lbgrandeRomInfo, lbgrandeRomName, NULL, NULL, NULL, NULL, LbgrandeInputInfo, LbgrandeDIPInfo,
+	LbgrandeInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+static struct BurnRomInfo toukon3RomDesc[] = {
+	{ "tr1vera.2e",  0x200000, 0x126ebb73, 1 | BRF_PRG | BRF_ESS },
+	{ "tr1vera.2j",  0x200000, 0x2edb3ad2, 1 | BRF_PRG | BRF_ESS },
+
+	{ "tr1rom0l.6",  0x400000, 0x42946d26, 2 | BRF_PRG | BRF_ESS },
+	{ "tr1rom0u.9",  0x400000, 0xe3cd0be0, 2 | BRF_PRG | BRF_ESS },
+
+	{ "tr1vera.11s", 0x080000, 0xf9ecbd19, 3 | BRF_PRG | BRF_ESS },
+	{ "tr1wave0.5",  0x400000, 0x07d10e55, 4 | BRF_SND },
+	{ "tr1wave1.4",  0x400000, 0x34539cdd, 4 | BRF_SND },
+};
+
+STD_ROM_PICK(toukon3)
+STD_ROM_FN(toukon3)
+
+struct BurnDriver BurnDrvToukon3 = {
+	"toukon3", NULL, NULL, NULL, "1997",
+	"Shin Nihon Pro Wrestling Toukon Retsuden 3 Arcade Edition (Japan, TR1/VER.A)\0", NULL, "Namco / Tomy", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, toukon3RomInfo, toukon3RomName, NULL, NULL, NULL, NULL, LbgrandeInputInfo, Toukon3DIPInfo,
+	Toukon3Init, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	640, 240, 4, 3
+};
+
+#define SOULCLBR_DATA_ROMS \
+	{ "soc1rom0.7", 0x800000, 0xcdc47b55, 2 | BRF_PRG | BRF_ESS }, \
+	{ "soc1rom1.8", 0x800000, 0x30d2dd5a, 2 | BRF_PRG | BRF_ESS }, \
+	{ "soc1rom2.9", 0x800000, 0xdbb93955, 2 | BRF_PRG | BRF_ESS }, \
+	{ "soc1fl3.6",  0x400000, 0x24d94c38, 2 | BRF_PRG | BRF_ESS }, \
+	{ "soc1fl4.5",  0x400000, 0x6212090e, 2 | BRF_PRG | BRF_ESS }
+
+#define SOULCLBR_SOUND_ROMS \
+	{ "soc1vera.11s", 0x080000, 0x52aa206a, 3 | BRF_PRG | BRF_ESS }, \
+	{ "soc1wave0.2",  0x800000, 0xc100618d, 4 | BRF_SND }
+
+static struct BurnRomInfo soulclbrRomDesc[] = {
+	{ "soc12vera.2l", 0x200000, 0xceadcc9a, 1 | BRF_PRG | BRF_ESS },
+	{ "soc12vera.2p", 0x200000, 0x65a74cf0, 1 | BRF_PRG | BRF_ESS },
+	SOULCLBR_DATA_ROMS,
+	SOULCLBR_SOUND_ROMS
+};
+
+STD_ROM_PICK(soulclbr)
+STD_ROM_FN(soulclbr)
+
+static struct BurnRomInfo soulclbrabRomDesc[] = {
+	{ "soc14verb.2l", 0x200000, 0x6af5c5f6, 1 | BRF_PRG | BRF_ESS },
+	{ "soc14verb.2p", 0x200000, 0x23e7a4c4, 1 | BRF_PRG | BRF_ESS },
+	SOULCLBR_DATA_ROMS,
+	SOULCLBR_SOUND_ROMS
+};
+
+STD_ROM_PICK(soulclbrab)
+STD_ROM_FN(soulclbrab)
+
+static struct BurnRomInfo soulclbracRomDesc[] = {
+	{ "soc14verc.2e", 0x200000, 0xc40e9614, 1 | BRF_PRG | BRF_ESS },
+	{ "soc14verc.2j", 0x200000, 0x80c41446, 1 | BRF_PRG | BRF_ESS },
+	SOULCLBR_DATA_ROMS,
+	SOULCLBR_SOUND_ROMS
+};
+
+STD_ROM_PICK(soulclbrac)
+STD_ROM_FN(soulclbrac)
+
+static struct BurnRomInfo soulclbrubRomDesc[] = {
+	{ "soc13verb.2e", 0x200000, 0xad7cfb1e, 1 | BRF_PRG | BRF_ESS },
+	{ "soc13verb.2j", 0x200000, 0x7449c045, 1 | BRF_PRG | BRF_ESS },
+	SOULCLBR_DATA_ROMS,
+	SOULCLBR_SOUND_ROMS
+};
+
+STD_ROM_PICK(soulclbrub)
+STD_ROM_FN(soulclbrub)
+
+static struct BurnRomInfo soulclbrucRomDesc[] = {
+	{ "soc13verc.2l", 0x200000, 0x4ba962fb, 1 | BRF_PRG | BRF_ESS },
+	{ "soc13verc.2p", 0x200000, 0x140c40de, 1 | BRF_PRG | BRF_ESS },
+	SOULCLBR_DATA_ROMS,
+	SOULCLBR_SOUND_ROMS
+};
+
+STD_ROM_PICK(soulclbruc)
+STD_ROM_FN(soulclbruc)
+
+static struct BurnRomInfo soulclbrja2RomDesc[] = {
+	{ "soc1vera.2l", 0x200000, 0x37e0a203, 1 | BRF_PRG | BRF_ESS },
+	{ "soc1vera.2p", 0x200000, 0x7cd87a35, 1 | BRF_PRG | BRF_ESS },
+	SOULCLBR_DATA_ROMS,
+	SOULCLBR_SOUND_ROMS
+};
+
+STD_ROM_PICK(soulclbrja2)
+STD_ROM_FN(soulclbrja2)
+
+static struct BurnRomInfo soulclbrjbRomDesc[] = {
+	{ "soc11verb.2e", 0x200000, 0x9660d996, 1 | BRF_PRG | BRF_ESS },
+	{ "soc11verb.2j", 0x200000, 0x49939880, 1 | BRF_PRG | BRF_ESS },
+	SOULCLBR_DATA_ROMS,
+	SOULCLBR_SOUND_ROMS
+};
+
+STD_ROM_PICK(soulclbrjb)
+STD_ROM_FN(soulclbrjb)
+
+static struct BurnRomInfo soulclbrjcRomDesc[] = {
+	{ "soc11verc.2l", 0x200000, 0xf5e3679c, 1 | BRF_PRG | BRF_ESS },
+	{ "soc11verc.2p", 0x200000, 0x7537719c, 1 | BRF_PRG | BRF_ESS },
+	SOULCLBR_DATA_ROMS,
+	SOULCLBR_SOUND_ROMS
+};
+
+STD_ROM_PICK(soulclbrjc)
+STD_ROM_FN(soulclbrjc)
+
+struct BurnDriver BurnDrvSoulclbr = {
+	"soulclbr", NULL, NULL, NULL, "1998",
+	"Soul Calibur (World, SOC12/VER.A2)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, soulclbrRomInfo, soulclbrRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	SoulclbrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvSoulclbrab = {
+	"soulclbrab", "soulclbr", NULL, NULL, "1998",
+	"Soul Calibur (Asia, SOC14/VER.B)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, soulclbrabRomInfo, soulclbrabRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	SoulclbrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvSoulclbrac = {
+	"soulclbrac", "soulclbr", NULL, NULL, "1998",
+	"Soul Calibur (Asia, SOC14/VER.C)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, soulclbracRomInfo, soulclbracRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	SoulclbrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvSoulclbrub = {
+	"soulclbrub", "soulclbr", NULL, NULL, "1998",
+	"Soul Calibur (US, SOC13/VER.B)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, soulclbrubRomInfo, soulclbrubRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	SoulclbrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvSoulclbruc = {
+	"soulclbruc", "soulclbr", NULL, NULL, "1998",
+	"Soul Calibur (US, SOC13/VER.C)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, soulclbrucRomInfo, soulclbrucRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	SoulclbrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvSoulclbrja2 = {
+	"soulclbrja2", "soulclbr", NULL, NULL, "1998",
+	"Soul Calibur (Japan, SOC11/VER.A2)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, soulclbrja2RomInfo, soulclbrja2RomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	SoulclbrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvSoulclbrjb = {
+	"soulclbrjb", "soulclbr", NULL, NULL, "1998",
+	"Soul Calibur (Japan, SOC11/VER.B)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, soulclbrjbRomInfo, soulclbrjbRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	SoulclbrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvSoulclbrjc = {
+	"soulclbrjc", "soulclbr", NULL, NULL, "1998",
+	"Soul Calibur (Japan, SOC11/VER.C)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, soulclbrjcRomInfo, soulclbrjcRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	SoulclbrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+#define EHRGEIZ_DATA_ROMS \
+	{ "eg1rom0l.12", 0x800000, 0xfe11a48e, 2 | BRF_PRG | BRF_ESS }, \
+	{ "eg1rom0u.11", 0x800000, 0x7cb90c25, 2 | BRF_PRG | BRF_ESS }, \
+	{ "eg1fl1l.9",   0x200000, 0xdd4cac2b, 2 | BRF_PRG | BRF_ESS }, \
+	{ "eg1fl1u.10",  0x200000, 0xe3348407, 2 | BRF_PRG | BRF_ESS }, \
+	{ "eg1fl2l.7",   0x200000, 0x34493262, 2 | BRF_PRG | BRF_ESS }, \
+	{ "eg1fl2u.8",   0x200000, 0x4fb84f1d, 2 | BRF_PRG | BRF_ESS }, \
+	{ "eg1fl3l.5",   0x200000, 0xf9441f87, 2 | BRF_PRG | BRF_ESS }, \
+	{ "eg1fl3u.6",   0x200000, 0xcea397de, 2 | BRF_PRG | BRF_ESS }
+
+#define EHRGEIZ_SOUND_ROMS \
+	{ "eg1vera.11s", 0x080000, 0x9e44645e, 3 | BRF_PRG | BRF_ESS }, \
+	{ "eg1wave0.2",  0x800000, 0x961fe69f, 4 | BRF_SND }
+
+static struct BurnRomInfo ehrgeizRomDesc[] = {
+	{ "eg2vera.2e", 0x200000, 0x9174ec90, 1 | BRF_PRG | BRF_ESS },
+	{ "eg2vera.2j", 0x200000, 0xa8388248, 1 | BRF_PRG | BRF_ESS },
+	EHRGEIZ_DATA_ROMS,
+	EHRGEIZ_SOUND_ROMS
+};
+
+STD_ROM_PICK(ehrgeiz)
+STD_ROM_FN(ehrgeiz)
+
+static struct BurnRomInfo ehrgeizuaRomDesc[] = {
+	{ "eg3vera.2l", 0x200000, 0x64c00ff0, 1 | BRF_PRG | BRF_ESS },
+	{ "eg3vera.2p", 0x200000, 0xe722c030, 1 | BRF_PRG | BRF_ESS },
+	EHRGEIZ_DATA_ROMS,
+	EHRGEIZ_SOUND_ROMS
+};
+
+STD_ROM_PICK(ehrgeizua)
+STD_ROM_FN(ehrgeizua)
+
+static struct BurnRomInfo ehrgeizjaRomDesc[] = {
+	{ "eg1vera.2l", 0x200000, 0x302d62cf, 1 | BRF_PRG | BRF_ESS },
+	{ "eg1vera.2p", 0x200000, 0x1d7fb3a1, 1 | BRF_PRG | BRF_ESS },
+	EHRGEIZ_DATA_ROMS,
+	EHRGEIZ_SOUND_ROMS
+};
+
+STD_ROM_PICK(ehrgeizja)
+STD_ROM_FN(ehrgeizja)
+
+struct BurnDriver BurnDrvEhrgeiz = {
+	"ehrgeiz", NULL, NULL, NULL, "1998",
+	"Ehrgeiz (World, EG2/VER.A)\0", NULL, "Square / Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, ehrgeizRomInfo, ehrgeizRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	EhrgeizInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvEhrgeizua = {
+	"ehrgeizua", "ehrgeiz", NULL, NULL, "1998",
+	"Ehrgeiz (US, EG3/VER.A)\0", NULL, "Square / Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, ehrgeizuaRomInfo, ehrgeizuaRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	EhrgeizInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvEhrgeizja = {
+	"ehrgeizja", "ehrgeiz", NULL, NULL, "1998",
+	"Ehrgeiz (Japan, EG1/VER.A)\0", NULL, "Square / Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, ehrgeizjaRomInfo, ehrgeizjaRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	EhrgeizInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+#define FGTLAYER_DATA_ROMS \
+	{ "ftl1rom0.9",  0x800000, 0xe33ce365, 2 | BRF_PRG | BRF_ESS }, \
+	{ "ftl1rom1.10", 0x800000, 0xa1ec7d08, 2 | BRF_PRG | BRF_ESS }, \
+	{ "ftl1rom2.11", 0x800000, 0x204be858, 2 | BRF_PRG | BRF_ESS }, \
+	{ "ftl1fl3l.7",  0x200000, 0xe4fb01e1, 2 | BRF_PRG | BRF_ESS }, \
+	{ "ftl1fl3h.8",  0x200000, 0x67a5c56f, 2 | BRF_PRG | BRF_ESS }, \
+	{ "ftl1fl4l.5",  0x200000, 0x8039242c, 2 | BRF_PRG | BRF_ESS }, \
+	{ "ftl1fl4h.6",  0x200000, 0x5ad59726, 2 | BRF_PRG | BRF_ESS }
+
+#define FGTLAYER_SOUND_ROMS \
+	{ "ftl1vera.11s", 0x080000, 0xe3f957cd, 3 | BRF_PRG | BRF_ESS }, \
+	{ "ftl1wave0.2",  0x800000, 0xee009a2b, 4 | BRF_SND }, \
+	{ "ftl1wave1.1",  0x800000, 0xa54a89cd, 4 | BRF_SND }
+
+static struct BurnRomInfo fgtlayerRomDesc[] = {
+	{ "ftl3vera.2e", 0x200000, 0x17c23471, 1 | BRF_PRG | BRF_ESS },
+	{ "ftl3vera.2j", 0x200000, 0x1626465d, 1 | BRF_PRG | BRF_ESS },
+	FGTLAYER_DATA_ROMS,
+	FGTLAYER_SOUND_ROMS
+};
+
+STD_ROM_PICK(fgtlayer)
+STD_ROM_FN(fgtlayer)
+
+static struct BurnRomInfo fgtlayerjaRomDesc[] = {
+	{ "ftl0vera.2e", 0x200000, 0xf4156e79, 1 | BRF_PRG | BRF_ESS },
+	{ "ftl0vera.2j", 0x200000, 0xc65b57c0, 1 | BRF_PRG | BRF_ESS },
+	FGTLAYER_DATA_ROMS,
+	FGTLAYER_SOUND_ROMS
+};
+
+STD_ROM_PICK(fgtlayerja)
+STD_ROM_FN(fgtlayerja)
+
+struct BurnDriver BurnDrvFgtlayer = {
+	"fgtlayer", NULL, NULL, NULL, "1998",
+	"Fighting Layer (Asia, FTL3/VER.A)\0", NULL, "Arika / Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, fgtlayerRomInfo, fgtlayerRomName, NULL, NULL, NULL, NULL, LbgrandeInputInfo, LbgrandeDIPInfo,
+	FgtlayerInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvFgtlayerja = {
+	"fgtlayerja", "fgtlayer", NULL, NULL, "1998",
+	"Fighting Layer (Japan, FTL0/VER.A)\0", NULL, "Arika / Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
+	NULL, fgtlayerjaRomInfo, fgtlayerjaRomName, NULL, NULL, NULL, NULL, LbgrandeInputInfo, LbgrandeDIPInfo,
+	FgtlayerInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+#define PTBLANK2_DATA_ROMS \
+	{ "gnb1prg0l.ic12", 0x800000, 0x78746037, 2 | BRF_PRG | BRF_ESS }, \
+	{ "gnb1prg0u.ic11", 0x800000, 0x697d3279, 2 | BRF_PRG | BRF_ESS }
+
+#define PTBLANK2_SOUND_ROMS \
+	{ "gnb_vera.11s",   0x080000, 0xd45a53eb, 3 | BRF_PRG | BRF_ESS }, \
+	{ "gnb1waveb.ic2",  0x400000, 0x4e19d9d6, 4 | BRF_SND }
+
+static struct BurnRomInfo ptblank2RomDesc[] = {
+	{ "gnb5vera.2l", 0x200000, 0x4d0ef3b7, 1 | BRF_PRG | BRF_ESS },
+	{ "gnb5vera.2p", 0x200000, 0x5d1d19ff, 1 | BRF_PRG | BRF_ESS },
+	PTBLANK2_DATA_ROMS,
+	PTBLANK2_SOUND_ROMS
+};
+
+STD_ROM_PICK(ptblank2)
+STD_ROM_FN(ptblank2)
+
+static struct BurnRomInfo gunbarlRomDesc[] = {
+	{ "gnb4vera.2l", 0x200000, 0x88c05cde, 1 | BRF_PRG | BRF_ESS },
+	{ "gnb4vera.2p", 0x200000, 0x7d57437a, 1 | BRF_PRG | BRF_ESS },
+	PTBLANK2_DATA_ROMS,
+	PTBLANK2_SOUND_ROMS
+};
+
+STD_ROM_PICK(gunbarl)
+STD_ROM_FN(gunbarl)
+
+struct BurnDriver BurnDrvPtblank2 = {
+	"ptblank2", NULL, NULL, NULL, "1999",
+	"Point Blank 2 (World, GNB5/VER.A)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_SHOOT, 0,
+	NULL, ptblank2RomInfo, ptblank2RomName, NULL, NULL, NULL, NULL, Ptblank2InputInfo, Ptblank2DIPInfo,
+	Ptblank2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	640, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvGunbarl = {
+	"gunbarl", "ptblank2", NULL, NULL, "1999",
+	"Gunbarl (Japan, GNB4/VER.A)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_SHOOT, 0,
+	NULL, gunbarlRomInfo, gunbarlRomName, NULL, NULL, NULL, NULL, Ptblank2InputInfo, Ptblank2DIPInfo,
+	Ptblank2Init, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	640, 240, 4, 3
+};
+
 #define TEKTAGT_DATA_ROMS \
 	{ "teg1_rom0e.ic9",  0x800000, 0xc962a373, 2 | BRF_PRG | BRF_ESS }, \
 	{ "teg1_rom0o.ic13", 0x800000, 0xbadb7dcf, 2 | BRF_PRG | BRF_ESS }, \
@@ -5076,7 +5596,7 @@ struct BurnDriver BurnDrvTektagt = {
 	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
 	NULL, tektagtRomInfo, tektagtRomName, NULL, NULL, NULL, NULL, TektagtInputInfo, TektagtDIPInfo,
 	TektagtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
-	640, 240, 4, 3
+	512, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvTektagtc1a = {
@@ -5086,7 +5606,7 @@ struct BurnDriver BurnDrvTektagtc1a = {
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
 	NULL, tektagtc1aRomInfo, tektagtc1aRomName, NULL, NULL, NULL, NULL, TektagtInputInfo, TektagtDIPInfo,
 	TektagtC1aInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
-	640, 240, 4, 3
+	512, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvTektagtub = {
@@ -5096,7 +5616,7 @@ struct BurnDriver BurnDrvTektagtub = {
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
 	NULL, tektagtubRomInfo, tektagtubRomName, NULL, NULL, NULL, NULL, TektagtInputInfo, TektagtDIPInfo,
 	TektagtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
-	640, 240, 4, 3
+	512, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvTektagtuc1 = {
@@ -5106,7 +5626,7 @@ struct BurnDriver BurnDrvTektagtuc1 = {
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
 	NULL, tektagtuc1RomInfo, tektagtuc1RomName, NULL, NULL, NULL, NULL, TektagtInputInfo, TektagtDIPInfo,
 	TektagtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
-	640, 240, 4, 3
+	512, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvTektagtja3 = {
@@ -5116,7 +5636,7 @@ struct BurnDriver BurnDrvTektagtja3 = {
 	BDF_GAME_NOT_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
 	NULL, tektagtja3RomInfo, tektagtja3RomName, NULL, NULL, NULL, NULL, TektagtInputInfo, TektagtDIPInfo,
 	TektagtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
-	640, 240, 4, 3
+	512, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvTektagtjb = {
@@ -5126,7 +5646,7 @@ struct BurnDriver BurnDrvTektagtjb = {
 	BDF_GAME_NOT_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
 	NULL, tektagtjbRomInfo, tektagtjbRomName, NULL, NULL, NULL, NULL, TektagtInputInfo, TektagtDIPInfo,
 	TektagtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
-	640, 240, 4, 3
+	512, 240, 4, 3
 };
 
 struct BurnDriver BurnDrvTektagtjc1 = {
@@ -5136,11 +5656,69 @@ struct BurnDriver BurnDrvTektagtjc1 = {
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_VSFIGHT, 0,
 	NULL, tektagtjc1RomInfo, tektagtjc1RomName, NULL, NULL, NULL, NULL, TektagtInputInfo, TektagtDIPInfo,
 	TektagtInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
-	640, 240, 4, 3
+	512, 240, 4, 3
 };
 
+#define MRDRILLR_DATA_ROMS \
+	{ "dri1rom0l.6", 0x400000, 0x021bb2fa, 2 | BRF_PRG | BRF_ESS }, \
+	{ "dri1rom0u.9", 0x400000, 0x5aae85ea, 2 | BRF_PRG | BRF_ESS }
+
+#define MRDRILLR_SOUND_ROMS \
+	{ "dri1vera.11s", 0x080000, 0x33ea9c0e, 3 | BRF_PRG | BRF_ESS }, \
+	{ "dri1wave0.5",  0x800000, 0x32928df1, 4 | BRF_SND }
+
+static struct BurnRomInfo mrdrillrRomDesc[] = {
+	{ "dri3vera2.2l", 0x200000, 0x36b9eeab, 1 | BRF_PRG | BRF_ESS },
+	{ "dri3vera2.2p", 0x200000, 0x811c00d5, 1 | BRF_PRG | BRF_ESS },
+	MRDRILLR_DATA_ROMS,
+	MRDRILLR_SOUND_ROMS
+};
+
+STD_ROM_PICK(mrdrillr)
+STD_ROM_FN(mrdrillr)
+
+static struct BurnRomInfo mrdrillrja2RomDesc[] = {
+	{ "dri1vera2.2l", 0x200000, 0x751ca21d, 1 | BRF_PRG | BRF_ESS },
+	{ "dri1vera2.2p", 0x200000, 0x2a2b0704, 1 | BRF_PRG | BRF_ESS },
+	MRDRILLR_DATA_ROMS,
+	MRDRILLR_SOUND_ROMS
+};
+
+STD_ROM_PICK(mrdrillrja2)
+STD_ROM_FN(mrdrillrja2)
+
+struct BurnDriver BurnDrvMrdrillr = {
+	"mrdrillr", NULL, NULL, NULL, "1999",
+	"Mr. Driller (US, DRI3/VER.A2)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, mrdrillrRomInfo, mrdrillrRomName, NULL, NULL, NULL, NULL, MrdrillrInputInfo, MrdrillrDIPInfo,
+	MrdrillrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+struct BurnDriver BurnDrvMrdrillrja2 = {
+	"mrdrillrja2", "mrdrillr", NULL, NULL, "1999",
+	"Mr. Driller (Japan, DRI1/VER.A2)\0", NULL, "Namco", "Namco System 12",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_MISC_POST90S, GBF_PUZZLE, 0,
+	NULL, mrdrillrja2RomInfo, mrdrillrja2RomName, NULL, NULL, NULL, NULL, MrdrillrInputInfo, MrdrillrDIPInfo,
+	MrdrillrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	512, 240, 4, 3
+};
+
+#undef MRDRILLR_SOUND_ROMS
+#undef MRDRILLR_DATA_ROMS
 #undef TEKTAGT_SOUND_ROMS
 #undef TEKTAGT_DATA_ROMS
+#undef PTBLANK2_SOUND_ROMS
+#undef PTBLANK2_DATA_ROMS
+#undef FGTLAYER_SOUND_ROMS
+#undef FGTLAYER_DATA_ROMS
+#undef EHRGEIZ_SOUND_ROMS
+#undef EHRGEIZ_DATA_ROMS
+#undef SOULCLBR_SOUND_ROMS
+#undef SOULCLBR_DATA_ROMS
 #undef TEKKEN3_SOUND_B_ROMS
 #undef TEKKEN3_SOUND_A_ROMS
 #undef TEKKEN3_SOUND_E_ROMS

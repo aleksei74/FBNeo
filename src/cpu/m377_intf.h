@@ -21,6 +21,7 @@ void M377SetWriteWordHandler(void (*write)(UINT32,UINT16));
 void M377SetReadByteHandler(UINT8  (*read)(UINT32));
 void M377SetReadWordHandler(UINT16 (*read)(UINT32));
 void M377MapMemory(UINT8 *ptr, UINT32 start, UINT32 end, UINT32 flags);
+void M377SetIdleLoop(UINT32 address, UINT32 pc, UINT16 mask, UINT16 value);
 
 #define M377_MEM_ENDISWAP 0x8000 // M377MapMemory() flag
 

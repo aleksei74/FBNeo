@@ -39,14 +39,14 @@ INCLUDE_7Z_SUPPORT = 1
 INCLUDE_AVI_RECORDING = 1
 
 # Include LUA support (on Windows Standalone, LUA is enabled regardless)
-#INCLUDE_LUA_SUPPORT = 1
+INCLUDE_LUA_SUPPORT = 1
 
 # Include symbols and other debug information in the executable
 #SYMBOL = 1
 
 # Include features for debugging drivers unless we are doing a release build
 ifndef RELEASEBUILD
-DEBUG	= 1
+#DEBUG = 1
 endif
 
 # Include rom set verifying features (comment this for release builds)
