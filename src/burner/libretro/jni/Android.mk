@@ -40,7 +40,7 @@ LOCAL_MODULE       := retro
 LOCAL_SRC_FILES    := $(SOURCES_C) $(SOURCES_S) $(SOURCES_CXX)
 LOCAL_C_INCLUDES   := $(INCLUDE_DIRS)
 LOCAL_CFLAGS       := $(CFLAGS) $(COMMON_FLAGS)
-LOCAL_CPPFLAGS     := $(CXXFLAGS) $(COMMON_FLAGS)
+LOCAL_CPPFLAGS     := $(CXXFLAGS) $(COMMON_FLAGS) -Wno-narrowing
 LOCAL_LDFLAGS      := -Wl,-version-script=$(MAIN_FBNEO_DIR)/burner/libretro/link.T,-z,max-page-size=16384
 LOCAL_LDLIBS       := $(LDFLAGS)
 LOCAL_CPP_FEATURES := exceptions rtti

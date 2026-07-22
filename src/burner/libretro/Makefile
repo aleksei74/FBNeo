@@ -46,6 +46,9 @@ ifeq ($(platform),)
 	else ifneq ($(findstring MINGW,$(shell uname -a)),)
 		platform = win
 		EXE_EXT=.exe
+	else ifneq ($(findstring MSYS,$(shell uname -a)),)
+		platform = win
+		EXE_EXT=.exe
 	endif
 else ifneq (,$(findstring armv,$(platform)))
 	ifeq (,$(findstring classic_,$(platform)))
@@ -73,7 +76,7 @@ ifneq (,$(findstring unix,$(platform)))
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 
 	# Raspberry Pi
 	ifneq (,$(findstring rpi1,$(platform)))
@@ -150,7 +153,7 @@ else ifeq ($(platform), ras3_x64)
 	HAVE_NEON = 0
 	USE_CYCLONE = 0
 	ARCH = arm64
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
 	CFLAGS += -mcpu=cortex-a53 -mabi=lp64 -Wno-psabi -mtune=cortex-a53 $(CPUFLAGS)
 	CXXFLAGS += -mcpu=cortex-a53 -mabi=lp64 -Wno-psabi -mtune=cortex-a53 $(CPUFLAGS)
@@ -168,7 +171,7 @@ else ifeq ($(platform), ras4_x64)
 	HAVE_NEON = 0
 	USE_CYCLONE = 0
 	ARCH = arm64
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
 	CFLAGS += -mcpu=cortex-a72 -mabi=lp64 -Wno-psabi -mtune=cortex-a72 $(CPUFLAGS)
 	CXXFLAGS += -mcpu=cortex-a72 -mabi=lp64 -Wno-psabi -mtune=cortex-a72 $(CPUFLAGS)
@@ -186,7 +189,7 @@ else ifeq ($(platform), ras5_x64)
 	HAVE_NEON = 0
 	USE_CYCLONE = 0
 	ARCH = arm64
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
 	CFLAGS += -mcpu=cortex-a76 -mabi=lp64 -Wno-psabi -mtune=cortex-a76 $(CPUFLAGS)
 	CXXFLAGS += -mcpu=cortex-a76 -mabi=lp64 -Wno-psabi -mtune=cortex-a76 $(CPUFLAGS)
@@ -198,7 +201,7 @@ else ifeq ($(platform), webos)
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -lpthread -ldl
+	LDFLAGS += -pthread -ldl
 	HAVE_NEON = 1
 
 # OS X
@@ -377,7 +380,7 @@ else ifeq ($(platform), libnx)
 		-fPIE -I$(LIBNX)/include/ -ffunction-sections -fdata-sections -ftls-model=local-exec -Wl,--allow-multiple-definition -specs=$(LIBNX)/switch.specs
 	CFLAGS += $(INCDIRS)
 	CFLAGS += $(INCLUDE) -D__SWITCH__ -DHAVE_LIBNX
-	CXXFLAGS := $(ASFLAGS) $(CFLAGS) -fno-rtti -std=gnu++11 -lpthread
+	CXXFLAGS := $(ASFLAGS) $(CFLAGS) -fno-rtti -std=gnu++11 -pthread
 	CFLAGS += -std=gnu11
 	STATIC_LINKING = 1
 	# 2021-05-18 : disabling 7z again for libnx, it seems the lib version linked to RA is old
@@ -408,7 +411,7 @@ else ifeq ($(platform), funkey)
 	CXXFLAGS += $(PLATFORM_FLAGS)
 
 # Classic Platforms ####################
-# Platform affix = classic_<ISA>_<µARCH>
+# Platform affix = classic_<ISA>_<uARCH>
 # Help at https://modmyclassic.com/comp
 
 # (armv7 a7, hard point, neon based) ### 
@@ -426,7 +429,7 @@ else ifeq ($(platform), classic_armv7_a7)
 	USE_CYCLONE = 1
 	ARCH = arm
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CFLAGS += $(PLATFORM_FLAGS)
 	CXXFLAGS += $(PLATFORM_FLAGS)
 
@@ -445,7 +448,7 @@ else ifeq ($(platform), classic_armv8_a35)
 	USE_CYCLONE = 1
 	ARCH = arm
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CFLAGS += $(PLATFORM_FLAGS)
 	CXXFLAGS += $(PLATFORM_FLAGS)
 
@@ -461,7 +464,7 @@ else ifeq ($(platform), classic_armv8_a35_x64)
 	USE_CYCLONE = 0
 	ARCH = arm64
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
 	CFLAGS += -mcpu=cortex-a35 -mabi=lp64 -Wno-psabi -mtune=cortex-a35 $(CPUFLAGS)
 	CXXFLAGS += -mcpu=cortex-a35 -mabi=lp64 -Wno-psabi -mtune=cortex-a35 $(CPUFLAGS)
@@ -480,7 +483,7 @@ else ifeq ($(platform), odroid-n2)
 	USE_CYCLONE = 0
 	ARCH = arm
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CPUFLAGS += -DHOST_CPU=0x20000006 -DTARGET_LINUX_ARMv8 -frename-registers
 	CFLAGS += -mcpu=cortex-a73 -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
 	CXXFLAGS += -mcpu=cortex-a73 -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
@@ -498,7 +501,7 @@ else ifeq ($(platform), odroid-n2_x64)
 	USE_CYCLONE = 0
 	ARCH = arm64
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CPUFLAGS += -DHOST_CPU=0x20000006 -DTARGET_LINUX_ARMv8 -frename-registers
 	CFLAGS += -mcpu=cortex-a73 -mabi=lp64 -Wno-psabi -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
 	CXXFLAGS += -mcpu=cortex-a73 -mabi=lp64 -Wno-psabi -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
@@ -639,7 +642,7 @@ else
 	CC ?= gcc
 	CXX ?= g++
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	LDFLAGS += -static-libgcc -static-libstdc++ -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 	SPLIT_UP_LINK = 1
 endif
@@ -863,6 +866,12 @@ $(MAIN_FBNEO_DIR)/cpu/mips3/x64/mips3_x64.o: $(MAIN_FBNEO_DIR)/cpu/mips3/x64/mip
 	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
 
 $(MAIN_FBNEO_DIR)/cpu/mips3_intf.o: $(MAIN_FBNEO_DIR)/cpu/mips3_intf.cpp
+	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
+
+$(MAIN_FBNEO_DIR)/burner/libretro/ips_manager.o: $(MAIN_FBNEO_DIR)/burner/libretro/ips_manager.cpp
+	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
+
+$(MAIN_FBNEO_DIR)/burner/libretro/romdata.o: $(MAIN_FBNEO_DIR)/burner/libretro/romdata.cpp
 	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
 
 %.o: %.cpp

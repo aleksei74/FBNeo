@@ -1474,6 +1474,7 @@ DRV		BurnDrvMSX_aktomatoes;
 DRV		BurnDrvnes_attackiltom;
 DRV		BurnDrvmd_atkpetscii;
 DRV		BurnDrvsnes_Atkpetscii;
+DRV		BurnDrvAplarail;
 DRV		BurnDrvMSX_Attacked;
 DRV		BurnSpecAttributica;
 DRV		BurnSpecatvsim;
@@ -21903,6 +21904,7 @@ DRV		BurnDrvSws93;
 DRV		BurnDrvSws95;
 DRV		BurnDrvSws96;
 DRV		BurnDrvSws97;
+DRV		BurnDrvSws98;
 DRV		BurnDrvSws;
 DRV		BurnDrvSxeviousj;
 DRV		BurnDrvnes_superxev;
@@ -27376,6 +27378,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_attackiltom,	// Attack of the Killer Tomatoes (USA)
 	&BurnDrvmd_atkpetscii,		// Attack of the Petscii Robots (HB)
 	&BurnDrvsnes_Atkpetscii,	// Attack of the PETSCII Robots (HB)
+	&BurnDrvAplarail,			// Attack Pla Rail (Japan, AP1/VER.A)
 	&BurnDrvMSX_Attacked,		// Attacked (Euro)
 	&BurnSpecAttributica,		// Attributica (128K) (HB, Tech-Demo)
 	&BurnSpecatvsim,			// ATV Simulator - All Terrain Vehicle (48K)
@@ -47805,6 +47808,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSws95,				// Super World Stadium '95 (Japan)
 	&BurnDrvSws96,				// Super World Stadium '96 (Japan)
 	&BurnDrvSws97,				// Super World Stadium '97 (Japan)
+	&BurnDrvSws98,				// Super World Stadium '98 (Japan, SS81/VER.A)
 	&BurnDrvSws,				// Super World Stadium (Japan)
 	&BurnDrvSxeviousj,			// Super Xevious (Japan)
 	&BurnDrvnes_superxev,		// Super Xevious - Gump no Nazo (Japan)
@@ -53268,6 +53272,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_attackiltom", "nes/d_nes.cpp"},
 	{ "md_atkpetscii", "megadrive/d_megadrive.cpp"},
 	{ "snes_atkpetscii", "snes/d_snes.cpp"},
+	{ "aplarail", "pst90s/d_namcos12.cpp"},
 	{ "msx_attacked", "msx/d_msx.cpp"},
 	{ "spec_attributica", "spectrum/d_spectrum.cpp"},
 	{ "spec_atvsim", "spectrum/d_spectrum.cpp"},
@@ -73533,6 +73538,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sws95", "pst90s/d_namconb1.cpp"},
 	{ "sws96", "pst90s/d_namconb1.cpp"},
 	{ "sws97", "pst90s/d_namconb1.cpp"},
+	{ "sws98", "pst90s/d_namcos12.cpp"},
 	{ "sws", "pst90s/d_namcos2.cpp"},
 	{ "sxeviousj", "pre90s/d_galaga.cpp"},
 	{ "nes_superxev", "nes/d_nes.cpp"},

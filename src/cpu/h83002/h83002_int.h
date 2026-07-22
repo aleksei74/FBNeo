@@ -25,4 +25,9 @@ struct h83xx_state
 	UINT8 internal_ram[0x200];
 	UINT32 timer16_cycles[5];
 	UINT8 timer16_isr[5];
+	UINT8 sci0_external;
+	UINT8 sci0_rx[256];
+	UINT8 sci0_rx_head;
+	UINT8 sci0_rx_tail;
+	UINT8 sci0_ssr_read;
 };

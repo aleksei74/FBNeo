@@ -272,7 +272,7 @@ ifeq (,$(findstring msvc,$(platform)))
 endif
 
 ifeq (,$(findstring msvc,$(platform)))
-	CXXFLAGS += -std=gnu++98
+	CXXFLAGS += -std=gnu++11
 endif
 
 #ifeq ($(USE_X64_DRC), 1)
