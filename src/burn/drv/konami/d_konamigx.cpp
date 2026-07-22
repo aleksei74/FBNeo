@@ -103,6 +103,7 @@ static const GxGameConfig GxGameConfigs[] = {
 	{ "puzldama",  7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_5BPP, 5, 16,  0xa00000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -70, -38, 5, 12 * 60, 5 },
 	{ "tbyahhoo",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "mtwinbee",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
+	{ "tbyahhook", 7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "tkmmpzdm",  7, GX_SPECIAL_TKMMPZDM, GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
 	{ "daiskiss",  7, GX_SPECIAL_DAISKISS, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x200000, 7, 8, -1, -1,  9, 10, -1, -1, -50, -38, 4, 0, 5 },
 	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 12 * 60, 5 },
