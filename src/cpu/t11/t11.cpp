@@ -69,7 +69,7 @@ static t11_state *cpustate = NULL;
  *
  *************************************/
 
-static inline int ROPCODE()
+INLINE int ROPCODE()
 {
 	cpustate->PC &= 0xfffe;
 	int val = t11FetchWord(cpustate->PC);
@@ -102,14 +102,14 @@ static inline void WWORD(int addr, int data)
  *
  *************************************/
 
-static inline void PUSH(int val)
+INLINE void PUSH(int val)
 {
 	cpustate->SP -= 2;
 	WWORD(cpustate->SPD, val);
 }
 
 
-static inline int POP()
+INLINE int POP()
 {
 	int result = RWORD(cpustate->SPD);
 	cpustate->SP += 2;

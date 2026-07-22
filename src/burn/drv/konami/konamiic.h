@@ -1,9 +1,10 @@
 // K051316 and K053936 are now standalone devices (src/burn/devices); their
 // declarations live in k051316.h / k053936.h. Included here so existing konami
 // drivers keep getting the API (and the SetRenderTarget hook) through konamiic.h.
+// Generated with Codex AI (by DsNo)
+
 #include "k051316.h"
 #include "k053936.h"
-
 
 // konamiic.cpp
 //---------------------------------------------------------------------------------------------------------------
@@ -195,12 +196,11 @@ void K056832SetBrightness(INT32 brightness);
 void K056832SetGlobalOffsets(INT32 minx, INT32 miny);
 void K056832SetLayerOffsets(INT32 layer, INT32 xoffs, INT32 yoffs);
 void K056832SetAlphaTileMode(INT32 enable);
-void K056832SetAlphaTileMixShift(INT32 shift);
+void K056832SetAlphaTileCallback(UINT32 (*Callback)(INT32 layer, INT32 code, INT32 color, INT32 pixel, INT32 x, INT32 y, INT32 *alpha, UINT32 rgb));
 INT32 K056832GetLastAlphaTileMixCode();
 void K056832SetExtLinescroll();
 void K056832SetLinemap();
 UINT16 K056832GetVram(INT32 address);
-void K056832SetVram(INT32 address, UINT16 data);
 INT32 K056832IsIrqEnabled();
 void K056832ReadAvac(INT32 *mode, INT32 *data);
 UINT16 K056832ReadRegister(int reg);
@@ -223,11 +223,13 @@ void K056832WritebRegsWord(INT32 offset, UINT16 data);
 void K056832WritebRegsByte(INT32 offset, UINT8 data);
 UINT16 K056832mwRomWordRead(INT32 address);
 UINT8 K056832GxRomByteRead(INT32 address);
-UINT8 K056832GxRom6BppByteRead(INT32 address);
+UINT8 K056832GxRomByteRead6bpp(INT32 address);
 void K056832Draw(INT32 layer, UINT32 flags, UINT32 priority);
 INT32 K056832GetLayerAssociation();
 INT32 K056832GetActiveLayer();
 void K056832Metamorphic_Fixup();
+
+// K051316 declarations moved to k051316.h (included at the top of this header).
 
 // K053245 / k053247 shared
 //---------------------------------------------------------------------------------------------------------------
@@ -327,6 +329,8 @@ void K051733Write(INT32 offset, INT32 data);
 UINT8 K051733Read(INT32 offset);
 UINT8 K051733nmi_ok();
 void K051733Scan(INT32 nAction);
+
+// K053936 declarations moved to k053936.h (included at the top of this header).
 
 // k053250.cpp
 //------------------------------------------------------------------------------------------

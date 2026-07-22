@@ -31,6 +31,19 @@
 static h83xx_state h8_state;
 static h83002_read8_handler h8_read;
 static h83002_write8_handler h8_write;
+static void h8_3002_InterruptRequest(h83xx_state *h8, UINT8 source, UINT8 state);
+
+static void h8_sci0_receive_next()
+{
+	if (!h8_state.sci0_external || (h8_state.per_regs[0xb4] & 0x40) ||
+		h8_state.sci0_rx_head == h8_state.sci0_rx_tail) return;
+
+	h8_state.per_regs[0xb5] = h8_state.sci0_rx[h8_state.sci0_rx_tail++];
+	h8_state.per_regs[0xb4] |= 0x40;
+	if (h8_state.per_regs[0xb2] & 0x40) {
+		h8_3002_InterruptRequest(&h8_state, 53, 1);
+	}
+}
 
 static const UINT8 h8_timer16_base[5] = { 0x64, 0x6e, 0x78, 0x82, 0x92 };
 
@@ -54,6 +67,14 @@ static UINT8 h8_mem_read8_handler(UINT32 address)
 	if (address >= 0xffff10) {
 		UINT8 offset = address & 0xff;
 		INT32 channel = h8_timer16_channel(offset);
+		if (h8_state.sci0_external && offset == 0xb4) {
+			UINT8 status = h8_state.per_regs[0xb4] | 0x84;
+			h8_state.sci0_ssr_read = status;
+			return status;
+		}
+		if (h8_state.sci0_external && offset == 0xb5) {
+			return h8_state.per_regs[0xb5];
+		}
 
 		if (channel >= 0) {
 			UINT8 reg = offset - h8_timer16_base[channel];
@@ -91,6 +112,21 @@ static void h8_mem_write8_handler(UINT32 address, UINT8 data)
 	if (address >= 0xffff10) {
 		UINT8 offset = address & 0xff;
 		INT32 channel = h8_timer16_channel(offset);
+		if (h8_state.sci0_external && offset == 0xb2 && (data & 0x80)) {
+			h8_3002_InterruptRequest(&h8_state, 54, 1);
+		}
+		if (h8_state.sci0_external && offset == 0xb2 && (data & 0x04)) {
+			h8_3002_InterruptRequest(&h8_state, 55, 1);
+		}
+		if (h8_state.sci0_external && offset == 0xb4) {
+			UINT8 status = h8_state.per_regs[0xb4] | 0x84;
+			status = (status & (~h8_state.sci0_ssr_read | data | 0x84));
+			h8_state.sci0_ssr_read &= status;
+			h8_state.per_regs[0xb4] = status;
+			h8_sci0_receive_next();
+			if (h8_write) h8_write(address, data);
+			return;
+		}
 
 		if (channel >= 0) {
 			UINT8 reg = offset - h8_timer16_base[channel];
@@ -146,7 +182,7 @@ static void h8_check_irqs(h83xx_state *h8);
 
 /* implementation */
 
-void h8_3002_InterruptRequest(h83xx_state *h8, UINT8 source, UINT8 state)
+static void h8_3002_InterruptRequest(h83xx_state *h8, UINT8 source, UINT8 state)
 {
 	// don't allow clear on external interrupts
 	if ((source <= 17) && (state == 0)) return;
@@ -309,7 +345,6 @@ static void h8_GenException(h83xx_state *h8, UINT8 vectornr)
 	if (h8->h8uiflag == 0)
 		h8_set_ccr(h8, h8_get_ccr(h8) | 0x40);
 	h8->pc = h8_mem_read32(h8, vectornr * 4) & 0xffffff;
-
 	// I couldn't find timing info for exceptions, so this is a guess (based on JSR/BSR)
 	H8_IFETCH_TIMING(2);
 	H8_STACK_TIMING(2);
@@ -429,6 +464,7 @@ void H83002Reset()
 {
 	memset(&h8_state, 0, sizeof(h8_state));
 	h8_state.per_regs[0x60] = 0xe0;
+	h8_state.per_regs[0xb4] = 0x84;
 	for (INT32 channel = 0; channel < 5; channel++) {
 		UINT8 base = h8_timer16_base[channel];
 		h8_state.per_regs[base + 2] = 0xf8;
@@ -469,18 +505,12 @@ static void h8_timer16_update(INT32 cycles)
 		if ((tcr & 0x60) == 0x40) clear_source = 1;
 		UINT32 counter_cycle = clear_source >= 0 ? tgr[clear_source] + 1 : 0x10000;
 
-		while (ticks--) {
-			UINT32 next = counter + 1;
-			bool overflow = next >= 0x10000;
-
-			if (counter_cycle != 0x10000 && next >= counter_cycle) {
-				next = 0;
-			} else {
-				next &= 0xffff;
-			}
-
-			for (INT32 compare = 0; compare < 2; compare++) {
-				if (next == ((tgr[compare] + 1) & 0xffff)) {
+		for (INT32 compare = 0; compare < 2; compare++) {
+			UINT32 target = (tgr[compare] + 1) & 0xffff;
+			if (target < counter_cycle) {
+				UINT32 distance = (target + counter_cycle - counter) % counter_cycle;
+				if (distance == 0) distance = counter_cycle;
+				if (distance <= ticks) {
 					UINT8 flag = 1 << compare;
 					h8_state.timer16_isr[channel] |= flag;
 					if (h8_state.per_regs[base + 2] & flag) {
@@ -488,16 +518,19 @@ static void h8_timer16_update(INT32 cycles)
 					}
 				}
 			}
+		}
 
-			if (overflow) {
+		if (counter_cycle == 0x10000) {
+			UINT32 distance = 0x10000 - counter;
+			if (distance <= ticks) {
 				h8_state.timer16_isr[channel] |= 4;
 				if (h8_state.per_regs[base + 2] & 4) {
 					h8_3002_InterruptRequest(&h8_state, 26 + channel * 4, 1);
 				}
 			}
-
-			counter = next;
 		}
+
+		counter = (counter + ticks) % counter_cycle;
 
 		h8_state.per_regs[base + 3] = 0xf8 | (h8_state.timer16_isr[channel] & 7);
 		h8_state.per_regs[base + 4] = counter >> 8;
@@ -518,6 +551,35 @@ void H83002SetIRQLine(INT32 line, INT32 state)
 	if (line >= 0 && line < 6) {
 		h8_3002_InterruptRequest(&h8_state, 12 + line, state != 0);
 	}
+}
+
+void H83002SetADC(INT32 channel, UINT16 value)
+{
+	if (channel < 0 || channel >= 4) return;
+
+	value &= 0x03ff;
+	h8_state.per_regs[0xe0 + (channel * 2)] = value >> 2;
+	h8_state.per_regs[0xe1 + (channel * 2)] = value << 6;
+}
+
+void H83002SCI0Enable(INT32 enabled)
+{
+	h8_state.sci0_external = enabled != 0;
+	h8_state.sci0_rx_head = 0;
+	h8_state.sci0_rx_tail = 0;
+	h8_state.sci0_ssr_read = 0;
+	h8_state.per_regs[0xb4] = 0x84;
+}
+
+void H83002SCI0Receive(UINT8 data)
+{
+	if (!h8_state.sci0_external) return;
+
+	UINT8 next = h8_state.sci0_rx_head + 1;
+	if (next == h8_state.sci0_rx_tail) return;
+	h8_state.sci0_rx[h8_state.sci0_rx_head] = data;
+	h8_state.sci0_rx_head = next;
+	h8_sci0_receive_next();
 }
 
 INT32 H83002Scan(INT32 nAction)

@@ -100,6 +100,29 @@ static void (*M377_write16)(UINT32,UINT16) = NULL;
 static UINT8  (*M377_ioread8)(UINT32) = NULL;
 static void (*M377_iowrite8)(UINT32,UINT8) = NULL;
 
+static UINT32 M377_idle_address = ~0U;
+static UINT32 M377_idle_pc = ~0U;
+static UINT16 M377_idle_mask = 0;
+static UINT16 M377_idle_value = 0;
+
+void M377SetIdleLoop(UINT32 address, UINT32 pc, UINT16 mask, UINT16 value)
+{
+	M377_idle_address = address & address_mask;
+	M377_idle_pc = pc & address_mask;
+	M377_idle_mask = mask;
+	M377_idle_value = value;
+}
+
+static inline UINT16 M377CheckIdleLoop(UINT32 address, UINT16 data)
+{
+	if (M377_idle_mask && address == M377_idle_address && M377GetPC() == M377_idle_pc &&
+		(data & M377_idle_mask) == M377_idle_value) {
+		M377RunEnd();
+	}
+
+	return data;
+}
+
 void M377SetWritePortHandler(void (*write)(UINT32,UINT8))
 {
 	M377_iowrite8 = write;
@@ -189,10 +212,10 @@ static UINT16 program_read_word_16le(UINT32 a)
 #endif
 
 #ifdef LSB_FIRST
-		return (flag & MEM_ENDISWAP) ? ENDISWAP16(*z) : *z;
+		return M377CheckIdleLoop(a, (flag & MEM_ENDISWAP) ? ENDISWAP16(*z) : *z);
 #else
 		//printf("C 0x%x - flag: %d\n", (flag & MEM_ENDISWAP) ? *z : BURN_ENDIAN_SWAP_INT16(*z), flag);
-		return (flag & MEM_ENDISWAP) ? *z : BURN_ENDIAN_SWAP_INT16(*z);
+		return M377CheckIdleLoop(a, (flag & MEM_ENDISWAP) ? *z : BURN_ENDIAN_SWAP_INT16(*z));
 #endif
 	}
 
@@ -1512,6 +1535,7 @@ void M377Init(INT32 cpunum, INT32 cputype)
 
 	memset(&m377, 0, sizeof(m377));
 	memset(internal_ram, 0, 0x800);
+	M377SetIdleLoop(~0U, ~0U, 0, 0);
 
 	m377.subtype = cputype;
 
@@ -1526,6 +1550,8 @@ void M377Init(INT32 cpunum, INT32 cputype)
 
 void M377Exit()
 {
+	M377SetIdleLoop(~0U, ~0U, 0, 0);
+
 	for (INT32 i = 0; i < 3; i++) {
 		BurnFree(mem[i]);
 	}

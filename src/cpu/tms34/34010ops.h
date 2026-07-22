@@ -15,6 +15,10 @@
 #include "burnint.h"
 #include "../tms34_intf.h"
 
+#ifndef INLINE
+#define INLINE static inline
+#endif
+
 /* Size of the memory buffer allocated for the shiftr register */
 #define SHIFTREG_SIZE			(8 * 512 * sizeof(UINT16))
 
@@ -32,7 +36,7 @@
 
 #define TMS34010_RDMEM(A)			((unsigned)TMS34010ReadByte (A))
 #define TMS34010_RDMEM_WORD(A)		((unsigned)TMS34010ReadWord (A))
-static inline UINT32 TMS34010_RDMEM_DWORD(offs_t A)
+INLINE UINT32 TMS34010_RDMEM_DWORD(offs_t A)
 {
 	UINT32 result = TMS34010ReadWord(A);
 	return result | (TMS34010ReadWord(A+2)<<16);
@@ -40,7 +44,7 @@ static inline UINT32 TMS34010_RDMEM_DWORD(offs_t A)
 
 #define TMS34010_WRMEM(A,V)			(TMS34010WriteByte(A,V))
 #define TMS34010_WRMEM_WORD(A,V)	(TMS34010WriteWord(A,V))
-static inline void TMS34010_WRMEM_DWORD(offs_t A,UINT32 V)
+INLINE void TMS34010_WRMEM_DWORD(offs_t A,UINT32 V)
 {
 	TMS34010WriteWord(A,V);
 	TMS34010WriteWord(A+2,V>>16);

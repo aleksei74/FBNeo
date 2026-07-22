@@ -7,11 +7,12 @@
 #include "m377_intf.h"
 #include "c352.h"
 #include "burn_gun.h"
+#include "namcos_poly_threads.h"
 
 static UINT8 DrvJoy1[16];
 static UINT8 DrvJoy2[16];
 static UINT8 DrvJoy3[16];
-static UINT8 DrvDips[2];
+static UINT8 DrvDips[3];
 static UINT8 DrvReset;
 static UINT8 DrvTestSwitch;
 static UINT8 DrvTestSwitchLast;
@@ -31,6 +32,9 @@ static UINT8 *DrvScratchRAM;
 static UINT8 *DrvIoRAM;
 static UINT16 *DrvGpuVram;
 static UINT32 *DrvPalette;
+static NamcosPolyThreadPool DrvPolyThreads;
+static thread_local INT32 DrvPolyClipY1 = -0x8000;
+static thread_local INT32 DrvPolyClipY2 = 0x7fff;
 
 static UINT8 DrvBank[8];
 static UINT32 DrvBankOffset;
@@ -125,6 +129,9 @@ static UINT16 DrvKeycusP3;
 static UINT32 DrvKeycusRand;
 static INT32 DrvKeycusType;
 static INT32 DrvLightgunGame;
+static INT32 DrvNativeWidth;
+static INT32 DrvFixedCropTop;
+static INT32 DrvFixedCropBottom;
 static INT32 DrvEEPROMBusy;
 static UINT8 DrvEEPROMBusyData;
 static UINT32 DrvEEPROMBusyUntil;
@@ -430,19 +437,6 @@ static void Namcos11GpuUpdateVisibleArea()
 			break;
 	}
 
-	if (DrvKeycusType == 409 || DrvKeycusType == 410 || DrvKeycusType == 430 || DrvKeycusType == 431) {
-		nScreenWidth = 640;
-		nScreenHeight = 240;
-	} else if (DrvKeycusType == 411 || DrvKeycusType == 442 || DrvKeycusType == 443) {
-		nScreenWidth = 320;
-		nScreenHeight = 240;
-	} else if (DrvKeycusType == 432) {
-		nScreenWidth = 320;
-		nScreenHeight = 240;
-	} else {
-		nScreenWidth = 512;
-		nScreenHeight = 240;
-	}
 }
 
 #define PSX_RC_STOP					0x0001
@@ -727,6 +721,7 @@ static void Namcos11C76NewFrame()
 static void Namcos11C76Run(INT32 cycles)
 {
 	M377Open(0);
+	M377SetIdleLoop((DrvDips[2] & 1) ? 0x82 : ~0U, 0xc153, 0xff00, 0);
 
 	while (cycles > 0) {
 		INT32 segment = cycles;
@@ -1805,7 +1800,7 @@ static inline UINT16 Namcos11GpuFetchTexture(INT32 u, INT32 v, UINT32 clut, UINT
 	return data;
 }
 
-static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
+static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
 {
 	static const INT32 next3[3] = { 1, 2, 0 };
 	static const INT32 prev3[3] = { 2, 0, 1 };
@@ -1880,7 +1875,7 @@ static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 poin
 			x2 = swap;
 		}
 		INT32 distance = x2 - x1;
-		if (distance > 0 && y >= clipy1 && y <= clipy2) {
+		if (distance > 0 && y >= clipy1 && y <= clipy2 && y >= DrvPolyClipY1 && y <= DrvPolyClipY2) {
 			if (x1 < clipx1) {
 				distance -= clipx1 - x1;
 				x1 = clipx1;
@@ -1897,6 +1892,43 @@ static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 poin
 	}
 }
 
+struct NamcosFlatPolyContext {
+	INT32 px[4];
+	INT32 py[4];
+	INT32 points;
+	INT32 y1;
+	UINT16 color;
+	INT32 semi;
+};
+
+static void Namcos11GpuDrawFlatPolyWorker(void *opaque, INT32 begin, INT32 end)
+{
+	NamcosFlatPolyContext *context = (NamcosFlatPolyContext*)opaque;
+	DrvPolyClipY1 = context->y1 + begin;
+	DrvPolyClipY2 = context->y1 + end - 1;
+	Namcos11GpuDrawFlatPolyCore(context->px, context->py, context->points, context->color, context->semi);
+	DrvPolyClipY1 = -0x8000;
+	DrvPolyClipY2 = 0x7fff;
+}
+
+static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
+{
+	NamcosFlatPolyContext context;
+	context.points = points;
+	context.color = color;
+	context.semi = semi;
+	INT32 miny = py[0];
+	INT32 maxy = py[0];
+	for (INT32 i = 0; i < points; i++) {
+		context.px[i] = px[i];
+		context.py[i] = py[i];
+		if (py[i] < miny) miny = py[i];
+		if (py[i] > maxy) maxy = py[i];
+	}
+	context.y1 = miny;
+	DrvPolyThreads.ParallelFor(maxy - miny + 1, 48, Namcos11GpuDrawFlatPolyWorker, &context);
+}
+
 static void Namcos11GpuDrawTriangleFlat(INT32 x0, INT32 y0, INT32 x1, INT32 y1, INT32 x2, INT32 y2, UINT16 color, INT32 semi)
 {
 	INT32 px[3] = { x0, x1, x2 };
@@ -1905,7 +1937,7 @@ static void Namcos11GpuDrawTriangleFlat(INT32 x0, INT32 y0, INT32 x1, INT32 y1, 
 	Namcos11GpuDrawFlatPoly(px, py, 3, color, semi);
 }
 
-static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
+static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
 {
 	static const INT32 next3[3] = { 1, 2, 0 };
 	static const INT32 prev3[3] = { 2, 0, 1 };
@@ -1998,7 +2030,7 @@ static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, con
 			b = cb2;
 		}
 		INT32 distance = x2 - x1;
-		if (distance > 0 && y >= clipy1 && y <= clipy2) {
+		if (distance > 0 && y >= clipy1 && y <= clipy2 && y >= DrvPolyClipY1 && y <= DrvPolyClipY2) {
 			INT32 side1 = x1 == (INT16)(cx1 >> 16);
 			INT32 dr = (INT32)(side1 ? (cr2 - cr1) : (cr1 - cr2)) / distance;
 			INT32 dg = (INT32)(side1 ? (cg2 - cg1) : (cg1 - cg2)) / distance;
@@ -2025,6 +2057,43 @@ static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, con
 		cx2 += dx2; cr2 += dr2; cg2 += dg2; cb2 += db2;
 		y++;
 	}
+}
+
+struct NamcosGouraudPolyContext {
+	INT32 px[4];
+	INT32 py[4];
+	UINT32 pc[4];
+	INT32 points;
+	INT32 y1;
+	INT32 semi;
+};
+
+static void Namcos11GpuDrawGouraudPolyWorker(void *opaque, INT32 begin, INT32 end)
+{
+	NamcosGouraudPolyContext *context = (NamcosGouraudPolyContext*)opaque;
+	DrvPolyClipY1 = context->y1 + begin;
+	DrvPolyClipY2 = context->y1 + end - 1;
+	Namcos11GpuDrawGouraudPolyMameCore(context->px, context->py, context->pc, context->points, context->semi);
+	DrvPolyClipY1 = -0x8000;
+	DrvPolyClipY2 = 0x7fff;
+}
+
+static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
+{
+	NamcosGouraudPolyContext context;
+	context.points = points;
+	context.semi = semi;
+	INT32 miny = py[0];
+	INT32 maxy = py[0];
+	for (INT32 i = 0; i < points; i++) {
+		context.px[i] = px[i];
+		context.py[i] = py[i];
+		context.pc[i] = pc[i];
+		if (py[i] < miny) miny = py[i];
+		if (py[i] > maxy) maxy = py[i];
+	}
+	context.y1 = miny;
+	DrvPolyThreads.ParallelFor(maxy - miny + 1, 48, Namcos11GpuDrawGouraudPolyWorker, &context);
 }
 
 static void Namcos11GpuDrawGouraudPoly(INT32 quad)
@@ -2070,7 +2139,7 @@ static void Namcos11GpuDrawFlatQuad()
 	Namcos11GpuDrawFlatPoly(px, py, 4, color, DrvGpuPacket[0] & 0x02000000);
 }
 
-static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
+static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
 	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
 {
 	static const INT32 next3[3] = { 1, 2, 0 };
@@ -2181,7 +2250,7 @@ static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, co
 		}
 		INT32 distance = x2 - x1;
 		INT32 drawy = y + DrvGpuDrawOffsetY;
-		if (distance > 0 && drawy >= clipy1 && drawy <= clipy2) {
+		if (distance > 0 && drawy >= clipy1 && drawy <= clipy2 && drawy >= DrvPolyClipY1 && drawy <= DrvPolyClipY2) {
 			INT32 side1 = x1 == (INT16)(cx1 >> 16);
 			INT32 dr = (INT32)(side1 ? (cr2 - cr1) : (cr1 - cr2)) / distance;
 			INT32 dg = (INT32)(side1 ? (cg2 - cg1) : (cg1 - cg2)) / distance;
@@ -2213,6 +2282,57 @@ static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, co
 		cx2 += dx2; cr2 += dr2; cg2 += dg2; cb2 += db2; cu2 += du2; cv2 += dv2;
 		y++;
 	}
+}
+
+struct NamcosTexturedPolyContext {
+	INT32 px[4];
+	INT32 py[4];
+	INT32 pu[4];
+	INT32 pv[4];
+	UINT32 pc[4];
+	INT32 points;
+	INT32 y1;
+	UINT32 clut;
+	UINT32 tpage;
+	INT32 raw;
+	INT32 semi;
+	INT32 gouraud;
+};
+
+static void Namcos11GpuDrawTexturedPolyWorker(void *opaque, INT32 begin, INT32 end)
+{
+	NamcosTexturedPolyContext *context = (NamcosTexturedPolyContext*)opaque;
+	DrvPolyClipY1 = context->y1 + begin;
+	DrvPolyClipY2 = context->y1 + end - 1;
+	Namcos11GpuDrawTexturedPolyMameCore(context->px, context->py, context->pu, context->pv, context->pc,
+		context->points, context->clut, context->tpage, context->raw, context->semi, context->gouraud);
+	DrvPolyClipY1 = -0x8000;
+	DrvPolyClipY2 = 0x7fff;
+}
+
+static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
+	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
+{
+	NamcosTexturedPolyContext context;
+	context.points = points;
+	context.clut = clut;
+	context.tpage = tpage;
+	context.raw = raw;
+	context.semi = semi;
+	context.gouraud = gouraud;
+	INT32 miny = py[0];
+	INT32 maxy = py[0];
+	for (INT32 i = 0; i < points; i++) {
+		context.px[i] = px[i];
+		context.py[i] = py[i];
+		context.pu[i] = pu[i];
+		context.pv[i] = pv[i];
+		context.pc[i] = pc[i];
+		if (py[i] < miny) miny = py[i];
+		if (py[i] > maxy) maxy = py[i];
+	}
+	context.y1 = miny + DrvGpuDrawOffsetY;
+	DrvPolyThreads.ParallelFor(maxy - miny + 1, 48, Namcos11GpuDrawTexturedPolyWorker, &context);
 }
 
 static void Namcos11GpuDrawTexturedPoly(INT32 gouraud, INT32 quad)
@@ -2531,7 +2651,6 @@ static void Namcos11GpuExecutePacket()
 		default:
 			break;
 	}
-
 
 	DrvGpuPacketPos = 0;
 	DrvGpuPacketLen = 0;
@@ -3625,6 +3744,7 @@ static struct BurnInputInfo Namcos11InputList[] = {
 	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
 };
 
 STDINPUTINFO(Namcos11)
@@ -3648,6 +3768,7 @@ static struct BurnInputInfo Myangel3InputList[] = {
 	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
 };
 
 STDINPUTINFO(Myangel3)
@@ -3670,6 +3791,7 @@ static struct BurnInputInfo Ptblank2InputList[] = {
 	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
+	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
 };
 
 STDINPUTINFO(Ptblank2)
@@ -3678,6 +3800,15 @@ static struct BurnDIPInfo Namcos11DIPList[]=
 {
 	{0x16, 0xff, 0xff, 0xff, NULL},
 	{0x17, 0xff, 0xff, 0xff, NULL},
+	{0x18, 0xff, 0xff, 0x00, NULL},
+
+	{0   , 0xfe, 0   ,    2, "Resolution Type"},
+	{0x17, 0x01, 0x80, 0x80, "240p"},
+	{0x17, 0x01, 0x80, 0x00, "480p"},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
+	{0x18, 0x01, 0x01, 0x00, "Off"},
+	{0x18, 0x01, 0x01, 0x01, "On"},
 };
 
 STDDIPINFO(Namcos11)
@@ -3686,6 +3817,15 @@ static struct BurnDIPInfo Myangel3DIPList[]=
 {
 	{0x0e, 0xff, 0xff, 0xff, NULL},
 	{0x0f, 0xff, 0xff, 0xff, NULL},
+	{0x10, 0xff, 0xff, 0x00, NULL},
+
+	{0   , 0xfe, 0   ,    2, "Resolution Type"},
+	{0x0f, 0x01, 0x80, 0x80, "240p"},
+	{0x0f, 0x01, 0x80, 0x00, "480p"},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
+	{0x10, 0x01, 0x01, 0x00, "Off"},
+	{0x10, 0x01, 0x01, 0x01, "On"},
 };
 
 STDDIPINFO(Myangel3)
@@ -3694,6 +3834,15 @@ static struct BurnDIPInfo Ptblank2DIPList[]=
 {
 	{0x0d, 0xff, 0xff, 0xff, NULL},
 	{0x0e, 0xff, 0xff, 0xff, NULL},
+	{0x0f, 0xff, 0xff, 0x00, NULL},
+
+	{0   , 0xfe, 0   ,    2, "Resolution Type"},
+	{0x0e, 0x01, 0x80, 0x80, "240p"},
+	{0x0e, 0x01, 0x80, 0x00, "480p"},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
+	{0x0f, 0x01, 0x01, 0x00, "Off"},
+	{0x0f, 0x01, 0x01, 0x01, "On"},
 };
 
 STDDIPINFO(Ptblank2)
@@ -3709,6 +3858,7 @@ static struct BurnInputInfo PocketrcInputList[] = {
 	{ "Reset",         BIT_DIGITAL,    &DrvReset,     "reset"     },
 	{ "Dip A",         BIT_DIPSWITCH,  DrvDips + 0,  "dip"       },
 	{ "Dip B",         BIT_DIPSWITCH,  DrvDips + 1,  "dip"       },
+	{ "Dip C",         BIT_DIPSWITCH,  DrvDips + 2,  "dip"       },
 };
 #undef A
 
@@ -3718,6 +3868,15 @@ static struct BurnDIPInfo PocketrcDIPList[]=
 {
 	{0x07, 0xff, 0xff, 0xff, NULL},
 	{0x08, 0xff, 0xff, 0xff, NULL},
+	{0x09, 0xff, 0xff, 0x00, NULL},
+
+	{0   , 0xfe, 0   ,    2, "Resolution Type"},
+	{0x08, 0x01, 0x80, 0x80, "240p"},
+	{0x08, 0x01, 0x80, 0x00, "480p"},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
+	{0x09, 0x01, 0x01, 0x00, "Off"},
+	{0x09, 0x01, 0x01, 0x01, "On"},
 };
 
 STDDIPINFO(Pocketrc)
@@ -3820,6 +3979,7 @@ static INT32 DrvInit()
 	Namcos11C76Init();
 	Namcos11C76Reset();
 	if (DrvLightgunGame) BurnGunInit(2, true);
+	DrvPolyThreads.Configure();
 
 	return 0;
 }
@@ -3980,6 +4140,8 @@ static INT32 StarswepInit()
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 442;
 	DrvUseBootDecompressHook = 0;
+	DrvFixedCropTop = 16;
+	DrvFixedCropBottom = 10;
 
 	return DrvInit();
 }
@@ -3996,6 +4158,8 @@ static INT32 StarswepjInit()
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 442;
 	DrvUseBootDecompressHook = 0;
+	DrvFixedCropTop = 16;
+	DrvFixedCropBottom = 10;
 
 	return DrvInit();
 }
@@ -4032,6 +4196,8 @@ static INT32 Ptblank2Init()
 	DrvBankRomCompact64 = 1;
 	DrvLightgunGame = 1;
 	DrvUseBootDecompressHook = 0;
+	DrvFixedCropTop = 12;
+	DrvFixedCropBottom = 10;
 
 	return DrvInit();
 }
@@ -4050,6 +4216,8 @@ static INT32 Ptblank2bInit()
 	DrvBankRomCompact64 = 1;
 	DrvLightgunGame = 1;
 	DrvUseBootDecompressHook = 0;
+	DrvFixedCropTop = 12;
+	DrvFixedCropBottom = 10;
 
 	return DrvInit();
 }
@@ -4068,14 +4236,44 @@ static INT32 Ptblank2uaInit()
 	DrvBankRomCompact64 = 0;
 	DrvLightgunGame = 1;
 	DrvUseBootDecompressHook = 0;
+	DrvFixedCropTop = 12;
+	DrvFixedCropBottom = 10;
 
 	return DrvInit();
 }
 
+static INT32 Namcos11SetResolution()
+{
+	if (DrvNativeWidth == 0) {
+		INT32 nativeHeight;
+		BurnDrvGetVisibleSize(&DrvNativeWidth, &nativeHeight);
+	}
+
+	INT32 height = (DrvDips[1] & 0x80) ? 240 : 480;
+	INT32 width = (height == 480 && DrvNativeWidth < 512) ? DrvNativeWidth * 2 : DrvNativeWidth;
+
+	if (width == nScreenWidth && height == nScreenHeight) return 0;
+
+	BurnTransferSetDimensions(width, height);
+	GenericTilesSetClipRaw(0, width, 0, height);
+	BurnDrvSetVisibleSize(width, height);
+	BurnDrvSetAspect(4, 3);
+	if (DrvLightgunGame) BurnGunResolutionChanged();
+	ReinitialiseVideo();
+	BurnTransferRealloc();
+
+	return 1;
+}
+
 static INT32 DrvExit()
 {
+	DrvPolyThreads.Shutdown();
 	if (DrvLightgunGame) BurnGunExit();
 	DrvLightgunGame = 0;
+	DrvFixedCropTop = 0;
+	DrvFixedCropBottom = 0;
+	if (DrvNativeWidth) BurnDrvSetVisibleSize(DrvNativeWidth, 240);
+	DrvNativeWidth = 0;
 	DrvBankRomCompact64 = 0;
 	PsxSetInstructionHook(NULL);
 	Namcos11C76Exit();
@@ -4090,6 +4288,10 @@ static INT32 DrvDraw();
 
 static INT32 DrvFrame()
 {
+	if (Namcos11SetResolution()) {
+		return 0;
+	}
+
 	if (DrvLightgunGame) {
 		BurnGunMakeInputs(0, DrvAnalog[0], DrvAnalog[1]);
 		BurnGunMakeInputs(1, DrvAnalog[2], DrvAnalog[3]);
@@ -4190,22 +4392,15 @@ static void DrvPaletteUpdate()
 	}
 }
 
-static void Namcos11RemoveTopBorder()
+static void Namcos11GetFixedVerticalCrop(INT32 &top, INT32 &bottom)
 {
-	if (DrvKeycusType != 406) return;
+	top = DrvFixedCropTop;
+	bottom = DrvFixedCropBottom;
 
-	const INT32 border = 10;
+	if (DrvKeycusType == 406) top = 10;
 
-	for (INT32 y = 0; y < border; y++) {
-		for (INT32 x = 0; x < nScreenWidth; x++) {
-			if (pTransDraw[(y * nScreenWidth) + x] != 0) return;
-		}
-	}
-
-	for (INT32 y = 0; y < nScreenHeight; y++) {
-		INT32 sourceY = border + (y * (nScreenHeight - border)) / nScreenHeight;
-		memcpy(pTransDraw + (y * nScreenWidth), pTransDraw + (sourceY * nScreenWidth), nScreenWidth * sizeof(UINT16));
-	}
+	top = top * nScreenHeight / 240;
+	bottom = bottom * nScreenHeight / 240;
 }
 
 static INT32 DrvDraw()
@@ -4216,6 +4411,11 @@ static INT32 DrvDraw()
 
 	BurnTransferClear();
 
+	INT32 cropTop;
+	INT32 cropBottom;
+	Namcos11GetFixedVerticalCrop(cropTop, cropBottom);
+	const INT32 croppedHeight = nScreenHeight - cropTop - cropBottom;
+
 	if (DrvGpuStatus & (1 << 23)) {
 		BurnTransferCopy(DrvPalette);
 		return 0;
@@ -4223,7 +4423,8 @@ static INT32 DrvDraw()
 
 	if (DrvGpuStatus & (1 << 21)) {
 		for (INT32 y = 0; y < nScreenHeight; y++) {
-			UINT32 sy = (DrvGpuDisplayY + ((y * DrvGpuScreenHeight) / nScreenHeight)) & 0x3ff;
+			INT32 sourceY = cropTop + (y * croppedHeight) / nScreenHeight;
+			UINT32 sy = (DrvGpuDisplayY + ((sourceY * DrvGpuScreenHeight) / nScreenHeight)) & 0x3ff;
 			for (INT32 x = 0; x < nScreenWidth; x++) {
 				UINT32 sourcePixel = (x * DrvGpuScreenWidth) / nScreenWidth;
 				UINT32 sourceByte = sourcePixel * 3;
@@ -4245,16 +4446,15 @@ static INT32 DrvDraw()
 		}
 	} else {
 		for (INT32 y = 0; y < nScreenHeight; y++) {
+			INT32 sourceY = cropTop + (y * croppedHeight) / nScreenHeight;
 			for (INT32 x = 0; x < nScreenWidth; x++) {
 				UINT32 sx = (DrvGpuDisplayX + ((x * DrvGpuScreenWidth) / nScreenWidth)) & 0x3ff;
-				UINT32 sy = (DrvGpuDisplayY + ((y * DrvGpuScreenHeight) / nScreenHeight)) & 0x3ff;
+				UINT32 sy = (DrvGpuDisplayY + ((sourceY * DrvGpuScreenHeight) / nScreenHeight)) & 0x3ff;
 				UINT16 pixel = DrvGpuVram[(sy << 10) | sx] & 0x7fff;
 				pTransDraw[(y * nScreenWidth) + x] = pixel;
 			}
 		}
 	}
-
-	Namcos11RemoveTopBorder();
 
 	BurnTransferCopy(DrvPalette);
 	if (DrvLightgunGame) BurnGunDrawTargets();

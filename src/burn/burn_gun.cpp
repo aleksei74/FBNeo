@@ -27,6 +27,7 @@ INT32 BurnPaddleY[MAX_GUNS];
 
 struct GunWrap { INT32 xmin; INT32 xmax; INT32 ymin; INT32 ymax; };
 static GunWrap BurnGunBoxInf[MAX_GUNS]; // Gun use
+static GunWrap BurnGunBoxRange[MAX_GUNS];
 
 #define a 0,
 #define b 1,
@@ -93,6 +94,11 @@ void BurnGunSetCoords(INT32 player, INT32 x, INT32 y)
 
 void BurnGunSetBox(INT32 num, INT32 xmin, INT32 xmax, INT32 ymin, INT32 ymax)
 {
+	BurnGunBoxRange[num].xmin = xmin;
+	BurnGunBoxRange[num].xmax = xmax;
+	BurnGunBoxRange[num].ymin = ymin;
+	BurnGunBoxRange[num].ymax = ymax;
+
 	BurnGunBoxInf[num].xmin = ((xmin * nBurnGunMaxX / 0xff) - 8) << 8;
 	BurnGunBoxInf[num].xmax = ((xmax * nBurnGunMaxX / 0xff) - 8) << 8;
 	BurnGunBoxInf[num].ymin = ((ymin * nBurnGunMaxY / 0xff) - 8) << 8;
@@ -657,10 +663,27 @@ void BurnGunInit(INT32 nNumPlayers, bool bDrawTargets)
 
 void BurnGunResolutionChanged()
 {
+	INT32 oldMaxX = nBurnGunMaxX;
+	INT32 oldMaxY = nBurnGunMaxY;
+
 	if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) {
 		BurnDrvGetVisibleSize(&nBurnGunMaxY, &nBurnGunMaxX);
 	} else {
 		BurnDrvGetVisibleSize(&nBurnGunMaxX, &nBurnGunMaxY);
+	}
+
+	for (INT32 i = 0; i < MAX_GUNS; i++) {
+		if (oldMaxX > 0) {
+			INT32 x = (INT32)(((INT64)((BurnGunX[i] >> 8) + 8) * nBurnGunMaxX) / oldMaxX);
+			BurnGunX[i] = (x - 8) << 8;
+		}
+		if (oldMaxY > 0) {
+			INT32 y = (INT32)(((INT64)((BurnGunY[i] >> 8) + 8) * nBurnGunMaxY) / oldMaxY);
+			BurnGunY[i] = (y - 8) << 8;
+		}
+
+		BurnGunSetBox(i, BurnGunBoxRange[i].xmin, BurnGunBoxRange[i].xmax,
+			BurnGunBoxRange[i].ymin, BurnGunBoxRange[i].ymax);
 	}
 }
 

@@ -1,6 +1,7 @@
 // FB Neo Konami System GX (Type 2) driver
 // Based on the MAME driver by R. Belmont, Acho A. Tang, Phil Stroffolino
 // and Olivier Galibert.
+// Generated with Codex AI (by DsNo) & Claude AI (by aleksei74)
 //
 // The two K054539 chips are mixed directly and through the TMS57002 DASP,
 // matching the GX audio routing used by MAME.
@@ -57,10 +58,10 @@ enum {
 	GX_SPECIAL_NONE = 0,
 	GX_SPECIAL_DAISKISS = 5,
 	GX_SPECIAL_TKMMPZDM = 2,
+	GX_SPECIAL_SEXYPARO = 4,
 	GX_SPECIAL_TBYAHHOO = 8,
 	GX_SPECIAL_FANTJOUR = 9,
 	GX_SPECIAL_TYPE4SD2 = 10,
-	GX_SPECIAL_SEXYPARO = 11,
 	GX_SPECIAL_SALMNDR2 = 12
 };
 
@@ -76,7 +77,7 @@ struct GxGameConfig {
 	UINT8 special;
 	UINT8 tile_layout;
 	UINT8 tile_bpp;
-	UINT8 tile_color_granularity;
+	INT32 tile_color_granularity;
 	UINT32 tile_rom_size;
 	UINT32 sprite_word_size;
 	INT32 sprite_pair0_a;
@@ -101,14 +102,13 @@ static const GxGameConfig GxGameConfigs[] = {
 	{ "crzcross",  7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_5BPP, 5, 16,  0xa00000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -70, -38, 5, 12 * 60, 5 },
 	{ "puzldama",  7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_5BPP, 5, 16,  0xa00000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -70, -38, 5, 12 * 60, 5 },
 	{ "tbyahhoo",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
-	{ "tbyahhok",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
 	{ "mtwinbee",  7, GX_SPECIAL_TBYAHHOO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, 12, -50, -38, 0, 12 * 60, 5 },
+	{ "tkmmpzdm",  7, GX_SPECIAL_TKMMPZDM, GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
+	{ "daiskiss",  7, GX_SPECIAL_DAISKISS, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x200000, 7, 8, -1, -1,  9, 10, -1, -1, -50, -38, 4, 0, 5 },
 	{ "sexyparo",  7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 12 * 60, 5 },
 	{ "sexyparoa", 7, GX_SPECIAL_SEXYPARO, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x400000, 7, 8, -1, -1,  9, 10, 11, -1, -66, -39, 0, 12 * 60, 5 },
 	{ "salmndr2",  7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
 	{ "salmndr2a", 7, GX_SPECIAL_SALMNDR2, GX_TILE_LAYOUT_6BPP, 6, 16,  0x800000, 0x600000, 8, 9, -1, -1, 10, 11, 12, 13, -70, -38, 0, 12 * 60, 6 },
-	{ "tkmmpzdm",  7, GX_SPECIAL_TKMMPZDM, GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
-	{ "daiskiss",  7, GX_SPECIAL_DAISKISS, GX_TILE_LAYOUT_5BPP, 5, 16,  0x280000, 0x200000, 7, 8, -1, -1,  9, 10, -1, -1, -50, -38, 4, 0, 5 },
 	{ "tokkae",    7, GX_SPECIAL_NONE,     GX_TILE_LAYOUT_6BPP, 6, 16,  0x180000, 0x800000, 7, 8,  9, 10, 11, 12, 13, 14, -70, -38, 5, 0, 5 },
 	{ "rungun2",   7, GX_SPECIAL_TYPE4SD2, GX_TILE_LAYOUT_8BPP, 8, 256, 0x200000, 0x1800000, -1, -1, -1, -1, -1, 22, 23, -1, -81, -23, 0, 0, 6 },
 	{ "slamdnk2",  7, GX_SPECIAL_TYPE4SD2, GX_TILE_LAYOUT_8BPP, 8, 256, 0x200000, 0x1800000, -1, -1, -1, -1, -1, 22, 23, -1, -81, -23, 0, 0, 6 },
@@ -121,17 +121,12 @@ static UINT8 DrvJoy3[16];
 static UINT8 DrvReset;
 static UINT16 DrvInputs[3];
 static UINT8 DrvDips[2];
-static UINT8 DrvConfig[1];   // emulation-config-only "dip" (not a hardware port)
+static UINT8 DrvConfig[2];
 
-static INT32 gx_dasp_enable = 1; // TMS57002 DASP reverb on/off (config dip), can be disabled on low-end devices
-// When DASP is off we still MUST run the DSP for the boot self-test ("ROM RAM
-// CHECK"): the test loads a program and reads back the computed result via the
-// host port (0x300001). gx_dsp_force keeps the DSP running (in frames) whenever a
-// host result is requested/read; it expires during gameplay (which never reads
-// DSP results), so the CPU is only spent on the DSP when something actually needs it.
+static INT32 gx_dasp_enable = 1;
 static INT32 gx_dsp_force;
-#define GX_DSP_FORCE_BOOT   900  // frames the DSP is kept alive after a reset (covers POST)
-#define GX_DSP_FORCE_WINDOW 300  // frames the DSP is kept alive after each host read/0xfc
+#define GX_DSP_FORCE_BOOT   900
+#define GX_DSP_FORCE_WINDOW 300
 
 static UINT8 gx_tilebanks[8];
 static UINT8 gx_tile_ram_bank;
@@ -143,7 +138,7 @@ static UINT32 gx_sexyparo_esc_p2;
 static UINT32 gx_sexyparo_esc_p4;
 static UINT32 gx_tile_rom_size;
 static UINT8 gx_tile_bpp;
-static UINT8 gx_tile_color_granularity;
+static INT32 gx_tile_color_granularity;
 static UINT32 gx_sprite_word_size;
 static UINT8 gx_sprite_bpp;
 static UINT8 gx_type3_psac2_bank;
@@ -199,6 +194,9 @@ static INT16 gx_soundbuf0[4096 * 2];
 static INT16 gx_soundbuf1[4096 * 2];
 static INT32 gx_sound_buffer_pos;
 static INT32 gx_sound_cycles_total;
+static UINT32 gx_speedhack_pc[32];
+static INT32 gx_speedhack_pc_count;
+static INT32 gx_speedhack_wake;
 
 static inline INT16 gx_clip_int32(INT32 sample)
 {
@@ -336,13 +334,6 @@ static inline void gx_ram_write_long(UINT8 *ram, UINT32 address, UINT32 mask, UI
 	gx_ram_write_word(ram, address + 2, mask, data);
 }
 
-// DrvMainRAM at 0xc00000 is SekMapMemory'd (MAP_RAM), so the m68k core stores it
-// byte-swapped per 16-bit word on a little-endian host. These HLE helpers (used by
-// the ESC chip / fantjour DMA, not the CPU fast path) must therefore read/write
-// with the ^1 byte-swap idiom to return the true big-endian values the 68k wrote.
-// Without this, the ESC opcode read returns word-byte-swapped data (e.g. the magic
-// id 0xfef724fb reads back as 0xf7fefb24) so the ESC command never matches and no
-// sprites are generated -> black screen on tbyahhoo/sexyparo/salmndr2.
 static inline UINT8 gx_mainram_read_byte(UINT32 address)
 {
 	return DrvMainRAM[(address & 0x1ffff) ^ 1];
@@ -440,6 +431,7 @@ static struct BurnInputInfo GxInputList[] = {
 	{"Dip A",         BIT_DIPSWITCH, DrvDips + 0,  "dip"        },
 	{"Dip B",         BIT_DIPSWITCH, DrvDips + 1,  "dip"        },
 	{"DASP",          BIT_DIPSWITCH, DrvConfig + 0,"dip"        },
+	{"Speed Hack",    BIT_DIPSWITCH, DrvConfig + 1,"dip"        },
 };
 
 STDINPUTINFO(Gx)
@@ -448,10 +440,15 @@ static struct BurnDIPInfo GxDIPList[] = {
 	{0x15, 0xff, 0xff, 0xfe, NULL                         },
 	{0x16, 0xff, 0xff, 0xff, NULL                         },
 	{0x17, 0xff, 0xff, 0x01, NULL                         },
+	{0x18, 0xff, 0xff, 0x00, NULL                         },
 
 	{0   , 0xfe, 0   ,    2, "DASP (TMS57002) Reverb"     },
 	{0x17, 0x01, 0x01, 0x01, "On"                         },
 	{0x17, 0x01, 0x01, 0x00, "Off"                        },
+
+	{0   , 0xfe, 0   ,    2, "CPU Speed Hack"              },
+	{0x18, 0x01, 0x01, 0x00, "Off"                        },
+	{0x18, 0x01, 0x01, 0x01, "On"                         },
 
 	{0   , 0xfe, 0   ,    2, "Sound Output"               },
 	{0x15, 0x01, 0x01, 0x00, "Stereo"                     },
@@ -494,6 +491,7 @@ static void gx_tile_callback(INT32 layer, INT32 *code, INT32 *color, INT32 *)
 	INT32 pl45 = pal >> 4 & 3;
 
 	*code = (gx_tilebanks[(d >> 13) & 7] << 13) | (d & 0x1fff);
+	if (gx_special != GX_SPECIAL_SALMNDR2) *code &= 0xffff;
 	pal &= 0x0f;
 	pal |= (pl45 & von) << 4;
 	pal |= (K055555GetPaletteIndex(layer) << 6);
@@ -537,13 +535,8 @@ static void gx_sprite_callback(INT32 *code, INT32 *color, INT32 *priority)
 	*color = ((c18 & opon) | (ocb & ~opon)) >> coregshift;
 
 	if (gx_special == GX_SPECIAL_SALMNDR2) {
-		// salmndr2 derives the sprite priority directly from the raw attribute
-		// word (MAME salmndr2_sprite_callback: pri = color>>4 & 0x3f) instead of
-		// the generic type2 decode_inpri path, so sprites sort against the
-		// tilemaps at the correct priority.
-		INT32 op  = K055555ReadRegister(K55_PRIINP_8) & oinprion;
-		INT32 pri = (attrib >> 4 & 0x3f) & ~oinprion;
-		*priority = pri | op;
+		*priority = (((attrib >> 4) & 0x3f) & ~oinprion) |
+					(K055555ReadRegister(K55_PRIINP_8) & oinprion);
 	} else {
 		*priority = (c18 >> 8 & ~oinprion) |
 					(K055555ReadRegister(K55_PRIINP_8) & oinprion);
@@ -552,12 +545,6 @@ static void gx_sprite_callback(INT32 *code, INT32 *color, INT32 *priority)
 
 static void gx_sound_update_irq()
 {
-	// K054539 timer -> sound CPU IRQ2, K056800 host comm -> sound CPU IRQ1.
-	// FBNeo's SekSetIRQLine drives a single m68k IPL register (m68k_set_irq),
-	// NOT independent per-level latches like MAME. Asserting level 2 and then
-	// passing NONE for level 1 calls m68k_set_irq(0), which wipes the level-2
-	// IRQ we just set. So encode the highest pending line into one IPL value
-	// and only touch the CPU when that value changes.
 	INT32 line = 0;
 
 	if (sound_timer_irq_pending) {
@@ -591,6 +578,22 @@ static void sound_irq(INT32 state)
 	gx_sound_update_irq();
 }
 
+static UINT8 gx_soundcom_host_read(INT32 offset)
+{
+	offset &= 7;
+
+	switch (offset) {
+		case 0:
+		case 1:
+			return DrvSoundCom[4 + offset];
+
+		case 2:
+			return 0;
+	}
+
+	return 0;
+}
+
 static void gx_soundcom_host_write(INT32 offset, UINT8 data)
 {
 	offset &= 7;
@@ -601,22 +604,6 @@ static void gx_soundcom_host_write(INT32 offset, UINT8 data)
 		sound_int_pending = 1;
 		gx_sound_update_irq();
 	}
-}
-
-static UINT8 gx_soundcom_host_read(INT32 offset)
-{
-	offset &= 7;
-	UINT8 r = 0;
-	switch (offset) {
-		case 0:
-		case 1:
-			r = DrvSoundCom[4 + offset];
-			break;
-		case 2:
-			r = 0;
-			break;
-	}
-	return r;
 }
 
 static UINT8 gx_soundcom_sound_read(INT32 offset)
@@ -664,6 +651,78 @@ static UINT32 gx_dma_read_long(UINT32 address)
 	return gx_main_read_long(address);
 }
 
+static UINT16 gx_speedhack_rom_word(UINT32 address)
+{
+	return BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvMainROM + address)));
+}
+
+static void gx_speedhack_add_pc(UINT32 pc)
+{
+	for (INT32 i = 0; i < gx_speedhack_pc_count; i++) {
+		if (gx_speedhack_pc[i] == pc) return;
+	}
+
+	if (gx_speedhack_pc_count < (INT32)(sizeof(gx_speedhack_pc) / sizeof(gx_speedhack_pc[0]))) {
+		gx_speedhack_pc[gx_speedhack_pc_count++] = pc;
+	}
+}
+
+static void gx_speedhack_find_range(UINT32 start, UINT32 end)
+{
+	for (UINT32 pc = start + 4; pc + 4 < end; pc += 2) {
+		UINT16 op = gx_speedhack_rom_word(pc);
+
+		// A self-branch can only be left by an interrupt.
+		if ((op == 0x6000 && gx_speedhack_rom_word(pc + 2) == 0xfffc) || op == 0x60fe) {
+			gx_speedhack_add_pc(pc);
+			continue;
+		}
+
+		// GX games commonly wait for the IRQ task scheduler with:
+		// tst.w displacement(An); beq.w <earlier tst.w (An)>.
+		if (op != 0x6700) continue;
+
+		UINT16 waitop = gx_speedhack_rom_word(pc - 4);
+		if ((waitop & 0xfff8) != 0x4a68) continue;
+
+		INT32 displacement = (INT16)gx_speedhack_rom_word(pc + 2);
+		UINT32 target = pc + 2 + displacement;
+		if (target < start || target >= pc) continue;
+		if (pc - target < 0x60 || pc - target > 0x180) continue;
+
+		UINT16 loopop = gx_speedhack_rom_word(target);
+		if (loopop == (0x4a50 | (waitop & 7))) {
+			gx_speedhack_add_pc(pc);
+		}
+	}
+}
+
+static void gx_speedhack_init()
+{
+	gx_speedhack_pc_count = 0;
+
+	// The common BIOS waits here for its VBlank task.
+	if (gx_speedhack_rom_word(0x0a16) == 0x67f6) {
+		gx_speedhack_add_pc(0x0a16);
+	}
+
+	gx_speedhack_find_range(0x200000, 0x300000);
+	if (gx_type4_enable) {
+		gx_speedhack_find_range(0x400000, 0x600000);
+	}
+}
+
+static INT32 gx_speedhack_active(INT32 pc)
+{
+	if ((DrvConfig[1] & 0x01) == 0) return 0;
+
+	for (INT32 i = 0; i < gx_speedhack_pc_count; i++) {
+		if (gx_speedhack_pc[i] == (UINT32)pc) return 1;
+	}
+
+	return 0;
+}
+
 static void gx_dma_write_long(UINT32 address, UINT32 data)
 {
 	if (address >= 0xc00000 && address <= 0xc1fffc) {
@@ -707,10 +766,6 @@ static UINT16 gx_address_read_word(UINT32 address)
 		return gx_mainram_read_word(address);
 	}
 
-	// ESC sprite shape tables live in the program ROM (e.g. 0x205c0c on tbyahhoo).
-	// DrvMainROM is byte-swapped per word (BurnByteswap, for the m68k MAP_ROM path),
-	// so read it big-endian with the ^1 idiom; the generic gx_main_read_byte path
-	// returns 0 for ROM addresses, which left every shape count at 0 -> no sprites.
 	if (address < 0x800000) {
 		return (DrvMainROM[(address & 0x7fffff) ^ 1] << 8) | DrvMainROM[((address + 1) & 0x7fffff) ^ 1];
 	}
@@ -887,20 +942,12 @@ next_sprite:
 	}
 }
 
-// HLE for BIOS vblank wait routine at 0x0a10-0x0a18.
-// Applies only to games whose POST uses the BIOS vblank counter but does not
-// enable the vblank IRQ early enough for real IRQ delivery to work.
-// The counter at MainRAM[0x74..0x77] is incremented once per frame when:
-//   - the CPU was observed inside the BIOS wait loop during the frame AND
-//   - no real IRQ1 fired (i.e. the counter would not be incremented by the handler).
 static void gx_bios_vblank_tick()
 {
-	UINT16 count = (DrvMainRAM[0x76] << 8) | DrvMainRAM[0x77];
+	UINT16 count = gx_mainram_read_word(0xc00076);
 	count++;
-	DrvMainRAM[0x74] = 0;
-	DrvMainRAM[0x75] = 0;
-	DrvMainRAM[0x76] = count >> 8;
-	DrvMainRAM[0x77] = count;
+	gx_mainram_write_word(0xc00074, 0);
+	gx_mainram_write_word(0xc00076, count);
 }
 
 static void gx_bios_vblank_hle_check(INT32 pc)
@@ -909,8 +956,9 @@ static void gx_bios_vblank_hle_check(INT32 pc)
 	if (gx_special != GX_SPECIAL_SEXYPARO &&
 	    gx_special != GX_SPECIAL_SALMNDR2 &&
 	    gx_special != GX_SPECIAL_TBYAHHOO) return;
-	if (pc >= 0x0a10 && pc <= 0x0a18)
+	if (pc >= 0x0a10 && pc <= 0x0a18) {
 		gx_bios_in_wait_loop = 1;
+	}
 }
 
 static void gx_esc_alert_mode0(INT32 srcoffs, INT32 count)
@@ -930,7 +978,6 @@ static void gx_esc_alert_mode0(INT32 srcoffs, INT32 count)
 	}
 }
 
-// salmndr2 ESC mode 1 - ported from MAME konamigx_esc_alert
 static const UINT8 sal2_ztable[7][8] = {
 	{ 5, 4, 3, 2, 1, 7, 6, 0 },
 	{ 4, 3, 2, 1, 0, 7, 6, 5 },
@@ -956,7 +1003,6 @@ static void gx_esc_alert_mode1()
 	UINT32 srcbase = 0xc00000;
 	INT32 srcoffs = 0x1c8c;
 	INT32 count = 0x172;
-
 	INT32 data1, vpos, hpos, voffs, hoffs, vcorr, hcorr, vmask, magicid;
 	UINT32 obj;
 	INT32 scount = 0;
@@ -970,7 +1016,10 @@ static void gx_esc_alert_mode1()
 			case 0x10010801: idx = 6; break;
 			case 0x11010010: idx = 5; vmask = 0x1ff; break;
 			case 0x01111018: idx = 4; break;
-			case 0x10010011: idx = 3; break;
+			case 0x10010011:
+				idx = 3;
+				if ((gx_dma_read_long(srcbase + 0x71d4) & 0xff) == 32) K055555WriteReg(K55_BLEND_ENABLES, 36);
+				break;
 			case 0x11010811: idx = 2; break;
 			case 0x10000010: idx = 1; break;
 			default:         idx = 0; break;
@@ -983,14 +1032,8 @@ static void gx_esc_alert_mode1()
 
 	const UINT8 *zcode = sal2_ztable[idx];
 	const UINT8 *pcode = sal2_ptable[idx];
-
 	UINT32 dst = 0xd20000;
-	// decode Vic-Viper (player ship). NOTE: MAME indexes srcbase (a u32*) as
-	// srcbase[0x049e/4] etc., and the integer /4 TRUNCATES to the 32-bit-aligned
-	// address 0x049c. The byte offsets here must therefore be the truncated
-	// values (0x049c/0x0500/0x0504), not the literal 0x049e/0x0502/0x0506 — using
-	// the latter read 2 bytes (one word) too far, so the ship's active bit was
-	// never seen and the player ship body was never written to sprite RAM.
+
 	if (gx_dma_read_long(srcbase + 0x049c) & 0xffff0000) {
 		hoffs = gx_dma_read_long(srcbase + 0x0500) & 0xffff;
 		voffs = gx_dma_read_long(srcbase + 0x0504) & 0xffff;
@@ -1006,13 +1049,6 @@ static void gx_esc_alert_mode1()
 				UINT32 d1 = gx_dma_read_long(obj + 4);
 				UINT32 d2 = gx_dma_read_long(obj + 8);
 				UINT32 d3 = gx_dma_read_long(obj + 12);
-				// Vic-Viper (player ship) uses MAME's EXTRACT_ODD field layout:
-				// vpos from obj[1] low word, hpos from obj[2] HIGH word, sprite
-				// code low/high split across obj[2] low + obj[3]. The previous code
-				// used the EXTRACT_EVEN layout here, garbling the player ship's code
-				// and position so it vanished once the game switched it to this path
-				// (after spawn invincibility). Enemies/options use the common-sprite
-				// EVEN path and were unaffected.
 				vpos = (d1 & 0xffff) + voffs;
 				hpos = (d2 >> 16) + hoffs;
 				gx_address_write_word(dst + 0, flip);
@@ -1029,7 +1065,6 @@ static void gx_esc_alert_mode1()
 		}
 	}
 
-	// decode Lord British
 	if (gx_dma_read_long(srcbase + 0x0848) & 0x0000ffff) {
 		hoffs = gx_dma_read_long(srcbase + 0x08b0) >> 16;
 		voffs = gx_dma_read_long(srcbase + 0x08b4) >> 16;
@@ -1062,7 +1097,6 @@ static void gx_esc_alert_mode1()
 		}
 	}
 
-	// decode common sprites
 	UINT32 src = srcbase + srcoffs * 4;
 	UINT32 srcend = src + count * 0x30 * 4;
 	do {
@@ -1102,9 +1136,8 @@ static void gx_esc_alert_mode1()
 		} while (objptr < objend);
 	} while ((src += 0x30 * 4) < srcend);
 
-	// clear residual data
 	while (scount < 256) {
-		gx_address_write_word(dst, scount);
+		gx_address_write_word(dst, 0);
 		scount++;
 		dst += 16;
 	}
@@ -1144,6 +1177,10 @@ static void gx_esc_write(UINT32 data)
 					gx_esc_program[i] = gx_address_read_byte(params + i);
 				}
 				break;
+
+			case 5:
+			default:
+				break;
 		}
 
 		gx_main_write_byte(data + 9, ESTATE_END);
@@ -1151,6 +1188,7 @@ static void gx_esc_write(UINT32 data)
 		if (gx_irq_control & 0x10) {
 			gx_irq_status &= ~0x08;
 			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
+			gx_speedhack_wake = 1;
 		}
 		return;
 	}
@@ -1243,6 +1281,7 @@ static void gx_type4_prot_write(UINT32 address, UINT32 data)
 		if (gx_irq_control & 0x10) {
 			gx_irq_status &= ~0x08;
 			SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
+			gx_speedhack_wake = 1;
 		}
 
 		gx_last_prot_op = -1;
@@ -1329,7 +1368,7 @@ static UINT8 __fastcall gx_sound_read_byte(UINT32 address)
 	}
 
 	if (address == 0x300001) {
-		gx_dsp_force = GX_DSP_FORCE_WINDOW; // host result read -> keep DSP alive
+		gx_dsp_force = GX_DSP_FORCE_WINDOW;
 		if (tms_host_pending) {
 			tms_host_index++;
 			if (tms_host_index >= 4) {
@@ -1410,7 +1449,7 @@ static void __fastcall gx_sound_write_byte(UINT32 address, UINT8 data)
 				tms_cload_cval = 0;
 			}
 			if (data == 0xfc && tms_pc_nonzero) {
-				gx_dsp_force = GX_DSP_FORCE_WINDOW; // host result requested -> keep DSP alive
+				gx_dsp_force = GX_DSP_FORCE_WINDOW;
 				tms_host_pending = 1;
 				tms_host_index = 0;
 			}
@@ -1488,14 +1527,19 @@ static UINT16 gx_sprite_rom_word_read(INT32 offset)
 	return 0;
 }
 
+static UINT8 gx_tile_rom_byte_read(INT32 address)
+{
+	if (gx_special == GX_SPECIAL_SALMNDR2) {
+		return K056832GxRomByteRead6bpp(address);
+	}
+
+	return K056832GxRomByteRead(address);
+}
+
 static UINT16 gx_tile_rom_word_read(INT32 address)
 {
-	if (gx_tile_bpp == 6) {
-		return (K056832GxRom6BppByteRead((address + 0) & 0x1fff) << 8) |
-				K056832GxRom6BppByteRead((address + 1) & 0x1fff);
-	}
-	return (K056832GxRomByteRead((address + 0) & 0x1fff) << 8) |
-			K056832GxRomByteRead((address + 1) & 0x1fff);
+	return (gx_tile_rom_byte_read((address + 0) & 0x1fff) << 8) |
+			gx_tile_rom_byte_read((address + 1) & 0x1fff);
 }
 
 static UINT32 gx_tile_rom_long_read(INT32 address)
@@ -1511,8 +1555,7 @@ static UINT8 __fastcall gx_main_read_byte(UINT32 address)
 	}
 
 	if ((address & 0xffe000) == 0xd00000) {
-		if (gx_tile_bpp == 6) return K056832GxRom6BppByteRead(address & 0x1fff);
-		return K056832GxRomByteRead(address & 0x1fff);
+		return gx_tile_rom_byte_read(address & 0x1fff);
 	}
 
 	if ((address & 0xffc000) == 0xd20000) {
@@ -1786,7 +1829,7 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 		if (gx_type4_enable) {
 			gx_type4_prot_write(address, data << ((address & 2) ? 0 : 16));
 		} else {
-			UINT32 shift = (2 - (address & 2)) * 8;
+			UINT32 shift = (address & 2) ? 0 : 16;
 			gx_esc_latch = (gx_esc_latch & ~(0xffff << shift)) | (data << shift);
 			if (address & 2) gx_esc_write(gx_esc_latch);
 		}
@@ -1817,6 +1860,12 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 	if ((address & 0xfffff0) == 0xd44000) {
 		gx_tilebanks[(address + 0) & 7] = data >> 8;
 		gx_tilebanks[(address + 1) & 7] = data;
+		return;
+	}
+
+	if ((address & 0xfffff8) == 0xd48000) {
+		K053246Write((address + 0) & 7, data >> 8);
+		K053246Write((address + 1) & 7, data);
 		return;
 	}
 
@@ -1926,6 +1975,14 @@ static void __fastcall gx_main_write_long(UINT32 address, UINT32 data)
 		gx_tilebanks[(address + 1) & 7] = data >> 16;
 		gx_tilebanks[(address + 2) & 7] = data >> 8;
 		gx_tilebanks[(address + 3) & 7] = data;
+		return;
+	}
+
+	if ((address & 0xfffff8) == 0xd48000) {
+		K053246Write((address + 0) & 7, data >> 24);
+		K053246Write((address + 1) & 7, data >> 16);
+		K053246Write((address + 2) & 7, data >> 8);
+		K053246Write((address + 3) & 7, data);
 		return;
 	}
 
@@ -2185,6 +2242,7 @@ static INT32 DrvDoReset()
 	gx_current_scanline = 0;
 	gx_bios_vblank_pending = 0;
 	gx_bios_in_wait_loop = 0;
+	gx_speedhack_wake = 0;
 	sound_control = 0;
 	sound_irq_state = 0;
 	sound_timer_irq_pending = 0;
@@ -2203,7 +2261,7 @@ static INT32 DrvDoReset()
 	tms_host_pending = 0;
 	tms_host_index = 0;
 	tms_cycle_frac = 0;
-	gx_dsp_force = GX_DSP_FORCE_BOOT; // run the DSP through the boot self-test even if DASP is off
+	gx_dsp_force = GX_DSP_FORCE_BOOT;
 	gx_sound_buffer_pos = 0;
 	gx_sound_cycles_total = 0;
 	gx_posthack_frames = gx_posthack_default;
@@ -2276,14 +2334,12 @@ static void gx_apply_alpha_tile_config()
 		// salmndr2 draws its background as an alpha-blended tile layer; the per-tile
 		// alpha mix code lives in attr bits 4-5 (MAME salmndr2_tile_callback). Without
 		// this the layer renders opaque and floods the screen with garbage.
-		K056832SetAlphaTileMixShift(4);
-		K056832SetAlphaTileMode(1);
+		K056832SetAlphaTileMode(2);
 	} else if (gx_special == GX_SPECIAL_SEXYPARO) {
 		// sexyparo uses MAME's alpha_tile_callback: the per-tile alpha mix code is in
 		// attr bits 6-7. The mix code selects a K054338 "additive" PBLEND level, so the
 		// blended layers (e.g. stage-3 ink-stage blue overlay/water) must use a real
 		// additive blend to look like the original's faint blue glow.
-		K056832SetAlphaTileMixShift(6);
 		K056832SetAlphaTileMode(1);
 		konamigx_alpha_tile_additive = 1;
 	} else {
@@ -2316,7 +2372,6 @@ static INT32 DrvInit()
 		BurnTransferSetDimensions(width, 224);
 		GenericTilesSetClipRaw(0, width, 0, 224);
 		BurnDrvSetVisibleSize(width, 224);
-		// Each Type-4 monitor is a standard 4:3 arcade screen; two side-by-side = 8:3.
 		BurnDrvSetAspect((width == GX_TYPE4_MONITOR_WIDTH) ? 4 : 8, 3);
 	}
 
@@ -2368,6 +2423,8 @@ static INT32 DrvInit()
 		gx_patch_mainrom_long(0x872ea * 4, 0x000e0000, 0x00000000);
 	}
 
+	gx_speedhack_init();
+
 	INT32 sound0 = gx_type4_enable ? 5 : 3;
 	INT32 sound1 = gx_type4_enable ? 6 : 4;
 	if (BurnLoadRom(DrvSoundROM + 0x000000, sound0, 2)) return 1;
@@ -2381,14 +2438,12 @@ static INT32 DrvInit()
 		if (BurnLoadRom(DrvGfxROM0 + 0x000000, 7, 2)) return 1;
 		if (BurnLoadRom(DrvGfxROM0 + 0x000001, 8, 2)) return 1;
 	} else if (config->tile_layout == GX_TILE_LAYOUT_6BPP) {
-		if (BurnLoadRomExt(DrvGfxROM0 + 0x000000, 5, 6, LD_GROUP(4))) return 1;
-		if (config->special == GX_SPECIAL_SALMNDR2) {
-			// salmndr2 has three tile ROMs (521-a09/a11/a13). The generic 6bpp
-			// path only loads two and leaves the font garbled, so place the
-			// extra ROM (idx 7) and the smaller one (idx 6) explicitly.
-			if (BurnLoadRomExt(DrvGfxROM0 + 0x000004, 7, 6, LD_GROUP(2))) return 1;
+		if (gx_special == GX_SPECIAL_SALMNDR2) {
+			if (BurnLoadRomExt(DrvGfxROM0 + 0x000000, 5, 6, LD_GROUP(4))) return 1;
 			if (BurnLoadRomExt(DrvGfxROM0 + 0x300000, 6, 6, LD_GROUP(4))) return 1;
+			if (BurnLoadRomExt(DrvGfxROM0 + 0x000004, 7, 6, LD_GROUP(2))) return 1;
 		} else {
+			if (BurnLoadRomExt(DrvGfxROM0 + 0x000000, 5, 6, LD_GROUP(4))) return 1;
 			if (BurnLoadRomExt(DrvGfxROM0 + 0x000004, 6, 6, LD_GROUP(2))) return 1;
 		}
 	} else {
@@ -2404,20 +2459,18 @@ static INT32 DrvInit()
 			if (BurnLoadRomExt(DrvGfxROM1 + base + 4, 11 + (group * 3), 6, LD_GROUP(2))) return 1;
 		}
 		if (BurnLoadRom(DrvGfxROM2 + 0x000000, 21, 1)) return 1;
-	} else if (gx_sprite_bpp == 6) {
-		// 6bpp sprites use the _48_WORD layout: three ROMs interleaved at byte
-		// offsets 0/2/4 with a 6-byte stride (MAME konamigx_6bpp / salmndr2).
-		// The generic 5bpp path below (gap 4 + a separate "fifth" ROM) loads the
-		// data wrong, so the upper sprite-tile banks render as garbage.
-		if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0, config->sprite_pair0_a, 6, LD_GROUP(2))) return 1;
-		if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 2, config->sprite_pair0_b, 6, LD_GROUP(2))) return 1;
-		if (config->sprite_fifth   >= 0 && BurnLoadRomExt(DrvGfxROM1 + 4, config->sprite_fifth,   6, LD_GROUP(2))) return 1;
 	} else {
-		if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000000, config->sprite_pair0_a, 4, LD_GROUP(2))) return 1;
-		if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000002, config->sprite_pair0_b, 4, LD_GROUP(2))) return 1;
-		if (config->sprite_pair1_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x400000, config->sprite_pair1_a, 4, LD_GROUP(2))) return 1;
-		if (config->sprite_pair1_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x400002, config->sprite_pair1_b, 4, LD_GROUP(2))) return 1;
-		if (config->sprite_fifth >= 0 && BurnLoadRom(DrvGfxROM1 + config->sprite_word_size, config->sprite_fifth, 1)) return 1;
+		if (gx_sprite_bpp == 6) {
+			if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000000, config->sprite_pair0_a, 6, LD_GROUP(2))) return 1;
+			if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000002, config->sprite_pair0_b, 6, LD_GROUP(2))) return 1;
+			if (config->sprite_fifth >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000004, config->sprite_fifth, 6, LD_GROUP(2))) return 1;
+		} else {
+			if (config->sprite_pair0_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000000, config->sprite_pair0_a, 4, LD_GROUP(2))) return 1;
+			if (config->sprite_pair0_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x000002, config->sprite_pair0_b, 4, LD_GROUP(2))) return 1;
+			if (config->sprite_pair1_a >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x400000, config->sprite_pair1_a, 4, LD_GROUP(2))) return 1;
+			if (config->sprite_pair1_b >= 0 && BurnLoadRomExt(DrvGfxROM1 + 0x400002, config->sprite_pair1_b, 4, LD_GROUP(2))) return 1;
+			if (config->sprite_fifth >= 0 && BurnLoadRom(DrvGfxROM1 + config->sprite_word_size, config->sprite_fifth, 1)) return 1;
+		}
 	}
 
 	if (config->sample0 >= 0 && BurnLoadRom(DrvSndROM + 0x000000, config->sample0, 1)) return 1;
@@ -2450,6 +2503,9 @@ static INT32 DrvInit()
 		K056832SetLayerOffsets(3,  3, 0);
 	}
 	gx_apply_alpha_tile_config();
+
+//	K056832SetAlphaTileMode(gx_special == GX_SPECIAL_SALMNDR2 ? 2 : (gx_special == GX_SPECIAL_SEXYPARO ? 1 : 0));
+//	K056832SetAlphaTileCallback(NULL);
 
 	INT32 sprite_tile_count = (gx_sprite_bpp == 6) ? ((gx_type4_enable ? 0x1800000 : gx_sprite_word_size) / 0xc0) : (gx_sprite_word_size / 0x80);
 	INT32 sprite_rom_mask = ((gx_sprite_bpp == 6) ? gx_sprite_word_size : 0x1000000) - 1;
@@ -2528,6 +2584,7 @@ static INT32 DrvInit()
 	DrvTms.init(DrvTmsRAM);
 
 	konami_palette32 = DrvPalette;
+	K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 
 	DrvDoReset();
 
@@ -2568,12 +2625,7 @@ static void DrvPaletteUpdate(INT32 use_sub_palette = 0)
 
 		for (INT32 i = 0; i < 0x2000; i++) {
 			UINT32 d = gx_ram_read_long(palram, 0xe80000 + (i << 2), 0x7fff);
-			// konami_palette32 (== DrvPalette, see DrvInit) must hold raw RGB888 for the
-			// 32-bit mixer/KonamiBlendCopy path. Using BurnHighCol here yields a depth-
-			// dependent value: in 16bpp it packs RGB565 into the slot, and KonamiBlendCopy's
-			// case-2 `palette_lut[bmp & 0xffffff]` then misreads it, dropping the red channel
-			// (type4 went all blue/green in 16bpp). Match the non-type4 path: store RGB888.
-			DrvPalette[i] = d & 0x00ffffff;
+			DrvPalette[i] = BurnHighCol((d >> 16) & 0xff, (d >> 8) & 0xff, d & 0xff, 0);
 			konami_palette32[i] = DrvPalette[i];
 		}
 
@@ -2718,8 +2770,6 @@ static void gx_type4_render_monitor(INT32 use_sub_palette, INT32 spriteram_bank,
 		} else {
 			memcpy(dst, src, GX_TYPE4_MONITOR_WIDTH * sizeof(UINT32));
 		}
-
-		dst[GX_TYPE4_MONITOR_WIDTH - 1] = dst[GX_TYPE4_MONITOR_WIDTH - 2];
 	}
 
 	nScreenWidth = screen_width;
@@ -2756,80 +2806,6 @@ static void gx_type4_compose_output()
 			memcpy(dst, pGxType4LeftBitmap + (y * GX_TYPE4_MONITOR_WIDTH), GX_TYPE4_MONITOR_WIDTH * sizeof(UINT32));
 		}
 	}
-}
-
-// --- tbyahhoo Korean-logo tilemap fixup -------------------------------------
-// The title logo (K056832 page 0) reuses a few tile codes across cells that
-// the Japanese art drew identically, and leaves some cells blank (0x400).
-// The Korean redraw needs those cells to differ, so we redirect them to spare
-// tile codes (0x5e1..) whose pixels come from the Korean ROM patch.  The
-// tilemap is generated at runtime by the game (it exists in no ROM table), so
-// this can only be done here.
-//
-// Gating: (a) the patch writes a MAGIC pattern into spare tile 0x5fe; the
-// remap fires only on an exact 64-byte match.  The original ROM holds fully
-// inked X-marker placeholder tiles in the spare region, so an any-ink check
-// would misfire on unpatched ROMs (it did) — an exact match cannot.
-// (b) three anchor cells must hold the logo's Japanese shared codes in the
-// logo's relative geometry.  The game rebuilds this tilemap per scene at
-// different pages/offsets (title screen page 0, attract vocal-song title
-// page 1 shifted 4 columns left), so the whole VRAM is scanned for the
-// anchor pattern and the fix table is applied relative to each match.
-// Cell colours are preserved.
-static void tby_logo_tilemap_fix()
-{
-	const GxGameConfig *cfg = gx_get_game_config();
-	if (cfg == NULL || cfg->special != GX_SPECIAL_TBYAHHOO) return;
-
-	// row/col offsets from the anchor cell (title screen: row 6, col 16)
-	static const struct { INT32 dr, dc; UINT16 oldcode, newcode; } fix[] = {
-		// shared glyph tiles the JP art reused across differing Korean cells
-		{  0,   0, 0x0408, 0x05e1 },
-		{  5,  -8, 0x0417, 0x05e2 },
-		{  5,  -7, 0x0425, 0x05e3 },
-		{  4,  -2, 0x0428, 0x05e4 },
-		{  5,  -2, 0x0428, 0x05e5 },
-		{  7, -12, 0x043a, 0x05e6 },
-		{  5, -11, 0x043a, 0x05e7 },
-		// blank (0x400) cells the Korean art paints into
-		{  0,  -5, 0x0400, 0x05e8 },
-		{  0,   1, 0x0400, 0x05e9 },
-		{  0,   2, 0x0400, 0x05ea },
-		{  1,  -3, 0x0400, 0x05eb },
-		{  7,  -5, 0x0400, 0x05ec },
-		{ 10,  -8, 0x0400, 0x05ed },
-		{ 10,   9, 0x0400, 0x05ee },
-		{ 11,  -3, 0x0400, 0x05ef },
-		{ 11,   3, 0x0400, 0x05f0 },
-		{ 11,   4, 0x0400, 0x05f1 },
-	};
-	const INT32 nfix = sizeof(fix) / sizeof(fix[0]);
-
-	const UINT8 *exp = DrvGfxROMExp0 + 0x05fe * 0x40;
-	for (INT32 i = 0; i < 0x40; i++) {
-		if (exp[i] != (UINT8)((3 * (i >> 3) + 5 * (i & 7) + 7) % 32)) return;
-	}
-
-	// 16 pages of 64x32 cells, addressed as 512 linear rows of 64
-	#define TBY_CODEIDX(r,c) ((((r) * 64 + (c)) * 2) + 1)
-	#define TBY_CODE(r,c) (BURN_ENDIAN_SWAP_INT16(K056832GetVram(TBY_CODEIDX(r,c))) & 0x1fff)
-	for (INT32 ar = 0; ar <= 512 - 12; ar++) {
-		for (INT32 ac = 12; ac <= 63 - 9; ac++) {
-			if (TBY_CODE(ar, ac) != 0x0408) continue;
-			if (TBY_CODE(ar + 5, ac - 2) != 0x0428) continue;
-			if (TBY_CODE(ar + 5, ac - 8) != 0x0417) continue;
-
-			for (INT32 i = 0; i < nfix; i++) {
-				INT32 idx = TBY_CODEIDX(ar + fix[i].dr, ac + fix[i].dc);
-				UINT16 cur = BURN_ENDIAN_SWAP_INT16(K056832GetVram(idx));
-				if ((cur & 0x1fff) != fix[i].oldcode) continue;
-				UINT16 nw = (UINT16)((cur & 0xe000) | fix[i].newcode);
-				K056832SetVram(idx, BURN_ENDIAN_SWAP_INT16(nw));
-			}
-		}
-	}
-	#undef TBY_CODE
-	#undef TBY_CODEIDX
 }
 
 static INT32 gx_sexyparo_has_stage3_background()
@@ -2993,8 +2969,6 @@ static INT32 DrvDraw()
 		return 0;
 	}
 
-	tby_logo_tilemap_fix();
-
 	DrvPaletteUpdate();
 	KonamiClearBitmaps(0);
 
@@ -3005,8 +2979,10 @@ static INT32 DrvDraw()
 
 	konamigx_mixer(0, 0, 0, 0, K056832GetLastAlphaTileMixCode() << 30, 0, gx_rushingheroes_hack);
 
+#ifndef __LIBRETRO__
 	gx_sexyparo_draw_snow();
 	gx_sexyparo_draw_space_stars();
+#endif
 
 	KonamiBlendCopy(DrvPalette);
 
@@ -3050,14 +3026,20 @@ static INT32 DrvFrame()
 	}
 
 	gx_dasp_enable = (DrvConfig[0] & 0x01) ? 1 : 0;
-
 	if (gx_dsp_force > 0) gx_dsp_force--;
 
 	SekNewFrame();
 	timerNewFrame();
 
+	const INT32 main_clock =
+#ifdef __LIBRETRO__
+		24000000;
+#else
+		(!gx_type4_enable && gx_posthack_frames > 0) ? 16000000 : 24000000;
+#endif
+
 	INT32 nCyclesTotal[3] = {
-		(INT32)(((!gx_type4_enable && gx_posthack_frames > 0) ? 16000000 : 24000000) / gx_frame_rate),
+		(INT32)(main_clock / gx_frame_rate),
 		(INT32)( 8000000 / gx_frame_rate),
 		(INT32)(18432000 / gx_frame_rate)
 	};
@@ -3080,7 +3062,13 @@ static INT32 DrvFrame()
 
 		SekOpen(0);
 		gx_bios_vblank_hle_check(SekGetPC(-1));
-		CPU_RUN(0, Sek);
+		INT32 main_segment = ((i + 1) * nCyclesTotal[0] / nInterleave) - nCyclesDone[0];
+		if (!gx_speedhack_wake && gx_speedhack_active(SekGetPC(-1))) {
+			nCyclesDone[0] += SekIdle(main_segment);
+		} else {
+			gx_speedhack_wake = 0;
+			nCyclesDone[0] += SekRun(main_segment);
+		}
 		gx_bios_vblank_hle_check(SekGetPC(-1));
 
 		if (((gx_type4_enable && scanline < 240) || (!gx_type4_enable && scanline == 48)) && (gx_syncen & 0x40)) {
@@ -3088,6 +3076,7 @@ static INT32 DrvFrame()
 			if (((gx_irq_control & 0x82) == 0x82) || (gx_syncen & 0x02)) {
 				gx_syncen &= ~0x02;
 				SekSetIRQLine(2, CPU_IRQSTATUS_AUTO);
+				gx_speedhack_wake = 1;
 			}
 		}
 		if (scanline == 240) {
@@ -3104,18 +3093,13 @@ static INT32 DrvFrame()
 				}
 			}
 
-			// ds.patch: fire the BIOS vblank IRQ1 unconditionally. The K053252
-			// generates vblank independently on the Type-2 games, so gating on
-			// (gx_syncen & 0x20) starves the BIOS vblank counter and the POST
-			// ROM/RAM checksum loop fails (chips report BAD). Setting
-			// gx_bios_vblank_pending here also stops the HLE backup tick from
-			// double-counting the frame counter.
-			if (1) {
+			if (gx_type4_enable || (gx_syncen & 0x20) || gx_special == GX_SPECIAL_SEXYPARO || gx_special == GX_SPECIAL_SALMNDR2 || gx_special == GX_SPECIAL_TBYAHHOO) {
 				gx_syncen &= ~0x20;
 				if (((gx_irq_control & 0x81) == 0x81) || (gx_syncen & 0x01)) {
 					gx_syncen &= ~0x01;
 					SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 					gx_bios_vblank_pending = 1;
+					gx_speedhack_wake = 1;
 				}
 			}
 			gx_irq_status |= 0x04;
@@ -3126,6 +3110,7 @@ static INT32 DrvFrame()
 				gx_irq_status &= ~0x80;
 				gx_syncen &= ~0x04;
 				SekSetIRQLine(3, CPU_IRQSTATUS_AUTO);
+				gx_speedhack_wake = 1;
 			}
 		}
 		SekClose();
@@ -3143,10 +3128,9 @@ static INT32 DrvFrame()
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
 	nExtraCycles[1] = nCyclesDone[1] - nCyclesTotal[1];
 
-	// HLE vblank tick: if CPU was stuck in BIOS wait loop and no real IRQ1 fired,
-	// advance the BIOS vblank frame counter manually (once per frame).
-	if (gx_bios_in_wait_loop && !gx_bios_vblank_pending)
+	if (gx_bios_in_wait_loop && !gx_bios_vblank_pending) {
 		gx_bios_vblank_tick();
+	}
 
 	if (gx_posthack_frames > 0) gx_posthack_frames--;
 
@@ -3185,14 +3169,10 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(gx_irq_status);
 		SCAN_VAR(gx_syncen);
 		SCAN_VAR(gx_control);
-		SCAN_VAR(gx_esc_program);
-		SCAN_VAR(gx_esc_latch);
-		SCAN_VAR(gx_sexyparo_esc_p1);
-		SCAN_VAR(gx_sexyparo_esc_p2);
-		SCAN_VAR(gx_sexyparo_esc_p4);
 		SCAN_VAR(gx_current_scanline);
 		SCAN_VAR(gx_bios_vblank_pending);
 		SCAN_VAR(gx_bios_in_wait_loop);
+		SCAN_VAR(gx_speedhack_wake);
 		SCAN_VAR(sound_control);
 		SCAN_VAR(sound_irq_state);
 		SCAN_VAR(sound_timer_irq_pending);
@@ -3231,6 +3211,11 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(gx_type4_psac_dirty);
 		SCAN_VAR(gx_type4_psac_tile_dirty);
 		SCAN_VAR(fantjour_dma);
+		SCAN_VAR(gx_esc_program);
+		SCAN_VAR(gx_esc_latch);
+		SCAN_VAR(gx_sexyparo_esc_p1);
+		SCAN_VAR(gx_sexyparo_esc_p2);
+		SCAN_VAR(gx_sexyparo_esc_p4);
 		SCAN_VAR(nExtraCycles);
 	}
 
@@ -3591,61 +3576,73 @@ STD_ROM_PICK(puzldama)
 STD_ROM_FN(puzldama)
 
 static struct BurnRomInfo tbyahhooRomDesc[] = {
-	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
-	{ "424jaa02.31b", 0x00080000, 0x0416ad78, 1 | BRF_PRG | BRF_ESS }, //  1 maincpu
-	{ "424jaa04.27b", 0x00080000, 0xbcbe0e40, 1 | BRF_PRG | BRF_ESS }, //  2 maincpu
-	{ "424a06.9c", 0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS }, //  3 soundcpu
-	{ "424a07.7c", 0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS }, //  4 soundcpu
-	{ "424a14.17h", 0x00200000, 0xb1d9fce8, 3 | BRF_GRA }, //  5 k056832
-	{ "424a12.13g", 0x00080000, 0x7f9cb8b1, 3 | BRF_GRA }, //  6 k056832
-	{ "424a11.25g", 0x00200000, 0x29592688, 4 | BRF_GRA }, //  7 k055673
-	{ "424a10.28g", 0x00200000, 0xcf24e5e3, 4 | BRF_GRA }, //  8 k055673
-	{ "424a09.30g", 0x00100000, 0xdaa07224, 4 | BRF_GRA }, //  9 k055673
-	{ "424a17.9g", 0x00200000, 0xe9dd9692, 5 | BRF_SND }, // 10 k054539
-	{ "424a18.7g", 0x00200000, 0x0f0d9f3a, 5 | BRF_SND }, // 11 k054539
-	{ "tbyahhoo.nv", 0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS }, // 12 eeprom
+	{ "300a01.34k",   0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS },      //  0 maincpu
+	{ "424jaa02.31b", 0x00080000, 0x0416ad78, 1 | BRF_PRG | BRF_ESS },      //  1 maincpu
+	{ "424jaa04.27b", 0x00080000, 0xbcbe0e40, 1 | BRF_PRG | BRF_ESS },      //  2 maincpu
+
+	{ "424a06.9c",    0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS },      //  3 soundcpu
+	{ "424a07.7c",    0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS },      //  4 soundcpu
+
+	{ "424a14.17h",   0x00200000, 0xb1d9fce8, 3 | BRF_GRA },                //  5 k056832
+	{ "424a12.13g",   0x00080000, 0x7f9cb8b1, 3 | BRF_GRA },                //  6 k056832
+	{ "424a11.25g",   0x00200000, 0x29592688, 4 | BRF_GRA },                //  7 k055673
+	{ "424a10.28g",   0x00200000, 0xcf24e5e3, 4 | BRF_GRA },                //  8 k055673
+	{ "424a09.30g",   0x00100000, 0xdaa07224, 4 | BRF_GRA },                //  9 k055673
+
+	{ "424a17.9g",    0x00200000, 0xe9dd9692, 5 | BRF_SND },                // 10 k054539
+	{ "424a18.7g",    0x00200000, 0x0f0d9f3a, 5 | BRF_SND },                // 11 k054539
+
+	{ "tbyahhoo.nv",  0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS },      // 12 eeprom
 };
 
 STD_ROM_PICK(tbyahhoo)
 STD_ROM_FN(tbyahhoo)
 
-static struct BurnRomInfo tbyahhokRomDesc[] = {
-	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
-	{ "424jaa02k.31b", 0x00080000, 0xbc790cef, 1 | BRF_PRG | BRF_ESS }, //  1 maincpu
-	{ "424jaa04k.27b", 0x00080000, 0xd553fd5c, 1 | BRF_PRG | BRF_ESS }, //  2 maincpu
-	{ "424a06.9c", 0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS }, //  3 soundcpu
-	{ "424a07.7c", 0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS }, //  4 soundcpu
-	{ "424a14k.17h", 0x00200000, 0x95c666d0, 3 | BRF_GRA }, //  5 k056832
-	{ "424a12k.13g", 0x00080000, 0x4a7c489f, 3 | BRF_GRA }, //  6 k056832
-	{ "424a11k.25g", 0x00200000, 0x2f96de9f, 4 | BRF_GRA }, //  7 k055673
-	{ "424a10k.28g", 0x00200000, 0xe7bcd822, 4 | BRF_GRA }, //  8 k055673
-	{ "424a09k.30g", 0x00100000, 0xdcae531c, 4 | BRF_GRA }, //  9 k055673
-	{ "424a17.9g", 0x00200000, 0xe9dd9692, 5 | BRF_SND }, // 10 k054539
-	{ "424a18.7g", 0x00200000, 0x0f0d9f3a, 5 | BRF_SND }, // 11 k054539
-	{ "tbyahhoo.nv", 0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS }, // 12 eeprom
-};
-
-STD_ROM_PICK(tbyahhok)
-STD_ROM_FN(tbyahhok)
-
 static struct BurnRomInfo mtwinbeeRomDesc[] = {
-	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
-	{ "424eaa02.31b", 0x00080000, 0x34659905, 1 | BRF_PRG | BRF_ESS }, //  1 maincpu
-	{ "424eaa04.27b", 0x00080000, 0xf42d3139, 1 | BRF_PRG | BRF_ESS }, //  2 maincpu
-	{ "424a06.9c", 0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS }, //  3 soundcpu
-	{ "424a07.7c", 0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS }, //  4 soundcpu
-	{ "424a14.17h", 0x00200000, 0xb1d9fce8, 3 | BRF_GRA }, //  5 k056832
-	{ "424a12.13g", 0x00080000, 0x7f9cb8b1, 3 | BRF_GRA }, //  6 k056832
-	{ "424a11.25g", 0x00200000, 0x29592688, 4 | BRF_GRA }, //  7 k055673
-	{ "424a10.28g", 0x00200000, 0xcf24e5e3, 4 | BRF_GRA }, //  8 k055673
-	{ "424a09.30g", 0x00100000, 0xdaa07224, 4 | BRF_GRA }, //  9 k055673
-	{ "424a17.9g", 0x00200000, 0xe9dd9692, 5 | BRF_SND }, // 10 k054539
-	{ "424a18.7g", 0x00200000, 0x0f0d9f3a, 5 | BRF_SND }, // 11 k054539
-	{ "mtwinbee.nv", 0x00000080, 0x942b4323, 6 | BRF_PRG | BRF_ESS }, // 12 eeprom
+	{ "300a01.34k",   0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS },      //  0 maincpu
+	{ "424eaa02.31b", 0x00080000, 0x34659905, 1 | BRF_PRG | BRF_ESS },      //  1 maincpu
+	{ "424eaa04.27b", 0x00080000, 0xf42d3139, 1 | BRF_PRG | BRF_ESS },      //  2 maincpu
+
+	{ "424a06.9c",    0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS },      //  3 soundcpu
+	{ "424a07.7c",    0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS },      //  4 soundcpu
+
+	{ "424a14.17h",   0x00200000, 0xb1d9fce8, 3 | BRF_GRA },                //  5 k056832
+	{ "424a12.13g",   0x00080000, 0x7f9cb8b1, 3 | BRF_GRA },                //  6 k056832
+	{ "424a11.25g",   0x00200000, 0x29592688, 4 | BRF_GRA },                //  7 k055673
+	{ "424a10.28g",   0x00200000, 0xcf24e5e3, 4 | BRF_GRA },                //  8 k055673
+	{ "424a09.30g",   0x00100000, 0xdaa07224, 4 | BRF_GRA },                //  9 k055673
+
+	{ "424a17.9g",    0x00200000, 0xe9dd9692, 5 | BRF_SND },                // 10 k054539
+	{ "424a18.7g",    0x00200000, 0x0f0d9f3a, 5 | BRF_SND },                // 11 k054539
+
+	{ "mtwinbee.nv",  0x00000080, 0x942b4323, 6 | BRF_PRG | BRF_ESS },      // 12 eeprom
 };
 
 STD_ROM_PICK(mtwinbee)
 STD_ROM_FN(mtwinbee)
+
+static struct BurnRomInfo tbyahhookRomDesc[] = {
+	{ "300a01.34k",    0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS },     //  0 maincpu
+	{ "424jaa02k.31b", 0x00080000, 0xbc790cef, 1 | BRF_PRG | BRF_ESS },     //  1 maincpu
+	{ "424jaa04k.27b", 0x00080000, 0xd553fd5c, 1 | BRF_PRG | BRF_ESS },     //  2 maincpu
+
+	{ "424a06.9c",     0x00020000, 0xa4760e14, 2 | BRF_PRG | BRF_ESS },     //  3 soundcpu
+	{ "424a07.7c",     0x00020000, 0xfa90d7e2, 2 | BRF_PRG | BRF_ESS },     //  4 soundcpu
+
+	{ "424a14k.17h",   0x00200000, 0x95c666d0, 3 | BRF_GRA },               //  5 k056832
+	{ "424a12k.13g",   0x00080000, 0x4a7c489f, 3 | BRF_GRA },               //  6 k056832
+	{ "424a11k.25g",   0x00200000, 0x2f96de9f, 4 | BRF_GRA },               //  7 k055673
+	{ "424a10k.28g",   0x00200000, 0xe7bcd822, 4 | BRF_GRA },               //  8 k055673
+	{ "424a09k.30g",   0x00100000, 0xdcae531c, 4 | BRF_GRA },               //  9 k055673
+
+	{ "424a17.9g",     0x00200000, 0xe9dd9692, 5 | BRF_SND },               // 10 k054539
+	{ "424a18.7g",     0x00200000, 0x0f0d9f3a, 5 | BRF_SND },               // 11 k054539
+
+	{ "tbyahhoo.nv",   0x00000080, 0x1e6fa2f8, 6 | BRF_PRG | BRF_ESS },     // 12 eeprom
+};
+
+STD_ROM_PICK(tbyahhook)
+STD_ROM_FN(tbyahhook)
 
 static struct BurnRomInfo tkmmpzdmRomDesc[] = {
 	{ "300a01.34k", 0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
@@ -4380,22 +4377,22 @@ struct BurnDriver BurnDrvTbyahhoo = {
 	288, 224, 4, 3
 };
 
-struct BurnDriver BurnDrvTbyahhok = {
-	"tbyahhok", "tbyahhoo", "konamigx", NULL, "1995",
-	"Twin Bee Yahhoo! (Korean translation)\0", NULL, "hack", "Konami System GX",
-	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
-	NULL, tbyahhokRomInfo, tbyahhokRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
-	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
-	288, 224, 4, 3
-};
-
 struct BurnDriver BurnDrvMtwinbee = {
 	"mtwinbee", "tbyahhoo", "konamigx", NULL, "1995",
 	"Magical Twin Bee (ver EAA)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, mtwinbeeRomInfo, mtwinbeeRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
+	288, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvTbyahhook = {
+	"tbyahhook", "tbyahhoo", "konamigx", NULL, "2026",
+	"Twin Bee Yahhoo! (ver JAA)\0", NULL, "Konami", "Konami System GX",
+	L"Twin Bee Yahhoo! (ver JAA)\0\uD2B8\uC708\uBE44 \uC58F\uD638! - \uC774\uC0C1\uD55C \uB098\uB77C\uC5D0\uC11C\uC758 \uB300\uC18C\uB3D9!! (ver JAA, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	NULL, tbyahhookRomInfo, tbyahhookRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
 };
@@ -4454,7 +4451,7 @@ struct BurnDriver BurnDrvSexyparoebl = {
 	"sexyparoebl", "sexyparo", "konamigx", NULL, "1996",
 	"Sexy Parodius (ver EAA, bootleg)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_NOT_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, sexyparoeblRomInfo, sexyparoeblRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
@@ -4484,7 +4481,7 @@ struct BurnDriver BurnDrvSalmndr2 = {
 	"salmndr2", NULL, "konamigx", NULL, "1996",
 	"Salamander 2 (ver JAA)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, salmndr2RomInfo, salmndr2RomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
@@ -4494,7 +4491,7 @@ struct BurnDriver BurnDrvSalmndr2a = {
 	"salmndr2a", "salmndr2", "konamigx", NULL, "1996",
 	"Salamander 2 (ver AAB)\0", NULL, "Konami", "Konami System GX",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, salmndr2aRomInfo, salmndr2aRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3

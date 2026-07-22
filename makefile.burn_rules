@@ -1,9 +1,9 @@
 alldir	= 	burn burn/devices burn/snd burn/drv burn/drv/atari burn/drv/capcom burn/drv/cave burn/drv/channelf burn/drv/coleco burn/drv/cps3 burn/drv/dataeast \
 			burn/drv/galaxian burn/drv/irem burn/drv/konami burn/drv/megadrive burn/drv/midway burn/drv/pce burn/drv/pst90s burn/drv/pre90s burn/drv/neogeo burn/drv/nes burn/drv/snes \
 			burn/drv/pgm burn/drv/pgm2 burn/drv/psikyo burn/drv/sega burn/drv/sg1000 burn/drv/sms burn/drv/msx burn/drv/spectrum burn/drv/taito \
-			burn/drv/toaplan cpu cpu/a68k cpu/arm cpu/arm7 cpu/arm9 cpu/e132xs cpu/f8 cpu/h6280 cpu/hd6309 cpu/hmcs40 cpu/i386 cpu/i8039 cpu/i8x41 cpu/i8051 cpu/i8085 cpu/adsp2100 cpu/konami cpu/m377 cpu/mips3 cpu/m68k \
-			cpu/mb88xx cpu/m6502 cpu/m6800 cpu/m6805 cpu/m6809 cpu/nec cpu/pic16c5x cpu/s2650 cpu/tlcs90 cpu/tlcs900 cpu/sh2 cpu/sh4 cpu/t11 cpu/tms32010 cpu/tms34 cpu/upd7725 cpu/upd7810 \
-			cpu/tms57002 cpu/v60 cpu/z80 cpu/z180 \
+			burn/drv/toaplan cpu cpu/a68k cpu/arm cpu/arm7 cpu/arm9 cpu/e132xs cpu/f8 cpu/h6280 cpu/h83002 cpu/hd6309 cpu/hmcs40 cpu/i386 cpu/i8039 cpu/i8x41 cpu/i8051 cpu/i8085 cpu/adsp2100 cpu/konami cpu/m377 cpu/mips3 cpu/psx cpu/m68k \
+			cpu/mb88xx cpu/m6502 cpu/m6800 cpu/m6805 cpu/m6809 cpu/nec cpu/pic16c5x cpu/s2650 cpu/tlcs90 cpu/tlcs900 cpu/sh2 cpu/sh4 cpu/t11 cpu/tms32010 cpu/tms34 cpu/tms57002 cpu/upd7725 cpu/upd7810 \
+			cpu/v60 cpu/z80 cpu/z180 \
 			dep/libs/dr_libs dep/libs/libchdr dep/libs/libchdr/include dep/libs/lzma dep/libs/lzma/include dep/libs/zstd
 
 drvsrc	= 	d_akkaarrh.o d_arcadecl.o d_atarig1.o d_atarisy1.o d_badlands.o d_batman.o d_blstroid.o d_eprom.o d_gauntlet.o d_klax.o d_marblmd2.o d_missile.o d_offtwall.o d_rampart.o \
@@ -31,10 +31,9 @@ drvsrc	= 	d_akkaarrh.o d_arcadecl.o d_atarig1.o d_atarisy1.o d_badlands.o d_batm
 			d_88games.o d_ajax.o d_aliens.o d_asterix.o d_battlnts.o d_bishi.o d_bladestl.o d_blockhl.o d_bottom9.o d_chqflag.o d_circusc.o d_combatsc.o \
 			d_contra.o d_crimfght.o d_dbz.o d_ddribble.o d_divebomb.o d_fastlane.o d_finalzr.o d_flkatck.o d_gberet.o d_gijoe.o d_gbusters.o d_gradius3.o \
 			d_gyruss.o d_hcastle.o d_hexion.o d_hyperspt.o d_ironhors.o d_jackal.o d_jailbrek.o d_junofrst.o d_kontest.o d_labyrunr.o d_lethal.o d_mainevt.o \
-			d_megazone.o d_mikie.o d_mogura.o d_moo.o d_mystwarr.o d_nemesis.o d_pandoras.o d_parodius.o d_pingpong.o d_pooyan.o d_rocnrope.o d_rockrage.o \
-			d_rollerg.o d_sbasketb.o d_scotrsht.o d_shaolins.o d_simpsons.o d_spy.o d_surpratk.o d_thunderx.o d_timeplt.o d_tmnt.o d_tp84.o d_trackfld.o \
+			d_megazone.o d_mikie.o d_mogura.o d_moo.o d_mystwarr.o d_konamigx.o d_nemesis.o d_pandoras.o d_parodius.o d_pingpong.o d_pooyan.o d_rocnrope.o d_rockrage.o \
+			d_rollerg.o d_rungun.o d_sbasketb.o d_scotrsht.o d_shaolins.o d_simpsons.o d_spy.o d_surpratk.o d_thunderx.o d_timeplt.o d_tmnt.o d_tp84.o d_trackfld.o \
 			d_tutankhm.o d_twin16.o d_ultraman.o d_vendetta.o d_wecleman.o d_xexex.o d_xmen.o d_yiear.o \
-			d_konamigx.o d_rungun.o \
 			\
 			d_kinst.o d_tunit.o d_wunit.o d_xunit.o d_yunit.o \
 			\
@@ -84,9 +83,9 @@ drvsrc	= 	d_akkaarrh.o d_arcadecl.o d_atarig1.o d_atarisy1.o d_badlands.o d_batm
 			d_cischeat.o d_crospang.o d_crshrace.o d_cultures.o d_dcon.o d_ddragon3.o d_deniam.o d_discoboy.o d_diverboy.o d_dooyong.o d_dreamwld.o d_drgnmst.o d_drtomy.o d_egghunt.o d_eolith.o d_eolith16.o d_expro02.o \
 			d_esd16.o d_f-32.o d_f1gp.o d_funybubl.o d_fuukifg2.o d_fuukifg3.o d_gaelco.o d_gaelco2.o d_gaiden.o d_galpani3.o d_galpanic.o d_galspnbl.o d_glass.o d_go2000.o d_goori.o d_gotcha.o d_gstream.o d_gumbo.o \
 			d_hyperpac.o d_hyprduel.o d_itech8.o d_itech32.o d_igs011.o d_inufuku.o d_jchan.o d_kaneko16.o d_kickgoal.o d_ladyfrog.o d_legionna.o d_limenko.o d_littlerb.o d_lordgun.o d_macrossp.o d_mcatadv.o d_megaphx.o d_metro.o d_midas.o \
-			d_missb2.o d_mosaic.o d_ms32.o d_mugsmash.o d_musclem.o d_mwarr.o d_namcos2.o d_news.o d_ngp.o d_nmg5.o d_nmk16.o d_ohmygod.o d_oneshot.o d_onetwo.o d_pasha2.o d_pass.o d_patapata.o \
+			d_missb2.o d_mosaic.o d_ms32.o d_mugsmash.o d_musclem.o d_mwarr.o d_namcos11.o d_namcos12.o d_namcos2.o d_news.o d_ngp.o d_nmg5.o d_nmk16.o d_ohmygod.o d_oneshot.o d_onetwo.o d_pasha2.o d_pass.o d_patapata.o \
 			d_pipedrm.o d_pirates.o d_pkscram.o d_playmark.o d_powerins.o d_powerbal.o d_ppmast93.o d_pushman.o d_rabbit.o d_raiden.o d_raiden2.o d_sandscrp.o d_sderby.o d_seibuspi.o d_seta.o d_seta2.o \
-			d_shadfrce.o d_shangha3.o d_silkroad.o d_silvmil.o d_speedspn.o d_splash.o d_ssv.o d_suna16.o d_supduck.o d_suprnova.o d_taotaido.o d_targeth.o d_tecmo16.o d_tecmosys.o \
+			d_shadfrce.o d_shangha3.o d_silkroad.o d_silvmil.o d_speedspn.o d_splash.o d_st0016.o d_ssv.o d_suna16.o d_supduck.o d_suprslam.o d_suprnova.o d_taotaido.o d_targeth.o d_tecmo16.o d_tecmosys.o \
 			d_tetrisp2.o d_thoop2.o d_topdrive.o d_tumbleb.o d_unico.o d_vamphalf.o d_vegaeo.o d_welltris.o d_wrally.o d_wwfwfest.o d_x2222.o d_xorworld.o d_xorworld_ms.o d_yunsun16.o d_yunsung8.o d_zerozone.o \
 			\
 			d_parent.o \
@@ -116,17 +115,17 @@ depobj	= 	burn.o burn_bitmap.o burn_gun.o burn_led.o burn_shift.o burn_memory.o 
 			asteroids.o astrocde_snd.o ay8910.o beep.o burn_y8950.o burn_ym2151.o burn_ym2203.o burn_ym2413.o burn_ym2608.o burn_ym2610.o burn_ym2612.o burn_md2612.o \
 			burn_ym3526.o burn_ym3812.o burn_ymf262.o burn_ymf271.o burn_ymf278b.o bzone.o c6280.o dac.o digitalk.o es5506.o es8712.o exidy440_snd.o flower.o flt_rc.o fm.o fmopl.o ym2612.o gaelco.o hc55516.o \
 			i5000.o ics2115.o iremga20.o k005289.o k007232.o k051649.o k053260.o k054539.o llander.o mpeg_audio.o msm5205.o msm5232.o msm6295.o multipcm.o namco_snd.o c140.o c352.o nes_apu.o \
-			t6w28.o tiamc1_snd.o timeplt_snd.o tms5110.o tms5220.o tms36xx.o phoenixsound.o pleiadssound.o pokey.o redbaron.o rf5c68.o s14001a.o saa1099.o samples.o segapcm.o sn76477.o sn76496.o \
+			t6w28.o tiamc1_snd.o timeplt_snd.o tms5110.o tms5220.o tms36xx.o phoenixsound.o pleiadssound.o pokey.o redbaron.o rf5c68.o s14001a.o saa1099.o samples.o segapcm.o sn76477.o sn76496.o st0016_snd.o \
 			upd7759.o vlm5030.o votrax.o wiping.o x1010.o ym2151.o ym2413.o ymdeltat.o ymf262.o ymf271.o ymf278b.o ymz280b.o ymz770.o snk6502_sound.o sp0250.o sp0256.o \
 			\
 			adsp2100.o adsp2100_intf.o arm7_intf.o arm9_intf.o arm_intf.o f8.o h6280_intf.o hd6309_intf.o konami_intf.o m6502_intf.o m6800_intf.o m6805_intf.o m6809_intf.o \
-			m68000_intf.o mips3_intf.o nec_intf.o pic16c5x_intf.o s2650_intf.o t11_intf.o tlcs90_intf.o tms34010.o tms34_intf.o z80_intf.o \
+			m68000_intf.o mips3_intf.o psx_intf.o nec_intf.o pic16c5x_intf.o s2650_intf.o t11_intf.o tlcs90_intf.o tms34010.o tms34_intf.o z80_intf.o \
 			z180_intf.o  \
 			\
-			arm.o arm7.o arm9.o e132xs.o h6280.o hd6309.o hmcs40.o i386.o i8039.o m37710.o mcs48.o mcs51.o i8085.o konami.o m6502.o m6800.o m6805.o m6809.o mb88xx.o nec.o pic16c5x.o s2650.o sh2.o sh4.o t11.o tms32010.o tlcs90.o tlcs900.o \
+			arm.o arm7.o arm9.o e132xs.o h6280.o h83002.o hd6309.o hmcs40.o i386.o i8039.o m37710.o mcs48.o mcs51.o i8085.o konami.o m6502.o m6800.o m6805.o m6809.o mb88xx.o nec.o pic16c5x.o s2650.o sh2.o sh4.o t11.o tms32010.o tms57002.o tms57kdec.o tmsops.o tlcs90.o tlcs900.o \
 			upd7725.o upd7810.o v25.o v60.o z80.o z80daisy.o z80ctc.o z80pio.o z180.o \
 			\
-			cop0.o cop1.o mips3.o \
+			cop0.o cop1.o mips3.o psx.o psx_gte.o \
 			\
 			cave.o cave_palette.o cave_sprite.o cave_tile.o \
 			\

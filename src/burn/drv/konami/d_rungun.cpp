@@ -46,7 +46,7 @@ static UINT8 DrvJoy4[8];
 static UINT8 DrvJoy5[8];
 static UINT8 DrvReset;
 static UINT16 DrvInputs[5];
-static UINT8 DrvDips[2];
+static UINT8 DrvDips[3];
 static UINT8 DrvPrevDips[2];
 
 static UINT8 soundlatch[4];
@@ -157,6 +157,7 @@ static struct BurnInputInfo RungunInputList[] = {
 	{"Service 4",     BIT_DIGITAL,   DrvJoy1 + 7,  "service"	},
 	{"Dip A",         BIT_DIPSWITCH, DrvDips + 0,  "dip"		},
 	{"Dip B",         BIT_DIPSWITCH, DrvDips + 1,  "dip"		},
+	{"Dip C",         BIT_DIPSWITCH, DrvDips + 2,  "dip"		},
 };
 
 STDINPUTINFO(Rungun)
@@ -164,6 +165,7 @@ STDINPUTINFO(Rungun)
 static struct BurnDIPInfo RungunDIPList[] = {
 	{0x29, 0xff, 0xff, 0x00, NULL},
 	{0x2a, 0xff, 0xff, 0x8c, NULL},
+	{0x2b, 0xff, 0xff, 0x00, NULL},
 
 	{0   , 0xfe, 0   ,    2, "Freeze"				},
 	{0x29, 0x01, 0x01, 0x00, "Off"					},
@@ -192,6 +194,10 @@ static struct BurnDIPInfo RungunDIPList[] = {
 	{0   , 0xfe, 0   ,    2, "Bit7 (Unknown)"		},
 	{0x2a, 0x01, 0x80, 0x80, "Off"					},
 	{0x2a, 0x01, 0x80, 0x00, "On"					},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hack"			},
+	{0x2b, 0x01, 0x01, 0x00, "Off"					},
+	{0x2b, 0x01, 0x01, 0x01, "On"					},
 };
 
 STDDIPINFO(Rungun)
@@ -606,8 +612,27 @@ static UINT8 __fastcall rungun_main_read_byte(UINT32 address)
 			case 0x08:
 				return 0;
 
-			case 0x0a:
-				return soundlatch[2];
+			case 0x0a: {
+				UINT8 data = soundlatch[2];
+				UINT32 pc = SekGetPC(-1);
+
+				if ((DrvDips[2] & 0x01) && (data & 0x80)) {
+					switch (pc)
+					{
+						case 0x025e40: // EAA 1993 10.8
+						case 0x025b80: // EAA 1993 10.4
+						case 0x02d4d6: // EAA 1993 9.10
+						case 0x025d62: // UBA 1993 10.8
+						case 0x025f76: // JAA 1993 10.8
+						case 0x025b72: // UAB 1993 10.12
+						case 0x02d30e: // UAA 1993 9.10
+							SekRunEnd();
+							break;
+					}
+				}
+
+				return data;
+			}
 		}
 
 		return 0;

@@ -85,8 +85,6 @@ endif
 
 autobj += $(depobj)
 
-autobj += tms57002.o tms57kdec.o tmsops.o
-
 ifdef	BUILD_X86_ASM
 autobj += eagle_fm.o 2xsaimmx.o hq2x32.o hq3x32.o hq4x32.o superscale.o
 endif
@@ -119,7 +117,6 @@ lib += `pkg-config --libs switchres`
 endif
 
 autdep	= $(depobj:.o=.d)
-autdep	+= tms57002.d tms57kdec.d tmsops.d
 drvdep	= $(drvsrc:.o=.d)
 
 ifdef	BUILD_A68K
@@ -380,7 +377,7 @@ else
 $(NAME):	$(allobj) $(objdir)drivers.o
 	@echo
 	@echo Linking executable... $(NAME)
-	@$(LD) $(CFLAGS) $(LDFLAGS) -Wl,--allow-multiple-definition -o $@ $^ $(lib)
+	@$(LD) $(CFLAGS) $(LDFLAGS) -o $@ $^ $(lib)
 endif
 
 

@@ -20,7 +20,6 @@ static INT32 K056832ColorGranularity;
 static INT32 K056832VramWordOrder;
 static INT32 K056832Brightness;
 static INT32 K056832AlphaTileMode;
-static INT32 K056832AlphaTileMixShift; // attr shift for the alpha mix code (default 6; salmndr2 uses 4)
 static INT32 K056832LastAlphaTileMixCode;
 
 static INT32 m_layer_offs[8][2];
@@ -53,6 +52,12 @@ static UINT8 *linemap_primap = NULL;
 #define CLIP_MAXY	global_clip[3]
 
 static void (*m_callback)(INT32 layer, INT32 *code, INT32 *color, INT32 *flags);
+static UINT32 (*m_alpha_tile_callback)(INT32 layer, INT32 code, INT32 color, INT32 pixel, INT32 x, INT32 y, INT32 *alpha, UINT32 rgb);
+
+void K056832SetAlphaTileCallback(UINT32 (*Callback)(INT32 layer, INT32 code, INT32 color, INT32 pixel, INT32 x, INT32 y, INT32 *alpha, UINT32 rgb))
+{
+	m_alpha_tile_callback = Callback;
+}
 
 static void k056832_sync_tile_modes()
 {
@@ -66,11 +71,6 @@ static void k056832_sync_tile_modes()
 UINT16 K056832GetVram(INT32 address)
 {
 	return K056832VideoRAM[address];
-}
-
-void K056832SetVram(INT32 address, UINT16 data)
-{
-	K056832VideoRAM[address] = data;
 }
 
 void K056832Reset()
@@ -145,8 +145,8 @@ void K056832Init(UINT8 *rom, UINT8 *romexp, INT32 rom_size, void (*cb)(INT32 lay
 	K056832VramWordOrder = 0;
 	K056832Brightness = 0xff;
 	K056832AlphaTileMode = 0;
-	K056832AlphaTileMixShift = 6;
 	K056832LastAlphaTileMixCode = 0;
+	m_alpha_tile_callback = NULL;
 	m_num_gfx_banks = rom_size / 0x2000;
 
 	CalculateTranstab();
@@ -244,12 +244,7 @@ void K056832SetLayerOffsets(INT32 layer, INT32 xoffs, INT32 yoffs)
 
 void K056832SetAlphaTileMode(INT32 enable)
 {
-	K056832AlphaTileMode = enable ? 1 : 0;
-}
-
-void K056832SetAlphaTileMixShift(INT32 shift)
-{
-	K056832AlphaTileMixShift = shift;
+	K056832AlphaTileMode = enable;
 }
 
 INT32 K056832GetLastAlphaTileMixCode()
@@ -603,19 +598,12 @@ UINT8 K056832GxRomByteRead(INT32 address)
 	return K056832Rom[base];
 }
 
-// 6bpp variant of the GX ROM check read window (salmndr2 etc): 6 bytes per 4 dots.
-// Like the 5bpp K056832GxRomByteRead this is self-resetting: FBNeo does not clear
-// m_rom_half on tile-RAM reads (which is how MAME resets it), so the readback must
-// toggle the half flag itself. Unlike 5bpp there is no zero plane, so every byte is
-// real. A sticky m_rom_half desyncs the POST tile checksum, which stalls the whole
-// right-hand ROM-CHECK column on salmndr2.
-UINT8 K056832GxRom6BppByteRead(INT32 address)
+UINT8 K056832GxRomByteRead6bpp(INT32 address)
 {
 	INT32 offset = (address & 0x1fff) + (m_cur_gfx_banks * 0x2000);
 	INT32 base = (offset / 4) * 6 + ((offset & 3) * 2);
 
 	if (m_rom_half) {
-		m_rom_half = 0;
 		return K056832Rom[base + 1];
 	}
 
@@ -705,43 +693,10 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 	}
 
 
-	// loop invariants (pageIndex, layer and the K056832 regs are constant for this
-	// call) -- hoisted out of the per-tile loop to avoid recomputing them (and a
-	// division) 2048 times per page.
-	INT32 eff_layer;
-	if (m_layer_association)
-	{
-		eff_layer = m_layer_assoc_with_page[pageIndex];
-		if (eff_layer == -1)
-			eff_layer = 0;  // use layer 0's palette info for unmapped pages
-	}
-	else
-		eff_layer = m_active_layer;
-
-	INT32 fbits = (BURN_ENDIAN_SWAP_INT16(k056832Regs[3]) >> 6) & 3;
-	INT32 flip_override = (BURN_ENDIAN_SWAP_INT16(k056832Regs[1]) >> (eff_layer << 1)) & 0x3; // tile-flip override (see p.20 3.2.2 "REG2")
-	smptr = &k056832_shiftmasks[fbits];
-	INT32 palette_colors = 0x2000 / K056832ColorGranularity;
-
 	for (INT32 offs = 0; offs < 64 * 32; offs++)
 	{
 		INT32 sx = (offs & 0x3f) * 8;
 		INT32 sy = (offs / 0x40) * 8; // sy handling in blitter (down below...)
-		// The y-clip test below depends only on sy, identical for all 64 tiles in a
-		// tile row. Evaluate it once at the start of each row and skip the whole row
-		// on a miss -- this is what makes linescroll cheap (draw_layer_internal is
-		// called once per line there, each call otherwise scanning all 2048 tiles).
-		if ((offs & 0x3f) == 0) {
-			INT32 ryh, ryl;
-			if (tilemap_flip & 2) {
-				ryh = ((256 - 8) - (sy - 7) + scrolly) & 0xff;
-				ryl = ((256 - 8) - (sy - 0) + scrolly) & 0xff;
-			} else {
-				ryh = ((sy + 7) - scrolly) & 0xff;
-				ryl = ((sy + 0) - scrolly) & 0xff;
-			}
-			if ( (ryh < (miny-7) || ryh > (maxy+7)) && (ryl < (miny-7) || ryl > (maxy+7)) ) { offs += 63; continue; }
-		}
 
 		sx -= scrollx;
 		if (sx < -7) sx += 512;
@@ -779,16 +734,29 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 		INT32 attr  = BURN_ENDIAN_SWAP_INT16(pMem[0]);
 		INT32 code  = BURN_ENDIAN_SWAP_INT16(pMem[1]);
-		INT32 flip  = flip_override & ((attr >> smptr->flips) & 3);
+		if (m_layer_association)
+		{
+			layer = m_layer_assoc_with_page[pageIndex];
+			if (layer == -1)
+				layer = 0;  // use layer 0's palette info for unmapped pages
+		}
+		else
+			layer = m_active_layer;
+
+		INT32 fbits = (BURN_ENDIAN_SWAP_INT16(k056832Regs[3]) >> 6) & 3;
+		INT32 flip  = (BURN_ENDIAN_SWAP_INT16(k056832Regs[1]) >> (layer << 1)) & 0x3; // tile-flip override (see p.20 3.2.2 "REG2")
+		smptr = &k056832_shiftmasks[fbits];
+
+		flip &= (attr >> smptr->flips) & 3;
 		INT32 color = (attr & smptr->palm1) | (attr >> smptr->pals2 & smptr->palm2);
 		INT32 g_flags = flip & 3;
-		INT32 mix_code = (attr >> K056832AlphaTileMixShift) & 3;
+		INT32 mix_code = (K056832AlphaTileMode == 2) ? ((attr >> 4) & 3) : ((attr >> 6) & 3);
 		INT32 category = (K056832AlphaTileMode && mix_code) ? 1 : 0;
 		if (category) {
 			K056832LastAlphaTileMixCode = mix_code;
 		}
 
-		m_callback(eff_layer, &code, &color, &g_flags);
+		m_callback(layer, &code, &color, &g_flags);
 
 		if ((flags & K056832_DRAW_CATEGORY_1) && !category) continue;
 		if (!(flags & (K056832_DRAW_CATEGORY_1 | K056832_DRAW_ALL_CATEGORIES)) && category) continue;
@@ -810,15 +778,12 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 			if (tilemap_flip & 2) g_flags ^= 2;
 
 			UINT8 *rom = K056832RomExp + (code * 0x40);
+			INT32 palette_colors = 0x2000 / K056832ColorGranularity;
 			UINT32 *pal = konami_palette32 + ((color % palette_colors) * K056832ColorGranularity);
 
 			INT32 flip_tile = 0;
 			if (g_flags & 0x01) flip_tile |= 0x07;
 			if (g_flags & 0x02) flip_tile |= 0x38;
-
-			// clip the 8-pixel row to [minx,maxx] once instead of testing every pixel
-			INT32 ix0 = minx - sx; if (ix0 < 0) ix0 = 0;
-			INT32 ix1 = maxx - sx; if (ix1 > 7) ix1 = 7;
 
 			{ // blitter
 				for (INT32 iy = 0; iy < 8; iy++) {
@@ -836,19 +801,41 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 					if (yy < miny || yy > maxy) continue;
 
-					for (INT32 ix = ix0; ix <= ix1; ix++) {
+					for (INT32 ix = 0; ix < 8; ix++) {
 						INT32 xx = sx+ix;
+
+						if (xx < minx || xx > maxx) continue;
 
 						INT32 pxl = rom[((iy*8)+ix)^flip_tile];
 
 						if (pxl || opaque) {
 							if (alpha_enable) {
+								INT32 pixel_alpha = alpha;
+								UINT32 src = K056832ApplyBrightness(pal[pxl]);
+
+								if (m_alpha_tile_callback) {
+									src = m_alpha_tile_callback(layer, code, color, pxl, xx, yy, &pixel_alpha, src);
+								}
+
 								if (alpha_additive)
 									dst[xx] = additive_blend(dst[xx], K056832ApplyBrightness(pal[pxl]), alpha);
 								else
 									dst[xx] = alpha_blend(dst[xx], K056832ApplyBrightness(pal[pxl]), alpha);
 							} else {
-								dst[xx] = K056832ApplyBrightness(pal[pxl]);
+								UINT32 src = K056832ApplyBrightness(pal[pxl]);
+
+								if (category && m_alpha_tile_callback) {
+									INT32 pixel_alpha = 64;
+									UINT32 adjusted = m_alpha_tile_callback(layer, code, color, pxl, xx, yy, &pixel_alpha, src);
+
+									if (adjusted != src) {
+										dst[xx] = alpha_blend(dst[xx], adjusted, pixel_alpha);
+									} else {
+										dst[xx] = src;
+									}
+								} else {
+									dst[xx] = src;
+								}
 							}
 							pri[xx] = priority;
 						}
