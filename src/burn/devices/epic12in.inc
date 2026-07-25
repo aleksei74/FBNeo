@@ -129,6 +129,19 @@ static const void FUNCNAME(BLIT_PARAMS)
 			gfx2 += (src_x+startx);
 		#endif
 
+#if REALLY_SIMPLE == 1 && TRANSPARENT == 0 && FLIPX == 0
+		const int copy_width = dimx - startx;
+		if (copy_width > 0) {
+			if (bmp + copy_width <= gfx2 || gfx2 + copy_width <= bmp) {
+				memcpy(bmp, gfx2, copy_width * sizeof(UINT32));
+			} else {
+				const UINT32 *end = bmp + copy_width;
+				while (bmp < end) {
+					*bmp++ = *gfx2++;
+				}
+			}
+		}
+#else
 #if 1
 		const UINT32* end = bmp+(dimx-startx);
 #else
@@ -159,6 +172,7 @@ static const void FUNCNAME(BLIT_PARAMS)
 		{
 			#include "epic12pixel.inc"
 		}
+#endif
 
 	}
 

@@ -10,6 +10,7 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "tiles_generic.h"
 #include "sh4_intf.h"
 #include "thready.h"
+#include "epic12_threads.h"
 #include "rectangle.h"
 #include <math.h> // floor()
 
@@ -77,6 +78,7 @@ static UINT8 epic12_device_colrtable_rev[0x20][0x40];
 static UINT8 epic12_device_colrtable_add[0x20][0x20];
 
 static UINT16 *pal16 = NULL; // palette lut for 16bpp video emulation
+static Epic12ThreadPool epic12_threads;
 
 #include "epic12.h"
 
@@ -307,6 +309,7 @@ static void run_blitter_cb()
 void epic12_exit()
 {
 	thready.exit();
+	epic12_threads.Shutdown();
 
 	BurnFree(m_bitmaps);
 	BurnFree(m_ram16_copy);
@@ -330,6 +333,7 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 
 	m_gfx_size = 0x2000 * 0x1000;
 	m_bitmaps = (UINT32*)BurnMalloc (m_gfx_size * 4);
+	epic12_threads.Configure();
 
 	m_clip.set(0, 0x2000-1, 0, 0x1000-1);
 
@@ -444,6 +448,22 @@ static inline UINT16 COPY_NEXT_WORD(UINT32 *addr)
 	return data;
 }
 
+static void COPY_NEXT_WORDS(UINT32 *addr, UINT32 words)
+{
+	const UINT32 ram_words = m_main_ramsize >> 1;
+
+	while (words)
+	{
+		const UINT32 offset = (*addr & m_main_rammask) >> 1;
+		const UINT32 available = ram_words - offset;
+		const UINT32 chunk = (words < available) ? words : available;
+
+		memcpy(m_ram16_copy + offset, m_ram16 + offset, chunk * sizeof(UINT16));
+		*addr += chunk * sizeof(UINT16);
+		words -= chunk;
+	}
+}
+
 static void gfx_upload_shadow_copy(UINT32 *addr)
 {
 	COPY_NEXT_WORD(addr);
@@ -456,13 +476,7 @@ static void gfx_upload_shadow_copy(UINT32 *addr)
 	const UINT32 dimx = (COPY_NEXT_WORD(addr) & 0x1fff) + 1;
 	const UINT32 dimy = (COPY_NEXT_WORD(addr) & 0x0fff) + 1;
 
-	for (UINT32 y = 0; y < dimy; y++)
-	{
-		for (UINT32 x = 0; x < dimx; x++)
-		{
-			COPY_NEXT_WORD(addr);
-		}
-	}
+	COPY_NEXT_WORDS(addr, dimx * dimy);
 
 	// Time spent on uploads is mostly due to Main RAM accesses.
 	// The Blitter will send BREQ requests to the SH-3, to access Main RAM
@@ -477,9 +491,36 @@ static void gfx_upload_shadow_copy(UINT32 *addr)
 	m_blit_idle_op_bytes = 0;
 }
 
+static inline UINT32 epic12_expand_upload_pixel(UINT16 pixel)
+{
+	return ((pixel & 0x8000) << 14) | ((pixel & 0x7c00) << 9) |
+		   ((pixel & 0x03e0) << 6) | ((pixel & 0x001f) << 3);
+}
+
+static void gfx_upload_pixels(UINT32 *dst, UINT32 *addr, UINT32 pixels)
+{
+	const UINT32 ram_words = m_main_ramsize >> 1;
+
+	while (pixels)
+	{
+		const UINT32 offset = (*addr & m_main_rammask) >> 1;
+		const UINT32 available = ram_words - offset;
+		const UINT32 chunk = (pixels < available) ? pixels : available;
+		const UINT16 *src = m_ram16_copy + offset;
+
+		for (UINT32 i = 0; i < chunk; i++) {
+			dst[i] = epic12_expand_upload_pixel(src[i]);
+		}
+
+		dst += chunk;
+		*addr += chunk * sizeof(UINT16);
+		pixels -= chunk;
+	}
+}
+
 static void gfx_upload(UINT32 *addr)
 {
-	UINT32 x,y, dst_p,dst_x_start,dst_y_start, dimx,dimy;
+	UINT32 y, dst_p,dst_x_start,dst_y_start, dimx,dimy;
 	UINT32 *dst;
 
 	// 0x20000000
@@ -508,15 +549,7 @@ static void gfx_upload(UINT32 *addr)
 		dst = m_bitmaps + (dst_y_start + y) * 0x2000;
 
 		dst += dst_x_start;
-
-		for (x = 0; x < dimx; x++)
-		{
-			UINT16 pendat = READ_NEXT_WORD(addr);
-			// real hw would upload the gfxword directly, but our VRAM is 32-bit, so convert it.
-			//dst[dst_x_start + x] = pendat;
-			*dst++ = ((pendat&0x8000)<<14) | ((pendat&0x7c00)<<9) | ((pendat&0x03e0)<<6) | ((pendat&0x001f)<<3);  // --t- ---- rrrr r--- gggg g--- bbbb b---  format
-			//dst[dst_x_start + x] = ((pendat&0x8000)<<14) | ((pendat&0x7c00)<<6) | ((pendat&0x03e0)<<3) | ((pendat&0x001f)<<0);  // --t- ---- ---r rrrr ---g gggg ---b bbbb  format
-		}
+		gfx_upload_pixels(dst, addr, dimx);
 	}
 }
 
@@ -634,21 +667,19 @@ static epic12_device_blitfunction epic12_device_f1_ti0_tr0_blit_funcs[] =
 */
 inline UINT16 calculate_vram_accesses(UINT16 start_x, UINT16 start_y, UINT16 dimx, UINT16 dimy)
 {
-	int x_rows = 0;
-	int num_vram_rows = 0;
-	for (int x_pixels = dimx; x_pixels > 0; x_pixels -= 32)
-	{
-		x_rows++;
-		if (((start_x & 31) + MIN(32, x_pixels)) > 32)
-			x_rows++;  // Drawing across multiple horizontal VRAM row boundaries.
-	}
-	for (int y_pixels = dimy; y_pixels > 0; y_pixels -= 32)
-	{
-		num_vram_rows += x_rows;
-		if (((start_y & 31) + MIN(32, y_pixels)) > 32)
-			num_vram_rows += x_rows;  // Drawing across multiple vertical VRAM row boundaries.	
-	}
-	return num_vram_rows;
+	const UINT32 x_chunks = (dimx + 31) >> 5;
+	const UINT32 y_chunks = (dimy + 31) >> 5;
+	const UINT32 x_tail = ((dimx - 1) & 31) + 1;
+	const UINT32 y_tail = ((dimy - 1) & 31) + 1;
+	const UINT32 x_offset = start_x & 31;
+	const UINT32 y_offset = start_y & 31;
+
+	const UINT32 x_crossings = x_offset ?
+		(x_chunks - 1 + ((x_offset + x_tail) > 32)) : 0;
+	const UINT32 y_crossings = y_offset ?
+		(y_chunks - 1 + ((y_offset + y_tail) > 32)) : 0;
+
+	return (UINT16)((x_chunks + x_crossings) * (y_chunks + y_crossings));
 }
 
 static void gfx_draw_shadow_copy(UINT32 *addr)
@@ -1093,95 +1124,92 @@ static void pal16_check_init()
 	if (nBurnBpp < 3 && !pal16) {
 		pal16 = (UINT16 *)BurnMalloc((1 << 24) * sizeof (UINT16));
 
-		for (INT32 i = 0; i < (1 << 24); i++) {
-			pal16[i] = BurnHighCol(i / 0x10000, (i / 0x100) & 0xff, i & 0xff, 0);
-		}
+		struct Pal16Context {
+			UINT16 *palette;
+		} context = { pal16 };
+
+		epic12_threads.ParallelFor(1 << 24, 1 << 18,
+			[](void *opaque, INT32 begin, INT32 end) {
+				Pal16Context *context = (Pal16Context*)opaque;
+				for (INT32 i = begin; i < end; i++) {
+					context->palette[i] = BurnHighCol(i >> 16, (i >> 8) & 0xff, i & 0xff, 0);
+				}
+			}, &context);
 	}
 }
 
-static void epic12_draw_screen16_24bpp()
-{
-	INT32 scrollx = -m_gfx_scroll_x;
-	INT32 scrolly = -m_gfx_scroll_y;
+struct Epic12DisplayContext {
+	UINT8 *destination;
+	UINT32 *source;
+	INT32 scrollx;
+	INT32 scrolly;
+	INT32 width;
+	INT32 pitch;
+	INT32 bytesPerPixel;
+};
 
-	UINT8  *dst = (UINT8  *)pBurnDraw;
-	UINT32 *src = (UINT32 *)m_bitmaps;
+static void epic12_draw_screen_rows(void *opaque, INT32 begin, INT32 end)
+{
+	Epic12DisplayContext *context = (Epic12DisplayContext*)opaque;
 	const INT32 heightmask = 0x1000 - 1;
 	const INT32 widthmask  = 0x2000 - 1;
 
-	for (INT32 y = 0; y < nScreenHeight; y++)
+	for (INT32 y = begin; y < end; y++)
 	{
-		UINT32 *s0 = &src[((y - scrolly) & heightmask) * 0x2000];
-		INT32 sx;
+		UINT32 *source = &context->source[((y - context->scrolly) & heightmask) * 0x2000];
+		UINT8 *destination = context->destination + y * context->pitch;
+		INT32 sourceX = (-context->scrollx) & widthmask;
 
-		switch (nBurnBpp) {
-			case 2: // 16bpp
-				for (INT32 x = 0; x < nScreenWidth; x++, dst += nBurnBpp)
-				{
-					sx = x - scrollx;
-					PutPix(dst, pal16[s0[sx & widthmask]&((1<<24)-1)]);
+		switch (context->bytesPerPixel) {
+			case 2:
+				for (INT32 x = 0; x < context->width; x++) {
+					((UINT16*)destination)[x] = pal16[source[sourceX] & 0xffffff];
+					sourceX = (sourceX + 1) & widthmask;
 				}
 				break;
-			case 3: // 24bpp
-				for (INT32 x = 0; x < nScreenWidth; x++, dst += nBurnBpp)
-				{
-					sx = x - scrollx;
-					PutPix(dst, s0[sx & widthmask]);
+
+			case 3:
+				for (INT32 x = 0; x < context->width; x++) {
+					const UINT32 color = source[sourceX];
+					destination[x * 3 + 0] = color & 0xff;
+					destination[x * 3 + 1] = (color >> 8) & 0xff;
+					destination[x * 3 + 2] = color >> 16;
+					sourceX = (sourceX + 1) & widthmask;
 				}
 				break;
+
+			case 4: {
+				const INT32 first = ((0x2000 - sourceX) < context->width) ?
+					(0x2000 - sourceX) : context->width;
+				memcpy(destination, source + sourceX, first * sizeof(UINT32));
+				if (first < context->width) {
+					memcpy(destination + first * sizeof(UINT32), source,
+						(context->width - first) * sizeof(UINT32));
+				}
+				break;
+			}
 		}
 	}
 }
 
 void epic12_draw_screen(UINT8 &recalc_palette)
 {
-	INT32 scrollx = -m_gfx_scroll_x;
-	INT32 scrolly = -m_gfx_scroll_y;
-
-	if (nBurnBpp != 4) {
-		if (recalc_palette) {
-			pal16_check_init();
-			recalc_palette = 0;
-		}
-
-		epic12_draw_screen16_24bpp();
-		return;
+	if (nBurnBpp != 4 && recalc_palette) {
+		pal16_check_init();
+		recalc_palette = 0;
 	}
 
-	UINT32 *dst = (UINT32 *)pBurnDraw;
-	UINT32 *src = (UINT32 *)m_bitmaps;
-	const INT32 heightmask = 0x1000 - 1;
-	const INT32 widthmask  = 0x2000 - 1;
-
-	for (INT32 y = 0; y < nScreenHeight; y++)
-	{
-		UINT32 *s0 = &src[((y - scrolly) & heightmask) * 0x2000];
-		UINT32 *d0 = dst + (y * nScreenWidth);
-		INT32 sx;
-		for (INT32 x = 0; x < nScreenWidth; x+=16)
-		{
-			sx = x - scrollx;
-			d0[x + 0] = s0[((sx + 0)) & widthmask];
-			d0[x + 1] = s0[((sx + 1)) & widthmask];
-			d0[x + 2] = s0[((sx + 2)) & widthmask];
-			d0[x + 3] = s0[((sx + 3)) & widthmask];
-			d0[x + 4] = s0[((sx + 4)) & widthmask];
-			d0[x + 5] = s0[((sx + 5)) & widthmask];
-			d0[x + 6] = s0[((sx + 6)) & widthmask];
-			d0[x + 7] = s0[((sx + 7)) & widthmask];
-			d0[x + 8] = s0[((sx + 8)) & widthmask];
-			d0[x + 9] = s0[((sx + 9)) & widthmask];
-			d0[x +10] = s0[((sx +10)) & widthmask];
-			d0[x +11] = s0[((sx +11)) & widthmask];
-			d0[x +12] = s0[((sx +12)) & widthmask];
-			d0[x +13] = s0[((sx +13)) & widthmask];
-			d0[x +14] = s0[((sx +14)) & widthmask];
-			d0[x +15] = s0[((sx +15)) & widthmask];
-		}
-	}
+	Epic12DisplayContext context = {
+		pBurnDraw,
+		m_bitmaps,
+		-(INT32)m_gfx_scroll_x,
+		-(INT32)m_gfx_scroll_y,
+		nScreenWidth,
+		nBurnPitch,
+		nBurnBpp
+	};
+	epic12_threads.ParallelFor(nScreenHeight, 64, epic12_draw_screen_rows, &context);
 }
-
-
 
 // 0x18000000 - 0x18000057
 
@@ -1272,4 +1300,3 @@ void epic12_scan(INT32 nAction, INT32 *pnMin)
 	}
 	thready.scan();
 }
-

@@ -21,6 +21,9 @@ struct psx_memory_map {
 };
 
 static psx_memory_map *PsxMap;
+static UINT32 PsxFetchVirtualPage;
+static UINT32 PsxFetchMappedBase;
+static UINT8 *PsxFetchPointer;
 
 static UINT8 default_read_byte(UINT32) { return 0xff; }
 static UINT16 default_read_half(UINT32) { return 0xffff; }
@@ -38,9 +41,17 @@ static inline UINT32 translate_address(UINT32 address)
 	return address;
 }
 
+static inline void invalidate_fetch_cache()
+{
+	PsxFetchVirtualPage = 0xffffffff;
+	PsxFetchMappedBase = 0;
+	PsxFetchPointer = NULL;
+}
+
 static void reset_map()
 {
 	memset(PsxMap->map, 0, sizeof(PsxMap->map));
+	invalidate_fetch_cache();
 
 	for (INT32 i = 0; i < PSX_MAX_HANDLER; i++) {
 		PsxMap->read_byte[i] = default_read_byte;
@@ -95,6 +106,25 @@ static inline UINT32 read_word(UINT32 address)
 	UINT32 data = ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
 
 	return data;
+}
+
+static UINT32 fetch_word(UINT32 address)
+{
+	const UINT32 virtualPage = address >> PSX_PAGE_SHIFT;
+	if (virtualPage != PsxFetchVirtualPage) {
+		const UINT32 mapped = translate_address(address);
+		PsxFetchVirtualPage = virtualPage;
+		PsxFetchMappedBase = mapped & ~PSX_PAGE_MASK;
+		PsxFetchPointer = PsxMap->map[PSX_PAGE(mapped)];
+	}
+
+	const UINT32 offset = address & PSX_PAGE_MASK;
+	if ((uintptr_t)PsxFetchPointer < PSX_MAX_HANDLER) {
+		return PsxMap->read_word[(uintptr_t)PsxFetchPointer](PsxFetchMappedBase | offset);
+	}
+
+	const UINT8 *ptr = PsxFetchPointer + offset;
+	return ptr[0] | (ptr[1] << 8) | (ptr[2] << 16) | (ptr[3] << 24);
 }
 
 static inline void write_byte(UINT32 address, UINT8 data)
@@ -153,6 +183,7 @@ INT32 PsxInit()
 	handlers.read_byte = read_byte;
 	handlers.read_half = read_half;
 	handlers.read_word = read_word;
+	handlers.fetch_word = fetch_word;
 	handlers.write_byte = write_byte;
 	handlers.write_half = write_half;
 	handlers.write_word = write_word;
@@ -269,6 +300,7 @@ INT32 PsxMapMemory(UINT8 *memory, UINT32 start, UINT32 end, INT32 type)
 			PsxMap->map[PSX_PAGE_WRITE + page] = ptr;
 		}
 	}
+	invalidate_fetch_cache();
 
 	return 0;
 }
@@ -289,6 +321,7 @@ INT32 PsxMapHandler(uintptr_t handler, UINT32 start, UINT32 end, INT32 type)
 			PsxMap->map[PSX_PAGE_WRITE + page] = (UINT8*)handler;
 		}
 	}
+	invalidate_fetch_cache();
 
 	return 0;
 }

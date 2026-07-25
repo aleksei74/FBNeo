@@ -13500,7 +13500,7 @@
 		<description>Popeye - Tale of Teasing Witch Sea Hag (Hack, English)</description>
 		<year>2008</year>
 		<manufacturer>KingMike's Translations</manufacturer>
-		<rom name="Popeye - Tale of Teasing Witch Sea Hag T-Eng (2008)(KingMikeâ€™s Translations).sfc" size="1572864" crc="749a6f69"/>
+		<rom name="Popeye - Tale of Teasing Witch Sea Hag T-Eng (2008)(KingMike?™s Translations).sfc" size="1572864" crc="749a6f69"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -20029,15 +20029,6 @@
 		<year>1992</year>
 		<manufacturer>Hi Tech Expressions</manufacturer>
 		<rom name="Tom and Jerry (U)(1992)(Hi Tech Expressions).sfc" size="524288" crc="8b1dafbb"/>
-		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
-		<driver status="good"/>
-	</game>
-	<game name="tomvsjerryp" sourcefile="snes/d_snes.cpp">
-		<comment>Prototype</comment>
-		<description>Tom vs Jerry - The Chase Is On! (Euro, Prototype)</description>
-		<year>1995</year>
-		<manufacturer>Software Creations</manufacturer>
-		<rom name="Tom vs Jerry - The Chase Is On! (E, Proto) (1995)(Software Creations).sfc" size="2097152" crc="690b8c85"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>

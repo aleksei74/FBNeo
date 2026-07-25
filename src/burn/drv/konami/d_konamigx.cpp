@@ -13,6 +13,15 @@
 #include "../../../cpu/tms57002/tms57002.h"
 #include "dtimer.h"
 #include "eeprom.h"
+#include <condition_variable>
+#include <mutex>
+#include <thread>
+
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__linux__) || defined(__ANDROID__)
+#include <unistd.h>
+#endif
 
 static UINT8 *AllMem;
 static UINT8 *DrvMainROM;
@@ -41,11 +50,20 @@ static UINT8 *RamEnd;
 static UINT8 *MemEnd;
 
 static UINT32 *DrvPalette;
+static UINT32 gx_type4_palette_cache[2][0x2000];
+static UINT8 gx_type4_palette_dirty[2][0x2000];
+static UINT16 gx_type4_palette_dirty_list[2][0x2000];
+static INT32 gx_type4_palette_dirty_count[2];
 static UINT16 *pGxPsacBitmap;
 static UINT32 *pGxType4LeftBitmap;
 static UINT32 *pGxType4RightBitmap;
 static UINT16 gx_type4_ctrl_words[0x10];
 static UINT16 gx_type4_line_words[0x800];
+static UINT8 gx_type4_ctrl_dirty[0x10];
+static UINT8 gx_type4_line_dirty[0x800];
+static UINT16 gx_type4_line_dirty_list[0x800];
+static INT32 gx_type4_ctrl_dirty_count;
+static INT32 gx_type4_line_dirty_count;
 static UINT8 DrvRecalc;
 
 #define GX_TYPE4_MONITOR_WIDTH 384
@@ -77,7 +95,7 @@ struct GxGameConfig {
 	UINT8 special;
 	UINT8 tile_layout;
 	UINT8 tile_bpp;
-	INT32 tile_color_granularity;
+	UINT8 tile_color_granularity;
 	UINT32 tile_rom_size;
 	UINT32 sprite_word_size;
 	INT32 sprite_pair0_a;
@@ -139,14 +157,18 @@ static UINT32 gx_sexyparo_esc_p2;
 static UINT32 gx_sexyparo_esc_p4;
 static UINT32 gx_tile_rom_size;
 static UINT8 gx_tile_bpp;
-static INT32 gx_tile_color_granularity;
+static UINT8 gx_tile_color_granularity;
 static UINT32 gx_sprite_word_size;
 static UINT8 gx_sprite_bpp;
 static UINT8 gx_type3_psac2_bank;
 static UINT8 gx_type3_spriteram_bank;
 static UINT8 gx_type4_render_spriteram_bank;
+static UINT16 gx_type4_sprite_latch[2][0x800];
+static UINT8 gx_type4_sprite_latch_valid[2];
 static UINT8 gx_type4_psac_dirty;
 static UINT8 gx_type4_psac_tile_dirty[128 * 128];
+static UINT16 gx_type4_psac_dirty_list[128 * 128];
+static INT32 gx_type4_psac_dirty_count;
 static INT32 gx_type4_psac_colorbase;
 static INT32 gx_type4_left_bitmap_valid;
 static INT32 gx_type4_right_bitmap_valid;
@@ -199,6 +221,280 @@ static UINT32 gx_speedhack_pc[32];
 static INT32 gx_speedhack_pc_count;
 static INT32 gx_speedhack_wake;
 
+static UINT32 gx_detect_logical_processors()
+{
+	static const UINT32 detected = []() -> UINT32 {
+		UINT32 cores = 0;
+
+#if defined(_WIN32)
+		SYSTEM_INFO info;
+		GetSystemInfo(&info);
+		cores = (UINT32)info.dwNumberOfProcessors;
+#elif defined(__linux__) || defined(__ANDROID__)
+		const long online = sysconf(_SC_NPROCESSORS_ONLN);
+		if (online > 0) cores = (UINT32)online;
+#endif
+
+		if (cores == 0) cores = std::thread::hardware_concurrency();
+		if (cores == 0) cores = 1;
+
+		return cores;
+	}();
+
+	return detected;
+}
+
+class GxSoundWorker
+{
+public:
+	GxSoundWorker()
+		: active(false), stop(false), pending(false), generation(0),
+		  buffer(NULL), length(0)
+	{
+	}
+
+	~GxSoundWorker()
+	{
+		Shutdown();
+	}
+
+	void Configure()
+	{
+		Shutdown();
+
+		if (gx_detect_logical_processors() < 4) return;
+
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			active = true;
+			stop = false;
+			pending = false;
+			generation = 0;
+		}
+
+		worker = std::thread(&GxSoundWorker::Run, this);
+	}
+
+	void Shutdown()
+	{
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (!active && !worker.joinable()) return;
+			stop = true;
+			generation++;
+		}
+		work.notify_one();
+
+		if (worker.joinable()) worker.join();
+
+		std::lock_guard<std::mutex> lock(mutex);
+		active = false;
+		stop = false;
+		pending = false;
+		buffer = NULL;
+		length = 0;
+	}
+
+	bool Dispatch(INT16 *output, INT32 samples)
+	{
+		if (!active || samples < 96) return false;
+
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			buffer = output;
+			length = samples;
+			pending = true;
+			generation++;
+		}
+		work.notify_one();
+
+		return true;
+	}
+
+	void Wait()
+	{
+		std::unique_lock<std::mutex> lock(mutex);
+		done.wait(lock, [this]() { return !pending; });
+	}
+
+private:
+	void Run()
+	{
+		UINT32 observed = 0;
+
+		for (;;) {
+			INT16 *output;
+			INT32 samples;
+
+			{
+				std::unique_lock<std::mutex> lock(mutex);
+				work.wait(lock, [this, observed]() {
+					return stop || generation != observed;
+				});
+				if (stop) return;
+
+				observed = generation;
+				output = buffer;
+				samples = length;
+			}
+
+			K054539Update(1, output, samples);
+
+			{
+				std::lock_guard<std::mutex> lock(mutex);
+				pending = false;
+			}
+			done.notify_one();
+		}
+	}
+
+	std::thread worker;
+	std::mutex mutex;
+	std::condition_variable work;
+	std::condition_variable done;
+	bool active;
+	bool stop;
+	bool pending;
+	UINT32 generation;
+	INT16 *buffer;
+	INT32 length;
+};
+
+static GxSoundWorker gx_sound_worker;
+
+class GxRangeWorkerPool
+{
+public:
+	typedef void (*Task)(INT32 start, INT32 end);
+
+	GxRangeWorkerPool()
+		: active(false), stop(false), generation(0), completed(0), worker_count(0),
+		  task(NULL), items(0)
+	{
+	}
+
+	~GxRangeWorkerPool()
+	{
+		Shutdown();
+	}
+
+	void Configure()
+	{
+		Shutdown();
+
+		UINT32 cores = gx_detect_logical_processors();
+		if (cores < 4) return;
+
+		worker_count = (INT32)(cores - 1);
+		if (worker_count > MaxWorkers) worker_count = MaxWorkers;
+
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			active = true;
+			stop = false;
+			generation = 0;
+			completed = 0;
+		}
+
+		for (INT32 i = 0; i < worker_count; i++) {
+			workers[i] = std::thread(&GxRangeWorkerPool::Worker, this, i);
+		}
+	}
+
+	void Shutdown()
+	{
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (!active && !workers[0].joinable()) return;
+			stop = true;
+			generation++;
+		}
+		work.notify_all();
+
+		for (INT32 i = 0; i < MaxWorkers; i++) {
+			if (workers[i].joinable()) workers[i].join();
+		}
+
+		std::lock_guard<std::mutex> lock(mutex);
+		active = false;
+		stop = false;
+		completed = 0;
+		worker_count = 0;
+		task = NULL;
+		items = 0;
+	}
+
+	bool Run(Task next_task, INT32 next_items)
+	{
+		if (!active || next_task == NULL || next_items < worker_count + 1) return false;
+
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			task = next_task;
+			items = next_items;
+			completed = 0;
+			generation++;
+		}
+		work.notify_all();
+
+		next_task(0, next_items / (worker_count + 1));
+
+		std::unique_lock<std::mutex> lock(mutex);
+		done.wait(lock, [this]() { return completed == worker_count; });
+
+		return true;
+	}
+
+private:
+	enum { MaxWorkers = 7 };
+
+	void Worker(INT32 index)
+	{
+		UINT32 observed = 0;
+
+		for (;;) {
+			Task current_task;
+			INT32 current_items;
+
+			{
+				std::unique_lock<std::mutex> lock(mutex);
+				work.wait(lock, [this, observed]() {
+					return stop || generation != observed;
+				});
+				if (stop) return;
+
+				observed = generation;
+				current_task = task;
+				current_items = items;
+			}
+
+			INT32 start = (current_items * (index + 1)) / (worker_count + 1);
+			INT32 end = (current_items * (index + 2)) / (worker_count + 1);
+			current_task(start, end);
+
+			{
+				std::lock_guard<std::mutex> lock(mutex);
+				completed++;
+			}
+			done.notify_one();
+		}
+	}
+
+	std::thread workers[MaxWorkers];
+	std::mutex mutex;
+	std::condition_variable work;
+	std::condition_variable done;
+	bool active;
+	bool stop;
+	UINT32 generation;
+	INT32 completed;
+	INT32 worker_count;
+	Task task;
+	INT32 items;
+};
+
+static GxRangeWorkerPool gx_range_workers;
+
 static inline INT16 gx_clip_int32(INT32 sample)
 {
 	return BURN_SND_CLIP(sample);
@@ -217,8 +513,13 @@ static void gx_render_sound_segment(INT32 nSegmentEnd)
 	INT16 *pSoundBuf = pBurnSoundOut + (gx_sound_buffer_pos << 1);
 	memset(gx_soundbuf0, 0, nSegmentLength * 2 * sizeof(INT16));
 	memset(gx_soundbuf1, 0, nSegmentLength * 2 * sizeof(INT16));
+	const bool threaded = gx_sound_worker.Dispatch(gx_soundbuf1, nSegmentLength);
 	K054539Update(0, gx_soundbuf0, nSegmentLength);
-	K054539Update(1, gx_soundbuf1, nSegmentLength);
+	if (threaded) {
+		gx_sound_worker.Wait();
+	} else {
+		K054539Update(1, gx_soundbuf1, nSegmentLength);
+	}
 
 	UINT32 tms_cycle_step = nBurnSoundRate ? (UINT32)(((UINT64)12000000 << 16) / nBurnSoundRate) : (250 << 16);
 
@@ -335,6 +636,64 @@ static inline void gx_ram_write_long(UINT8 *ram, UINT32 address, UINT32 mask, UI
 	gx_ram_write_word(ram, address + 2, mask, data);
 }
 
+static void gx_type4_mark_all_palettes_dirty()
+{
+	memset(gx_type4_palette_dirty, 1, sizeof(gx_type4_palette_dirty));
+	gx_type4_palette_dirty_count[0] = 0x2000;
+	gx_type4_palette_dirty_count[1] = 0x2000;
+
+	for (INT32 i = 0; i < 0x2000; i++) {
+		gx_type4_palette_dirty_list[0][i] = i;
+		gx_type4_palette_dirty_list[1][i] = i;
+	}
+}
+
+static inline void gx_type4_mark_palette_dirty(INT32 use_sub_palette, UINT32 address, INT32 bytes)
+{
+	INT32 palette = use_sub_palette ? 1 : 0;
+
+	for (INT32 i = 0; i < bytes; i++) {
+		INT32 index = ((address + i) & 0x7fff) >> 2;
+
+		if (!gx_type4_palette_dirty[palette][index]) {
+			gx_type4_palette_dirty[palette][index] = 1;
+			gx_type4_palette_dirty_list[palette][gx_type4_palette_dirty_count[palette]] = index;
+			gx_type4_palette_dirty_count[palette]++;
+		}
+	}
+}
+
+static void gx_type4_mark_all_k053936_dirty()
+{
+	memset(gx_type4_ctrl_dirty, 1, sizeof(gx_type4_ctrl_dirty));
+	memset(gx_type4_line_dirty, 1, sizeof(gx_type4_line_dirty));
+	gx_type4_ctrl_dirty_count = 0x10;
+	gx_type4_line_dirty_count = 0x800;
+
+	for (INT32 i = 0; i < 0x800; i++) {
+		gx_type4_line_dirty_list[i] = i;
+	}
+}
+
+static inline void gx_type4_mark_k053936_dirty(UINT32 address, INT32 bytes, INT32 line_ram)
+{
+	UINT8 *dirty = line_ram ? gx_type4_line_dirty : gx_type4_ctrl_dirty;
+	UINT32 mask = line_ram ? 0xfff : 0x1f;
+
+	for (INT32 i = 0; i < bytes; i++) {
+		INT32 index = ((((address + i) & mask) >> 1) ^ 1);
+
+		if (!dirty[index]) {
+			dirty[index] = 1;
+			if (line_ram) {
+				gx_type4_line_dirty_list[gx_type4_line_dirty_count++] = index;
+			} else {
+				gx_type4_ctrl_dirty_count++;
+			}
+		}
+	}
+}
+
 static inline UINT8 gx_mainram_read_byte(UINT32 address)
 {
 	return DrvMainRAM[(address & 0x1ffff) ^ 1];
@@ -372,13 +731,32 @@ static inline void gx_mainram_write_long(UINT32 address, UINT32 data)
 	gx_mainram_write_word(address + 2, data);
 }
 
+static inline void gx_type4_mark_all_psac_dirty()
+{
+	gx_type4_psac_dirty = 1;
+	gx_type4_psac_dirty_count = 128 * 128;
+	memset(gx_type4_psac_tile_dirty, 1, sizeof(gx_type4_psac_tile_dirty));
+
+	for (INT32 i = 0; i < 128 * 128; i++) {
+		gx_type4_psac_dirty_list[i] = i;
+	}
+}
+
 static inline void gx_type4_mark_psac_dirty(UINT32 address)
 {
 	INT32 tile_index = (((address - 0xf00000) & 0x7fff) >> 2) << 1;
 
 	if (tile_index >= 0 && tile_index < 128 * 128) {
-		gx_type4_psac_tile_dirty[tile_index] = 1;
-		gx_type4_psac_tile_dirty[tile_index + 1] = 1;
+		if (!gx_type4_psac_tile_dirty[tile_index]) {
+			gx_type4_psac_tile_dirty[tile_index] = 1;
+			gx_type4_psac_dirty_list[gx_type4_psac_dirty_count] = tile_index;
+			gx_type4_psac_dirty_count++;
+		}
+		if (!gx_type4_psac_tile_dirty[tile_index + 1]) {
+			gx_type4_psac_tile_dirty[tile_index + 1] = 1;
+			gx_type4_psac_dirty_list[gx_type4_psac_dirty_count] = tile_index + 1;
+			gx_type4_psac_dirty_count++;
+		}
 	}
 
 	gx_type4_psac_dirty = 1;
@@ -389,6 +767,12 @@ static inline void gx_type3_bank_write(UINT32 address, UINT8 data)
 	if ((address & 3) == 0) {
 		gx_type3_psac2_bank = (data & 0x10) >> 4;
 		gx_type3_spriteram_bank = data & 0x01;
+
+		if (gx_type4_enable && K053247Ram) {
+			memcpy(gx_type4_sprite_latch[gx_type3_spriteram_bank],
+				K053247Ram + (gx_type3_spriteram_bank * 0x1000), 0x1000);
+			gx_type4_sprite_latch_valid[gx_type3_spriteram_bank] = 1;
+		}
 	}
 }
 
@@ -711,17 +1095,40 @@ static void gx_speedhack_init()
 	if (gx_type4_enable) {
 		gx_speedhack_find_range(0x400000, 0x600000);
 	}
+
+	for (INT32 i = 1; i < gx_speedhack_pc_count; i++) {
+		UINT32 pc = gx_speedhack_pc[i];
+		INT32 j = i;
+
+		while (j > 0 && gx_speedhack_pc[j - 1] > pc) {
+			gx_speedhack_pc[j] = gx_speedhack_pc[j - 1];
+			j--;
+		}
+
+		gx_speedhack_pc[j] = pc;
+	}
 }
 
 static INT32 gx_speedhack_active(INT32 pc)
 {
 	if ((DrvConfig[1] & 0x01) == 0) return 0;
 
-	for (INT32 i = 0; i < gx_speedhack_pc_count; i++) {
-		if (gx_speedhack_pc[i] == (UINT32)pc) return 1;
+	INT32 lo = 0;
+	INT32 hi = gx_speedhack_pc_count;
+	UINT32 target = (UINT32)pc;
+
+	while (lo < hi) {
+		INT32 mid = lo + ((hi - lo) >> 1);
+		UINT32 candidate = gx_speedhack_pc[mid];
+
+		if (candidate < target) {
+			lo = mid + 1;
+		} else {
+			hi = mid;
+		}
 	}
 
-	return 0;
+	return lo < gx_speedhack_pc_count && gx_speedhack_pc[lo] == target;
 }
 
 static void gx_dma_write_long(UINT32 address, UINT32 data)
@@ -1810,11 +2217,11 @@ static void __fastcall gx_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if (gx_type4_enable) {
-		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_byte(DrvType4CtrlRAM, address, 0x1f, data); return; }
+		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_byte(DrvType4CtrlRAM, address, 0x1f, data); gx_type4_mark_k053936_dirty(address, 1, 0); return; }
 		if ((address & 0xfffff0) == 0xe40000) { gx_type3_bank_write(address, data); return; }
-		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_byte(DrvType4LineRAM, address, 0xfff, data); return; }
-		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_byte(DrvPalRAM, address, 0x7fff, data); DrvRecalc = 1; return; }
-		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_byte(DrvSubPalRAM, address, 0x7fff, data); return; }
+		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_byte(DrvType4LineRAM, address, 0xfff, data); gx_type4_mark_k053936_dirty(address, 1, 1); return; }
+		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_byte(DrvPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(0, address, 1); return; }
+		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_byte(DrvSubPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(1, address, 1); return; }
 		if ((address & 0xff8000) == 0xf00000) { gx_ram_write_byte(DrvType4PsacRAM, address, 0x7fff, data); gx_type4_mark_psac_dirty(address); return; }
 	}
 }
@@ -1912,11 +2319,11 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (gx_type4_enable) {
-		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_word(DrvType4CtrlRAM, address, 0x1f, data); return; }
+		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_word(DrvType4CtrlRAM, address, 0x1f, data); gx_type4_mark_k053936_dirty(address, 2, 0); return; }
 		if ((address & 0xfffff0) == 0xe40000) { gx_type3_bank_write(address + 0, data >> 8); gx_type3_bank_write(address + 1, data); return; }
-		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_word(DrvType4LineRAM, address, 0xfff, data); return; }
-		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_word(DrvPalRAM, address, 0x7fff, data); DrvRecalc = 1; return; }
-		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_word(DrvSubPalRAM, address, 0x7fff, data); return; }
+		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_word(DrvType4LineRAM, address, 0xfff, data); gx_type4_mark_k053936_dirty(address, 2, 1); return; }
+		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_word(DrvPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(0, address, 2); return; }
+		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_word(DrvSubPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(1, address, 2); return; }
 		if ((address & 0xff8000) == 0xf00000) { gx_ram_write_word(DrvType4PsacRAM, address, 0x7fff, data); gx_type4_mark_psac_dirty(address); return; }
 	}
 
@@ -2008,11 +2415,11 @@ static void __fastcall gx_main_write_long(UINT32 address, UINT32 data)
 	}
 
 	if (gx_type4_enable) {
-		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_long(DrvType4CtrlRAM, address, 0x1f, data); return; }
+		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_long(DrvType4CtrlRAM, address, 0x1f, data); gx_type4_mark_k053936_dirty(address, 4, 0); return; }
 		if ((address & 0xfffff0) == 0xe40000) { gx_type3_bank_write(address + 0, data >> 24); gx_type3_bank_write(address + 1, data >> 16); gx_type3_bank_write(address + 2, data >> 8); gx_type3_bank_write(address + 3, data); return; }
-		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_long(DrvType4LineRAM, address, 0xfff, data); return; }
-		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_long(DrvPalRAM, address, 0x7fff, data); DrvRecalc = 1; return; }
-		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_long(DrvSubPalRAM, address, 0x7fff, data); return; }
+		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_long(DrvType4LineRAM, address, 0xfff, data); gx_type4_mark_k053936_dirty(address, 4, 1); return; }
+		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_long(DrvPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(0, address, 4); return; }
+		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_long(DrvSubPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(1, address, 4); return; }
 		if ((address & 0xff8000) == 0xf00000) { gx_ram_write_long(DrvType4PsacRAM, address, 0x7fff, data); gx_type4_mark_psac_dirty(address); return; }
 	}
 
@@ -2149,6 +2556,37 @@ static INT32 DecodePsacTiles()
 	return 0;
 }
 
+static INT32 DecodeGraphics()
+{
+	if (gx_detect_logical_processors() < 4) {
+		if (DecodeTiles()) return 1;
+		if (DecodeSprites()) return 1;
+		if (gx_type4_enable && DecodePsacTiles()) return 1;
+		return 0;
+	}
+
+	INT32 tile_result = 0;
+	INT32 psac_result = 0;
+
+	std::thread tile_worker([&tile_result]() {
+		tile_result = DecodeTiles();
+	});
+
+	std::thread psac_worker;
+	if (gx_type4_enable) {
+		psac_worker = std::thread([&psac_result]() {
+			psac_result = DecodePsacTiles();
+		});
+	}
+
+	INT32 sprite_result = DecodeSprites();
+
+	tile_worker.join();
+	if (psac_worker.joinable()) psac_worker.join();
+
+	return tile_result || sprite_result || psac_result;
+}
+
 static void gx_type4_draw_psac_tile(INT32 tile_index)
 {
 	UINT32 data = gx_ram_read_long(DrvType4PsacRAM, 0xf00000 + ((tile_index >> 1) << 2), 0x7fff);
@@ -2173,40 +2611,66 @@ static void gx_type4_draw_psac_tile(INT32 tile_index)
 	UINT16 pal = 0x1800 + (color << 8);
 	INT32 tile_x = tile_index >> 7;
 	INT32 tile_y = tile_index & 0x7f;
+	UINT16 *dst = pGxPsacBitmap + ((tile_y << 4) * 0x800) + (tile_x << 4);
 
 	for (INT32 y = 0; y < 16; y++) {
 		INT32 sy = flipy ? (15 - y) : y;
+		UINT8 *src = gfx + (sy << 4);
 
-		for (INT32 x = 0; x < 16; x++) {
-			INT32 sx = flipx ? (15 - x) : x;
-			INT32 dst_x = (tile_x << 4) + x;
-			INT32 dst_y = (tile_y << 4) + y;
-			pGxPsacBitmap[(dst_y * 0x800) + dst_x] = gfx[(sy << 4) | sx] | pal;
+		if (flipx) {
+			for (INT32 x = 0; x < 16; x++) {
+				dst[x] = src[15 - x] | pal;
+			}
+		} else {
+			for (INT32 x = 0; x < 16; x++) {
+				dst[x] = src[x] | pal;
+			}
 		}
+
+		dst += 0x800;
+	}
+}
+
+static void gx_type4_draw_psac_dirty_range(INT32 start, INT32 end)
+{
+	for (INT32 i = start; i < end; i++) {
+		INT32 tile_index = gx_type4_psac_dirty_list[i];
+		gx_type4_draw_psac_tile(tile_index);
+		gx_type4_psac_tile_dirty[tile_index] = 0;
 	}
 }
 
 static void gx_type4_predraw_psac()
 {
 	if (!gx_type4_enable || pGxPsacBitmap == NULL) return;
+	if (!gx_type4_psac_dirty || gx_type4_psac_dirty_count <= 0) return;
 
-	for (INT32 tile_index = 0; tile_index < 128 * 128; tile_index++) {
-		gx_type4_draw_psac_tile(tile_index);
-		gx_type4_psac_tile_dirty[tile_index] = 0;
+	if (gx_type4_psac_dirty_count < 512 ||
+		!gx_range_workers.Run(gx_type4_draw_psac_dirty_range, gx_type4_psac_dirty_count)) {
+		gx_type4_draw_psac_dirty_range(0, gx_type4_psac_dirty_count);
 	}
 
 	gx_type4_psac_dirty = 0;
+	gx_type4_psac_dirty_count = 0;
 }
 
 static void gx_type4_update_k053936_regs()
 {
-	for (INT32 i = 0; i < 0x10; i++) {
-		gx_type4_ctrl_words[i] = gx_ram_read_word(DrvType4CtrlRAM, 0xe00000 + ((i ^ 1) << 1), 0x1f);
+	if (gx_type4_ctrl_dirty_count > 0) {
+		for (INT32 i = 0; i < 0x10; i++) {
+			if (!gx_type4_ctrl_dirty[i]) continue;
+			gx_type4_ctrl_words[i] = gx_ram_read_word(DrvType4CtrlRAM, 0xe00000 + ((i ^ 1) << 1), 0x1f);
+			gx_type4_ctrl_dirty[i] = 0;
+		}
+		gx_type4_ctrl_dirty_count = 0;
 	}
 
-	for (INT32 i = 0; i < 0x800; i++) {
-		gx_type4_line_words[i] = gx_ram_read_word(DrvType4LineRAM, 0xe60000 + ((i ^ 1) << 1), 0xfff);
+	for (INT32 i = 0; i < gx_type4_line_dirty_count; i++) {
+		INT32 index = gx_type4_line_dirty_list[i];
+		gx_type4_line_words[index] = gx_ram_read_word(DrvType4LineRAM, 0xe60000 + ((index ^ 1) << 1), 0xfff);
+		gx_type4_line_dirty[index] = 0;
 	}
+	gx_type4_line_dirty_count = 0;
 }
 
 static INT32 DrvDoReset()
@@ -2269,6 +2733,8 @@ static INT32 DrvDoReset()
 	gx_type3_psac2_bank = 0;
 	gx_type3_spriteram_bank = 0;
 	gx_type4_render_spriteram_bank = 0;
+	memset(gx_type4_sprite_latch, 0, sizeof(gx_type4_sprite_latch));
+	memset(gx_type4_sprite_latch_valid, 0, sizeof(gx_type4_sprite_latch_valid));
 	gx_last_prot_op = -1;
 	gx_last_prot_param = 0;
 	gx_last_prot_clk = 0;
@@ -2279,8 +2745,10 @@ static INT32 DrvDoReset()
 	gx_type4_left_bitmap_valid = 0;
 	gx_type4_right_bitmap_valid = 0;
 	gx_type4_display_hold = 1;
-	gx_type4_psac_dirty = 1;
-	memset(gx_type4_psac_tile_dirty, 1, sizeof(gx_type4_psac_tile_dirty));
+	gx_type4_mark_all_psac_dirty();
+	gx_type4_mark_all_palettes_dirty();
+	gx_type4_mark_all_k053936_dirty();
+	DrvRecalc = 1;
 	memset(fantjour_dma, 0, sizeof(fantjour_dma));
 	sprite_colorbase = 0;
 	nExtraCycles[0] = nExtraCycles[1] = 0;
@@ -2385,7 +2853,7 @@ static INT32 DrvInit()
 		pGxPsacBitmap = (UINT16 *)BurnMalloc(0x800 * 0x800 * sizeof(UINT16));
 		if (pGxPsacBitmap == NULL) return 1;
 		memset(pGxPsacBitmap, 0, 0x800 * 0x800 * sizeof(UINT16));
-		memset(gx_type4_psac_tile_dirty, 1, sizeof(gx_type4_psac_tile_dirty));
+		gx_type4_mark_all_psac_dirty();
 
 		BurnDrvGetVisibleSize(&width, &height);
 		pGxType4LeftBitmap = (UINT32 *)BurnMalloc(GX_TYPE4_MONITOR_WIDTH * height * sizeof(UINT32));
@@ -2479,9 +2947,7 @@ static INT32 DrvInit()
 
 	if (config->eeprom >= 0 && BurnLoadRom(DrvEEPROM + 0x000000, config->eeprom, 1)) return 1;
 
-	if (DecodeTiles()) return 1;
-	if (DecodeSprites()) return 1;
-	if (gx_type4_enable && DecodePsacTiles()) return 1;
+	if (DecodeGraphics()) return 1;
 
 	K055555Init();
 	K054338Init();
@@ -2582,6 +3048,9 @@ static INT32 DrvInit()
 	K054539_set_gain(1, 6, 2.00);
 	K054539_set_gain(1, 7, 2.00);
 
+	gx_sound_worker.Configure();
+	gx_range_workers.Configure();
+
 	DrvTms.init(DrvTmsRAM);
 
 	konami_palette32 = DrvPalette;
@@ -2594,6 +3063,8 @@ static INT32 DrvInit()
 
 static INT32 DrvExit()
 {
+	gx_range_workers.Shutdown();
+	gx_sound_worker.Shutdown();
 	GenericTilesExit();
 	KonamiICExit();
 	K054539Exit();
@@ -2622,17 +3093,31 @@ static INT32 DrvExit()
 static void DrvPaletteUpdate(INT32 use_sub_palette = 0)
 {
 	if (gx_type4_enable) {
-		UINT8 *palram = use_sub_palette ? DrvSubPalRAM : DrvPalRAM;
+		INT32 palette = use_sub_palette ? 1 : 0;
+		UINT8 *palram = palette ? DrvSubPalRAM : DrvPalRAM;
 
-		for (INT32 i = 0; i < 0x2000; i++) {
-			UINT32 d = gx_ram_read_long(palram, 0xe80000 + (i << 2), 0x7fff);
-			DrvPalette[i] = BurnHighCol((d >> 16) & 0xff, (d >> 8) & 0xff, d & 0xff, 0);
-			konami_palette32[i] = DrvPalette[i];
+		if (DrvRecalc) {
+			gx_type4_mark_all_palettes_dirty();
+			DrvRecalc = 0;
 		}
 
-		DrvRecalc = 0;
+		if (gx_type4_palette_dirty_count[palette] > 0) {
+			for (INT32 dirty_index = 0; dirty_index < gx_type4_palette_dirty_count[palette]; dirty_index++) {
+				INT32 i = gx_type4_palette_dirty_list[palette][dirty_index];
+
+				UINT32 d = gx_ram_read_long(palram, 0xe80000 + (i << 2), 0x7fff);
+				gx_type4_palette_cache[palette][i] = BurnHighCol((d >> 16) & 0xff, (d >> 8) & 0xff, d & 0xff, 0);
+				gx_type4_palette_dirty[palette][i] = 0;
+			}
+
+			gx_type4_palette_dirty_count[palette] = 0;
+		}
+
+		memcpy(DrvPalette, gx_type4_palette_cache[palette], sizeof(gx_type4_palette_cache[palette]));
 		return;
 	}
+
+	if (!DrvRecalc) return;
 
 	UINT32 *pal = (UINT32 *)DrvPalRAM;
 
@@ -2747,8 +3232,7 @@ static void gx_type4_render_monitor(INT32 use_sub_palette, INT32 spriteram_bank,
 	INT32 new_psac_colorbase = 0;
 	if (gx_type4_psac_colorbase != new_psac_colorbase) {
 		gx_type4_psac_colorbase = new_psac_colorbase;
-		gx_type4_psac_dirty = 1;
-		memset(gx_type4_psac_tile_dirty, 1, sizeof(gx_type4_psac_tile_dirty));
+		gx_type4_mark_all_psac_dirty();
 	}
 
 	gx_type4_predraw_psac();
@@ -2758,7 +3242,11 @@ static void gx_type4_render_monitor(INT32 use_sub_palette, INT32 spriteram_bank,
 	K053936GP_set_visible_offset(0, 0, 16);
 	K053936GP_wraparound_enable(0, flip_x_offset ? 1 : 0);
 	K053247SetVisibleOffset(-flip_x_offset, 16 + flip_y_offset - (flip_x_offset ? GX_TYPE4_FLIP_SPRITE_Y_ADJUST : 0));
-	konamigx_mixer_set_spriteram_bank(spriteram_bank);
+	if (gx_type4_sprite_latch_valid[spriteram_bank & 1]) {
+		konamigx_mixer_set_spriteram_latch(gx_type4_sprite_latch[spriteram_bank & 1]);
+	} else {
+		konamigx_mixer_set_spriteram_bank(spriteram_bank);
+	}
 
 	konamigx_mixer(1, GXSUB_8BPP, 0, 0, 0, 0, gx_rushingheroes_hack);
 
@@ -2958,80 +3446,6 @@ static void gx_sexyparo_draw_space_stars()
 	}
 }
 
-// --- tbyahhoo Korean-logo tilemap fixup -------------------------------------
-// The title logo (K056832 page 0) reuses a few tile codes across cells that
-// the Japanese art drew identically, and leaves some cells blank (0x400).
-// The Korean redraw needs those cells to differ, so we redirect them to spare
-// tile codes (0x5e1..) whose pixels come from the Korean ROM patch.  The
-// tilemap is generated at runtime by the game (it exists in no ROM table), so
-// this can only be done here.
-//
-// Gating: (a) the patch writes a MAGIC pattern into spare tile 0x5fe; the
-// remap fires only on an exact 64-byte match.  The original ROM holds fully
-// inked X-marker placeholder tiles in the spare region, so an any-ink check
-// would misfire on unpatched ROMs (it did) — an exact match cannot.
-// (b) three anchor cells must hold the logo's Japanese shared codes in the
-// logo's relative geometry.  The game rebuilds this tilemap per scene at
-// different pages/offsets (title screen page 0, attract vocal-song title
-// page 1 shifted 4 columns left), so the whole VRAM is scanned for the
-// anchor pattern and the fix table is applied relative to each match.
-// Cell colours are preserved.
-static void tby_logo_tilemap_fix()
-{
-	const GxGameConfig *cfg = gx_get_game_config();
-	if (cfg == NULL || cfg->special != GX_SPECIAL_TBYAHHOO) return;
-
-	// row/col offsets from the anchor cell (title screen: row 6, col 16)
-	static const struct { INT32 dr, dc; UINT16 oldcode, newcode; } fix[] = {
-		// shared glyph tiles the JP art reused across differing Korean cells
-		{  0,   0, 0x0408, 0x05e1 },
-		{  5,  -8, 0x0417, 0x05e2 },
-		{  5,  -7, 0x0425, 0x05e3 },
-		{  4,  -2, 0x0428, 0x05e4 },
-		{  5,  -2, 0x0428, 0x05e5 },
-		{  7, -12, 0x043a, 0x05e6 },
-		{  5, -11, 0x043a, 0x05e7 },
-		// blank (0x400) cells the Korean art paints into
-		{  0,  -5, 0x0400, 0x05e8 },
-		{  0,   1, 0x0400, 0x05e9 },
-		{  0,   2, 0x0400, 0x05ea },
-		{  1,  -3, 0x0400, 0x05eb },
-		{  7,  -5, 0x0400, 0x05ec },
-		{ 10,  -8, 0x0400, 0x05ed },
-		{ 10,   9, 0x0400, 0x05ee },
-		{ 11,  -3, 0x0400, 0x05ef },
-		{ 11,   3, 0x0400, 0x05f0 },
-		{ 11,   4, 0x0400, 0x05f1 },
-	};
-	const INT32 nfix = sizeof(fix) / sizeof(fix[0]);
-
-	const UINT8 *exp = DrvGfxROMExp0 + 0x05fe * 0x40;
-	for (INT32 i = 0; i < 0x40; i++) {
-		if (exp[i] != (UINT8)((3 * (i >> 3) + 5 * (i & 7) + 7) % 32)) return;
-	}
-
-	// 16 pages of 64x32 cells, addressed as 512 linear rows of 64
-	#define TBY_CODEIDX(r,c) ((((r) * 64 + (c)) * 2) + 1)
-	#define TBY_CODE(r,c) (BURN_ENDIAN_SWAP_INT16(K056832GetVram(TBY_CODEIDX(r,c))) & 0x1fff)
-	for (INT32 ar = 0; ar <= 512 - 12; ar++) {
-		for (INT32 ac = 12; ac <= 63 - 9; ac++) {
-			if (TBY_CODE(ar, ac) != 0x0408) continue;
-			if (TBY_CODE(ar + 5, ac - 2) != 0x0428) continue;
-			if (TBY_CODE(ar + 5, ac - 8) != 0x0417) continue;
-
-			for (INT32 i = 0; i < nfix; i++) {
-				INT32 idx = TBY_CODEIDX(ar + fix[i].dr, ac + fix[i].dc);
-				UINT16 cur = BURN_ENDIAN_SWAP_INT16(K056832GetVram(idx));
-				if ((cur & 0x1fff) != fix[i].oldcode) continue;
-				UINT16 nw = (UINT16)((cur & 0xe000) | fix[i].newcode);
-				K056832SetVram(idx, BURN_ENDIAN_SWAP_INT16(nw));
-			}
-		}
-	}
-	#undef TBY_CODE
-	#undef TBY_CODEIDX
-}
-
 static INT32 DrvDraw()
 {
 	if (gx_type4_enable) {
@@ -3043,8 +3457,6 @@ static INT32 DrvDraw()
 		KonamiBlendCopy(DrvPalette);
 		return 0;
 	}
-
-	tby_logo_tilemap_fix();
 
 	DrvPaletteUpdate();
 	KonamiClearBitmaps(0);
@@ -3131,6 +3543,12 @@ static INT32 DrvFrame()
 
 	gx_bios_vblank_pending = 0;
 	gx_bios_in_wait_loop = 0;
+	const INT32 gx_bios_hle_enabled =
+		!gx_type4_enable &&
+		(gx_special == GX_SPECIAL_SEXYPARO ||
+		 gx_special == GX_SPECIAL_SALMNDR2 ||
+		 gx_special == GX_SPECIAL_TBYAHHOO);
+	const INT32 gx_speedhack_enabled = DrvConfig[1] & 0x01;
 
 	for (INT32 i = 0; i < nInterleave; i++) {
 		INT32 scanline = i & 0xff;
@@ -3138,15 +3556,26 @@ static INT32 DrvFrame()
 		gx_current_scanline = scanline;
 
 		SekOpen(0);
-		gx_bios_vblank_hle_check(SekGetPC(-1));
-		INT32 main_segment = ((i + 1) * nCyclesTotal[0] / nInterleave) - nCyclesDone[0];
-		if (!gx_speedhack_wake && gx_speedhack_active(SekGetPC(-1))) {
-			nCyclesDone[0] += SekIdle(main_segment);
+		if (!gx_speedhack_enabled) {
+			gx_bios_vblank_hle_check(SekGetPC(-1));
+			CPU_RUN(0, Sek);
+			gx_bios_vblank_hle_check(SekGetPC(-1));
 		} else {
-			gx_speedhack_wake = 0;
-			nCyclesDone[0] += SekRun(main_segment);
+			INT32 main_pc = SekGetPC(-1);
+			if (gx_bios_hle_enabled) {
+				gx_bios_vblank_hle_check(main_pc);
+			}
+			INT32 main_segment = ((i + 1) * nCyclesTotal[0] / nInterleave) - nCyclesDone[0];
+			if (!gx_speedhack_wake && gx_speedhack_active(main_pc)) {
+				nCyclesDone[0] += SekIdle(main_segment);
+			} else {
+				gx_speedhack_wake = 0;
+				nCyclesDone[0] += SekRun(main_segment);
+			}
+			if (gx_bios_hle_enabled) {
+				gx_bios_vblank_hle_check(SekGetPC(-1));
+			}
 		}
-		gx_bios_vblank_hle_check(SekGetPC(-1));
 
 		if (((gx_type4_enable && scanline < 240) || (!gx_type4_enable && scanline == 48)) && (gx_syncen & 0x40)) {
 			gx_syncen &= ~0x40;
@@ -3274,6 +3703,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(gx_type3_psac2_bank);
 		SCAN_VAR(gx_type3_spriteram_bank);
 		SCAN_VAR(gx_type4_render_spriteram_bank);
+		SCAN_VAR(gx_type4_sprite_latch);
+		SCAN_VAR(gx_type4_sprite_latch_valid);
 		SCAN_VAR(gx_rushingheroes_hack);
 		SCAN_VAR(gx_last_prot_op);
 		SCAN_VAR(gx_last_prot_param);
@@ -3286,6 +3717,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(gx_type4_right_bitmap_valid);
 		SCAN_VAR(gx_type4_psac_colorbase);
 		SCAN_VAR(gx_type4_psac_dirty);
+		SCAN_VAR(gx_type4_psac_dirty_count);
 		SCAN_VAR(gx_type4_psac_tile_dirty);
 		SCAN_VAR(fantjour_dma);
 		SCAN_VAR(gx_esc_program);
@@ -3299,8 +3731,9 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	if (nAction & ACB_WRITE) {
 		gx_control_write(gx_control);
 		if (gx_type4_enable) {
-			gx_type4_psac_dirty = 1;
-			memset(gx_type4_psac_tile_dirty, 1, sizeof(gx_type4_psac_tile_dirty));
+			gx_type4_mark_all_psac_dirty();
+			gx_type4_mark_all_palettes_dirty();
+			gx_type4_mark_all_k053936_dirty();
 			K053936_external_bitmap = pGxPsacBitmap;
 			gx_type4_update_k053936_regs();
 			m_k053936_0_ctrl_16 = gx_type4_ctrl_words;

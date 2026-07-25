@@ -11,6 +11,7 @@
 #include "iremga20.h"
 #include "stddef.h"
 #include "pic8259.h"
+#include "m92_threads.h"
 
 static UINT8 *Mem = NULL;
 static UINT8 *MemEnd = NULL;
@@ -75,6 +76,7 @@ static INT32 m92_ok_to_blank = 0;
 static INT32 msm6295_bank;
 
 static INT32 leaguemna = 0;
+static M92ThreadPool M92Threads;
 
 typedef struct _m92_layer m92_layer;
 struct _m92_layer
@@ -1849,6 +1851,7 @@ static INT32 DrvInit(INT32 (*pRomLoadCallback)(), const UINT8 *sound_decrypt_tab
 	MSM6295SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
 
 	GenericTilesInit();
+	M92Threads.Configure();
 
 	DrvDoReset();
 
@@ -1857,6 +1860,7 @@ static INT32 DrvInit(INT32 (*pRomLoadCallback)(), const UINT8 *sound_decrypt_tab
 
 static INT32 DrvExit()
 {
+	M92Threads.Shutdown();
 	GenericTilesExit();
 
 	BurnYM2151Exit();
@@ -1914,66 +1918,97 @@ static void RenderTilePrio(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, IN
 	}
 }
 
+struct M92SpriteEntry {
+	INT32 y;
+	INT32 x;
+	INT32 priority;
+	INT32 priorityMask;
+	INT32 code;
+	INT32 color;
+	INT32 flipx;
+	INT32 flipy;
+	INT32 yMulti;
+	INT32 xMulti;
+};
+
+static void draw_sprite_entry(const M92SpriteEntry *entry)
+{
+	INT32 x = entry->x;
+
+	if (entry->flipx) x += 16 * (entry->xMulti - 1);
+
+	for (INT32 j = 0; j < entry->xMulti; j++)
+	{
+		INT32 s_ptr = j * 8;
+		if (!entry->flipy) s_ptr += entry->yMulti - 1;
+
+		x &= 0x1ff;
+
+		for (INT32 i = 0; i < entry->yMulti; i++)
+		{
+			RenderTilePrio(pTransDraw, DrvGfxROM1, (entry->code + s_ptr) & graphics_mask[1],
+				entry->color << 4, x, entry->y - i * 16, entry->flipx, entry->flipy,
+				16, 16, RamPrioBitmap, entry->priorityMask);
+			if (x > 0x1f0) {
+				RenderTilePrio(pTransDraw, DrvGfxROM1, (entry->code + s_ptr) & graphics_mask[1],
+					entry->color << 4, x - 512, entry->y - i * 16, entry->flipx,
+					entry->flipy, 16, 16, RamPrioBitmap, entry->priorityMask);
+			}
+
+			if (entry->flipy) s_ptr++; else s_ptr--;
+		}
+
+		if (entry->flipx) x -= 16; else x += 16;
+	}
+}
+
 static void draw_sprites()
 {
 	UINT16 *ram = (UINT16*)DrvSprBuf;
+	M92SpriteEntry entries[256];
+	INT32 entryCount = 0;
+	INT32 start_offs = (m92_kludge == 3) ? 4 : 0; // ppan: first word is sprite count
+	INT32 end_offs = m92_sprite_list;
 
-	for (INT32 k=0; k<8; k++)
+	if (m92_kludge == 3) {
+		end_offs = (BURN_ENDIAN_SWAP_INT16(ram[0]) & 0xff) * 4 + 4; // +4 because offs <= amount in MAME
+	}
+
+	for (INT32 offs = start_offs; offs < end_offs && entryCount < 256; )
 	{
-		INT32 start_offs = (m92_kludge == 3) ? 4 : 0; // ppan: first word is sprite count
-		INT32 end_offs = m92_sprite_list;
-		if (m92_kludge == 3) {
-			end_offs = (BURN_ENDIAN_SWAP_INT16(ram[0]) & 0xff) * 4 + 4; // +4 because offs <= amount in MAME
+		M92SpriteEntry *entry = &entries[entryCount++];
+		const UINT16 word0 = BURN_ENDIAN_SWAP_INT16(ram[offs + 0]);
+		const UINT16 word1 = BURN_ENDIAN_SWAP_INT16(ram[offs + 1]);
+		const UINT16 word2 = BURN_ENDIAN_SWAP_INT16(ram[offs + 2]);
+		const UINT16 word3 = BURN_ENDIAN_SWAP_INT16(ram[offs + 3]);
+
+		if (m92_kludge == 3) { // ppan - independent sprite offsets
+			entry->y = ((384 - 16 - (word0 & 0x1ff)) & 0x1ff) - 8;
+			entry->x = (word3 & 0x1ff) - 96;
+			entry->y -= 135; // relative to background: up 15 pixels (matches MAME ppan)
+			entry->x += 18;  // +5 relative offset + 13 global shift right
+			entry->y &= 0x1ff;
+		} else {
+			entry->y = (((384 - 16 - (word0 & 0x1ff)) - nScreenOffsets[1]) & 0x1ff) - 8;
+			entry->x = ((word3 & 0x1ff) - nScreenOffsets[0]) - 96;
 		}
 
-		for (INT32 offs = start_offs; offs < end_offs; )
-		{
-			INT32 y;
-			INT32 x;
+		entry->priority = (word0 & 0xe000) >> 13;
+		entry->priorityMask = (~word2 >> 6) & 2;
+		entry->code = word1;
+		entry->color = word2 & 0x007f;
+		entry->flipx = word2 & 0x0100;
+		entry->flipy = word2 & 0x0200;
+		entry->yMulti = 1 << ((word0 >> 9) & 3);
+		entry->xMulti = 1 << ((word0 >> 11) & 3);
 
-			if (m92_kludge == 3) { // ppan - independent sprite offsets
-				y = ((384 - 16 - (BURN_ENDIAN_SWAP_INT16(ram[offs+0]) & 0x1ff)) & 0x1ff) - 8;
-				x = (BURN_ENDIAN_SWAP_INT16(ram[offs+3]) & 0x1ff) - 96;
-				y -= 135; // relative to background: up 15 pixels (matches MAME ppan)
-				x += 18;  // +5 relative offset + 13 global shift right
-				y &= 0x1ff;
-			} else {
-				y = (((384 - 16 - (BURN_ENDIAN_SWAP_INT16(ram[offs+0]) & 0x1ff)) - nScreenOffsets[1]) & 0x1ff) - 8;
-				x = ((BURN_ENDIAN_SWAP_INT16(ram[offs+3]) & 0x1ff) - nScreenOffsets[0]) - 96;
-			}
+		offs += 4 * entry->xMulti;
+	}
 
-			INT32 pri_s  = (BURN_ENDIAN_SWAP_INT16(ram[offs+0]) & 0xe000) >> 13;
-			INT32 pri_b  = (~BURN_ENDIAN_SWAP_INT16(ram[offs+2]) >> 6) & 2;
-			INT32 code   =  BURN_ENDIAN_SWAP_INT16(ram[offs+1]);
-			INT32 color  =  BURN_ENDIAN_SWAP_INT16(ram[offs+2]) & 0x007f;
-
-			INT32 flipx  =  BURN_ENDIAN_SWAP_INT16(ram[offs+2]) & 0x0100;
-			INT32 flipy  =  BURN_ENDIAN_SWAP_INT16(ram[offs+2]) & 0x0200;
-			INT32 y_multi= 1 << ((BURN_ENDIAN_SWAP_INT16(ram[offs+0]) >>  9) & 3);
-			INT32 x_multi= 1 << ((BURN_ENDIAN_SWAP_INT16(ram[offs+0]) >> 11) & 3);
-
-			offs += 4 * x_multi;
-			if (pri_s != k) continue;
-	
-			if (flipx) x+=16 * (x_multi - 1);
-
-			for (INT32 j = 0; j < x_multi; j++)
-			{
-				INT32 s_ptr = j * 8;
-				if (!flipy) s_ptr += y_multi-1;
-
-				x &= 0x1ff;
-
-				for (INT32 i=0; i<y_multi; i++)
-				{
-					RenderTilePrio(pTransDraw, DrvGfxROM1, (code + s_ptr) & graphics_mask[1], color << 4, x    , y-i*16, flipx, flipy, 16, 16, RamPrioBitmap, pri_b);
-					if (x > 0x1f0) RenderTilePrio(pTransDraw, DrvGfxROM1, (code + s_ptr) & graphics_mask[1], color << 4, x-512, y-i*16, flipx, flipy, 16, 16, RamPrioBitmap, pri_b);
-
-					if (flipy) s_ptr++; else s_ptr--;
-				}
-
-				if (flipx) x-=16; else x+=16;
-			}
+	for (INT32 priority = 0; priority < 8; priority++)
+	{
+		for (INT32 i = 0; i < entryCount; i++) {
+			if (entries[i].priority == priority) draw_sprite_entry(&entries[i]);
 		}
 	}
 }
@@ -2045,7 +2080,7 @@ static void draw_layer_byline(INT32 start, INT32 finish, INT32 layer, INT32 forc
 	}
 }
 
-static void DrawLayers(INT32 start, INT32 finish)
+static void DrawLayersRange(INT32 start, INT32 finish)
 {
 	memset(RamPrioBitmap + (start * nScreenWidth), 0, nScreenWidth * (finish - start)); // clear priority
 
@@ -2064,6 +2099,79 @@ static void DrawLayers(INT32 start, INT32 finish)
 	if (nBurnLayer & 8) draw_layer_byline(start, finish, 0, 0);
 }
 
+struct M92DrawLayersContext {
+	INT32 start;
+};
+
+static void DrawLayersRows(void *opaque, INT32 begin, INT32 end)
+{
+	M92DrawLayersContext *context = (M92DrawLayersContext*)opaque;
+	DrawLayersRange(context->start + begin, context->start + end);
+}
+
+static void DrawLayers(INT32 start, INT32 finish)
+{
+	M92DrawLayersContext context = { start };
+	M92Threads.ParallelFor(finish - start, 32, DrawLayersRows, &context);
+}
+
+struct M92TransferContext {
+	UINT16 *source;
+	UINT8 *destination;
+	UINT32 *palette;
+	INT32 width;
+	INT32 pitch;
+	INT32 bytesPerPixel;
+};
+
+static void M92TransferRows(void *opaque, INT32 begin, INT32 end)
+{
+	M92TransferContext *context = (M92TransferContext*)opaque;
+
+	for (INT32 y = begin; y < end; y++) {
+		UINT16 *source = context->source + y * context->width;
+		UINT8 *destination = context->destination + y * context->pitch;
+
+		switch (context->bytesPerPixel) {
+			case 2:
+				for (INT32 x = 0; x < context->width; x++) {
+					((UINT16*)destination)[x] = (UINT16)context->palette[source[x]];
+				}
+				break;
+
+			case 3:
+				for (INT32 x = 0; x < context->width; x++) {
+					const UINT32 color = context->palette[source[x]];
+					destination[x * 3 + 0] = color & 0xff;
+					destination[x * 3 + 1] = (color >> 8) & 0xff;
+					destination[x * 3 + 2] = color >> 16;
+				}
+				break;
+
+			case 4:
+				for (INT32 x = 0; x < context->width; x++) {
+					((UINT32*)destination)[x] = context->palette[source[x]];
+				}
+				break;
+		}
+	}
+}
+
+static void M92TransferCopy()
+{
+	pBurnDrvPalette = DrvPalette;
+
+	M92TransferContext context = {
+		pTransDraw,
+		pBurnDraw,
+		DrvPalette,
+		nScreenWidth,
+		nBurnPitch,
+		nBurnBpp
+	};
+	M92Threads.ParallelFor(nScreenHeight, 64, M92TransferRows, &context);
+}
+
 static INT32 DrvDraw()
 {
 	if (bRecalcPalette) {
@@ -2078,7 +2186,7 @@ static INT32 DrvDraw()
 
 	if (m92_ok_to_blank && m92_video_reg & 0x80) BurnTransferClear(0x800); // most-likely probably screen disable (fixes bad fades in nbbatman, rtypeleo)
 
-	BurnTransferCopy(DrvPalette);
+	M92TransferCopy();
 
 	return 0;
 }
@@ -2095,7 +2203,7 @@ static INT32 DrvReDraw()
 
 	if (nSpriteEnable & 1) draw_sprites();
 
-	BurnTransferCopy(DrvPalette);
+	M92TransferCopy();
 
 	return 0;
 }

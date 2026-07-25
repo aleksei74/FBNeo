@@ -94,14 +94,9 @@ INT32 TMS34010GetActive()
 void TMS34010WriteCheat(UINT32 address, UINT8 value);
 UINT8 TMS34010ReadByte(UINT32 address);
 
-INT64 TMS34010TotalCycles()
+INT32 TMS34010TotalCycles()
 {
 	return tms34010_total_cycles();
-}
-
-static INT32 TMS34010TotalCyclesi32()
-{
-	return (INT32)TMS34010TotalCycles();
 }
 
 void TMS34010SetIRQLine(INT32 cpu, INT32 vector, INT32 status)
@@ -117,7 +112,7 @@ cpu_core_config TMS34010Config =
 	TMS34010ReadByte,
 	TMS34010WriteCheat,
 	TMS34010GetActive,
-	TMS34010TotalCyclesi32,
+	TMS34010TotalCycles,
 	TMS34010NewFrame,
 	TMS34010Idle,
 	TMS34010SetIRQLine,
@@ -493,3 +488,4 @@ int TMS34010SetHandlers(UINT32 num, pTMS34010ReadHandler rhandler, pTMS34010Writ
     g_mmap->write[num] = whandler;
     return 0;
 }
+

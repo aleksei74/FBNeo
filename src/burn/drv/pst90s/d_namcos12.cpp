@@ -31,6 +31,7 @@ static UINT8 *DrvScratchRAM;
 static UINT8 *DrvIoRAM;
 static UINT16 *DrvGpuVram;
 static UINT32 *DrvPalette;
+static decltype(BurnHighCol) DrvPaletteHighCol;
 static NamcosPolyThreadPool DrvPolyThreads;
 static thread_local INT32 DrvPolyClipY1 = -0x8000;
 static thread_local INT32 DrvPolyClipY2 = 0x7fff;
@@ -1292,12 +1293,7 @@ static inline INT32 Namcos11GpuPolyY(UINT32 data)
 
 static inline void Namcos11GpuPutPixel(INT32 x, INT32 y, UINT16 color)
 {
-	INT32 x1 = DrvGpuDrawX1;
-	INT32 y1 = DrvGpuDrawY1;
-	INT32 x2 = DrvGpuDrawX2;
-	INT32 y2 = DrvGpuDrawY2;
-
-	if (x < x1 || x > x2 || y < y1 || y > y2) return;
+	if (x < DrvGpuDrawX1 || x > DrvGpuDrawX2 || y < DrvGpuDrawY1 || y > DrvGpuDrawY2) return;
 
 	Namcos11GpuWriteVramPixel(x, y, color);
 }
@@ -1312,19 +1308,36 @@ static inline void Namcos11GpuGetClip(INT32 &x1, INT32 &y1, INT32 &x2, INT32 &y2
 	y2 = DrvGpuDrawY2;
 }
 
-static void Namcos11GpuDrawFlatRect(INT32 width, INT32 height)
+struct NamcosFlatRectContext {
+	INT32 x;
+	INT32 y;
+	INT32 width;
+	UINT16 color;
+	INT32 semi;
+};
+
+static void Namcos11GpuDrawFlatRectWorker(void *opaque, INT32 begin, INT32 end)
 {
-	UINT16 color = Namcos11GpuColor(DrvGpuPacket[0]);
-	INT32 x = Namcos11GpuX(DrvGpuPacket[1]);
-	INT32 y = Namcos11GpuY(DrvGpuPacket[1]);
-
-	if (width <= 0 || height <= 0) return;
-
-	for (INT32 yy = 0; yy < height; yy++) {
-		for (INT32 xx = 0; xx < width; xx++) {
-			Namcos11GpuPutSolidPixel(x + xx, y + yy, color, DrvGpuPacket[0] & 0x02000000);
+	NamcosFlatRectContext *context = (NamcosFlatRectContext*)opaque;
+	for (INT32 yy = begin; yy < end; yy++) {
+		for (INT32 xx = 0; xx < context->width; xx++) {
+			Namcos11GpuPutSolidPixel(context->x + xx, context->y + yy, context->color, context->semi);
 		}
 	}
+}
+
+static void Namcos11GpuDrawFlatRect(INT32 width, INT32 height)
+{
+	if (width <= 0 || height <= 0) return;
+
+	NamcosFlatRectContext context;
+	context.x = Namcos11GpuX(DrvGpuPacket[1]);
+	context.y = Namcos11GpuY(DrvGpuPacket[1]);
+	context.width = width;
+	context.color = Namcos11GpuColor(DrvGpuPacket[0]);
+	context.semi = DrvGpuPacket[0] & 0x02000000;
+	DrvPolyThreads.ParallelForWork(height, (INT64)width * height, 32768,
+		Namcos11GpuDrawFlatRectWorker, &context);
 }
 
 static void Namcos11GpuDrawFlatRectVariable()
@@ -1422,6 +1435,11 @@ static inline INT32 Namcos11GpuCullTriangle(INT32 x0, INT32 y0, INT32 x1, INT32 
 	return dx01 > 1023 || dy01 > 1023 || dx12 > 1023 || dy12 > 1023 || dx20 > 1023 || dy20 > 1023;
 }
 
+static inline UINT16 Namcos11GpuReadRenderPixel(INT32 x, INT32 y)
+{
+	return DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
+}
+
 static inline UINT16 Namcos11GpuBlendColor(UINT16 tex, UINT32 shade, INT32 raw)
 {
 	if (raw) return tex;
@@ -1472,7 +1490,7 @@ static inline void Namcos11GpuPutSolidPixel(INT32 x, INT32 y, UINT16 color, INT3
 {
 	if (semi) {
 		UINT32 tpage = DrvGpuTPage;
-		UINT16 background = DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
+		UINT16 background = Namcos11GpuReadRenderPixel(x, y);
 		color = Namcos11GpuBlendSemiTransparent(color, background, tpage);
 	}
 
@@ -1482,68 +1500,90 @@ static inline void Namcos11GpuPutSolidPixel(INT32 x, INT32 y, UINT16 color, INT3
 static inline void Namcos11GpuPutTexturedPixel(INT32 x, INT32 y, UINT16 texel, UINT16 color, UINT32 tpage, INT32 semi)
 {
 	if (semi && (texel & 0x8000)) {
-		UINT16 background = DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
+		UINT16 background = Namcos11GpuReadRenderPixel(x, y);
 		color = Namcos11GpuBlendSemiTransparent(color, background, tpage) | 0x8000;
 	}
 
 	Namcos11GpuPutPixel(x, y, color);
 }
 
-static inline UINT16 Namcos11GpuFetchTexture(INT32 u, INT32 v, UINT32 clut, UINT32 tpage)
-{
-	UINT32 texx = (tpage & 0x0f) << 6;
+struct NamcosTextureState {
+	UINT32 texx;
 	UINT32 texy;
 	UINT32 mode;
-	UINT32 interleaved = 0;
+	UINT32 interleaved;
+	UINT32 windowW;
+	UINT32 windowH;
+	UINT32 clutX;
+	UINT32 clutY;
+	const UINT16 *clutCache;
+};
+
+static inline void Namcos11GpuInitTextureState(NamcosTextureState &state, UINT32 clut, UINT32 tpage,
+	const UINT16 *clutCache)
+{
+	state.texx = (tpage & 0x0f) << 6;
+	state.interleaved = 0;
 
 	if (DrvGpuType == 2) {
-		texy = ((tpage & 0x10) << 4) | ((tpage & 0x800) >> 2);
-		mode = (tpage >> 7) & 3;
+		state.texy = ((tpage & 0x10) << 4) | ((tpage & 0x800) >> 2);
+		state.mode = (tpage >> 7) & 3;
 	} else {
-		texy = (tpage & 0x60) << 3;
-		mode = (tpage >> 9) & 3;
-		interleaved = tpage & 0x2000;
+		state.texy = (tpage & 0x60) << 3;
+		state.mode = (tpage >> 9) & 3;
+		state.interleaved = tpage & 0x2000;
 	}
 
-	if (mode == 3) return 0;
+	state.windowW = DrvGpuTextureWindowW;
+	state.windowH = DrvGpuTextureWindowH;
+	state.texx += DrvGpuTextureWindowX >> ((state.mode == 0) ? 2 : ((state.mode == 1) ? 1 : 0));
+	state.texy += DrvGpuTextureWindowY;
+	state.clutX = (clut & 0x3f) << 4;
+	state.clutY = (clut >> 6) & 0x3ff;
+	state.clutCache = clutCache;
+}
+
+static inline UINT16 Namcos11GpuFetchTexture(INT32 u, INT32 v, const NamcosTextureState &state)
+{
+	if (state.mode == 3) return 0;
 
 	UINT32 x = 0;
-	u &= DrvGpuTextureWindowW;
-	v &= DrvGpuTextureWindowH;
-	texx += DrvGpuTextureWindowX >> ((mode == 0) ? 2 : ((mode == 1) ? 1 : 0));
-	texy += DrvGpuTextureWindowY;
-	UINT32 y = (texy + (v & 0xff)) & 0x3ff;
+	u &= state.windowW;
+	v &= state.windowH;
+	UINT32 y = (state.texy + (v & 0xff)) & 0x3ff;
 	UINT16 data = 0;
 
-	if (mode == 0) {
-		if (interleaved) {
-			x = texx + (((u >> 2) & ~0x3c) + ((v << 2) & 0x3c));
-			y = texy + ((v & ~0x0f) + ((u >> 4) & 0x0f));
+	if (state.mode == 0) {
+		if (state.interleaved) {
+			x = state.texx + (((u >> 2) & ~0x3c) + ((v << 2) & 0x3c));
+			y = state.texy + ((v & ~0x0f) + ((u >> 4) & 0x0f));
 		} else {
-			x = texx + ((u & 0xff) >> 2);
+			x = state.texx + ((u & 0xff) >> 2);
 		}
 		data = DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
 		data = (data >> ((u & 3) << 2)) & 0x0f;
-		x = ((clut & 0x3f) << 4) + data;
-		y = (clut >> 6) & 0x3ff;
+		if (state.clutCache) return state.clutCache[data];
+		x = state.clutX + data;
+		y = state.clutY;
 		return DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
 	}
 
-	if (mode == 1) {
-		if (interleaved) {
-			x = texx + (((u >> 1) & ~0x78) + ((u << 2) & 0x40) + ((v << 3) & 0x38));
-			y = texy + ((v & ~0x07) + ((u >> 5) & 0x07));
+	if (state.mode == 1) {
+		if (state.interleaved) {
+			x = state.texx + (((u >> 1) & ~0x78) + ((u << 2) & 0x40) + ((v << 3) & 0x38));
+			y = state.texy + ((v & ~0x07) + ((u >> 5) & 0x07));
 		} else {
-			x = texx + ((u & 0xff) >> 1);
+			x = state.texx + ((u & 0xff) >> 1);
 		}
 		data = DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
 		data = (u & 1) ? (data >> 8) : (data & 0xff);
-		x = ((clut & 0x3f) << 4) + data;
-		y = (clut >> 6) & 0x3ff;
+		if (state.clutCache) return state.clutCache[data];
+		x = state.clutX + data;
+		y = state.clutY;
 		return DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
 	}
 
-	x = texx + (u & 0xff);
+	x = state.texx + (u & 0xff);
 	data = DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
 	if (data == 0) return 0;
 	return data;
@@ -1627,6 +1667,19 @@ static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 
 			dx2 /= distance;
 		}
 
+		const INT32 clippedY = y + DrvGpuDrawOffsetY;
+		if (clippedY > DrvPolyClipY2) return;
+		if (clippedY < DrvPolyClipY1) {
+			INT32 skip = DrvPolyClipY1 - clippedY;
+			const INT32 edgeRows = ((py[left] < py[right]) ? py[left] : py[right]) - y;
+			if (skip > edgeRows) skip = edgeRows;
+			if (skip < 1) skip = 1;
+			cx1 = NamcosPolyAdvance(cx1, dx1, skip);
+			cx2 = NamcosPolyAdvance(cx2, dx2, skip);
+			y += skip;
+			continue;
+		}
+
 		INT32 x1 = (INT16)(cx1 >> 16);
 		INT32 x2 = (INT16)(cx2 >> 16);
 		if (x1 > x2) {
@@ -1673,7 +1726,7 @@ static void Namcos11GpuDrawFlatPolyWorker(void *opaque, INT32 begin, INT32 end)
 	DrvPolyClipY2 = 0x7fff;
 }
 
-static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
+static void Namcos11GpuDrawFlatPolyPass(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
 {
 	NamcosFlatPolyContext context;
 	context.points = points;
@@ -1688,7 +1741,13 @@ static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 poin
 		if (py[i] > maxy) maxy = py[i];
 	}
 	context.y1 = miny + DrvGpuDrawOffsetY;
-	DrvPolyThreads.ParallelFor(maxy - miny + 1, 48, Namcos11GpuDrawFlatPolyWorker, &context);
+	DrvPolyThreads.ParallelForWork(maxy - miny + 1, NamcosPolyEstimateWork(px, py, points), 32768,
+		Namcos11GpuDrawFlatPolyWorker, &context);
+}
+
+static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
+{
+	Namcos11GpuDrawFlatPolyPass(px, py, points, color, semi);
 }
 
 static void Namcos11GpuDrawTriangleFlat(INT32 x0, INT32 y0, INT32 x1, INT32 y1, INT32 x2, INT32 y2, UINT16 color, INT32 semi)
@@ -1793,6 +1852,21 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 			dx2 /= distance; dr2 /= distance; dg2 /= distance; db2 /= distance;
 		}
 
+		const INT32 clippedY = y + DrvGpuDrawOffsetY;
+		if (clippedY > DrvPolyClipY2) return;
+		if (clippedY < DrvPolyClipY1) {
+			INT32 skip = DrvPolyClipY1 - clippedY;
+			const INT32 edgeRows = ((py[left] < py[right]) ? py[left] : py[right]) - y;
+			if (skip > edgeRows) skip = edgeRows;
+			if (skip < 1) skip = 1;
+			cx1 = NamcosPolyAdvance(cx1, dx1, skip); cr1 = NamcosPolyAdvance(cr1, dr1, skip);
+			cg1 = NamcosPolyAdvance(cg1, dg1, skip); cb1 = NamcosPolyAdvance(cb1, db1, skip);
+			cx2 = NamcosPolyAdvance(cx2, dx2, skip); cr2 = NamcosPolyAdvance(cr2, dr2, skip);
+			cg2 = NamcosPolyAdvance(cg2, dg2, skip); cb2 = NamcosPolyAdvance(cb2, db2, skip);
+			y += skip;
+			continue;
+		}
+
 		INT32 x1 = (INT16)(cx1 >> 16);
 		INT32 x2 = (INT16)(cx2 >> 16);
 		UINT32 r = cr1;
@@ -1856,7 +1930,7 @@ static void Namcos11GpuDrawGouraudPolyWorker(void *opaque, INT32 begin, INT32 en
 	DrvPolyClipY2 = 0x7fff;
 }
 
-static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
+static void Namcos11GpuDrawGouraudPolyMamePass(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
 {
 	NamcosGouraudPolyContext context;
 	context.points = points;
@@ -1871,7 +1945,13 @@ static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, con
 		if (py[i] > maxy) maxy = py[i];
 	}
 	context.y1 = miny + DrvGpuDrawOffsetY;
-	DrvPolyThreads.ParallelFor(maxy - miny + 1, 48, Namcos11GpuDrawGouraudPolyWorker, &context);
+	DrvPolyThreads.ParallelForWork(maxy - miny + 1, NamcosPolyEstimateWork(px, py, points), 16384,
+		Namcos11GpuDrawGouraudPolyWorker, &context);
+}
+
+static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
+{
+	Namcos11GpuDrawGouraudPolyMamePass(px, py, pc, points, semi);
 }
 
 static void Namcos11GpuDrawGouraudPoly(INT32 quad)
@@ -1918,7 +1998,8 @@ static void Namcos11GpuDrawFlatQuad()
 }
 
 static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
-	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
+	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud,
+	const NamcosTextureState &texture)
 {
 	if (DrvToukon3 && points == 4) {
 		INT32 tx0[3] = { px[0], px[1], px[2] };
@@ -1932,8 +2013,8 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 		INT32 tv1[3] = { pv[2], pv[1], pv[3] };
 		UINT32 tc1[3] = { pc[2], pc[1], pc[3] };
 
-		Namcos11GpuDrawTexturedPolyMameCore(tx0, ty0, tu0, tv0, tc0, 3, clut, tpage, raw, semi, gouraud);
-		Namcos11GpuDrawTexturedPolyMameCore(tx1, ty1, tu1, tv1, tc1, 3, clut, tpage, raw, semi, gouraud);
+		Namcos11GpuDrawTexturedPolyMameCore(tx0, ty0, tu0, tv0, tc0, 3, clut, tpage, raw, semi, gouraud, texture);
+		Namcos11GpuDrawTexturedPolyMameCore(tx1, ty1, tu1, tv1, tc1, 3, clut, tpage, raw, semi, gouraud, texture);
 		return;
 	}
 
@@ -2028,6 +2109,23 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 			du2 /= distance; dv2 /= distance;
 		}
 
+		const INT32 clippedY = y + DrvGpuDrawOffsetY;
+		if (clippedY > DrvPolyClipY2) return;
+		if (clippedY < DrvPolyClipY1) {
+			INT32 skip = DrvPolyClipY1 - clippedY;
+			const INT32 edgeRows = ((py[left] < py[right]) ? py[left] : py[right]) - y;
+			if (skip > edgeRows) skip = edgeRows;
+			if (skip < 1) skip = 1;
+			cx1 = NamcosPolyAdvance(cx1, dx1, skip); cr1 = NamcosPolyAdvance(cr1, dr1, skip);
+			cg1 = NamcosPolyAdvance(cg1, dg1, skip); cb1 = NamcosPolyAdvance(cb1, db1, skip);
+			cu1 = NamcosPolyAdvance(cu1, du1, skip); cv1 = NamcosPolyAdvance(cv1, dv1, skip);
+			cx2 = NamcosPolyAdvance(cx2, dx2, skip); cr2 = NamcosPolyAdvance(cr2, dr2, skip);
+			cg2 = NamcosPolyAdvance(cg2, dg2, skip); cb2 = NamcosPolyAdvance(cb2, db2, skip);
+			cu2 = NamcosPolyAdvance(cu2, du2, skip); cv2 = NamcosPolyAdvance(cv2, dv2, skip);
+			y += skip;
+			continue;
+		}
+
 		INT32 x1 = (INT16)(cx1 >> 16);
 		INT32 x2 = (INT16)(cx2 >> 16);
 		UINT32 r = cr1;
@@ -2065,7 +2163,7 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 			}
 			if (drawx + distance > clipx2 + 1) distance = clipx2 - drawx + 1;
 			for (INT32 x = drawx; distance > 0; x++, distance--, r += dr, g += dg, b += db, u += du, v += dv) {
-				UINT16 texel = Namcos11GpuFetchTexture((UINT16)(u >> 16), (UINT16)(v >> 16), clut, tpage);
+				UINT16 texel = Namcos11GpuFetchTexture((UINT16)(u >> 16), (UINT16)(v >> 16), texture);
 				if (texel) {
 					UINT32 shade = gouraud ? ((UINT32)(r >> 16) & 0xff) | (((UINT32)(g >> 16) & 0xff) << 8) | (((UINT32)(b >> 16) & 0xff) << 16) : pc[0];
 					Namcos11GpuPutTexturedPixel(x, drawy, texel, Namcos11GpuBlendColor(texel, shade, raw), tpage, semi);
@@ -2092,7 +2190,24 @@ struct NamcosTexturedPolyContext {
 	INT32 raw;
 	INT32 semi;
 	INT32 gouraud;
+	INT32 clutCount;
+	UINT16 clutCache[256];
+	NamcosTextureState texture;
 };
+
+static INT32 Namcos11GpuBuildClutCache(UINT16 *cache, UINT32 clut, UINT32 tpage)
+{
+	const UINT32 mode = (DrvGpuType == 2) ? ((tpage >> 7) & 3) : ((tpage >> 9) & 3);
+	const INT32 count = (mode == 0) ? 16 : ((mode == 1) ? 256 : 0);
+	const UINT32 x = (clut & 0x3f) << 4;
+	const UINT32 y = (clut >> 6) & 0x3ff;
+
+	for (INT32 i = 0; i < count; i++) {
+		cache[i] = DrvGpuVram[(y << 10) | ((x + i) & 0x3ff)];
+	}
+
+	return count;
+}
 
 static void Namcos11GpuDrawTexturedPolyWorker(void *opaque, INT32 begin, INT32 end)
 {
@@ -2100,12 +2215,13 @@ static void Namcos11GpuDrawTexturedPolyWorker(void *opaque, INT32 begin, INT32 e
 	DrvPolyClipY1 = context->y1 + begin;
 	DrvPolyClipY2 = context->y1 + end - 1;
 	Namcos11GpuDrawTexturedPolyMameCore(context->px, context->py, context->pu, context->pv, context->pc,
-		context->points, context->clut, context->tpage, context->raw, context->semi, context->gouraud);
+		context->points, context->clut, context->tpage, context->raw, context->semi, context->gouraud,
+		context->texture);
 	DrvPolyClipY1 = -0x8000;
 	DrvPolyClipY2 = 0x7fff;
 }
 
-static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
+static void Namcos11GpuDrawTexturedPolyMamePass(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
 	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
 {
 	NamcosTexturedPolyContext context;
@@ -2115,6 +2231,9 @@ static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, co
 	context.raw = raw;
 	context.semi = semi;
 	context.gouraud = gouraud;
+	context.clutCount = Namcos11GpuBuildClutCache(context.clutCache, clut, tpage);
+	Namcos11GpuInitTextureState(context.texture, clut, tpage,
+		context.clutCount ? context.clutCache : NULL);
 	INT32 miny = py[0];
 	INT32 maxy = py[0];
 	for (INT32 i = 0; i < points; i++) {
@@ -2127,7 +2246,14 @@ static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, co
 		if (py[i] > maxy) maxy = py[i];
 	}
 	context.y1 = miny + DrvGpuDrawOffsetY;
-	DrvPolyThreads.ParallelFor(maxy - miny + 1, 48, Namcos11GpuDrawTexturedPolyWorker, &context);
+	DrvPolyThreads.ParallelForWork(maxy - miny + 1, NamcosPolyEstimateWork(px, py, points), 8192,
+		Namcos11GpuDrawTexturedPolyWorker, &context);
+}
+
+static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
+	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
+{
+	Namcos11GpuDrawTexturedPolyMamePass(px, py, pu, pv, pc, points, clut, tpage, raw, semi, gouraud);
 }
 
 static void Namcos11GpuDrawTexturedPoly(INT32 gouraud, INT32 quad)
@@ -2206,15 +2332,49 @@ static void Namcos11GpuDrawTexturedPoly(INT32 gouraud, INT32 quad)
 
 static void Namcos11GpuDrawTexturedRect(INT32 width, INT32 height)
 {
-	UINT32 color = DrvGpuPacket[0] & 0x00ffffff;
-	INT32 raw = DrvGpuPacket[0] & 0x01000000;
-	INT32 semi = DrvGpuPacket[0] & 0x02000000;
+	struct NamcosTexturedRectContext {
+		UINT32 color;
+		INT32 raw;
+		INT32 semi;
+		INT32 x0;
+		INT32 y0;
+		INT32 u0;
+		INT32 v0;
+		INT32 width;
+		INT32 du;
+		INT32 dv;
+		UINT32 tpage;
+		UINT16 clutCache[256];
+		NamcosTextureState texture;
+	};
+	struct NamcosTexturedRectWorker {
+		static void Run(void *opaque, INT32 begin, INT32 end)
+		{
+			NamcosTexturedRectContext *context = (NamcosTexturedRectContext*)opaque;
+			for (INT32 y = begin; y < end; y++) {
+				for (INT32 x = 0; x < context->width; x++) {
+					UINT16 texel = Namcos11GpuFetchTexture(context->u0 + x * context->du,
+						context->v0 + y * context->dv, context->texture);
+					if (texel) {
+						Namcos11GpuPutTexturedPixel(context->x0 + x, context->y0 + y, texel,
+							Namcos11GpuBlendColor(texel, context->color, context->raw), context->tpage, context->semi);
+					}
+				}
+			}
+		}
+	};
+
+	NamcosTexturedRectContext context;
+	context.color = DrvGpuPacket[0] & 0x00ffffff;
+	context.raw = DrvGpuPacket[0] & 0x01000000;
+	context.semi = DrvGpuPacket[0] & 0x02000000;
 	INT32 x0 = Namcos11GpuPolyX(DrvGpuPacket[1]);
 	INT32 y0 = Namcos11GpuPolyY(DrvGpuPacket[1]);
 	INT32 u0 = DrvGpuPacket[2] & 0xff;
 	INT32 v0 = (DrvGpuPacket[2] >> 8) & 0xff;
 	UINT32 clut = DrvGpuPacket[2] >> 16;
 	UINT32 tpage = DrvGpuTPage;
+	const INT32 clutCount = Namcos11GpuBuildClutCache(context.clutCache, clut, tpage);
 
 	if (width == 0 || height == 0) {
 		width = DrvGpuPacket[3] & 0xffff;
@@ -2234,14 +2394,17 @@ static void Namcos11GpuDrawTexturedRect(INT32 width, INT32 height)
 		}
 	}
 
-	for (INT32 y = 0; y < height; y++) {
-		for (INT32 x = 0; x < width; x++) {
-			UINT16 texel = Namcos11GpuFetchTexture(u0 + x * du, v0 + y * dv, clut, tpage);
-			if (texel) {
-				Namcos11GpuPutTexturedPixel(x0 + x, y0 + y, texel, Namcos11GpuBlendColor(texel, color, raw), tpage, semi);
-			}
-		}
-	}
+	context.x0 = x0;
+	context.y0 = y0;
+	context.u0 = u0;
+	context.v0 = v0;
+	context.width = width;
+	context.du = du;
+	context.dv = dv;
+	context.tpage = tpage;
+	Namcos11GpuInitTextureState(context.texture, clut, tpage, clutCount ? context.clutCache : NULL);
+	DrvPolyThreads.ParallelForWork(height, (INT64)width * height, 8192,
+		NamcosTexturedRectWorker::Run, &context);
 }
 
 static void Namcos11GpuExecutePacket()
@@ -5210,6 +5373,7 @@ static void __fastcall Namcos12H8Write(UINT32 address, UINT8 data)
 
 static INT32 DrvInit()
 {
+	DrvPaletteHighCol = NULL;
 	DrvTestSwitch = 0;
 	DrvTestSwitchLast = 0;
 	DrvH8Port8 = 0;
@@ -5520,7 +5684,6 @@ static INT32 DrvFrame()
 	if (Namcos12SetResolution()) {
 		return 0;
 	}
-
 	if (DrvLightgunGame) {
 		BurnGunMakeInputs(0, DrvAnalog[0], DrvAnalog[1]);
 		BurnGunMakeInputs(1, DrvAnalog[2], DrvAnalog[3]);
@@ -5715,58 +5878,56 @@ static void Namcos12RemoveMdecBorders()
 	}
 }
 
+static void Namcos11TransferOutput()
+{
+	pBurnDrvPalette = DrvPalette;
+	NamcosOutputTransferContext context;
+	context.source = pTransDraw;
+	context.destination = pBurnDraw;
+	context.palette = DrvPalette;
+	context.width = nScreenWidth;
+	context.pitch = nBurnPitch;
+	context.bytesPerPixel = nBurnBpp;
+	DrvPolyThreads.ParallelForWork(nScreenHeight, (INT64)nScreenWidth * nScreenHeight, 24576,
+		NamcosOutputTransferRows, &context);
+}
+
 static INT32 DrvDraw()
 {
-	DrvPaletteUpdate();
+	if (DrvPaletteHighCol != BurnHighCol) {
+		DrvPaletteUpdate();
+		DrvPaletteHighCol = BurnHighCol;
+	}
 
 	Namcos11GpuUpdateVisibleArea();
 
-	BurnTransferClear();
-
 	if (DrvGpuStatus & (1 << 23)) {
-		BurnTransferCopy(DrvPalette);
+		BurnTransferClear();
+		Namcos11TransferOutput();
 		return 0;
 	}
 
-	if (DrvGpuStatus & (1 << 21)) {
-		INT32 sourceHeight = DrvGpuScreenHeight;
-		for (INT32 y = 0; y < nScreenHeight; y++) {
-			UINT32 sy = (DrvGpuDisplayY + ((y * sourceHeight) / nScreenHeight)) & 0x3ff;
-			for (INT32 x = 0; x < nScreenWidth; x++) {
-				UINT32 sourcePixel = (x * DrvGpuScreenWidth) / nScreenWidth;
-				UINT32 sourceByte = sourcePixel * 3;
-				UINT32 sx = DrvGpuDisplayX + (sourceByte >> 1);
-				UINT16 word0 = DrvGpuVram[(sy << 10) | (sx & 0x3ff)];
-				UINT16 word1 = DrvGpuVram[(sy << 10) | ((sx + 1) & 0x3ff)];
-				UINT8 r, g, b;
-				if (sourceByte & 1) {
-					r = word0 >> 8;
-					g = word1 & 0xff;
-					b = word1 >> 8;
-				} else {
-					r = word0 & 0xff;
-					g = word0 >> 8;
-					b = word1 & 0xff;
-				}
-				pTransDraw[(y * nScreenWidth) + x] = (r >> 3) | ((g >> 3) << 5) | ((b >> 3) << 10);
-			}
-		}
-	} else {
-		INT32 sourceHeight = DrvTekken3Inputs ? ((DrvGpuStatus & (1 << 22)) ? 480 : 240) : DrvGpuScreenHeight;
-		for (INT32 y = 0; y < nScreenHeight; y++) {
-			for (INT32 x = 0; x < nScreenWidth; x++) {
-				UINT32 sx = (DrvGpuDisplayX + ((x * DrvGpuScreenWidth) / nScreenWidth)) & 0x3ff;
-				UINT32 sy = (DrvGpuDisplayY + ((y * sourceHeight) / nScreenHeight)) & 0x3ff;
-				UINT16 pixel = DrvGpuVram[(sy << 10) | sx] & 0x7fff;
-				pTransDraw[(y * nScreenWidth) + x] = pixel;
-			}
-		}
-	}
+	NamcosFrameConvertContext context;
+	context.vram = DrvGpuVram;
+	context.output = pTransDraw;
+	context.outputWidth = nScreenWidth;
+	context.outputHeight = nScreenHeight;
+	context.sourceWidth = DrvGpuScreenWidth;
+	context.sourceHeight = (DrvGpuStatus & (1 << 21)) ? DrvGpuScreenHeight :
+		(DrvTekken3Inputs ? ((DrvGpuStatus & (1 << 22)) ? 480 : 240) : DrvGpuScreenHeight);
+	context.displayX = DrvGpuDisplayX;
+	context.displayY = DrvGpuDisplayY;
+	context.cropTop = 0;
+	context.cropHeight = nScreenHeight;
+	context.rgb24 = (DrvGpuStatus & (1 << 21)) ? 1 : 0;
+	NamcosFramePrepareMaps(&context);
+	DrvPolyThreads.ParallelForWork(nScreenHeight, (INT64)nScreenWidth * nScreenHeight, 24576,
+		NamcosFrameConvertRows, &context);
 
 	Namcos12RemoveMdecBorders();
 	Namcos11RemoveTopBorder();
 
-	BurnTransferCopy(DrvPalette);
+	Namcos11TransferOutput();
 	if (DrvLightgunGame) BurnGunDrawTargets();
 
 	return 0;

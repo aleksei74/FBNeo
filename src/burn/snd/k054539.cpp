@@ -172,6 +172,12 @@ static void k054539_keyoff(INT32 channel)
 		info->regs[0x22c] &= ~(1 << channel);
 }
 
+static inline void k054539_keyoff_update(k054539_info *chip, INT32 channel)
+{
+	if (!(chip->regs[0x22f] & 0x80))
+		chip->regs[0x22c] &= ~(1 << channel);
+}
+
 void K054539Write(INT32 chip, INT32 offset, UINT8 data)
 {
 #if defined FBNEO_DEBUG
@@ -476,7 +482,7 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539Update called with invalid chip %x\n"), chip);
 #endif
 
-	info = &Chips[chip];
+	k054539_info *const info = &Chips[chip];
 #define VOL_CAP 1.80
 
 	static const INT16 dpcm[16] = {
@@ -580,7 +586,7 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 							cur_val = (INT16)(k054539_read_rom(info, cur_pos) << 8);
 						}
 						if(cur_val == (INT16)0x8000) {
-							k054539_keyoff(ch);
+							k054539_keyoff_update(info, ch);
 							cur_val = 0;
 							break;
 						}
@@ -603,7 +609,7 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 							cur_val = (INT16)(k054539_read_rom(info, cur_pos) | k054539_read_rom(info, cur_pos + 1)<<8);
 						}
 						if(cur_val == (INT16)0x8000) {
-							k054539_keyoff(ch);
+							k054539_keyoff_update(info, ch);
 							cur_val = 0;
 							break;
 						}
@@ -631,7 +637,7 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 							cur_val = k054539_read_rom(info, cur_pos >> 1);
 						}
 						if(cur_val == 0x88) {
-							k054539_keyoff(ch);
+							k054539_keyoff_update(info, ch);
 							cur_val = 0;
 							break;
 						}
@@ -668,7 +674,7 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 				chan->pval = cur_pval;
 				chan->val = cur_val;
 
-				if(k054539_regupdate()) {
+				if (!(info->regs[0x22f] & 0x80)) {
 					base1[0x0c] = cur_pos     & 0xff;
 					base1[0x0d] = cur_pos>> 8 & 0xff;
 					base1[0x0e] = cur_pos>>16 & 0xff;

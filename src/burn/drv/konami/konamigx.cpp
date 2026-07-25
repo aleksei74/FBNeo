@@ -4,6 +4,7 @@
 
 #include "tiles_generic.h"
 #include "konamiic.h"
+#include <algorithm>
 
 INT32 konamigx_mystwarr_kludge = 0; // keep layer1 enabled, even if alpha has made it completely invisible
 
@@ -141,6 +142,14 @@ void konamigx_mixer_set_spriteram_bank(INT32 bank)
 	if (!m_gx_objdma) {
 		gx_spriteram = (UINT16*)K053247Ram;
 		gx_spriteram_bank_offset = (bank & 1) ? 0x800 : 0;
+	}
+}
+
+void konamigx_mixer_set_spriteram_latch(UINT16 *ram)
+{
+	if (!m_gx_objdma && ram) {
+		gx_spriteram = ram;
+		gx_spriteram_bank_offset = 0;
 	}
 }
 
@@ -776,25 +785,14 @@ void konamigx_mixer(INT32 sub1 /*extra tilemap 1*/, INT32 sub1flags, INT32 sub2 
 		}
 	}
 
-	// sort objects in decending order (SLOW)
-	k = nobj;
-	l = nobj - 1;
+	std::sort(objbuf, objbuf + nobj, [objpool](INT32 lhs, INT32 rhs) {
+		UINT32 lhs_order = (UINT32)objpool[lhs].order;
+		UINT32 rhs_order = (UINT32)objpool[rhs].order;
 
-	for (INT32 j=0; j<l; j++)
-	{
-		INT32 temp1 = objbuf[j];
-		INT32 temp2 = objpool[temp1].order;
-		for (INT32 i=j+1; i<k; i++)
-		{
-			INT32 temp3 = objbuf[i];
-			INT32 temp4 = objpool[temp3].order;
-			if ((UINT32)temp2 < (UINT32)temp4 || (temp2 == temp4 && temp1 < temp3)) {
-				temp2 = temp4;
-				objbuf[i] = temp1;
-				objbuf[j] = temp1 = temp3;
-			}
-		}
-	}
+		if (lhs_order != rhs_order) return lhs_order > rhs_order;
+
+		return lhs > rhs;
+	});
 
 	konamigx_mixer_draw(sub1,sub1flags,sub2,sub2flags,mixerflags,extra_bitmap,rushingheroes_hack,objpool,objbuf,nobj);
 }

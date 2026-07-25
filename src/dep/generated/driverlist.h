@@ -7272,6 +7272,7 @@ DRV		BurnDrvsnes_Fatalfuryspe;
 DRV		BurnDrvgg_fatfurspu;
 DRV		BurnDrvsnes_Fatalfurysp;
 DRV		BurnDrvFfurspbt;
+DRV		BurnDrvFatfurspk;
 DRV		BurnDrvFatfursp;
 DRV		BurnDrvFatfurspa;
 DRV		BurnDrvFfurspbs;
@@ -19092,6 +19093,8 @@ DRV		BurnDrvtg_shockman;
 DRV		BurnDrvsnes_Shockman0te;
 DRV		BurnDrvsnes_Shockman0;
 DRV		BurnDrvnes_shockwave;
+DRV		BurnDrvsnes_shodanekte;
+DRV		BurnDrvsnes_shodanek;
 DRV		BurnDrvMSX_shogun;
 DRV		BurnDrvShogwarrk;
 DRV		BurnDrvShogwarru;
@@ -21455,7 +21458,6 @@ DRV		BurnDrvsms_smb;
 DRV		BurnDrvnes_smb;
 DRV		BurnDrvmd_smbbc;
 DRV		BurnDrvnes_smb2c;
-DRV		BurnDrvnes_smb2p;
 DRV		BurnDrvnes_smb2;
 DRV		BurnDrvnes_smb2wq;
 DRV		BurnDrvnes_smb2j;
@@ -22194,10 +22196,8 @@ DRV		BurnDrvTangtanga;
 DRV		BurnDrvmd_tnglwdd;
 DRV		BurnDrvmd_tnglwd;
 DRV		BurnDrvTangramq;
-DRV		BurnDrvTankbattb;
 DRV		BurnDrvMSX_tankbatt;
 DRV		BurnDrvcv_tankbtln;
-DRV		BurnDrvTankbatt;
 DRV		BurnSpecTankbtle;
 DRV		BurnDrvsms_tankbattle;
 DRV		BurnDrvTankbust;
@@ -23457,7 +23457,6 @@ DRV		BurnDrvmd_dinohirep2;
 DRV		BurnDrvmd_dinohirep1;
 DRV		BurnDrvmd_dinohire;
 DRV		BurnDrvTomagic;
-DRV		BurnDrvsnes_Tomvsjerryp;
 DRV		BurnDrvcv_tomarc;
 DRV		BurnDrvMSX_togk;
 DRV		BurnDrvnes_tombice;
@@ -33184,6 +33183,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgg_fatfurspu,		// Fatal Fury Special (USA)
 	&BurnDrvsnes_Fatalfurysp,	// Fatal Fury Special (USA)
 	&BurnDrvFfurspbt,			// Fatal Fury Special / Garou Densetsu Special (BT Version PPX, Hack)
+	&BurnDrvFatfurspk,			// Fatal Fury Special / Garou Densetsu Special (Korean Translation)
 	&BurnDrvFatfursp,			// Fatal Fury Special / Garou Densetsu Special (NGM-058 ~ NGH-058, set 1)
 	&BurnDrvFatfurspa,			// Fatal Fury Special / Garou Densetsu Special (NGM-058 ~ NGH-058, set 2)
 	&BurnDrvFfurspbs,			// Fatal Fury Special / Garou Densetsu Special (Optional Hidden Character Third Edition, Hack)
@@ -47369,7 +47369,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_smb,			// Super Mario Bros. (World)
 	&BurnDrvmd_smbbc,			// Super Mario Bros. + Battle City (Russia) (Unl)
 	&BurnDrvnes_smb2c,			// Super Mario Bros. 2 (Hack, Spanish)
-	&BurnDrvnes_smb2p,			// Super Mario Bros. 2 (USA, Prototype)
 	&BurnDrvnes_smb2,			// Super Mario Bros. 2 (USA, Rev. A)
 	&BurnDrvnes_smb2wq,			// Super Mario Bros. 2 - Wacky Quest (Hack)
 	&BurnDrvnes_smb2j,			// Super Mario Bros. 2: The Lost Levels (Japan, MMC3 Conversion)
@@ -48108,10 +48107,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_tnglwdd,			// Tanglewood (HB, Demo)
 	&BurnDrvmd_tnglwd,			// Tanglewood (HB, v1.0)
 	&BurnDrvTangramq,			// Tangram Q
-	&BurnDrvTankbattb,			// Tank Battalion (bootleg)
 	&BurnDrvMSX_tankbatt,		// Tank Battalion (Japan)
 	&BurnDrvcv_tankbtln,		// Tank Battalion (SGM) (HB)
-	&BurnDrvTankbatt,			// Tank Battalion
 	&BurnSpecTankbtle,			// Tank Battle (128K) (HB)
 	&BurnDrvsms_tankbattle,		// Tank Battle (Hack, v0.02d)
 	&BurnDrvTankbust,			// Tank Busters
@@ -49371,7 +49368,6 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_dinohirep1,		// Tom Mason's Dinosaurs for Hire (Prototype, 19930502)
 	&BurnDrvmd_dinohire,		// Tom Mason's Dinosaurs for Hire (USA)
 	&BurnDrvTomagic,			// Tom Tom Magic
-	&BurnDrvsnes_Tomvsjerryp,	// Tom vs Jerry - The Chase Is On! (Euro, Prototype)
 	&BurnDrvcv_tomarc,			// Tomarc the Barbarian (USA)
 	&BurnDrvMSX_togk,			// Tomb of Genghis Khan (HB)
 	&BurnDrvnes_tombice,		// Tomb of Ice (HB)
@@ -59048,6 +59044,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gg_fatfurspu", "sms/d_sms.cpp"},
 	{ "snes_fatalfurysp", "snes/d_snes.cpp"},
 	{ "ffurspbt", "neogeo/d_neogeo.cpp"},
+	{ "fatfurspk", "neogeo/d_neogeo.cpp"},
 	{ "fatfursp", "neogeo/d_neogeo.cpp"},
 	{ "fatfurspa", "neogeo/d_neogeo.cpp"},
 	{ "ffurspbs", "neogeo/d_neogeo.cpp"},
@@ -70778,6 +70775,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_shockman0te", "snes/d_snes.cpp"},
 	{ "snes_shockman0", "snes/d_snes.cpp"},
 	{ "nes_shockwave", "nes/d_nes.cpp"},
+	{ "snes_shodanekte", "snes/d_snes.cpp"},
+	{ "snes_shodanek", "snes/d_snes.cpp"},
 	{ "msx_shogun", "msx/d_msx.cpp"},
 	{ "shogwarrk", "pst90s/d_kaneko16.cpp"},
 	{ "shogwarru", "pst90s/d_kaneko16.cpp"},
@@ -73111,7 +73110,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_smb", "nes/d_nes.cpp"},
 	{ "md_smbbc", "megadrive/d_megadrive.cpp"},
 	{ "nes_smb2c", "nes/d_nes.cpp"},
-	{ "nes_smb2p", "nes/d_nes.cpp"},
 	{ "nes_smb2", "nes/d_nes.cpp"},
 	{ "nes_smb2wq", "nes/d_nes.cpp"},
 	{ "nes_smb2j", "nes/d_nes.cpp"},
@@ -73844,10 +73842,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_tnglwdd", "megadrive/d_megadrive.cpp"},
 	{ "md_tnglwd", "megadrive/d_megadrive.cpp"},
 	{ "tangramq", "pre90s/d_cclimber.cpp"},
-	{ "tankbattb", "pre90s/d_tankbatt.cpp"},
 	{ "msx_tankbatt", "msx/d_msx.cpp"},
 	{ "cv_tankbtln", "coleco/d_coleco.cpp"},
-	{ "tankbatt", "pre90s/d_tankbatt.cpp"},
 	{ "spec_tankbtle", "spectrum/d_spectrum.cpp"},
 	{ "sms_tankbattle", "sms/d_sms.cpp"},
 	{ "tankbust", "pre90s/d_tankbust.cpp"},
@@ -75099,7 +75095,6 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_dinohirep1", "megadrive/d_megadrive.cpp"},
 	{ "md_dinohire", "megadrive/d_megadrive.cpp"},
 	{ "tomagic", "pst90s/d_nmk16.cpp"},
-	{ "snes_tomvsjerryp", "snes/d_snes.cpp"},
 	{ "cv_tomarc", "coleco/d_coleco.cpp"},
 	{ "msx_togk", "msx/d_msx.cpp"},
 	{ "nes_tombice", "nes/d_nes.cpp"},

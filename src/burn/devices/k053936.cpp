@@ -148,7 +148,7 @@ void K053936PredrawTiles2(INT32 chip, UINT8 *gfx)
 
 	for (INT32 i = 0; i < (nWidth[chip] / 16) * (nHeight[chip] / 16); i++)
 	{
-		if (ram[(i*2)+0] != buf[(i*2)+0] || ram[(i*2)+1] != buf[(i*2)+1]) 
+		if (ram[(i*2)+0] != buf[(i*2)+0] || ram[(i*2)+1] != buf[(i*2)+1])
 		{
 			INT32 sx = (i % (nWidth[chip]/16)) * 16;
 			INT32 sy = i / (nWidth[chip]/16) * 16;
@@ -163,23 +163,20 @@ void K053936PredrawTiles2(INT32 chip, UINT8 *gfx)
 				pTileCallback0(i, ram, &code, &color, &sx, &sy, &flipx, &flipy);
 			}
 
-			// draw tile
-			{
-				INT32 flip = 0;
-				if (flipx) flip  = 0x0f;
-				if (flipy) flip |= 0xf0;
-			
-				UINT8 *src = gfx + (code * 16 * 16);
-				UINT16 *dst = tscreen[chip] + (sy * nWidth[chip]) + sx;
-	
-				for (INT32 y = 0; y < 16; y++) {
-					for (INT32 x = 0; x < 16; x++) {
-						INT32 pxl = src[((y << 4) | x) ^ flip];
-						if (pxl == 0) pxl |= 0x8000;
-						dst[x] = (pxl | color);
-					}
-					dst += nWidth[chip];
+			INT32 flip = 0;
+			if (flipx) flip  = 0x0f;
+			if (flipy) flip |= 0xf0;
+
+			UINT8 *src = gfx + (code * 16 * 16);
+			UINT16 *dst = tscreen[chip] + (sy * nWidth[chip]) + sx;
+
+			for (INT32 y = 0; y < 16; y++) {
+				for (INT32 x = 0; x < 16; x++) {
+					INT32 pxl = src[((y << 4) | x) ^ flip];
+					if (pxl == 0) pxl |= 0x8000;
+					dst[x] = pxl | color;
 				}
+				dst += nWidth[chip];
 			}
 		}
 		buf[(i*2)+0] = ram[(i*2)+0];
@@ -298,9 +295,9 @@ static inline void copy_roz32(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 				for (INT32 x = minx; x < maxx; x++, cx+=incxx, cy+=incxy, dst++, pri++)
 				{
 					INT32 yy = cy >> 16;
-					if (yy > hmask || yy < 0) continue;
+					if ((UINT32)yy > (UINT32)hmask) continue;
 					INT32 xx = cx >> 16;
-					if (xx > wmask || xx < 0) continue;
+					if ((UINT32)xx > (UINT32)wmask) continue;
 
 					INT32 pxl = src[(yy * width) + xx];
 
@@ -319,9 +316,9 @@ static inline void copy_roz32(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 			} else {
 				for (INT32 x = minx; x < maxx; x++, cx+=incxx, cy+=incxy, dst++, pri++) {
 					INT32 yy = cy >> 16;
-					if (yy > hmask || yy < 0) continue;
+					if ((UINT32)yy > (UINT32)hmask) continue;
 					INT32 xx = cx >> 16;
-					if (xx > wmask || xx < 0) continue;
+					if ((UINT32)xx > (UINT32)wmask) continue;
 
 					*dst = pal[src[(yy * width) + xx] & 0x7fff];
 					*pri = priority;
@@ -394,9 +391,9 @@ static inline void copy_roz16(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 				for (INT32 x = minx; x < maxx; x++, cx+=incxx, cy+=incxy, dst++, pri++)
 				{
 					INT32 yy = cy >> 16;
-					if (yy > hmask || yy < 0) continue;
+					if ((UINT32)yy > (UINT32)hmask) continue;
 					INT32 xx = cx >> 16;
-					if (xx > wmask || xx < 0) continue;
+					if ((UINT32)xx > (UINT32)wmask) continue;
 
 					INT32 pxl = src[(yy * width) + xx];
 
@@ -415,9 +412,9 @@ static inline void copy_roz16(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 			} else {
 				for (INT32 x = minx; x < maxx; x++, cx+=incxx, cy+=incxy, dst++, pri++) {
 					INT32 yy = cy >> 16;
-					if (yy > hmask || yy < 0) continue;
+					if ((UINT32)yy > (UINT32)hmask) continue;
 					INT32 xx = cx >> 16;
-					if (xx > wmask || xx < 0) continue;
+					if ((UINT32)xx > (UINT32)wmask) continue;
 
 					*dst = src[(yy * width) + xx] & 0x7fff;
 					*pri = priority;

@@ -874,6 +874,9 @@ $(MAIN_FBNEO_DIR)/burner/libretro/ips_manager.o: $(MAIN_FBNEO_DIR)/burner/libret
 $(MAIN_FBNEO_DIR)/burner/libretro/romdata.o: $(MAIN_FBNEO_DIR)/burner/libretro/romdata.cpp
 	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
 
+$(MAIN_FBNEO_DIR)/burn/drv/snes/msu1_backend.o: $(MAIN_FBNEO_DIR)/burn/drv/snes/msu1_backend.cpp
+	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
+
 %.o: %.cpp
 	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS)
 

@@ -6,6 +6,7 @@
 typedef UINT8  (*psx_read_byte_handler)(UINT32 address);
 typedef UINT16 (*psx_read_half_handler)(UINT32 address);
 typedef UINT32 (*psx_read_word_handler)(UINT32 address);
+typedef UINT32 (*psx_fetch_word_handler)(UINT32 address);
 typedef void   (*psx_write_byte_handler)(UINT32 address, UINT8 data);
 typedef void   (*psx_write_half_handler)(UINT32 address, UINT16 data);
 typedef void   (*psx_write_word_handler)(UINT32 address, UINT32 data);
@@ -15,6 +16,7 @@ struct psx_core_handlers {
 	psx_read_byte_handler read_byte;
 	psx_read_half_handler read_half;
 	psx_read_word_handler read_word;
+	psx_fetch_word_handler fetch_word;
 	psx_write_byte_handler write_byte;
 	psx_write_half_handler write_half;
 	psx_write_word_handler write_word;

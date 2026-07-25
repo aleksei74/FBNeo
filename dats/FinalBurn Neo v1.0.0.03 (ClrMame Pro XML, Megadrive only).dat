@@ -760,6 +760,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="alisiadk" cloneof="alisiad" romof="alisiad" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Alisia Dragoon (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Game Arts</manufacturer>
+		<rom name="Alisia Dragoon (Korean Translation)(1992)(Game Arts).bin" size="1572864" crc="8221762d"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="alisiads" cloneof="alisiad" romof="alisiad" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Alisia Dragoon (Hack, Spanish)</description>
@@ -2850,6 +2859,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="hokutok" cloneof="lastbtle" romof="lastbtle" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Bukduui Gwon: Sinsegimal Guseju Jeonseol (Hack, Korean Translation)</description>
+		<year>2026</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Bukduui Gwon - Sinsegimal Guseju Jeonseol (Korean Translation)(1989)(Sega).bin" size="1048576" crc="4b1449c7"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="bullvsla" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Bulls vs Lakers and the NBA Playoffs (Euro, USA)</description>
 		<year>1992</year>
@@ -4077,6 +4095,15 @@
 		<year>2020</year>
 		<manufacturer>Retro Game Dev</manufacturer>
 		<rom name="Console Tetris (2020)(Retro Game Dev).bin" size="1966080" crc="f6da47a4"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="contrak" cloneof="contra" romof="contra" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Contra - The Hard Corps (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Konami</manufacturer>
+		<rom name="Contra - The Hard Corps (Korean Translation)(1994)(Konami).bin" size="3145728" crc="a634974f"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -6269,6 +6296,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="elvientok" cloneof="elviento" romof="elviento" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>El Viento (Hack, Korean Translation)</description>
+		<year>2009</year>
+		<manufacturer>Wolf Team</manufacturer>
+		<rom name="El Viento (Korean Translation)(1991)(Wolf Team).bin" size="1048576" crc="5326ba55"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="elvientopt" cloneof="elviento" romof="elviento" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>El Viento (Hack, Portuguese)</description>
@@ -6300,6 +6336,15 @@
 		<year>1991</year>
 		<manufacturer>Wolf Team</manufacturer>
 		<rom name="El Viento (USA)(1991)(Wolf Team).bin" size="1048576" crc="070a1ceb"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="elemastk" cloneof="elemast" romof="elemast" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Elemental Master (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Technosoft</manufacturer>
+		<rom name="Elemental Master (Korean Translation)(1990)(Technosoft).bin" size="1048576" crc="777327a0"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -6612,6 +6657,15 @@
 		<year>1991</year>
 		<manufacturer>Renovation</manufacturer>
 		<rom name="Exile (USA)(1991)(Renovation).bin" size="1048576" crc="1b569dc2"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="exilek" cloneof="exile" romof="exile" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Exile - Siganui Teumsaero (Hack, Korean Translation)</description>
+		<year>2018</year>
+		<manufacturer>Riot</manufacturer>
+		<rom name="Exile - Siganui Teumsaero (Korean Translation)(1991)(Riot).bin" size="1048576" crc="c00d63f2"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -8069,6 +8123,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="gleylanck" cloneof="gleylanc" romof="gleylanc" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>GleyLancer (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Masaya - NCS Corp.</manufacturer>
+		<rom name="Advanced Busterhawk Gleylancer (Korean Translation)(1992)(Masaya - NCS Corp.).bin" size="2097152" crc="570ab2f6"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="gleylanc" sourcefile="megadrive/d_megadrive.cpp">
 		<description>GleyLancer (Japan)</description>
 		<year>1992</year>
@@ -8574,6 +8637,15 @@
 		<year>2018</year>
 		<manufacturer>&lt;unknown&gt;</manufacturer>
 		<rom name="Gunstar Heroes T-Chi (2018).bin" size="2097152" crc="a046c36e"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="gunstark" cloneof="gunstar" romof="gunstar" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Gunstar Heroes (Hack, Korean Translation)</description>
+		<year>2017</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Gunstar Heroes (Korean Translation)(1993)(Sega).bin" size="2097152" crc="558b7747"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -9115,6 +9187,15 @@
 		<year>1991-93</year>
 		<manufacturer>Electronic Arts</manufacturer>
 		<rom name="Immortal, The (Euro, USA)(1991-93)(Electronic Arts).bin" size="1048576" crc="f653c508"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="immortalk" cloneof="immortal" romof="immortal" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Immortal, The (Hack, Korean Translation)</description>
+		<year>2011</year>
+		<manufacturer>Electronic Arts Victor</manufacturer>
+		<rom name="Immortal, The (Korean Translation)(1991-93)(Electronic Arts Victor).bin" size="2097152" crc="ae94c9f1"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -10258,7 +10339,7 @@
 		<description>Kolobok ~ Pyramid (Russia) (Unl)</description>
 		<year>201?</year>
 		<manufacturer>Kudos</manufacturer>
-		<rom name="Kolobok - Pyramid ((201x)(Kudos).bin" size="131072" crc="c4c55bab"/>
+		<rom name="Kolobok - Pyramid (201x)(Kudos).bin" size="131072" crc="c4c55bab"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -10420,6 +10501,15 @@
 		<year>1993</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Landstalker - Die Schatze von Konig Nolo (Euro, German)(1993)(Sega).bin" size="2097152" crc="10fedb8f"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="landstlkk" cloneof="landstlk" romof="landstlk" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Landstalker: Hwangjeui Jaebo (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Landstalker: Hwangjeui Jaebo (Korean Translation)(1992)(Sega).bin" size="2490368" crc="e6540237"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -11162,6 +11252,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="madoumonk" cloneof="madoumon" romof="madoumon" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Mado Mureo I (Hack, Korean Translation)</description>
+		<year>2026</year>
+		<manufacturer>Compile</manufacturer>
+		<rom name="Mado Mureo I (Korean Translation)(1996)(Compile).bin" size="4194304" crc="0a4c79eb"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="madoumone" cloneof="madoumon" romof="madoumon" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Madou Monogatari I (Hack, English v1.1)</description>
@@ -11271,6 +11370,15 @@
 		<year>2023</year>
 		<manufacturer>tryphon</manufacturer>
 		<rom name="Magical Kid Taruruto T-Eng (2023)(tryphon).bin" size="591064" crc="cb4d575f"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="mtaruruk" cloneof="mtaruru" romof="mtaruru" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Magical Tarurutogun (Hack, Korean Translation)</description>
+		<year>2021</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Magical Tarurutogun (Korean Translation)(1992)(Sega).bin" size="1048576" crc="970a6414"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -12628,6 +12736,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="valisk" cloneof="valis" romof="valis" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Monghwanjeonsa Valis (Hack, Korean Translation)</description>
+		<year>2009</year>
+		<manufacturer>Riot</manufacturer>
+		<rom name="Monghwanjeonsa Valis (Korean Translation)(1991)(Telenet Japan).bin" size="1048576" crc="3c1c1e94"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="monopoly" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Monopoly (USA)</description>
 		<year>1992</year>
@@ -12909,6 +13026,15 @@
 		<year>1992</year>
 		<manufacturer>Virgin Games</manufacturer>
 		<rom name="Muhammad Ali Heavyweight Boxing (USA, Proto)(1992)(Virgin Games).bin" size="1048576" crc="7b852653"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="mushak" cloneof="musha" romof="musha" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Musa Aleste - Full Metal Fighter Ellinor (Hack, Korean Translation)</description>
+		<year>2017</year>
+		<manufacturer>Toaplan</manufacturer>
+		<rom name="Musha Aleste - Full Metal Fighter Ellinor (Korean Translation)(1990)(Toaplan).bin" size="524288" crc="a0656a48"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -14703,6 +14829,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="pstar4k" cloneof="pstar4" romof="pstar4" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Phantasy Star - Cheonnyeongiui Kkeute (Hack, Korean Translation)</description>
+		<year>2014</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Phantasy Star - Cheonnyeongiui Kkeute (Korean Translation)(1993)(Sega).bin" size="4194304" crc="360e046a"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="pstar2br" cloneof="pstar2" romof="pstar2" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Phantasy Star II (Brazil)</description>
 		<year>199?</year>
@@ -14758,6 +14893,15 @@
 		<year>1991</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Phantasy Star II - Anne's Adventure (Japan, SegaNet)(1991)(Sega).bin" size="262144" crc="fafa5b6f"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="pstar2k" cloneof="pstar2" romof="pstar2" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Phantasy Star II: Doedoraoji Anneun Siganui Kkeuteseo (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Phantasy Star II - Doedoraoji Anneun Siganui Kkeuteseo (Korean Translation)(1989)(Sega).bin" size="1572864" crc="49ca9651"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -15028,6 +15172,15 @@
 		<year>2010</year>
 		<manufacturer>WaterMelon</manufacturer>
 		<rom name="Pier Solar and the Great Architects (World)(Rev C)(2010)(WaterMelon).bin" size="8388608" crc="dfb94f1b"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="ddanpeik" cloneof="ddanpei" romof="ddanpei" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Piguwang Tongki (Hack, Korean Translation)</description>
+		<year>1992</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Piguwang Tongki (Korean Translation)(1992)(Sega).bin" size="524288" crc="471c59fe"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -17190,6 +17343,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="sdvalisk" cloneof="sydvalis" romof="sydvalis" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>SD Valis (Hack, Korean Translation)</description>
+		<year>2009</year>
+		<manufacturer>Laser Soft</manufacturer>
+		<rom name="SD Valis (Korean Translation)(1992)(Laser Soft).bin" size="524288" crc="85a3c219"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="sdvalis" cloneof="sydvalis" romof="sydvalis" sourcefile="megadrive/d_megadrive.cpp">
 		<description>SD Valis (Japan)</description>
 		<year>1992</year>
@@ -17741,6 +17903,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="shinfrc2k" cloneof="shinfrc2" romof="shinfrc2" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Shining Force II: Godaeui Bongin (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Shining Force II - Godaeui Bongin (Korean Translation)(1993)(Sega).bin" size="3145728" crc="8ece9f4f"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="shinfrc2c" cloneof="shinfrc2" romof="shinfrc2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Shining Force II: Koe no Fuuin (Hack, Chinese v2)</description>
@@ -17784,6 +17955,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="shinfrcek" cloneof="shinfrce" romof="shinfrce" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Shining Force: Sindeurui Yusan (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Shining Force - Sindeurui Yusan (Korean Translation)(1992)(Sega).bin" size="2097152" crc="f8822813"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="shindarkbr" cloneof="shindark" romof="shindark" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Shining in the Darkness (Brazil)</description>
 		<year>1994</year>
@@ -17797,6 +17977,15 @@
 		<year>1991</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Shining in the Darkness (Euro, USA)(1991)(Sega).bin" size="1048576" crc="4d2785bc"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="shindarkk" cloneof="shindark" romof="shindark" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Shining in the Darkness (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Shining in the Darkness (Korean Translation)(1991)(Sega).bin" size="2097152" crc="b7194909"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -19675,6 +19864,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="thork2" cloneof="thor" romof="thor" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Story of Thor, The - Bicheul Gyeseunghaneun Ja (Hack, Korean Translation)</description>
+		<year>2015</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Story of Thor, The - Bicheul Gyeseunghaneun Ja (Korean Translation)(1995)(Sega).bin" size="3145728" crc="8d22f9a7"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="thorj" cloneof="thor" romof="thor" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Story of Thor, The - Hikari o Tsugumono (Japan)</description>
 		<year>1995</year>
@@ -20343,6 +20541,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="sfzonek" cloneof="sfzone" romof="sfzone" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Super Fantasy Zone (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Sunsoft</manufacturer>
+		<rom name="Super Fantasy Zone (Korean Translation)(1992)(Sunsoft).bin" size="1048576" crc="50d17067"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="sfzones" cloneof="sfzone" romof="sfzone" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Super Fantasy Zone (Hack, Spanish)</description>
@@ -20692,6 +20899,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="supshin2k" cloneof="shinobi3" romof="shinobi3" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Super Shinobi II, The (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Super Shinobi II, The (Korean Translation)(1993)(Sega).bin" size="1572864" crc="59286027"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="supshin2" cloneof="shinobi3" romof="shinobi3" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Super Shinobi II, The (Japan, Korea)</description>
 		<year>1993</year>
@@ -20908,6 +21124,15 @@
 		<year>1993</year>
 		<manufacturer>Virgin Games</manufacturer>
 		<rom name="Superman - The Man of Steel (Euro)(1993)(Virgin Games).bin" size="1048576" crc="7db434ba"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="shuramonk" cloneof="shuramon" romof="shuramon" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Suraui Mun (Hack, Korean Translation)</description>
+		<year>2022</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Suraui Mun (Korean Translation)(1992)(Sega).bin" size="1064960" crc="480bbec3"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -22678,6 +22903,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="twinkletk" cloneof="twinklet" romof="twinklet" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Twinkle Tale (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Toyo Recording Co.</manufacturer>
+		<rom name="Twinkle Tale (Korean Translation)(Toyo Recording Co.).bin" size="1048576" crc="7a388959"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="twinklets" cloneof="twinklet" romof="twinklet" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Twinkle Tale (Hack, Spanish)</description>
@@ -23052,6 +23286,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="valis3k" cloneof="valis3" romof="valis3" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Valis III (Hack, Korean Translation)</description>
+		<year>2008</year>
+		<manufacturer>Telenet Japan</manufacturer>
+		<rom name="Valis III (Korean Translation)(1991)(Telenet Japan).bin" size="1048576" crc="47d4050a"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="valis3s" cloneof="valis3" romof="valis3" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Valis III (Hack, Spanish v1.1)</description>
@@ -23083,6 +23326,15 @@
 		<year>2025</year>
 		<manufacturer>Eldritch Penumbra</manufacturer>
 		<rom name="Valis Refined (2025)(Eldritch Penumbra).bin" size="1048576" crc="5a171555"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="akumajok" cloneof="cvania" romof="cvania" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Vampire Killer (Hack, Korean Translation)</description>
+		<year>2021</year>
+		<manufacturer>Konami</manufacturer>
+		<rom name="Vampire Killer (Korean Translation)(1994)(Konami).bin" size="2097152" crc="67a5f4ba"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -24478,6 +24730,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="magichatk" cloneof="magichat" romof="magichat" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Yongui Adeurui Narara Turbo! Daemoheom (Hack, Korean Translation)</description>
+		<year>2021</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Yongui Adeurui Narara Turbo! Daemoheom (Korean Translation)(1990)(Sega).bin" size="1048576" crc="3d0118d3"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="ysonic2" cloneof="sonic2" romof="sonic2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Yoshi in Sonic the Hedgehog 2 (Hack, Beta)</description>
@@ -24493,6 +24754,15 @@
 		<year>199?</year>
 		<manufacturer>&lt;unknown&gt;</manufacturer>
 		<rom name="young indiana jones chronicles, the (usa) (prototype).bin" size="524288" crc="44f6be35"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="ys3k" cloneof="ys3" romof="ys3" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Ys - Wanderers from Ys (Hack, Korean Translation)</description>
+		<year>2013</year>
+		<manufacturer>Nihon Falcom</manufacturer>
+		<rom name="Ys - Wanderers from Ys (Korean Translation).bin" size="1048576" crc="f31b6a61"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -24634,6 +24904,15 @@
 		<year>200?</year>
 		<manufacturer>Bear Team</manufacturer>
 		<rom name="Zero Wing T-Chi (200x)(Bear Team).bin" size="1048576" crc="7218212f"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="zerowingk" cloneof="zerowing" romof="zerowing" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Zero Wing (Hack, Korean Translation)</description>
+		<year>2022</year>
+		<manufacturer>Toaplan</manufacturer>
+		<rom name="Zero Wing (Korean Translation)(1991)(Toaplan).bin" size="1048576" crc="87bcaf81"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>

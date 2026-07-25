@@ -281,6 +281,7 @@ static inline UINT32 read_word_masked(UINT32 address, UINT32 mask)
 
 static inline UINT32 fetch_word(UINT32 address)
 {
+	if (psx.handlers.fetch_word) return psx.handlers.fetch_word(address);
 	return psx.handlers.read_word ? psx.handlers.read_word(address) : 0xffffffff;
 }
 

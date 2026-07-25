@@ -8,7 +8,16 @@
 #include "konamiic.h"
 #include "k054539.h"
 #include "dtimer.h"
+#include <condition_variable>
 #include <math.h>
+#include <mutex>
+#include <thread>
+
+#if defined(_WIN32)
+#include <windows.h>
+#elif defined(__linux__) || defined(__ANDROID__)
+#include <unistd.h>
+#endif
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -38,6 +47,8 @@ static UINT8 *DrvK053936Line;
 static UINT32 *DrvPalette;
 static UINT32 *DrvDualLeftBitmap;
 static UINT32 *DrvDualRightBitmap;
+static INT16 RungunSoundBuffer0[4096 * 2];
+static INT16 RungunSoundBuffer1[4096 * 2];
 
 static UINT8 DrvJoy1[8];
 static UINT8 DrvJoy2[8];
@@ -79,6 +90,266 @@ static UINT32 rng_eeprom_shift;
 static const INT32 RNG_VISIBLE_X = 88;
 static const INT32 RNG_VISIBLE_Y = 24;
 static const INT32 RUNGUN_SOUND_GAIN = 8;
+
+static UINT32 RungunDetectLogicalProcessors()
+{
+	static const UINT32 detected = []() -> UINT32 {
+		UINT32 cores = 0;
+
+#if defined(_WIN32)
+		typedef DWORD (WINAPI *GetActiveProcessorCountProc)(WORD);
+		HMODULE kernel32 = GetModuleHandleA("kernel32.dll");
+		GetActiveProcessorCountProc getActiveProcessorCount = kernel32 ?
+			(GetActiveProcessorCountProc)GetProcAddress(kernel32, "GetActiveProcessorCount") : NULL;
+
+		if (getActiveProcessorCount) {
+			cores = (UINT32)getActiveProcessorCount(0xffff);
+		}
+
+		if (cores == 0) {
+			SYSTEM_INFO info;
+			GetSystemInfo(&info);
+			cores = (UINT32)info.dwNumberOfProcessors;
+		}
+#elif defined(__linux__) || defined(__ANDROID__)
+		const long online = sysconf(_SC_NPROCESSORS_ONLN);
+		if (online > 0) cores = (UINT32)online;
+#endif
+
+		if (cores == 0) cores = std::thread::hardware_concurrency();
+		if (cores == 0) cores = 1;
+
+		return cores;
+	}();
+
+	return detected;
+}
+
+static bool RungunMulticoreEnabled()
+{
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+	return RungunDetectLogicalProcessors() >= 4;
+#else
+	return false;
+#endif
+}
+
+class RungunSoundWorker
+{
+public:
+	RungunSoundWorker(INT32 chip_index)
+		: chip(chip_index), active(false), stop(false), pending(false), generation(0),
+		  buffer(NULL), length(0)
+	{
+	}
+
+	~RungunSoundWorker()
+	{
+		Shutdown();
+	}
+
+	void Configure()
+	{
+		Shutdown();
+
+		if (!RungunMulticoreEnabled()) return;
+
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			active = true;
+			stop = false;
+			pending = false;
+			generation = 0;
+		}
+
+		worker = std::thread(&RungunSoundWorker::Run, this);
+	}
+
+	void Shutdown()
+	{
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (!active && !worker.joinable()) return;
+			stop = true;
+			generation++;
+		}
+		work.notify_one();
+
+		if (worker.joinable()) worker.join();
+
+		std::lock_guard<std::mutex> lock(mutex);
+		active = false;
+		stop = false;
+		pending = false;
+		buffer = NULL;
+		length = 0;
+	}
+
+	bool Dispatch(INT16 *output, INT32 samples)
+	{
+		if (!active || samples < 96 || samples > 4096) return false;
+
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			buffer = output;
+			length = samples;
+			pending = true;
+			generation++;
+		}
+		work.notify_one();
+
+		return true;
+	}
+
+	void Wait()
+	{
+		std::unique_lock<std::mutex> lock(mutex);
+		done.wait(lock, [this]() { return !pending; });
+	}
+
+private:
+	void Run()
+	{
+		UINT32 observed = 0;
+
+		for (;;) {
+			INT16 *output;
+			INT32 samples;
+
+			{
+				std::unique_lock<std::mutex> lock(mutex);
+				work.wait(lock, [this, observed]() {
+					return stop || generation != observed;
+				});
+				if (stop) return;
+
+				observed = generation;
+				output = buffer;
+				samples = length;
+			}
+
+			K054539Update(chip, output, samples);
+
+			{
+				std::lock_guard<std::mutex> lock(mutex);
+				pending = false;
+			}
+			done.notify_one();
+		}
+	}
+
+	std::thread worker;
+	std::mutex mutex;
+	std::condition_variable work;
+	std::condition_variable done;
+	INT32 chip;
+	bool active;
+	bool stop;
+	bool pending;
+	UINT32 generation;
+	INT16 *buffer;
+	INT32 length;
+};
+
+static RungunSoundWorker RungunSoundThread0(0);
+static RungunSoundWorker RungunSoundThread1(1);
+
+class RungunPsacWorker
+{
+public:
+	RungunPsacWorker()
+		: stopping(false), active(false), pending(false), chip(0)
+	{
+	}
+
+	~RungunPsacWorker()
+	{
+		Shutdown();
+	}
+
+	void Configure(bool enable)
+	{
+		if (!enable) {
+			Shutdown();
+			return;
+		}
+
+		std::lock_guard<std::mutex> lock(mutex);
+		if (active) return;
+
+		stopping = false;
+		active = true;
+		worker = std::thread(&RungunPsacWorker::Run, this);
+	}
+
+	bool Dispatch(INT32 chip_index)
+	{
+		std::lock_guard<std::mutex> lock(mutex);
+		if (!active || pending) return false;
+
+		chip = chip_index;
+		pending = true;
+		wake.notify_one();
+		return true;
+	}
+
+	void Wait()
+	{
+		std::unique_lock<std::mutex> lock(mutex);
+		done.wait(lock, [this]() { return !pending; });
+	}
+
+	void Shutdown()
+	{
+		{
+			std::lock_guard<std::mutex> lock(mutex);
+			if (!active) return;
+			stopping = true;
+			wake.notify_one();
+		}
+
+		if (worker.joinable()) worker.join();
+
+		std::lock_guard<std::mutex> lock(mutex);
+		active = false;
+		pending = false;
+		stopping = false;
+	}
+
+private:
+	void Run()
+	{
+		for (;;) {
+			INT32 work_chip;
+
+			{
+				std::unique_lock<std::mutex> lock(mutex);
+				wake.wait(lock, [this]() { return stopping || pending; });
+				if (stopping && !pending) break;
+				work_chip = chip;
+			}
+
+			K053936PredrawTiles2(work_chip, DrvGfxROMExp0);
+
+			{
+				std::lock_guard<std::mutex> lock(mutex);
+				pending = false;
+			}
+			done.notify_one();
+		}
+	}
+
+	std::thread worker;
+	std::mutex mutex;
+	std::condition_variable wake;
+	std::condition_variable done;
+	bool stopping;
+	bool active;
+	bool pending;
+	INT32 chip;
+};
+
+static RungunPsacWorker RungunPsacThread;
 
 static INT32 RungunDualOutputEnabled()
 {
@@ -206,7 +477,7 @@ static void DrvPaletteUpdate(INT32 bank)
 {
 	UINT16 *p = (UINT16*)(DrvPalRAM + (bank * 0x800));
 
-	for (INT32 i = 0; i < 0x800 / 2; i++)
+	for (INT32 i = 0; i < 0x400; i++)
 	{
 		UINT16 d = BURN_ENDIAN_SWAP_INT16(p[i]);
 		UINT8 r = (d >>  0) & 0x1f;
@@ -721,8 +992,7 @@ static void __fastcall rungun_main_write_word(UINT32 address, UINT16 data)
 static void __fastcall rungun_main_write_byte(UINT32 address, UINT8 data)
 {
 	if (address >= 0x300000 && address <= 0x3007ff) {
-		UINT8 *ptr = DrvPalRAM + ((address & 0x7ff) + (video_mux_bank * 0x800));
-		*ptr = data;
+		DrvPalRAM[(address & 0x7ff) + (video_mux_bank * 0x800)] = data;
 		return;
 	}
 
@@ -896,16 +1166,21 @@ static INT32 DrvGfxDecode()
 
 	UINT8 *sprtmp = (UINT8*)BurnMalloc(0x800000);
 	if (sprtmp == NULL) return 1;
+	UINT8 *tmp = (UINT8*)BurnMalloc(0x400000);
+	if (tmp == NULL) {
+		BurnFree(sprtmp);
+		return 1;
+	}
+
 	memcpy(sprtmp, DrvGfxROM1, 0x800000);
 	GfxDecode(0x10000, 4, 16, 16, RngPlane, RngXOffs, RngYOffs, 16*16*4, sprtmp, DrvGfxROMExp1);
-	BurnFree(sprtmp);
 
-	UINT8 *tmp = (UINT8*)BurnMalloc(0x400000);
-	if (tmp == NULL) return 1;
 	memcpy(tmp, DrvGfxROM0, 0x400000);
 	GfxDecode(0x4000, 4, 16, 16, Plane, XOffs, YOffs, 16*16*4, tmp, DrvGfxROMExp0);
 	memcpy(tmp, DrvGfxROM2, 0x020000);
 	GfxDecode(0x1000, 4, 8, 8, Plane, XOffs8, YOffs8, 8*8*4, tmp, DrvGfxROM2);
+
+	BurnFree(sprtmp);
 	BurnFree(tmp);
 
 	return 0;
@@ -1028,8 +1303,8 @@ static INT32 DrvInitCommon(INT32 dual)
 	K053246SetOffsetByteSwap(1);
 	K053936Init(0, DrvPsacRAM + 0x000000, 0x100000, 128 * 16, 128 * 16, psac_callback);
 	K053936Init(1, DrvPsacRAM + 0x100000, 0x100000, 128 * 16, 128 * 16, psac_callback);
-	K053936EnableWrap(0, 1);
-	K053936EnableWrap(1, 1);
+	K053936EnableWrap(0, 0);
+	K053936EnableWrap(1, 0);
 	K053936SetOffset(0, 34 - RNG_VISIBLE_X, 9 - RNG_VISIBLE_Y);
 	K053936SetOffset(1, 34 - RNG_VISIBLE_X, 9 - RNG_VISIBLE_Y);
 
@@ -1042,6 +1317,9 @@ static INT32 DrvInitCommon(INT32 dual)
 	K054539SetFlags(1, K054539_UPDATE_AT_KEYON);
 	K054539SetRoute(1, BURN_SND_K054539_ROUTE_1, 0.60, BURN_SND_ROUTE_RIGHT);
 	K054539SetRoute(1, BURN_SND_K054539_ROUTE_2, 0.60, BURN_SND_ROUTE_LEFT);
+	RungunSoundThread0.Configure();
+	RungunSoundThread1.Configure();
+	RungunPsacThread.Configure(is_dual_screen && RungunMulticoreEnabled());
 
 	RungunCheckScreenSize();
 	DrvDoReset();
@@ -1061,6 +1339,9 @@ static INT32 RungunDualInit()
 
 static INT32 DrvExit()
 {
+	RungunPsacThread.Shutdown();
+	RungunSoundThread0.Shutdown();
+	RungunSoundThread1.Shutdown();
 	GenericTilesExit();
 	K053247Exit();
 	K053936Exit();
@@ -1090,23 +1371,39 @@ static void DrvRenderScreen(INT32 bank, INT32 xoffs)
 	}
 
 	UINT16 *vram = (UINT16*)(DrvTtlRAM + (bank * 0x2000));
-	for (INT32 offs = 0; offs < 64 * 32; offs++)
-	{
-		UINT8 *lvram = (UINT8*)vram;
-		INT32 attr = (lvram[(offs << 2) + 0] & 0xf0) >> 4;
-		INT32 code = ((lvram[(offs << 2) + 0] & 0x0f) << 8) | lvram[(offs << 2) + 2];
-		INT32 sx = (offs & 0x3f) * 8 - RNG_VISIBLE_X + xoffs;
-		INT32 sy = (offs >> 6) * 8 - RNG_VISIBLE_Y;
+	UINT8 *lvram = (UINT8*)vram;
 
-		if (sx >= -7 && sx < nScreenWidth && sy >= -7 && sy < nScreenHeight) {
+	for (INT32 row = 0; row < 32; row++) {
+		INT32 sy = row * 8 - RNG_VISIBLE_Y;
+		if (sy < -7 || sy >= nScreenHeight) continue;
+
+		for (INT32 col = 0; col < 64; col++) {
+			INT32 sx = col * 8 - RNG_VISIBLE_X + xoffs;
+			if (sx < -7 || sx >= nScreenWidth) continue;
+
+			INT32 offs = row * 64 + col;
+			INT32 attr = (lvram[(offs << 2) + 0] & 0xf0) >> 4;
+			INT32 code = ((lvram[(offs << 2) + 0] & 0x0f) << 8) | lvram[(offs << 2) + 2];
 			UINT8 *gfx = DrvGfxROM2 + (code * 0x40);
+
+			if (sx >= 0 && sx + 7 < nScreenWidth && sy >= 0 && sy + 7 < nScreenHeight) {
+				for (INT32 y = 0; y < 8; y++) {
+					UINT32 *dst = konami_bitmap32 + ((sy + y) * nScreenWidth) + sx;
+					UINT8 *src = gfx + y * 8;
+
+					for (INT32 x = 0; x < 8; x++) {
+						UINT8 pen = src[x];
+						if (pen) dst[x] = DrvPalette[(attr << 4) | pen];
+					}
+				}
+				continue;
+			}
 
 			for (INT32 y = 0; y < 8; y++) {
 				INT32 yy = sy + y;
 				if (yy < 0 || yy >= nScreenHeight) continue;
 
 				UINT32 *dst = konami_bitmap32 + (yy * nScreenWidth);
-
 				for (INT32 x = 0; x < 8; x++) {
 					INT32 xx = sx + x;
 					if (xx < 0 || xx >= nScreenWidth) continue;
@@ -1125,6 +1422,7 @@ static void DrvRenderDualScreen()
 {
 	INT32 screen_width = nScreenWidth;
 	INT32 bank = single_screen_mode ? 0 : (nCurrentFrame & 1);
+	bool threaded_psac = !single_screen_mode && RungunPsacThread.Dispatch(bank ^ 1);
 
 	nScreenWidth = 384;
 	GenericTilesSetClipRaw(0, 384, 0, 224);
@@ -1143,6 +1441,8 @@ static void DrvRenderDualScreen()
 		memcpy(dst + 384, DrvDualRightBitmap + (y * 384), 384 * sizeof(UINT32));
 		dst[383] = BurnHighCol(0, 0, 0, 0);
 	}
+
+	if (threaded_psac) RungunPsacThread.Wait();
 }
 
 static INT32 DrvDraw()
@@ -1210,27 +1510,59 @@ static INT32 DrvFrame()
 		CPU_RUN(2, timer);
 	}
 
-	if (pBurnSoundOut) {
-		BurnSoundClear();
-		K054539Update(0, pBurnSoundOut, nBurnSoundLen);
-		K054539Update(1, pBurnSoundOut, nBurnSoundLen);
-
-		for (INT32 i = 0; i < nBurnSoundLen * 2; i++) {
-			INT32 sample = pBurnSoundOut[i] * RUNGUN_SOUND_GAIN;
-			if (sample > 32767) sample = 32767;
-			if (sample < -32768) sample = -32768;
-			pBurnSoundOut[i] = sample;
-		}
-	}
-
 	ZetClose();
 	SekClose();
 
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
 	nExtraCycles[1] = nCyclesDone[1] - nCyclesTotal[1];
 
+	bool buffered_sound = false;
+	bool threaded_sound0 = false;
+	bool threaded_sound1 = false;
+
+	if (pBurnSoundOut && nBurnSoundLen <= 4096) {
+		INT32 samples = nBurnSoundLen * 2;
+		memset(RungunSoundBuffer0, 0, samples * sizeof(INT16));
+		memset(RungunSoundBuffer1, 0, samples * sizeof(INT16));
+
+		threaded_sound0 = RungunSoundThread0.Dispatch(RungunSoundBuffer0, nBurnSoundLen);
+		threaded_sound1 = RungunSoundThread1.Dispatch(RungunSoundBuffer1, nBurnSoundLen);
+		if (!threaded_sound0) K054539Update(0, RungunSoundBuffer0, nBurnSoundLen);
+		if (!threaded_sound1) K054539Update(1, RungunSoundBuffer1, nBurnSoundLen);
+		buffered_sound = true;
+	}
+
 	if (pBurnDraw) {
 		DrvDraw();
+	}
+
+	if (pBurnSoundOut) {
+		if (buffered_sound) {
+			if (threaded_sound0) RungunSoundThread0.Wait();
+			if (threaded_sound1) RungunSoundThread1.Wait();
+
+			for (INT32 i = 0; i < nBurnSoundLen * 2; i++) {
+				INT32 mixed = RungunSoundBuffer0[i] + RungunSoundBuffer1[i];
+				if (mixed > 32767) mixed = 32767;
+				if (mixed < -32768) mixed = -32768;
+
+				INT32 sample = mixed * RUNGUN_SOUND_GAIN;
+				if (sample > 32767) sample = 32767;
+				if (sample < -32768) sample = -32768;
+				pBurnSoundOut[i] = sample;
+			}
+		} else {
+			BurnSoundClear();
+			K054539Update(0, pBurnSoundOut, nBurnSoundLen);
+			K054539Update(1, pBurnSoundOut, nBurnSoundLen);
+
+			for (INT32 i = 0; i < nBurnSoundLen * 2; i++) {
+				INT32 sample = pBurnSoundOut[i] * RUNGUN_SOUND_GAIN;
+				if (sample > 32767) sample = 32767;
+				if (sample < -32768) sample = -32768;
+				pBurnSoundOut[i] = sample;
+			}
+		}
 	}
 
 	return 0;

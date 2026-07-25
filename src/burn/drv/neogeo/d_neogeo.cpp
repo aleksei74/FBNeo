@@ -16995,7 +16995,7 @@ struct BurnDriver BurnDrvAdkw = {
 	"adkw", NULL, "neogeo", NULL, "1995",
 	"ADK World (Neo CD conversion)\0", NULL, "Alpha Denshi Co.", "Neo Geo MVS",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_MINIGAMES, 0,
+	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_MINIGAMES, 0,
 	NULL, adkwRomInfo, adkwRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000,	320, 224, 4, 3
@@ -30856,6 +30856,41 @@ struct BurnDriver BurnDrvAof2k = {
 	NULL, aof2kRomInfo, aof2kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// Fatal Fury Special / Garou Densetsu Special (Korean Translation)
+
+static struct BurnRomInfo fatfurspkRomDesc[] = {
+	{ "058-p1k.p1",   0x100000, 0x10eed700, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ mask rom TC538200
+	{ "058-p2k.sp2",  0x080000, 0x89873fde, 1 | BRF_ESS | BRF_PRG }, //  1 					/ mask rom TC534200
+
+	{ "058-s1k.s1",   0x020000, 0x672a2c48, 2 | BRF_GRA },           //  2 Text layer tiles / mask rom TC531000
+
+	{ "058-c1k.c1",   0x200000, 0xe0ad29ae, 3 | BRF_GRA },           //  3 Sprite data		/ mask rom TC5316200
+	{ "058-c2k.c2",   0x200000, 0x7d7f0931, 3 | BRF_GRA },           //  4 					/ mask rom TC5316200
+	{ "058-c3k.c3",   0x200000, 0x3b203a16, 3 | BRF_GRA },           //  5 					/ mask rom TC5316200
+	{ "058-c4k.c4",   0x200000, 0xd3f30fc1, 3 | BRF_GRA },           //  6 					/ mask rom TC5316200
+	{ "058-c5.c5",    0x200000, 0x49c5e0bf, 3 | BRF_GRA },           //  7 					/ mask rom TC5316200
+	{ "058-c6.c6",    0x200000, 0x8ff1f43d, 3 | BRF_GRA },           //  8 					/ mask rom TC5316200
+
+	{ "058-m1.m1",    0x020000, 0xccc5186e, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code			/ mask rom TC531001
+
+	{ "058-v1.v1",    0x200000, 0x55d7ce84, 5 | BRF_SND },           // 10 Sound data		/ mask rom TC5316200
+	{ "058-v2.v2",    0x200000, 0xee080b10, 5 | BRF_SND },           // 11 					/ mask rom TC5316200
+	{ "058-v3.v3",    0x100000, 0xf9eb3d4a, 5 | BRF_SND },           // 12 					/ mask rom TC538200
+};
+
+STDROMPICKEXT(fatfurspk, fatfurspk, neogeo)
+STD_ROM_FN(fatfurspk)
+
+struct BurnDriver BurnDrvFatfurspk = {
+	"fatfurspk", "fatfursp", "neogeo", NULL, "2026",
+	"Fatal Fury Special / Garou Densetsu Special (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Fatal Fury Special / Garou Densetsu Special (Korean Translation)\0\uD398\uC774\uD138 \uD4E8\uB9AC \uC2A4\uD398\uC15C / \uC544\uB791\uC804\uC124 \uC2A4\uD398\uC15C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_FATFURY,
+	NULL, fatfurspkRomInfo, fatfurspkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
 };
 
 // Spin Master / Miracle Adventure (Korean Translation)

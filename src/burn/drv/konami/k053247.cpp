@@ -322,7 +322,6 @@ void K053247SpritesRender()
 	count--;
 	h = count;
 
-	
 	if (!(K053247Regs[0xc/2] & 0x10))
 	{
 		// sort objects in decending order(smaller z closer) when OPSET PRI is clear
@@ -727,42 +726,51 @@ void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32
 	const UINT8 z8_new = (UINT8)zcode;
 	const UINT8 pri_new = (UINT8)pri;
 
-	for (INT32 y = 0; y <= dst_bottom - dst_top; y++) {
-		for (INT32 x = 0; x <= dst_right - dst_left; x++) {
-			const INT32 x_off = (src_base_x + x * src_stride_x) >> 19;
-			const INT32 y_off = (src_base_y + y * src_stride_y) >> 19;
+	const INT32 draw_width = dst_right - dst_left + 1;
+	const INT32 draw_height = dst_bottom - dst_top + 1;
+
+	for (INT32 y = 0; y < draw_height; y++) {
+		const INT32 y_off = (src_base_y + y * src_stride_y) >> 19;
+		UINT32 *dst_row = dst_ptr_new + y * nScreenWidth;
+		UINT8 *ozbuf_row = ozbuf_ptr_new + y * GX_ZBUFW;
+		UINT8 *szbuf_row = szbuf_ptr_new + y * GX_ZBUFW * 2;
+		UINT8 *priority_row = shadow_cmp_pri ? konami_priority_bitmap + dst_left + (dst_top + y) * nScreenWidth : NULL;
+		INT32 src_x = src_base_x;
+
+		for (INT32 x = 0; x < draw_width; x++, src_x += src_stride_x) {
+			const INT32 x_off = src_x >> 19;
 			const UINT8 pal_idx = src_base_new[(x_off + (y_off << 4)) ^ flip_mask];
 
 			if (zcode < 0) {
 				if (!pal_idx || pal_idx >= shdpen_new) continue;
-				ozbuf_ptr_new[x + y * GX_ZBUFW] = z8_new;
-				dst_ptr_new[x + y * nScreenWidth] = pal_base_new[pal_idx];
+				ozbuf_row[x] = z8_new;
+				dst_row[x] = pal_base_new[pal_idx];
 			} else if (drawmode < 4) {
 				if (!pal_idx || ((drawmode & 3) && pal_idx >= shdpen_new)) continue;
-				if (ozbuf_ptr_new[x + y * GX_ZBUFW] < z8_new) continue;
-				ozbuf_ptr_new[x + y * GX_ZBUFW] = z8_new;
+				if (ozbuf_row[x] < z8_new) continue;
+				ozbuf_row[x] = z8_new;
 
 				if (!(drawmode & 2)) {
-					dst_ptr_new[x + y * nScreenWidth] = pal_base_new[pal_idx];
+					dst_row[x] = pal_base_new[pal_idx];
 				} else {
 					UINT8 alpha_level = alpha;
 					if (alpha & 0x100) {
 						UINT32 temp = alpha_blend_r32(pal_base_new[pal_idx], 0, alpha_level);
-						dst_ptr_new[x + y * nScreenWidth] = add_blend_r32(dst_ptr_new[x + y * nScreenWidth], temp);
+						dst_row[x] = add_blend_r32(dst_row[x], temp);
 					} else {
-						dst_ptr_new[x + y * nScreenWidth] = alpha_blend_r32(dst_ptr_new[x + y * nScreenWidth], pal_base_new[pal_idx], alpha_level);
+						dst_row[x] = alpha_blend_r32(dst_row[x], pal_base_new[pal_idx], alpha_level);
 					}
 				}
 			} else {
-				const INT32 szbuf_offset = x * 2 + y * GX_ZBUFW * 2;
+				const INT32 szbuf_offset = x * 2;
 				if (pal_idx < shdpen_new) continue;
-				if (shadow_cmp_pri && konami_priority_bitmap[(dst_left + x) + (dst_top + y) * nScreenWidth] >= pri_new) continue;
-				if (szbuf_ptr_new[szbuf_offset] < z8_new) continue;
-				if (szbuf_ptr_new[szbuf_offset + 1] <= pri_new) continue;
-				szbuf_ptr_new[szbuf_offset] = z8_new;
-				szbuf_ptr_new[szbuf_offset + 1] = pri_new;
+				if (shadow_cmp_pri && priority_row[x] >= pri_new) continue;
+				if (szbuf_row[szbuf_offset] < z8_new) continue;
+				if (szbuf_row[szbuf_offset + 1] <= pri_new) continue;
+				szbuf_row[szbuf_offset] = z8_new;
+				szbuf_row[szbuf_offset + 1] = pri_new;
 
-				dst_ptr_new[x + y * nScreenWidth] = shadow_blend(dst_ptr_new[x + y * nScreenWidth], shadow_bank_new);
+				dst_row[x] = shadow_blend(dst_row[x], shadow_bank_new);
 			}
 		}
 	}
