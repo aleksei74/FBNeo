@@ -3,7 +3,6 @@
 
 #include "tiles_generic.h"
 #include "snes.h"
-#include "spc7110.h"		// SPC7110 self-test skip
 #include "burn_gun.h"		// zapper games
 
 static UINT8 snesInputPort0[12];
@@ -17044,6 +17043,27 @@ struct BurnDriver BurnDrvsnes_Hayazashi = {
 	512, 462, 4, 3
 };
 
+// Hayazashi Nidan Morita Shougi 2 (Japan)
+// sns_rom_st018
+
+static struct BurnRomInfo snes_moritash2RomDesc[] = {
+	{ "Hayazashi Nidan Morita Shougi 2 (J)(1995)(Seta).sfc", 524288, 0xdd852671, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(snes_moritash2, snes_moritash2, snes_st018)
+STD_ROM_FN(snes_moritash2)
+
+struct BurnDriver BurnDrvsnes_moritash2 = {
+	"snes_moritash2", NULL, "snes_st018", NULL, "1995",
+	"Hayazashi Nidan Morita Shougi 2 (Japan)\0", NULL, "Seta", "SNES / Super Famicom",
+	L"Hayazashi Nidan Morita Shougi 2 (Japan)\0\u65e9\u6307\u3057\u4e8c\u6bb5\u68ee\u7530\u5c06\u68cb 2\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SNES, GBF_BOARD, 0,
+	SNESGetZipName, snes_moritash2RomInfo, snes_moritash2RomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
+
 // Head-On Soccer (USA)
 
 static struct BurnRomInfo snes_HeadonsoccerRomDesc[] = {
@@ -32880,6 +32900,45 @@ struct BurnDriver BurnDrvsnes_Shinkouhate = {
 	512, 448, 4, 3
 };
 
+// Shodai Nekketsu Kouha Kunio-kun (Hack, English, v1.00)
+// https://www.romhacking.net/translations/893/
+
+static struct BurnRomInfo snes_shodanekteRomDesc[] = {
+	{ "Shodai Nekketsu Kouha Kunio-kun T-Eng v1.00 (2007)(Aeon Genesis).smc", 1179648, 0x293279af, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_shodanekte)
+STD_ROM_FN(snes_shodanekte)
+
+struct BurnDriver BurnDrvsnes_shodanekte = {
+	"snes_shodanekte", NULL, NULL, NULL, "2007",
+	"Shodai Nekketsu Kouha Kunio-kun (Hack, English, v1.00)\0", NULL, "Aeon Genesis", "SNES / Super Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HACK, 2, HARDWARE_SNES, GBF_SCRFIGHT | GBF_ADV, 0,
+	SNESGetZipName, snes_shodanekteRomInfo, snes_shodanekteRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
+// Shodai Nekketsu Kouha Kunio-kun (Japan, Rev 1)
+
+static struct BurnRomInfo snes_shodanekRomDesc[] = {
+	{ "Shodai Nekketsu Kouha Kunio-kun (J, Rev 1)(1992)(Technos).sfc", 1048576, 0x5df55465, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_shodanek)
+STD_ROM_FN(snes_shodanek)
+
+struct BurnDriver BurnDrvsnes_shodanek = {
+	"snes_shodanek", "snes_shodanekte", NULL, NULL, "1992",
+	"Shodai Nekketsu Kouha Kunio-kun (Japan, Rev 1)\0", NULL, "Technos", "SNES / Super Famicom",
+	L"Shodai Nekketsu Kouha Kunio-kun (Japan, Rev 1)\0\u521d\u4ee3\u71b1\u8840\u786c\u6d3e\u304f\u306b\u304a\u304f\u3093\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_SNES, GBF_SCRFIGHT | GBF_ADV, 0,
+	SNESGetZipName, snes_shodanekRomInfo, snes_shodanekRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
 // Shounen Ashibe: Goma-chan no Yuuenchi Daibouken (Japan)
 
 static struct BurnRomInfo snes_ShouashibeRomDesc[] = {
@@ -36043,11 +36102,11 @@ struct BurnDriver BurnDrvsnes_Ststarfleetg = {
 	512, 448, 4, 3
 };
 
-// Stunt Race FX (USA，Rev 1)
+// Stunt Race FX (USA, Rev 1)
 // GSU-1
 
 static struct BurnRomInfo snes_stuntfxRomDesc[] = {
-	{ "Stunt Race FX (U，Rev 1)(1994)(Nintendo).sfc", 1048576, 0x380c2635, BRF_ESS | BRF_PRG },
+	{ "Stunt Race FX (U, Rev 1)(1994)(Nintendo).sfc", 1048576, 0x380c2635, BRF_ESS | BRF_PRG },
 };
 
 STD_ROM_PICK(snes_stuntfx)
@@ -36055,7 +36114,7 @@ STD_ROM_FN(snes_stuntfx)
 
 struct BurnDriver BurnDrvsnes_stuntfx = {
 	"snes_stuntfx", NULL, NULL, NULL, "1994",
-	"Stunt Race FX (USA，Rev 1)\0", NULL, "Nintendo", "SNES / Super Famicom",
+	"Stunt Race FX (USA, Rev 1)\0", NULL, "Nintendo", "SNES / Super Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SNES, GBF_RACING, 0,
 	SNESGetZipName, snes_stuntfxRomInfo, snes_stuntfxRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
@@ -41750,6 +41809,25 @@ struct BurnDriver BurnDrvsnes_Tomjerry = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SNES, GBF_PLATFORM, 0,
 	SNESGetZipName, snes_TomjerryRomInfo, snes_TomjerryRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
+// Tom vs Jerry - The Chase Is On! (Euro, Prototype)
+
+static struct BurnRomInfo snes_TomvsjerrypRomDesc[] = {
+	{ "Tom vs Jerry - The Chase Is On! (E, Proto) (1995)(Software Creations).sfc", 2097152, 0x690b8c85, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_Tomvsjerryp)
+STD_ROM_FN(snes_Tomvsjerryp)
+
+struct BurnDriver BurnDrvsnes_Tomvsjerryp = {
+	"snes_tomvsjerryp", NULL, NULL, NULL, "1995",
+	"Tom vs Jerry - The Chase Is On! (Euro, Prototype)\0", NULL, "Software Creations", "SNES / Super Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_PROTOTYPE, 1, HARDWARE_SNES, GBF_ACTION, 0,
+	SNESGetZipName, snes_TomvsjerrypRomInfo, snes_TomvsjerrypRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
 	512, 448, 4, 3
 };

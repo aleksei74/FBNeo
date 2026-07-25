@@ -7897,6 +7897,15 @@
 		<video type="raster" orientation="horizontal" width="512" height="462" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="moritash2" romof="st018" sourcefile="snes/d_snes.cpp">
+		<description>Hayazashi Nidan Morita Shougi 2 (Japan)</description>
+		<year>1995</year>
+		<manufacturer>Seta</manufacturer>
+		<rom name="Hayazashi Nidan Morita Shougi 2 (J)(1995)(Seta).sfc" size="524288" crc="dd852671"/>
+		<rom name="st018.bin" merge="st018.bin" size="163840" crc="5c403cc5"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="headonsoccer" sourcefile="snes/d_snes.cpp">
 		<description>Head-On Soccer (USA)</description>
 		<year>1995</year>
@@ -13491,7 +13500,7 @@
 		<description>Popeye - Tale of Teasing Witch Sea Hag (Hack, English)</description>
 		<year>2008</year>
 		<manufacturer>KingMike's Translations</manufacturer>
-		<rom name="Popeye - Tale of Teasing Witch Sea Hag T-Eng (2008)(KingMike?�s Translations).sfc" size="1572864" crc="749a6f69"/>
+		<rom name="Popeye - Tale of Teasing Witch Sea Hag T-Eng (2008)(KingMike’s Translations).sfc" size="1572864" crc="749a6f69"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -15422,6 +15431,23 @@
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="shodanekte" sourcefile="snes/d_snes.cpp">
+		<comment>Hack</comment>
+		<description>Shodai Nekketsu Kouha Kunio-kun (Hack, English, v1.00)</description>
+		<year>2007</year>
+		<manufacturer>Aeon Genesis</manufacturer>
+		<rom name="Shodai Nekketsu Kouha Kunio-kun T-Eng v1.00 (2007)(Aeon Genesis).smc" size="1179648" crc="293279af"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="shodanek" cloneof="shodanekte" romof="shodanekte" sourcefile="snes/d_snes.cpp">
+		<description>Shodai Nekketsu Kouha Kunio-kun (Japan, Rev 1)</description>
+		<year>1992</year>
+		<manufacturer>Technos</manufacturer>
+		<rom name="Shodai Nekketsu Kouha Kunio-kun (J, Rev 1)(1992)(Technos).sfc" size="1048576" crc="5df55465"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="shouashibe" sourcefile="snes/d_snes.cpp">
 		<description>Shounen Ashibe: Goma-chan no Yuuenchi Daibouken (Japan)</description>
 		<year>1992</year>
@@ -16635,10 +16661,10 @@
 		<driver status="good"/>
 	</game>
 	<game name="stuntfx" sourcefile="snes/d_snes.cpp">
-		<description>Stunt Race FX (USA，Rev 1)</description>
+		<description>Stunt Race FX (USA, Rev 1)</description>
 		<year>1994</year>
 		<manufacturer>Nintendo</manufacturer>
-		<rom name="Stunt Race FX (U，Rev 1)(1994)(Nintendo).sfc" size="1048576" crc="380c2635"/>
+		<rom name="Stunt Race FX (U, Rev 1)(1994)(Nintendo).sfc" size="1048576" crc="380c2635"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -20003,6 +20029,15 @@
 		<year>1992</year>
 		<manufacturer>Hi Tech Expressions</manufacturer>
 		<rom name="Tom and Jerry (U)(1992)(Hi Tech Expressions).sfc" size="524288" crc="8b1dafbb"/>
+		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tomvsjerryp" sourcefile="snes/d_snes.cpp">
+		<comment>Prototype</comment>
+		<description>Tom vs Jerry - The Chase Is On! (Euro, Prototype)</description>
+		<year>1995</year>
+		<manufacturer>Software Creations</manufacturer>
+		<rom name="Tom vs Jerry - The Chase Is On! (E, Proto) (1995)(Software Creations).sfc" size="2097152" crc="690b8c85"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>

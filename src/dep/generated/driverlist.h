@@ -2523,6 +2523,7 @@ DRV		BurnDrvBloxeedc;
 DRV		BurnSpecBluber;
 DRV		BurnDrvmd_bluealma;
 DRV		BurnDrvblueandr;
+DRV		BurnDrvmd_blueandr;
 DRV		BurnDrvpce_aoiblinke;
 DRV		BurnDrvsnes_Blucryrodte;
 DRV		BurnDrvsnes_Blucryrodj;
@@ -9500,6 +9501,7 @@ DRV		BurnDrvHayaosi3;
 DRV		BurnDrvHayaosi1;
 DRV		BurnDrvmd_hayatosj;
 DRV		BurnDrvsnes_Hayazashi;
+DRV		BurnDrvsnes_moritash2;
 DRV		BurnDrvnes_hazard;
 DRV		BurnDrvnes_hbcpball;
 DRV		BurnDrvgg_headbust;
@@ -13127,6 +13129,7 @@ DRV		BurnDrvmd_mindtris;
 DRV		BurnDrvmd_megapang;
 DRV		BurnSpecMegaphoenix;
 DRV		BurnDrvMegaphx;
+DRV		BurnDrvmd_megapushori;
 DRV		BurnDrvmd_megaqbert12;
 DRV		BurnDrvmd_queenjour;
 DRV		BurnSpecMegaserpen;
@@ -19608,6 +19611,7 @@ DRV		BurnDrvnes_solarjet;
 DRV		BurnDrvSolrwarr;
 DRV		BurnSpecSolargun;
 DRV		BurnDrvSoldamj;
+DRV		BurnDrvnes_soldam;
 DRV		BurnDrvSoldam;
 DRV		BurnDrvpce_soldblad;
 DRV		BurnDrvtg_soldblad;
@@ -21451,6 +21455,7 @@ DRV		BurnDrvsms_smb;
 DRV		BurnDrvnes_smb;
 DRV		BurnDrvmd_smbbc;
 DRV		BurnDrvnes_smb2c;
+DRV		BurnDrvnes_smb2p;
 DRV		BurnDrvnes_smb2;
 DRV		BurnDrvnes_smb2wq;
 DRV		BurnDrvnes_smb2j;
@@ -22189,8 +22194,10 @@ DRV		BurnDrvTangtanga;
 DRV		BurnDrvmd_tnglwdd;
 DRV		BurnDrvmd_tnglwd;
 DRV		BurnDrvTangramq;
+DRV		BurnDrvTankbattb;
 DRV		BurnDrvMSX_tankbatt;
 DRV		BurnDrvcv_tankbtln;
+DRV		BurnDrvTankbatt;
 DRV		BurnSpecTankbtle;
 DRV		BurnDrvsms_tankbattle;
 DRV		BurnDrvTankbust;
@@ -23450,6 +23457,7 @@ DRV		BurnDrvmd_dinohirep2;
 DRV		BurnDrvmd_dinohirep1;
 DRV		BurnDrvmd_dinohire;
 DRV		BurnDrvTomagic;
+DRV		BurnDrvsnes_Tomvsjerryp;
 DRV		BurnDrvcv_tomarc;
 DRV		BurnDrvMSX_togk;
 DRV		BurnDrvnes_tombice;
@@ -28426,7 +28434,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvBloxeedc,			// Bloxeed (World, C System)
 	&BurnSpecBluber,			// Bluber (48K) (HB)
 	&BurnDrvmd_bluealma,		// Blue Almanac (Japan)
-	&BurnDrvblueandr,			// Blue And Red - Fight The Robots! (HB, v1.6 NTSC)
+	&BurnDrvblueandr,			// Blue And Red - Fight The Robots! (HB, v1.7 NTSC)
+	&BurnDrvmd_blueandr,		// Blue And Red - Fight The Robots! (HB, v1.7 NTSC)
 	&BurnDrvpce_aoiblinke,		// Blue Blink (Hack, English v0.99b)
 	&BurnDrvsnes_Blucryrodte,	// Blue Crystal Rod, The (Hack, English)
 	&BurnDrvsnes_Blucryrodj,	// Blue Crystal Rod, The (Japan)
@@ -35404,6 +35413,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvHayaosi1,			// Hayaoshi Quiz Ouza Ketteisen: The King Of Quiz
 	&BurnDrvmd_hayatosj,		// Hayato's Journey (HB)
 	&BurnDrvsnes_Hayazashi,		// Hayazashi Nidan Morita Shougi (Japan)
+	&BurnDrvsnes_moritash2,		// Hayazashi Nidan Morita Shougi 2 (Japan)
 	&BurnDrvnes_hazard,			// Hazard: Let Us Out! (HB)
 	&BurnDrvnes_hbcpball,		// HBC Phutball (HB)
 	&BurnDrvgg_headbust,		// Head Buster (Japan)
@@ -39031,6 +39041,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_megapang,		// Mega Pang (HB, v0.3 Beta)
 	&BurnSpecMegaphoenix,		// Mega Phoenix (48K-128K)
 	&BurnDrvMegaphx,			// Mega Phoenix
+	&BurnDrvmd_megapushori,		// Mega Pushori (HB)
 	&BurnDrvmd_megaqbert12,		// Mega Q-Bert (HB, v1.2)
 	&BurnDrvmd_queenjour,		// Mega Queen Journey, The (HB)
 	&BurnSpecMegaserpen,		// Mega Serpiente (English) (48K) (HB)
@@ -40604,7 +40615,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSyscheck,			// Neo System Check (ver 1.0b)
 	&BurnDrvNeothndr,			// Neo Thunder (HB)
 	&BurnDrvngpc_neoturfm,		// Neo Turf Masters - Pocket Sport Series (World)
-	&BurnDrvTurfmastsc,			// Neo Turf Masters / Big Tournament Golf: Scotland Course (Hack, v1.08)
+	&BurnDrvTurfmastsc,			// Neo Turf Masters / Big Tournament Golf: Scotland Course (Hack, v1.09)
 	&BurnDrvTurfmast,			// Neo Turf Masters / Big Tournament Golf
 	&BurnDrvNeocup98k,			// Neo-Geo Cup '98 - The Road to the Victory (Korean Translation)
 	&BurnDrvNeocup98,			// Neo-Geo Cup '98 - The Road to the Victory
@@ -44993,6 +45004,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Shockman0te,	// Shockman Zero (Hack, English)
 	&BurnDrvsnes_Shockman0,		// Shockman Zero (World)
 	&BurnDrvnes_shockwave,		// Shockwave (USA)
+	&BurnDrvsnes_shodanekte,	// Shodai Nekketsu Kouha Kunio-kun (Hack, English, v1.00)
+	&BurnDrvsnes_shodanek,		// Shodai Nekketsu Kouha Kunio-kun (Japan, Rev 1)
 	&BurnDrvMSX_shogun,			// Shogun (Japan)
 	&BurnDrvShogwarrk,			// Shogun Warriors (Korea?)
 	&BurnDrvShogwarru,			// Shogun Warriors (US)
@@ -45512,6 +45525,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSolrwarr,			// Solar-Warrior (US)
 	&BurnSpecSolargun,			// SolarGun (48K) (HB)
 	&BurnDrvSoldamj,			// Soldam (Japan)
+	&BurnDrvnes_soldam,			// Soldam (World)
 	&BurnDrvSoldam,				// Soldam
 	&BurnDrvpce_soldblad,		// Soldier Blade (Japan)
 	&BurnDrvtg_soldblad,		// Soldier Blade (USA)
@@ -46653,7 +46667,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvCpsSf2mdtc,			// Street Fighter II': Magic Delta Turbo (bootleg, set 4)
 	&BurnDrvCpsSf2mkot,			// Street Fighter II': Magic KO Turbo!! - Nightmare Crack (set 1)
 	&BurnDrvCpsSf2mkot2,		// Street Fighter II': Magic KO Turbo!! - Nightmare Crack (set 2)
-	&BurnDrvCpsSf2prime,		// Street Fighter II': Prime (Ver 0.78, Hack)
+	&BurnDrvCpsSf2prime,		// Street Fighter II': Prime (Ver 0.79, Hack)
 	&BurnDrvCpsSf2rules,		// Street Fighter II: The World Warrior (bootleg with rules screen)
 	&BurnDrvCpsSf2b5,			// Street Fighter II: The World Warrior (bootleg, earliest, set 5)
 	&BurnDrvCpsSf2b,			// Street Fighter II: The World Warrior (bootleg, set 1)
@@ -46901,7 +46915,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_stuntkids,		// Stunt Kids (USA)
 	&BurnSpecStuntmanseymour,	// Stunt Man Seymour (128K)
 	&BurnDrvsnes_stuntfxe,		// Stunt Race FX (Euro)
-	&BurnDrvsnes_stuntfx,		// Stunt Race FX (USA，Rev 1)
+	&BurnDrvsnes_stuntfx,		// Stunt Race FX (USA, Rev 1)
 	&BurnDrvMSX_stupmart,		// Stupid Martians (HB, v1.1)
 	&BurnDrvsms_stygianquest,	// Stygian Quest (HB, v1.2)
 	&BurnDrvsms_stygianquest25,	// Stygian Quest (HB, v1.9)
@@ -47355,6 +47369,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_smb,			// Super Mario Bros. (World)
 	&BurnDrvmd_smbbc,			// Super Mario Bros. + Battle City (Russia) (Unl)
 	&BurnDrvnes_smb2c,			// Super Mario Bros. 2 (Hack, Spanish)
+	&BurnDrvnes_smb2p,			// Super Mario Bros. 2 (USA, Prototype)
 	&BurnDrvnes_smb2,			// Super Mario Bros. 2 (USA, Rev. A)
 	&BurnDrvnes_smb2wq,			// Super Mario Bros. 2 - Wacky Quest (Hack)
 	&BurnDrvnes_smb2j,			// Super Mario Bros. 2: The Lost Levels (Japan, MMC3 Conversion)
@@ -48093,8 +48108,10 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_tnglwdd,			// Tanglewood (HB, Demo)
 	&BurnDrvmd_tnglwd,			// Tanglewood (HB, v1.0)
 	&BurnDrvTangramq,			// Tangram Q
+	&BurnDrvTankbattb,			// Tank Battalion (bootleg)
 	&BurnDrvMSX_tankbatt,		// Tank Battalion (Japan)
 	&BurnDrvcv_tankbtln,		// Tank Battalion (SGM) (HB)
+	&BurnDrvTankbatt,			// Tank Battalion
 	&BurnSpecTankbtle,			// Tank Battle (128K) (HB)
 	&BurnDrvsms_tankbattle,		// Tank Battle (Hack, v0.02d)
 	&BurnDrvTankbust,			// Tank Busters
@@ -49354,6 +49371,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_dinohirep1,		// Tom Mason's Dinosaurs for Hire (Prototype, 19930502)
 	&BurnDrvmd_dinohire,		// Tom Mason's Dinosaurs for Hire (USA)
 	&BurnDrvTomagic,			// Tom Tom Magic
+	&BurnDrvsnes_Tomvsjerryp,	// Tom vs Jerry - The Chase Is On! (Euro, Prototype)
 	&BurnDrvcv_tomarc,			// Tomarc the Barbarian (USA)
 	&BurnDrvMSX_togk,			// Tomb of Genghis Khan (HB)
 	&BurnDrvnes_tombice,		// Tomb of Ice (HB)
@@ -54315,6 +54333,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_bluber", "spectrum/d_spectrum.cpp"},
 	{ "md_bluealma", "megadrive/d_megadrive.cpp"},
 	{ "blueandr", "neogeo/d_neogeo.cpp"},
+	{ "md_blueandr", "megadrive/d_megadrive.cpp"},
 	{ "pce_aoiblinke", "pce/d_pce.cpp"},
 	{ "snes_blucryrodte", "snes/d_snes.cpp"},
 	{ "snes_blucryrodj", "snes/d_snes.cpp"},
@@ -61248,6 +61267,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "hayaosi1", "pre90s/d_megasys1.cpp"},
 	{ "md_hayatosj", "megadrive/d_megadrive.cpp"},
 	{ "snes_hayazashi", "snes/d_snes.cpp"},
+	{ "snes_moritash2", "snes/d_snes.cpp"},
 	{ "nes_hazard", "nes/d_nes.cpp"},
 	{ "nes_hbcpball", "nes/d_nes.cpp"},
 	{ "gg_headbust", "sms/d_sms.cpp"},
@@ -64839,6 +64859,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_megapang", "megadrive/d_megadrive.cpp"},
 	{ "spec_megaphoenix", "spectrum/d_spectrum.cpp"},
 	{ "megaphx", "pst90s/d_megaphx.cpp"},
+	{ "md_megapushori", "megadrive/d_megadrive.cpp"},
 	{ "md_megaqbert12", "megadrive/d_megadrive.cpp"},
 	{ "md_queenjour", "megadrive/d_megadrive.cpp"},
 	{ "spec_megaserpen", "spectrum/d_spectrum.cpp"},
@@ -71270,6 +71291,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "solrwarr", "pre90s/d_xain.cpp"},
 	{ "spec_solargun", "spectrum/d_spectrum.cpp"},
 	{ "soldamj", "pre90s/d_megasys1.cpp"},
+	{ "nes_soldam", "nes/d_nes.cpp"},
 	{ "soldam", "pre90s/d_megasys1.cpp"},
 	{ "pce_soldblad", "pce/d_pce.cpp"},
 	{ "tg_soldblad", "pce/d_pce.cpp"},
@@ -73089,6 +73111,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_smb", "nes/d_nes.cpp"},
 	{ "md_smbbc", "megadrive/d_megadrive.cpp"},
 	{ "nes_smb2c", "nes/d_nes.cpp"},
+	{ "nes_smb2p", "nes/d_nes.cpp"},
 	{ "nes_smb2", "nes/d_nes.cpp"},
 	{ "nes_smb2wq", "nes/d_nes.cpp"},
 	{ "nes_smb2j", "nes/d_nes.cpp"},
@@ -73821,8 +73844,10 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_tnglwdd", "megadrive/d_megadrive.cpp"},
 	{ "md_tnglwd", "megadrive/d_megadrive.cpp"},
 	{ "tangramq", "pre90s/d_cclimber.cpp"},
+	{ "tankbattb", "pre90s/d_tankbatt.cpp"},
 	{ "msx_tankbatt", "msx/d_msx.cpp"},
 	{ "cv_tankbtln", "coleco/d_coleco.cpp"},
+	{ "tankbatt", "pre90s/d_tankbatt.cpp"},
 	{ "spec_tankbtle", "spectrum/d_spectrum.cpp"},
 	{ "sms_tankbattle", "sms/d_sms.cpp"},
 	{ "tankbust", "pre90s/d_tankbust.cpp"},
@@ -75074,6 +75099,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_dinohirep1", "megadrive/d_megadrive.cpp"},
 	{ "md_dinohire", "megadrive/d_megadrive.cpp"},
 	{ "tomagic", "pst90s/d_nmk16.cpp"},
+	{ "snes_tomvsjerryp", "snes/d_snes.cpp"},
 	{ "cv_tomarc", "coleco/d_coleco.cpp"},
 	{ "msx_togk", "msx/d_msx.cpp"},
 	{ "nes_tombice", "nes/d_nes.cpp"},
