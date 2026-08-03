@@ -132,16 +132,16 @@ TCHAR szAppHiscorePath[MAX_PATH];
 TCHAR szAppSamplesPath[MAX_PATH];
 TCHAR szAppBlendPath[MAX_PATH];
 TCHAR szAppHDDPath[MAX_PATH];
-TCHAR szAppSnesMsu1Path[MAX_PATH];
 TCHAR szAppCheatsPath[MAX_PATH];
 TCHAR szAppIpsesPath[MAX_PATH];
 TCHAR szAppRomdatasPath[MAX_PATH];
 TCHAR szAppPathDefPath[MAX_PATH];
+TCHAR szAppSnesMsu1Path[MAX_PATH];
 TCHAR szAppBurnVer[16];
 
 static char szRomsetPath[MAX_PATH]        = { 0 };
 
-#define TYPES_MAX	(27)	// Maximum number of machine types
+#define TYPES_MAX	(29)	// Maximum number of machine types
 
 static const TCHAR szTypeEnum[2][TYPES_MAX][13] = {
 	{
@@ -161,6 +161,7 @@ static const TCHAR szTypeEnum[2][TYPES_MAX][13] = {
 		_T("nes"),
 		_T("fds"),
 		_T("ngp"),
+		_T("astro"),		_T("astrohome"),
 		_T("chf"),			_T("channelf")							// consoles_dir
 	},
 	{
@@ -180,6 +181,7 @@ static const TCHAR szTypeEnum[2][TYPES_MAX][13] = {
 		_T("nes_"),
 		_T("fds_"),
 		_T("ngp_"),
+		_T("astro_"),		_T("astro_"),
 		_T("chf_"),			_T("chf_")								// Signage of the console
 	}
 };
@@ -471,6 +473,7 @@ void retro_set_environment(retro_environment_t cb)
 		{ "Iso", "ccd|cue",    true, true, true, NULL, 0 },
 	};
 	static const struct retro_subsystem_info subsystems[] = {
+		{ "Bally Astrocade Home Computer",       "astro", subsystem_rom, 1, RETRO_GAME_TYPE_ASTRO },
 		{ "CBS ColecoVision",                    "cv",    subsystem_rom, 1, RETRO_GAME_TYPE_CV    },
 		{ "Fairchild ChannelF",                  "chf",   subsystem_rom, 1, RETRO_GAME_TYPE_CHF   },
 		{ "MSX 1",                               "msx",   subsystem_rom, 1, RETRO_GAME_TYPE_MSX   },
@@ -479,7 +482,7 @@ void retro_set_environment(retro_environment_t cb)
 		{ "Nec TurboGrafx-16",                   "tg16",  subsystem_rom, 1, RETRO_GAME_TYPE_TG    },
 		{ "Nintendo Entertainment System",       "nes",   subsystem_rom, 1, RETRO_GAME_TYPE_NES   },
 		{ "Nintendo Family Disk System",         "fds",   subsystem_rom, 1, RETRO_GAME_TYPE_FDS   },
-		{ "Super Nintendo Entertainment System", "snes",  subsystem_rom, 1, RETRO_GAME_TYPE_SNES   },
+		{ "Super Nintendo Entertainment System", "snes",  subsystem_rom, 1, RETRO_GAME_TYPE_SNES  },
 		{ "Sega GameGear",                       "gg",    subsystem_rom, 1, RETRO_GAME_TYPE_GG    },
 		{ "Sega Master System",                  "sms",   subsystem_rom, 1, RETRO_GAME_TYPE_SMS   },
 		{ "Sega Megadrive",                      "md",    subsystem_rom, 1, RETRO_GAME_TYPE_MD    },
@@ -1328,6 +1331,9 @@ int CreateAllDatfiles(char* dat_folder)
 
 	snprintf_nowarn(szFilename, sizeof(szFilename), "%s%c%s (%s).dat", dat_folder, PATH_DEFAULT_SLASH_C(), APP_TITLE, "ClrMame Pro XML, ZX Spectrum Games only");
 	create_datfile(szFilename, DAT_SPECTRUM_ONLY);
+
+	snprintf_nowarn(szFilename, sizeof(szFilename), "%s%c%s (%s).dat", dat_folder, PATH_DEFAULT_SLASH_C(), APP_TITLE, "ClrMame Pro XML, Bally Astrocade Games only");
+	create_datfile(szFilename, DAT_ASTROHOME_ONLY);
 #endif
 
 	return nRet;
@@ -1995,28 +2001,22 @@ static bool retro_load_game_common()
 	// Initialize EEPROM path
 	snprintf_nowarn (szAppEEPROMPath, sizeof(szAppEEPROMPath), "%s%cfbneo%c", g_save_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
 
-	// Create EEPROM path if it does not exist
-	// because of some bug on gekko based devices (see https://github.com/libretro/libretro-common/issues/161), we can't use the szAppEEPROMPath variable which requires the trailing slash
-	char EEPROMPathToCreate[MAX_PATH];
-	snprintf_nowarn (EEPROMPathToCreate, sizeof(EEPROMPathToCreate), "%s%cfbneo", g_save_dir, PATH_DEFAULT_SLASH_C());
-	path_mkdir(EEPROMPathToCreate);
-
 	// Initialize Hiscore path
 	snprintf_nowarn (szAppHiscorePath, sizeof(szAppHiscorePath), "%s%cfbneo%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
 
 	// Initialize Samples path
 	snprintf_nowarn (szAppSamplesPath, sizeof(szAppSamplesPath), "%s%cfbneo%csamples%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
 
-	// Initialize SNES MSU-1 media path
+	// Initialize SNES MSU1 path
 	snprintf_nowarn (szAppSnesMsu1Path, sizeof(szAppSnesMsu1Path), "%s%cfbneo%csnesmsu1%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
 
 	// Initialize Cheats path
 	snprintf_nowarn (szAppCheatsPath, sizeof(szAppCheatsPath), "%s%cfbneo%ccheats%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
 
-	// Initialize Ipses path
+	// Initialize Ips path
 	snprintf_nowarn(szAppIpsesPath, sizeof(szAppIpsesPath), "%s%cfbneo%cips%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
 
-	// Initialize Ipses path
+	// Initialize Romdata path
 	snprintf_nowarn(szAppRomdatasPath, sizeof(szAppRomdatasPath), "%s%cfbneo%cromdata%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
 
 	// Initialize Multipath definition path
@@ -2027,6 +2027,17 @@ static bool retro_load_game_common()
 
 	// Initialize HDD path
 	snprintf_nowarn (szAppHDDPath, sizeof(szAppHDDPath), "%s%c", g_rom_dir, PATH_DEFAULT_SLASH_C());
+
+	// create some of those folders
+	// note: https://github.com/libretro/libretro-common/issues/161 is supposedly fixed,
+	//       so we don't have to worry about trailing slash
+	path_mkdir(szAppEEPROMPath);
+	path_mkdir(szAppHiscorePath);
+	path_mkdir(szAppSamplesPath);
+	path_mkdir(szAppSnesMsu1Path);
+	path_mkdir(szAppCheatsPath);
+	path_mkdir(szAppIpsesPath);
+	path_mkdir(szAppRomdatasPath);
 
 	gui_show = false;
 
@@ -2458,6 +2469,10 @@ bool retro_load_game(const struct retro_game_info *info)
 		HandleMessage(RETRO_LOG_INFO, "[FBNeo] subsystem chf identified from parent folder\n");
 		if (strncmp(g_driver_name, "chf_", 4) != 0) prefix = "chf_";
 	}
+	if(strcmp(g_rom_parent_dir, "astro")==0 || strcmp(g_rom_parent_dir, "astrohome")==0) {
+		HandleMessage(RETRO_LOG_INFO, "[FBNeo] subsystem astro identified from parent folder\n");
+		if (strncmp(g_driver_name, "astro_", 6) != 0) prefix = "astro_";
+	}
 	if(strcmp(g_rom_parent_dir, "neocd")==0 || strncmp(g_driver_name, "neocd_", 6)==0) {
 		HandleMessage(RETRO_LOG_INFO, "[FBNeo] subsystem neocd identified from parent folder\n");
 		prefix = "";
@@ -2524,6 +2539,9 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 			break;
 		case RETRO_GAME_TYPE_CHF:
 			prefix = "chf_";
+			break;
+		case RETRO_GAME_TYPE_ASTRO:
+			prefix = "astro_";
 			break;
 		case RETRO_GAME_TYPE_NEOCD:
 			prefix = "";

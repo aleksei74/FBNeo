@@ -2098,6 +2098,25 @@ struct BurnDriver BurnDrvsnes_Aerofight = {
 	512, 448, 4, 3
 };
 
+// Aero Fighters (Hack, Portuguese)
+// https://joao13traducoes.com/2018/04/snes-aero-fighters-vila-oculta-do-romhacking/
+static struct BurnRomInfo snes_AerofighttpRomDesc[] = {
+	{ "Aero Fighters PT-BR (2022)(Vila Oculta do Romhacking).sfc", 1572864, 0x79a01296, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_Aerofighttp)
+STD_ROM_FN(snes_Aerofighttp)
+
+struct BurnDriver BurnDrvsnes_Aerofighttp = {
+	"snes_aerofighttp", "snes_aerofight", NULL, NULL, "2022",
+	"Aero Fighters (Hack, Portuguese)\0", NULL, "Vila Oculta do Romhacking", "SNES / Super Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_SNES, GBF_VERSHOOT, 0,
+	SNESGetZipName, snes_AerofighttpRomInfo, snes_AerofighttpRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
 // Air Cavalry (USA)
 
 static struct BurnRomInfo snes_AircavarlyRomDesc[] = {
@@ -10715,6 +10734,26 @@ struct BurnDriver BurnDrvsnes_doomj = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SNES, GBF_ACTION | GBF_SHOOT, 0,
 	SNESGetZipName, snes_doomjRomInfo, snes_doomjRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
+// Doom FX3 (USA)
+// GSU-3 / SuperFX 3
+
+static struct BurnRomInfo snes_doomfx3RomDesc[] = {
+	{ "Doom FX3(U)(2025)(Limited Run Games).sfc", 4194304, 0x8698cbac, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_doomfx3)
+STD_ROM_FN(snes_doomfx3)
+
+struct BurnDriver BurnDrvsnes_doomfx3 = {
+	"snes_doomfx3", "snes_doom", NULL, NULL, "2025",
+	"Doom FX3 (USA)\0", NULL, "Limited Run Games", "SNES / Super Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SNES, GBF_ACTION | GBF_SHOOT, 0,
+	SNESGetZipName, snes_doomfx3RomInfo, snes_doomfx3RomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
 	512, 448, 4, 3
 };
@@ -21875,6 +21914,26 @@ struct BurnDriver BurnDrvsnes_Livealivete = {
 	512, 448, 4, 3
 };
 
+// Live A Live (Hack, Portuguese v2.3)
+// https://www.romhacking.net.br/index.php?topic=2286.0
+
+static struct BurnRomInfo snes_LivealivetpRomDesc[] = {
+	{ "Live A Live PT-BR v2.3 (2024)(Jotesc0, Aeon Genesis).sfc", 2621440, 0x3020dbaa, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_Livealivetp)
+STD_ROM_FN(snes_Livealivetp)
+
+struct BurnDriver BurnDrvsnes_Livealivetp = {
+	"snes_livealivetp", "snes_livealivete", NULL, NULL, "2024",
+	"Live A Live (Hack, Portuguese v2.3)\0", NULL, "Jotesc0, Aeon Genesis", "SNES / Super Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_SNES, GBF_RPG, 0,
+	SNESGetZipName, snes_LivealivetpRomInfo, snes_LivealivetpRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
 // Live A Live (Hack, Spanish v1.6)
 // https://www.romhacking.net/translations/6058/
 static struct BurnRomInfo snes_LivealivetsRomDesc[] = {
@@ -25394,18 +25453,19 @@ struct BurnDriver BurnDrvsnes_Mystdung2j = {
 	512, 448, 4, 3
 };
 
-// Mysterious Dungeon 2: Shiren the Wanderer (Hack, English)
+// Mysterious Dungeon 2: Shiren the Wanderer (Hack, English v1.02)
 // https://www.romhacking.net/translations/483/
+// https://www.romhacking.net/translations/7641/
 static struct BurnRomInfo snes_Mystdung2teRomDesc[] = {
-	{ "Mysterious Dungeon 2 - Shiren the Wanderer T-Eng (2006)(Aeon Genesis).sfc", 4194304, 0xf9789079, BRF_ESS | BRF_PRG },
+	{ "Mysterious Dungeon 2 - Shiren the Wanderer T-Eng v1.02 (2006-2026)(Aeon Genesis, iggypoop).sfc", 4194304, 0xab38bde3, BRF_ESS | BRF_PRG },
 };
 
 STD_ROM_PICK(snes_Mystdung2te)
 STD_ROM_FN(snes_Mystdung2te)
 
 struct BurnDriver BurnDrvsnes_Mystdung2te = {
-	"snes_mystdung2te", NULL, NULL, NULL, "2006",
-	"Mysterious Dungeon 2: Shiren the Wanderer (Hack, English)\0", NULL, "Aeon Genesis", "SNES / Super Famicom",
+	"snes_mystdung2te", NULL, NULL, NULL, "2006-2026",
+	"Mysterious Dungeon 2: Shiren the Wanderer (Hack, English v1.02)\0", NULL, "Aeon Genesis, iggypoop", "SNES / Super Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HACK, 1, HARDWARE_SNES, GBF_ACTION | GBF_RPG, 0,
 	SNESGetZipName, snes_Mystdung2teRomInfo, snes_Mystdung2teRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
@@ -29212,6 +29272,25 @@ struct BurnDriver BurnDrvsnes_Princepersia = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SNES, GBF_PLATFORM | GBF_ADV, 0,
 	SNESGetZipName, snes_PrincepersiaRomInfo, snes_PrincepersiaRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
+// Prince of Persia (Hack, Portuguese v1.01)
+// https://romhackers.org/traducoes/console/super-nes/prince-of-persia-mattos/
+static struct BurnRomInfo snes_PrincepersiatpRomDesc[] = {
+	{ "Prince of Persia PT-BR v1.01 (2010)(Mattos).sfc", 1048576, 0x7cef5430, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_Princepersiatp)
+STD_ROM_FN(snes_Princepersiatp)
+
+struct BurnDriver BurnDrvsnes_Princepersiatp = {
+	"snes_princepersiatp", "snes_princepersia", NULL, NULL, "2010",
+	"Prince of Persia (Hack, Portuguese v1.01)\0", NULL, "Mattos", "SNES / Super Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_SNES, GBF_PLATFORM | GBF_ADV, 0,
+	SNESGetZipName, snes_PrincepersiatpRomInfo, snes_PrincepersiatpRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
 	512, 448, 4, 3
 };
@@ -33759,6 +33838,26 @@ struct BurnDriver BurnDrvsnes_Smallstarsworlde = {
 	SNESGetZipName, snes_SmallstarsworldeRomInfo, snes_SmallstarsworldeRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
 	512, 478, 4, 3
+};
+
+// Super Mario So estrelas + Super Mundo Mario (Hack, Portuguese v1.12)
+// https://www.romhacking.net.br/index.php?topic=2279.0
+
+static struct BurnRomInfo snes_SmallstarswldtpRomDesc[] = {
+	{ "Super Mario So Estrelas + Super Mundo Mario PT-BR v1.12 (2022)(bMatSantos).sfc", 2621440, 0x9ad38083, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_Smallstarswldtp)
+STD_ROM_FN(snes_Smallstarswldtp)
+
+struct BurnDriver BurnDrvsnes_Smallstarswldtp = {
+	"snes_smallstarswldtp", "snes_smallstarsworld", NULL, NULL, "2022",
+	"Super Mario So Estrelas + Super Mundo Mario (Hack, Portuguese v1.12)\0", NULL, "bMatSantos", "SNES / Super Famicom",
+	L"Super Mario S\u00f3 Estrelas + Super Mundo Mario (Hack, Portuguese v1.12)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_SNES, GBF_PLATFORM, 0,
+	SNESGetZipName, snes_SmallstarswldtpRomInfo, snes_SmallstarswldtpRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
 };
 
 // Super Mario All-Stars + Super Mario World (Hack, Traditional Chinese)
@@ -45151,18 +45250,18 @@ struct BurnDriver BurnDrvsnes_Yuuyuuhak2j = {
 	512, 448, 4, 3
 };
 
-// Yu Yu Hakusho 2: The Fighting Chapter (Hack, Portuguese)
-// https://www.romhacking.net/translations/7223/
+// Yu Yu Hakusho 2: The Fighting Chapter (Hack, Portuguese v1.2)
+// https://www.romhacking.net.br/index.php?topic=2671.0
 static struct BurnRomInfo snes_Yuuyuuhak2tpRomDesc[] = {
-	{ "Yu Yu Hakusho 2 - The Fighting Chapter PT-BR v1.0 (2024)(Hextinkers).sfc", 2097152, 0x52ac1195, BRF_ESS | BRF_PRG },
+	{ "Yu Yu Hakusho 2 - The Fighting Chapter PT-BR v1.2 (2024-26)(Hextinkers).sfc", 2097152, 0x38769d36, BRF_ESS | BRF_PRG },
 };
 
 STD_ROM_PICK(snes_Yuuyuuhak2tp)
 STD_ROM_FN(snes_Yuuyuuhak2tp)
 
 struct BurnDriver BurnDrvsnes_Yuuyuuhak2tp = {
-	"snes_yuuyuuhak2tp", "snes_yuuyuuhak2j", NULL, NULL, "2024",
-	"Yu Yu Hakusho 2: The Fighting Chapter (Hack, Portuguese)\0", NULL, "Hextinkers", "SNES / Super Famicom",
+	"snes_yuuyuuhak2tp", "snes_yuuyuuhak2j", NULL, NULL, "2024-26",
+	"Yu Yu Hakusho 2: The Fighting Chapter (Hack, Portuguese v1.2)\0", NULL, "Hextinkers", "SNES / Super Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_SNES, GBF_VSFIGHT, 0,
 	SNESGetZipName, snes_Yuuyuuhak2tpRomInfo, snes_Yuuyuuhak2tpRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
@@ -45825,7 +45924,7 @@ struct BurnDriver BurnDrvsnes_Squirrel = {
 // Street Fighter EX Plus Alpha (USA) (Unl)
 
 static struct BurnRomInfo snes_SfexpalphaRomDesc[] = {
-	{ "Street Fighter EX Plus Alpha (U)(Unl)(1997)(DVS Electronic).sfc", 2097152, 0xbf3fa644, BRF_ESS | BRF_PRG },
+	{ "Street Fighter EX Plus Alpha (U)(Unl)(1997)(DVS Electronic).sfc", 2097152, 0xdad59b9f, BRF_ESS | BRF_PRG },
 };
 
 STD_ROM_PICK(snes_Sfexpalpha)
@@ -49206,7 +49305,7 @@ STD_ROM_PICK(snes_starfoxex)
 STD_ROM_FN(snes_starfoxex)
 
 struct BurnDriver BurnDrvsnes_starfoxex = {
-	"snes_starfoxex", NULL, NULL, NULL, "2025",
+	"snes_starfoxex", "snes_starfox", NULL, NULL, "2025",
 	"Star Fox EX (Hack, v1.11.02b)\0", NULL, "kandowontu, Sunlitspace542", "SNES / Super Famicom",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_SNES, GBF_SHOOT, 0,
@@ -50393,6 +50492,25 @@ struct BurnDriver BurnDrvsnes_Xmascraze = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SNES, GBF_PLATFORM, 0,
 	SNESGetZipName, snes_XmascrazeRomInfo, snes_XmascrazeRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	512, 448, 4, 3
+};
+
+// X-Men - Mutant Apocalypse - Rebalanced (Hack)
+// https://www.romhacking.net/hacks/9838/
+static struct BurnRomInfo snes_XmenmarebRomDesc[] = {
+	{ "X-Men - Mutant Apocalypse - Rebalanced (2026)(BlastoBR).sfc", 2097152, 0x5836480c, BRF_ESS | BRF_PRG },
+};
+
+STD_ROM_PICK(snes_Xmenmareb)
+STD_ROM_FN(snes_Xmenmareb)
+
+struct BurnDriver BurnDrvsnes_Xmenmareb = {
+	"snes_xmenmareb", "snes_xmenma", NULL, NULL, "2026",
+	"X-Men - Mutant Apocalypse - Rebalanced (Hack)\0", NULL, "BlastoBR", "SNES / Super Famicom",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_SNES, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	SNESGetZipName, snes_XmenmarebRomInfo, snes_XmenmarebRomName, NULL, NULL, NULL, NULL, SNESInputInfo, SNESDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
 	512, 448, 4, 3
 };

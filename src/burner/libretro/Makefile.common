@@ -47,7 +47,6 @@ ARM9_CPU_DIR			:= $(FBNEO_CPU_DIR)/arm9
 E132XS_CPU_DIR			:= $(FBNEO_CPU_DIR)/e132xs
 F8_CPU_DIR				:= $(FBNEO_CPU_DIR)/f8
 H6280_CPU_DIR			:= $(FBNEO_CPU_DIR)/h6280
-H83002_CPU_DIR			:= $(FBNEO_CPU_DIR)/h83002
 HD6309_CPU_DIR			:= $(FBNEO_CPU_DIR)/hd6309
 HMCS40_CPU_DIR			:= $(FBNEO_CPU_DIR)/hmcs40
 I386_CPU_DIR			:= $(FBNEO_CPU_DIR)/i386
@@ -67,7 +66,6 @@ MIPS3_CPU_DIR			:= $(FBNEO_CPU_DIR)/mips3
 MIPS3_X64_DRC_CPU_DIR	:= $(MIPS3_CPU_DIR)/x64
 NEC_CPU_DIR				:= $(FBNEO_CPU_DIR)/nec
 PIC16C5X_CPU_DIR		:= $(FBNEO_CPU_DIR)/pic16c5x
-PSX_CPU_DIR		:= $(FBNEO_CPU_DIR)/psx
 SH2_CPU_DIR				:= $(FBNEO_CPU_DIR)/sh2
 SH4_CPU_DIR				:= $(FBNEO_CPU_DIR)/sh4
 S2650_CPU_DIR			:= $(FBNEO_CPU_DIR)/s2650
@@ -76,7 +74,6 @@ TLCS90_CPU_DIR			:= $(FBNEO_CPU_DIR)/tlcs90
 TLCS900_CPU_DIR			:= $(FBNEO_CPU_DIR)/tlcs900
 TMS32010_CPU_DIR		:= $(FBNEO_CPU_DIR)/tms32010
 TMS34010_CPU_DIR		:= $(FBNEO_CPU_DIR)/tms34
-TMS57002_CPU_DIR		:= $(FBNEO_CPU_DIR)/tms57002
 UPD7725_CPU_DIR			:= $(FBNEO_CPU_DIR)/upd7725
 UPD7810_CPU_DIR			:= $(FBNEO_CPU_DIR)/upd7810
 V60_CPU_DIR				:= $(FBNEO_CPU_DIR)/v60
@@ -129,7 +126,6 @@ FBNEO_CPU_DIRS := $(FBNEO_CPU_DIR) \
 	$(E132XS_CPU_DIR) \
 	$(F8_CPU_DIR) \
 	$(H6280_CPU_DIR) \
-	$(H83002_CPU_DIR) \
 	$(HD6309_CPU_DIR) \
 	$(HMCS40_CPU_DIR) \
 	$(I386_CPU_DIR) \
@@ -140,11 +136,9 @@ FBNEO_CPU_DIRS := $(FBNEO_CPU_DIR) \
 	$(MIPS3_CPU_DIR) \
 	$(NEC_CPU_DIR) \
 	$(PIC16C5X_CPU_DIR) \
-	$(PSX_CPU_DIR) \
 	$(SH2_CPU_DIR) \
 	$(SH4_CPU_DIR) \
 	$(TMS34010_CPU_DIR) \
-	$(TMS57002_CPU_DIR) \
 	$(UPD7725_CPU_DIR) \
 	$(V60_CPU_DIR) \
 	$(I8X41_CPU_DIR) \
@@ -236,7 +230,6 @@ INCLUDE_DIRS := $(FBNEO_BURNER_DIR)/win32 \
 	$(M6805_CPU_DIR) \
 	$(TLCS900_CPU_DIR) \
 	$(TMS32010_CPU_DIR) \
-	$(TMS57002_CPU_DIR) \
 	$(UPD7725_CPU_DIR) \
 	$(UPD7810_CPU_DIR) \
 	$(V60_CPU_DIR) \
@@ -245,7 +238,6 @@ INCLUDE_DIRS := $(FBNEO_BURNER_DIR)/win32 \
 	$(Z180_CPU_DIR) \
 	$(SH4_CPU_DIR) \
 	$(PIC16C5X_CPU_DIR) \
-	$(PSX_CPU_DIR) \
 	$(FBNEO_LIB_DIR)/zlib \
 	$(FBNEO_LIB_DIR)/lib7z \
 	$(FBNEO_LIB_DIR)/dr_libs \
@@ -274,7 +266,7 @@ ifeq (,$(findstring msvc,$(platform)))
 endif
 
 ifeq (,$(findstring msvc,$(platform)))
-	CXXFLAGS += -std=gnu++11
+	CXXFLAGS += -std=gnu++98
 endif
 
 #ifeq ($(USE_X64_DRC), 1)
@@ -327,24 +319,27 @@ endif
 ifeq ($(INCLUDE_7Z_SUPPORT), 1)
 	FBNEO_DEFINES += -DINCLUDE_7Z_SUPPORT -DZ7_PPMD_SUPPORT -DZ7_ST
 	SOURCES_CXX += $(FBNEO_BURNER_DIR)/un7z.cpp
-	ifneq ($(STATIC_LINKING), 1)
-		SOURCES_C += $(FBNEO_LIB_DIR)/lib7z/7zArcIn.c \
-			$(FBNEO_LIB_DIR)/lib7z/7zBuf.c \
-			$(FBNEO_LIB_DIR)/lib7z/7zCrc.c \
-			$(FBNEO_LIB_DIR)/lib7z/7zCrcOpt.c \
-			$(FBNEO_LIB_DIR)/lib7z/7zDec.c \
-			$(FBNEO_LIB_DIR)/lib7z/7zStream.c \
-			$(FBNEO_LIB_DIR)/lib7z/Bcj2.c \
-			$(FBNEO_LIB_DIR)/lib7z/Bra.c \
-			$(FBNEO_LIB_DIR)/lib7z/Bra86.c \
-			$(FBNEO_LIB_DIR)/lib7z/BraIA64.c \
-			$(FBNEO_LIB_DIR)/lib7z/CpuArch.c \
-			$(FBNEO_LIB_DIR)/lib7z/Delta.c \
-			$(FBNEO_LIB_DIR)/lib7z/Lzma2Dec.c \
-			$(FBNEO_LIB_DIR)/lib7z/LzmaDec.c \
-			$(FBNEO_LIB_DIR)/lib7z/Ppmd7.c \
-			$(FBNEO_LIB_DIR)/lib7z/Ppmd7Dec.c
-	endif
+	# Statically linked builds used to borrow the 7-Zip SDK from the frontend,
+	# but RetroArch dropped deps/7zip in favour of its own r7z_* reader, so the
+	# SzArEx_*/LookToRead2_* symbols are no longer exported. Always compile our
+	# own copy: archive members are only pulled in when still undefined at link
+	# time, so this cannot clash with a frontend that does provide them.
+	SOURCES_C += $(FBNEO_LIB_DIR)/lib7z/7zArcIn.c \
+		$(FBNEO_LIB_DIR)/lib7z/7zBuf.c \
+		$(FBNEO_LIB_DIR)/lib7z/7zCrc.c \
+		$(FBNEO_LIB_DIR)/lib7z/7zCrcOpt.c \
+		$(FBNEO_LIB_DIR)/lib7z/7zDec.c \
+		$(FBNEO_LIB_DIR)/lib7z/7zStream.c \
+		$(FBNEO_LIB_DIR)/lib7z/Bcj2.c \
+		$(FBNEO_LIB_DIR)/lib7z/Bra.c \
+		$(FBNEO_LIB_DIR)/lib7z/Bra86.c \
+		$(FBNEO_LIB_DIR)/lib7z/BraIA64.c \
+		$(FBNEO_LIB_DIR)/lib7z/CpuArch.c \
+		$(FBNEO_LIB_DIR)/lib7z/Delta.c \
+		$(FBNEO_LIB_DIR)/lib7z/Lzma2Dec.c \
+		$(FBNEO_LIB_DIR)/lib7z/LzmaDec.c \
+		$(FBNEO_LIB_DIR)/lib7z/Ppmd7.c \
+		$(FBNEO_LIB_DIR)/lib7z/Ppmd7Dec.c
 endif
 
 SOURCES_CXX += $(LIBRETRO_DIR)/libretro.cpp \
