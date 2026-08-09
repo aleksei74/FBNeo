@@ -82,7 +82,6 @@ enum {
 	GX_SPECIAL_TYPE4SD2 = 10,
 	GX_SPECIAL_SALMNDR2 = 12
 };
-
 enum {
 	GX_TILE_LAYOUT_5BPP = 0,
 	GX_TILE_LAYOUT_6BPP = 1,
@@ -521,35 +520,39 @@ static void gx_render_sound_segment(INT32 nSegmentEnd)
 		K054539Update(1, gx_soundbuf1, nSegmentLength);
 	}
 
-	UINT32 tms_cycle_step = nBurnSoundRate ? (UINT32)(((UINT64)12000000 << 16) / nBurnSoundRate) : (250 << 16);
+	if (tms_reset && (gx_dasp_enable || gx_dsp_force > 0)) {
+		UINT32 tms_cycle_step = nBurnSoundRate ? (UINT32)(((UINT64)12000000 << 16) / nBurnSoundRate) : (250 << 16);
 
-	for (INT32 i = 0; i < nSegmentLength; i++) {
-		INT16 dasp_in[4];
-		INT16 dasp_out[4] = { 0, 0, 0, 0 };
-		INT32 pos = i << 1;
+		for (INT32 i = 0; i < nSegmentLength; i++) {
+			INT16 dasp_in[4];
+			INT16 dasp_out[4] = { 0, 0, 0, 0 };
+			INT32 pos = i << 1;
 
-		dasp_in[0] = gx_clip_int32(gx_soundbuf0[pos + 0] / 2);
-		dasp_in[1] = gx_clip_int32(gx_soundbuf0[pos + 1] / 2);
-		dasp_in[2] = gx_clip_int32(gx_soundbuf1[pos + 0] / 2);
-		dasp_in[3] = gx_clip_int32(gx_soundbuf1[pos + 1] / 2);
+			dasp_in[0] = gx_clip_int32(gx_soundbuf0[pos + 0] / 2);
+			dasp_in[1] = gx_clip_int32(gx_soundbuf0[pos + 1] / 2);
+			dasp_in[2] = gx_clip_int32(gx_soundbuf1[pos + 0] / 2);
+			dasp_in[3] = gx_clip_int32(gx_soundbuf1[pos + 1] / 2);
 
-		if (tms_reset && (gx_dasp_enable || gx_dsp_force > 0)) {
 			tms_cycle_frac += tms_cycle_step;
 			INT32 tms_cycles = tms_cycle_frac >> 16;
 			tms_cycle_frac &= 0xffff;
 			DrvTms.process_sample(dasp_in, dasp_out, tms_cycles);
+
+			INT32 left = pSoundBuf[pos + 0] + gx_soundbuf0[pos + 0] + gx_soundbuf1[pos + 0];
+			INT32 right = pSoundBuf[pos + 1] + gx_soundbuf0[pos + 1] + gx_soundbuf1[pos + 1];
+
+			left += (dasp_out[0] * 3) / 10;
+			left += (dasp_out[2] * 3) / 10;
+			right += (dasp_out[1] * 3) / 10;
+			right += (dasp_out[3] * 3) / 10;
+
+			pSoundBuf[pos + 0] = gx_clip_int32(left);
+			pSoundBuf[pos + 1] = gx_clip_int32(right);
 		}
-
-		INT32 left = pSoundBuf[pos + 0] + gx_soundbuf0[pos + 0] + gx_soundbuf1[pos + 0];
-		INT32 right = pSoundBuf[pos + 1] + gx_soundbuf0[pos + 1] + gx_soundbuf1[pos + 1];
-
-		left += (dasp_out[0] * 3) / 10;
-		left += (dasp_out[2] * 3) / 10;
-		right += (dasp_out[1] * 3) / 10;
-		right += (dasp_out[3] * 3) / 10;
-
-		pSoundBuf[pos + 0] = gx_clip_int32(left);
-		pSoundBuf[pos + 1] = gx_clip_int32(right);
+	} else {
+		for (INT32 i = 0; i < nSegmentLength * 2; i++) {
+			pSoundBuf[i] = gx_clip_int32(pSoundBuf[i] + gx_soundbuf0[i] + gx_soundbuf1[i]);
+		}
 	}
 
 	gx_sound_buffer_pos = nSegmentEnd;
@@ -1111,11 +1114,13 @@ static void gx_speedhack_init()
 
 static INT32 gx_speedhack_active(INT32 pc)
 {
-	if ((DrvConfig[1] & 0x01) == 0) return 0;
+	INT32 count = gx_speedhack_pc_count;
+	if (count <= 0) return 0;
 
 	INT32 lo = 0;
-	INT32 hi = gx_speedhack_pc_count;
+	INT32 hi = count;
 	UINT32 target = (UINT32)pc;
+	if (target < gx_speedhack_pc[0] || target > gx_speedhack_pc[count - 1]) return 0;
 
 	while (lo < hi) {
 		INT32 mid = lo + ((hi - lo) >> 1);
@@ -1128,7 +1133,7 @@ static INT32 gx_speedhack_active(INT32 pc)
 		}
 	}
 
-	return lo < gx_speedhack_pc_count && gx_speedhack_pc[lo] == target;
+	return lo < count && gx_speedhack_pc[lo] == target;
 }
 
 static void gx_dma_write_long(UINT32 address, UINT32 data)
@@ -3457,13 +3462,14 @@ static void gx_sexyparo_draw_space_stars()
 // Gating: (a) the patch writes a MAGIC pattern into spare tile 0x5fe; the
 // remap fires only on an exact 64-byte match.  The original ROM holds fully
 // inked X-marker placeholder tiles in the spare region, so an any-ink check
-// would misfire on unpatched ROMs (it did) — an exact match cannot.
+// would misfire on unpatched ROMs (it did) - an exact match cannot.
 // (b) three anchor cells must hold the logo's Japanese shared codes in the
 // logo's relative geometry.  The game rebuilds this tilemap per scene at
 // different pages/offsets (title screen page 0, attract vocal-song title
 // page 1 shifted 4 columns left), so the whole VRAM is scanned for the
 // anchor pattern and the fix table is applied relative to each match.
 // Cell colours are preserved.
+
 static void tby_logo_tilemap_fix()
 {
 	const GxGameConfig *cfg = gx_get_game_config();
@@ -3633,9 +3639,13 @@ static INT32 DrvFrame()
 
 		SekOpen(0);
 		if (!gx_speedhack_enabled) {
-			gx_bios_vblank_hle_check(SekGetPC(-1));
+			if (gx_bios_hle_enabled) {
+				gx_bios_vblank_hle_check(SekGetPC(-1));
+			}
 			CPU_RUN(0, Sek);
-			gx_bios_vblank_hle_check(SekGetPC(-1));
+			if (gx_bios_hle_enabled) {
+				gx_bios_vblank_hle_check(SekGetPC(-1));
+			}
 		} else {
 			INT32 main_pc = SekGetPC(-1);
 			if (gx_bios_hle_enabled) {

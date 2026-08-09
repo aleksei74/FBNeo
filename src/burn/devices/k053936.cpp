@@ -145,10 +145,14 @@ void K053936PredrawTiles2(INT32 chip, UINT8 *gfx)
 {
 	UINT16 *ram = (UINT16*)ramptr[chip];
 	UINT16 *buf = (UINT16*)rambuf[chip];
+	UINT32 *ram32 = (UINT32*)ram;
+	UINT32 *buf32 = (UINT32*)buf;
 
 	for (INT32 i = 0; i < (nWidth[chip] / 16) * (nHeight[chip] / 16); i++)
 	{
-		if (ram[(i*2)+0] != buf[(i*2)+0] || ram[(i*2)+1] != buf[(i*2)+1])
+		UINT32 tiledata = ram32[i];
+
+		if (tiledata != buf32[i])
 		{
 			INT32 sx = (i % (nWidth[chip]/16)) * 16;
 			INT32 sy = i / (nWidth[chip]/16) * 16;
@@ -179,8 +183,7 @@ void K053936PredrawTiles2(INT32 chip, UINT8 *gfx)
 				dst += nWidth[chip];
 			}
 		}
-		buf[(i*2)+0] = ram[(i*2)+0];
-		buf[(i*2)+1] = ram[(i*2)+1];
+		buf32[i] = tiledata;
 	}
 }
 

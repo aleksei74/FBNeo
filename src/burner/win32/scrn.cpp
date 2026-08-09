@@ -387,7 +387,6 @@ static int CreateDatfileWindows(int bType)
 	if (bType == DAT_NES_ONLY) _sntprintf(szConsoleString, 64, _T(", NES Games only"));
 	if (bType == DAT_FDS_ONLY) _sntprintf(szConsoleString, 64, _T(", FDS Games only"));
 	if (bType == DAT_SNES_ONLY) _sntprintf(szConsoleString, 64, _T(", SNES Games only"));
-	if (bType == DAT_GBA_ONLY) _sntprintf(szConsoleString, 64, _T(", GBA Games only"));
 	if (bType == DAT_NGP_ONLY) _sntprintf(szConsoleString, 64, _T(", NeoGeo Pocket Games only"));
 	if (bType == DAT_CHANNELF_ONLY) _sntprintf(szConsoleString, 64, _T(", Fairchild Channel F Games only"));
 	if (bType == DAT_ASTROHOME_ONLY) _sntprintf(szConsoleString, 64, _T(", Bally Astrocade Games only"));
@@ -527,7 +526,6 @@ INT32 CreateAllDatfilesWindows(bool bSilent, const TCHAR* pszSpecDir)
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Bally Astrocade Games only"));
 	create_datfile(szFilename, DAT_ASTROHOME_ONLY);
 
-
 	return nRet;
 }
 
@@ -563,48 +561,6 @@ static void RefreshWindow(bool bInitialise)
 	}
 }
 
-static bool Ptblank2UsesMouseClip()
-{
-	if (!bDrvOkay) return false;
-
-	const char* name = BurnDrvGetTextA(DRV_NAME);
-	if (name == NULL) return false;
-
-	return !strncmp(name, "ptblank2", 8) || !strcmp(name, "gunbarl");
-}
-
-void Ptblank2UpdateMouseClip(bool enable)
-{
-	static bool clipped = false;
-
-	if (!enable || !bHasFocus || !Ptblank2UsesMouseClip() || hScrnWnd == NULL) {
-		if (clipped) {
-			ClipCursor(NULL);
-			clipped = false;
-		}
-		return;
-	}
-
-	RECT rect;
-	POINT points[2];
-
-	if (!GetClientRect(hScrnWnd, &rect)) return;
-
-	points[0].x = rect.left;
-	points[0].y = rect.top;
-	points[1].x = rect.right;
-	points[1].y = rect.bottom;
-
-	MapWindowPoints(hScrnWnd, NULL, points, 2);
-
-	rect.left = points[0].x;
-	rect.top = points[0].y;
-	rect.right = points[1].x;
-	rect.bottom = points[1].y;
-
-	if (ClipCursor(&rect)) clipped = true;
-}
-
 static LRESULT CALLBACK ScrnProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
 {
 	switch (Msg) {
@@ -614,11 +570,6 @@ static LRESULT CALLBACK ScrnProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPar
 		HANDLE_MSG(hWnd, WM_CLOSE,			OnClose);
 		HANDLE_MSG(hWnd, WM_DESTROY,		OnDestroy);
 		HANDLE_MSG(hWnd, WM_COMMAND,		OnCommand);
-
-		case WM_ACTIVATE: {
-			Ptblank2UpdateMouseClip(LOWORD(wParam) != WA_INACTIVE);
-			break;
-		}
 
 		// We can't use the macro from windowsx.h macro for this one
 		case WM_SYSCOMMAND: {
@@ -825,7 +776,6 @@ static int OnCreate(HWND, LPCREATESTRUCT)	// HWND hwnd, LPCREATESTRUCT lpCreateS
 static void OnActivateApp(HWND hwnd, BOOL fActivate, DWORD /* dwThreadId */)
 {
 	bHasFocus = fActivate;
-	Ptblank2UpdateMouseClip(fActivate);
 	if (!kNetGame && bAutoPause && !bAltPause && hInpdDlg == NULL && hInpCheatDlg == NULL && hInpDIPSWDlg == NULL) {
 		bRunPause = fActivate? 0 : 1;
 	}
@@ -1080,7 +1030,6 @@ static void OnClose(HWND)
 
 static void OnDestroy(HWND)
 {
-	Ptblank2UpdateMouseClip(false);
 	VidExit();							// Stop using video with the Window
 	hScrnWnd = NULL;					// Make sure handle is not used again
 }
@@ -4004,15 +3953,12 @@ static void OnSize(HWND hWnd, UINT state, int cx, int cy)
 			RefreshWindow(false);
 		}
 	}
-
-	Ptblank2UpdateMouseClip(state != SIZE_MINIMIZED);
 }
 
 static void OnEnterSizeMove(HWND)
 {
 	RECT rect;
 
-	Ptblank2UpdateMouseClip(false);
 	AudBlankSound();
 
 	GetClientRect(hScrnWnd, &rect);
@@ -4032,8 +3978,6 @@ static void OnExitSizeMove(HWND)
 	GetWindowRect(hScrnWnd, &rect);
 	nWindowPosX = rect.left;
 	nWindowPosY = rect.top;
-
-	Ptblank2UpdateMouseClip(true);
 }
 
 static void OnEnterIdle(HWND /*hwnd*/, UINT /*source*/, HWND /*hwndSource*/)
@@ -4048,8 +3992,6 @@ static void OnEnterIdle(HWND /*hwnd*/, UINT /*source*/, HWND /*hwndSource*/)
 
 static void OnEnterMenuLoop(HWND, BOOL)
 {
-	Ptblank2UpdateMouseClip(false);
-
 	if (!bModelessMenu) {
 		InputSetCooperativeLevel(false, bAlwaysProcessKeyboardInput);
 		AudBlankSound();
@@ -4065,8 +4007,6 @@ static void OnExitMenuLoop(HWND, BOOL)
 	if (!bModelessMenu) {
 		GameInpCheckMouse();
 	}
-
-	Ptblank2UpdateMouseClip(true);
 }
 
 static int ScrnRegister()

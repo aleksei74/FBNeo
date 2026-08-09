@@ -92,6 +92,7 @@ static INT32 System1NumTiles;
 static INT32 System1SpriteXOffset;
 static INT32 System1ColourProms = 0;
 static INT32 System1BankedRom = 0;
+static INT32 System1ExtendedBgTiles = 0;
 
 static INT32 IsSystem2 = 0;
 static INT32 Sys1UsePPI = 0; // For regulus/regulusu
@@ -6053,7 +6054,11 @@ static INT32 System1Init(INT32 nZ80Rom1Num, INT32 nZ80Rom1Size, INT32 nZ80Rom2Nu
 {
 	INT32 TilePlaneOffsets[3]  = { RGN_FRAC((nTileRomSize * nTileRomNum), 0, 3), RGN_FRAC((nTileRomSize * nTileRomNum), 1, 3), RGN_FRAC((nTileRomSize * nTileRomNum), 2, 3) };
 	INT32 nRet = 0, nLen, i, RomOffset;
+	INT32 nTileRomTotal = nTileRomNum * nTileRomSize;
+	INT32 nTempRomSize = 0x40000;
 	struct BurnRomInfo ri;
+
+	if (nTempRomSize < nTileRomTotal) nTempRomSize = nTileRomTotal;
 
 	System1NumTiles = (((nTileRomNum * nTileRomSize) / 3) * 8) / (8 * 8);
 	System1SpriteRomSize = (nSpriteRomNum + is_shtngmst) * nSpriteRomSize;
@@ -6066,7 +6071,7 @@ static INT32 System1Init(INT32 nZ80Rom1Num, INT32 nZ80Rom1Size, INT32 nZ80Rom2Nu
 	memset(Mem, 0, nLen);
 	MemIndex();
 
-	System1TempRom = (UINT8*)BurnMalloc(0x40000);
+	System1TempRom = (UINT8*)BurnMalloc(nTempRomSize);
 
 	// Load Z80 #1 Program roms
 	RomOffset = 0;
@@ -6118,7 +6123,7 @@ static INT32 System1Init(INT32 nZ80Rom1Num, INT32 nZ80Rom1Size, INT32 nZ80Rom2Nu
 	}
 
 	// Load and decode tiles
-	memset(System1TempRom, 0, 0x20000);
+	memset(System1TempRom, 0, nTileRomTotal);
 	for (i = 0; i < nTileRomNum; i++) {
 		nRet = BurnLoadRom(System1TempRom + (i * nTileRomSize), i + RomOffset, 1);
 	}
@@ -6903,6 +6908,23 @@ static INT32 TokisensaInit()
 	return nRet;
 }
 
+static INT32 WbmlKoreanInit()
+{
+	INT32 nRet;
+
+	System1ColourProms = 1;
+	System1BankedRom = 1;
+	System1ExtendedBgTiles = 1;
+
+	DecodeFunction = NULL;
+
+	nRet = System2Init(3, 0x8000, 1, 0x8000, 3, 0x20000, 4, 0x8000, 1);
+
+	System1ScrollXRam = NULL;
+
+	return nRet;
+}
+
 static INT32 UfosensiInit()
 {
 	EnforceBars = 1;
@@ -6957,6 +6979,7 @@ static INT32 System1Exit()
 	System1SpriteXOffset = 0;
 	System1ColourProms = 0;
 	System1BankedRom = 0;
+	System1ExtendedBgTiles = 0;
 	System1BankSwitch = 0;
 	System1BgBankLatch = 0;
 	System1BgBank = 0;
@@ -7102,6 +7125,29 @@ static void System1DrawSprites()
 	}
 }
 
+static inline void System1GetTileInfo(INT32 TileData, INT32 *Code, INT32 *Colour)
+{
+	if (System1ExtendedBgTiles && (TileData & 0x6000) == 0x4000) {
+		*Code = 0x2000 | (TileData & 0x01ff);
+		*Colour = 0x38 | ((TileData >> 9) & 0x03) | ((TileData >> 10) & 0x04);
+		return;
+	}
+
+	INT32 TileCode = ((TileData >> 4) & 0x800) | (TileData & 0x7ff);
+	INT32 TileColour = (TileData >> 5) & 0x3f;
+
+	if (System1ExtendedBgTiles) {
+		TileCode |= (TileData & 0x6000) >> 1;
+
+		if (TileCode >= 0x1000 && TileCode < 0x2000) {
+			TileColour = 0;
+		}
+	}
+
+	*Code = TileCode;
+	*Colour = TileColour;
+}
+
 static void System1DrawBgLayer(INT32 PriorityDraw)
 {
 	INT32 Offs, sx, sy;
@@ -7120,9 +7166,7 @@ static void System1DrawBgLayer(INT32 PriorityDraw)
 		for (Offs = 0; Offs < 0x800; Offs += 2) {
 			INT32 Code, Colour;
 
-			Code = (System1BgRam[Offs + 1] << 8) | System1BgRam[Offs + 0];
-			Code = ((Code >> 4) & 0x800) | (Code & 0x7ff);
-			Colour = ((Code >> 5) & 0x3f);
+			System1GetTileInfo((System1BgRam[Offs + 1] << 8) | System1BgRam[Offs + 0], &Code, &Colour);
 
 			sx = (Offs >> 1) % 32;
 			sy = (Offs >> 1) / 32;
@@ -7155,9 +7199,7 @@ static void System1DrawBgLayer(INT32 PriorityDraw)
 			if ((System1BgRam[Offs + 1] & 0x08) == PriorityDraw) {
 				INT32 Code, Colour;
 
-				Code = (System1BgRam[Offs + 1] << 8) | System1BgRam[Offs + 0];
-				Code = ((Code >> 4) & 0x800) | (Code & 0x7ff);
-				Colour = ((Code >> 5) & 0x3f);
+				System1GetTileInfo((System1BgRam[Offs + 1] << 8) | System1BgRam[Offs + 0], &Code, &Colour);
 
 				sx = (Offs >> 1) % 32;
 				sy = (Offs >> 1) / 32;
@@ -7198,9 +7240,7 @@ static void System1DrawFgLayer(INT32 PriorityDraw)
 		INT32 Code, Colour;
 
 		if ((System1FgRam[Offs + 1] & 0x08) == PriorityDraw) {
-			Code = (System1FgRam[Offs + 1] << 8) | System1FgRam[Offs + 0];
-			Code = ((Code >> 4) & 0x800) | (Code & 0x7ff);
-			Colour = (Code >> 5) & 0x3f;
+			System1GetTileInfo((System1FgRam[Offs + 1] << 8) | System1FgRam[Offs + 0], &Code, &Colour);
 
 			sx = (Offs >> 1) % 32;
 			sy = (Offs >> 1) / 32;
@@ -7314,14 +7354,14 @@ static void System2DrawFgLayer()
 
 		sx = (offs / 2) % 32;
 		sy = (offs / 2) / 32;
-		code = System1VideoRam[offs] | (System1VideoRam[offs + 1] << 8);
-		code = ((code >> 4) & 0x800) | (code & 0x7ff);
+		INT32 color;
+		System1GetTileInfo(System1VideoRam[offs] | (System1VideoRam[offs + 1] << 8), &code, &color);
 		sx *= 8;
 		sy *= 8;
-		Render8x8Tile_Mask_Clip(pTransDraw, code, sx      , sy      , ((code >> 5) & 0x3f), 3, 0, 512, System1Tiles);
-		Render8x8Tile_Mask_Clip(pTransDraw, code, sx - 256, sy      , ((code >> 5) & 0x3f), 3, 0, 512, System1Tiles);
-		Render8x8Tile_Mask_Clip(pTransDraw, code, sx      , sy - 256, ((code >> 5) & 0x3f), 3, 0, 512, System1Tiles);
-		Render8x8Tile_Mask_Clip(pTransDraw, code, sx - 256, sy - 256, ((code >> 5) & 0x3f), 3, 0, 512, System1Tiles);
+		Render8x8Tile_Mask_Clip(pTransDraw, code, sx      , sy      , color, 3, 0, 512, System1Tiles);
+		Render8x8Tile_Mask_Clip(pTransDraw, code, sx - 256, sy      , color, 3, 0, 512, System1Tiles);
+		Render8x8Tile_Mask_Clip(pTransDraw, code, sx      , sy - 256, color, 3, 0, 512, System1Tiles);
+		Render8x8Tile_Mask_Clip(pTransDraw, code, sx - 256, sy - 256, color, 3, 0, 512, System1Tiles);
 	}
 }
 
@@ -7354,10 +7394,10 @@ static void System2DrawBgLayer(INT32 trasp)
 				if (x > 256) x -= 512;
 				if (y > 224) y -= 512;
 
-				INT32 code = source[offs * 2 + 0] + (source[offs * 2 + 1] << 8);
-				INT32 color = (code >> 5) & 0x3f;
-				INT32 priority = code & 0x800;
-				code = ((code >> 4) & 0x800) | (code & 0x7ff);
+				INT32 tiledata = source[offs * 2 + 0] + (source[offs * 2 + 1] << 8);
+				INT32 code, color;
+				INT32 priority = tiledata & 0x800;
+				System1GetTileInfo(tiledata, &code, &color);
 
 				if (!trasp)
 				{
@@ -8476,15 +8516,15 @@ struct BurnDriver BurnDrvWbmlh = {
 // Wonder Boy: Monster Land (Korean Translation bootleg of New Ver., MC-8123, 317-0043)
 
 static struct BurnRomInfo wbmldkRomDesc[] = {
-	{ "decrypted_epr-11031a.90",	0x08000, 0xaba42eb7, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
-	{ "decrypted_epr-11032k.91",	0x08000, 0xeacdf10e, BRF_ESS | BRF_PRG }, //  1
+	{ "decrypted_epr-11031ak.90",	0x08000, 0xdf434f42, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
+	{ "decrypted_epr-11032k.91",	0x08000, 0xcfb031c0, BRF_ESS | BRF_PRG }, //  1
 	{ "decrypted_epr-11033.92",		0x08000, 0x39e07286, BRF_ESS | BRF_PRG }, //  2
 
 	{ "epr-11037.126",				0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
 
-	{ "epr-11034k.4",				0x08000, 0x7e631c73, BRF_GRA },           //  4 Tiles
-	{ "epr-11035k.5",				0x08000, 0x4c67a9a6, BRF_GRA },           //  5
-	{ "epr-11036k.6",				0x08000, 0x0440b0c7, BRF_GRA },           //  6
+	{ "epr-11034k.4",				0x20000, 0xb1e99f88, BRF_GRA },           //  4 Tiles
+	{ "epr-11035k.5",				0x20000, 0xfad6d391, BRF_GRA },           //  5
+	{ "epr-11036k.6",				0x20000, 0xe5b7dd2c, BRF_GRA },           //  6
 
 	{ "epr-11028.87",				0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
 	{ "epr-11027.86",				0x08000, 0x277d8f1d, BRF_GRA },           //  8
@@ -8506,22 +8546,22 @@ struct BurnDriver BurnDrvWbmldk = {
 	L"Wonder Boy: Monster Land (Korean Translation bootleg of New Ver., MC-8123, 317-0043)\0\uC6D0\uB354 \uBCF4\uC774: \uBAAC\uC2A4\uD130 \uB79C\uB4DC (\uC0C8 \uBC84\uC804\uC758 \uD55C\uAD6D\uC5B4 \uBC88\uC5ED \uBCF5\uC81C\uD488., MC-8123, 317-0043)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_SEGA_SYSTEM1, GBF_PLATFORM, 0,
 	NULL, wbmldkRomInfo, wbmldkRomName, NULL, NULL, NULL, NULL, MyheroInputInfo, WbmlDIPInfo,
-	TokisensaInit, System1Exit, System1Frame, System2Render, System1Scan,
+	WbmlKoreanInit, System1Exit, System1Frame, System2Render, System1Scan,
 	NULL, 0x800, 256, 224, 4, 3
 };
 
 // Wonder Boy: Monster Land (Korean Translation bootleg of Old Ver., MC-8123, 317-0043)
 
 static struct BurnRomInfo wbmlkodRomDesc[] = {
-	{ "decrypted_epr-11031.90",		0x08000, 0x940b35bf, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
-	{ "decrypted_epr-11032k.91",	0x08000, 0xeacdf10e, BRF_ESS | BRF_PRG }, //  1
+	{ "decrypted_epr-11031k.90",	0x08000, 0xe0ec544a, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
+	{ "decrypted_epr-11032k.91",	0x08000, 0xcfb031c0, BRF_ESS | BRF_PRG }, //  1
 	{ "decrypted_epr-11033.92",		0x08000, 0x39e07286, BRF_ESS | BRF_PRG }, //  2
 
 	{ "epr-11037.126",				0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
 
-	{ "epr-11034k.4",				0x08000, 0x7e631c73, BRF_GRA },           //  4 Tiles
-	{ "epr-11035k.5",				0x08000, 0x4c67a9a6, BRF_GRA },           //  5
-	{ "epr-11036k.6",				0x08000, 0x0440b0c7, BRF_GRA },           //  6
+	{ "epr-11034k.4",				0x20000, 0xb1e99f88, BRF_GRA },           //  4 Tiles
+	{ "epr-11035k.5",				0x20000, 0xfad6d391, BRF_GRA },           //  5
+	{ "epr-11036k.6",				0x20000, 0xe5b7dd2c, BRF_GRA },           //  6
 
 	{ "epr-11028.87",				0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
 	{ "epr-11027.86",				0x08000, 0x277d8f1d, BRF_GRA },           //  8
@@ -8543,6 +8583,6 @@ struct BurnDriver BurnDrvWbmlkod = {
 	L"Wonder Boy: Monster Land (Korean Translation bootleg of Old Ver., MC-8123, 317-0043)\0\uC6D0\uB354 \uBCF4\uC774: \uBAAC\uC2A4\uD130 \uB79C\uB4DC (\uAD6C \uBC84\uC804\uC758 \uD55C\uAD6D\uC5B4 \uBC88\uC5ED \uBCF5\uC81C\uD488., MC-8123, 317-0043)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_SEGA_SYSTEM1, GBF_PLATFORM, 0,
 	NULL, wbmlkodRomInfo, wbmlkodRomName, NULL, NULL, NULL, NULL, MyheroInputInfo, WbmlDIPInfo,
-	TokisensaInit, System1Exit, System1Frame, System2Render, System1Scan,
+	WbmlKoreanInit, System1Exit, System1Frame, System2Render, System1Scan,
 	NULL, 0x800, 256, 224, 4, 3
 };

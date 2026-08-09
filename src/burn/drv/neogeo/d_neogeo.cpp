@@ -16995,7 +16995,7 @@ struct BurnDriver BurnDrvAdkw = {
 	"adkw", NULL, "neogeo", NULL, "1995",
 	"ADK World (Neo CD conversion)\0", NULL, "Alpha Denshi Co.", "Neo Geo MVS",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_MINIGAMES, 0,
+	BDF_GAME_WORKING | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_MINIGAMES, 0,
 	NULL, adkwRomInfo, adkwRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000,	320, 224, 4, 3
@@ -30455,6 +30455,36 @@ struct BurnDriver BurnDrvBjourneyk = {
 	320, 224, 4, 3
 };
 
+// Legend of Success Joe / Ashita no Joe Densetsu (Korean Translation)
+
+static struct BurnRomInfo legendoskRomDesc[] = {
+	{ "029-p1k.p1",   0x080000, 0xe5eca49c, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
+
+	{ "029-s1k.s1",   0x020000, 0x32d4ca08, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "029-c1k.c1",   0x100000, 0xccc5eec3, 3 | BRF_GRA },           //  2 Sprite data 		/ TC538200
+	{ "029-c2k.c2",   0x100000, 0x0ad216e7, 3 | BRF_GRA },           //  3 					/ TC538200
+	{ "029-c3k.c3",   0x100000, 0x437d2dbf, 3 | BRF_GRA },           //  4 					/ TC538200
+	{ "029-c4k.c4",   0x100000, 0x90538956, 3 | BRF_GRA },           //  5 					/ TC538200
+
+	{ "029-m1k.m1",   0x020000, 0x83f401f6, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code 		/ TC531001
+
+	{ "029-v1.v1",    0x100000, 0x85065452, 5 | BRF_SND },           //  7 Sound data 		/ TC538200
+};
+
+STDROMPICKEXT(legendosk, legendosk, neogeo)
+STD_ROM_FN(legendosk)
+
+struct BurnDriver BurnDrvLegendosk = {
+	"legendosk", "legendos", "neogeo", NULL, "2026",
+	"Legend of Success Joe / Ashita no Joe Densetsu (Korean Translation)\0", NULL, "SNK / Wave", "Neo Geo MVS",
+	L"Legend of Success Joe / Ashitano Joe Densetsu\0\uB808\uC804\uB4DC \uC624\uBE0C \uC11D\uC138\uC2A4 \uC8E0 / \uB0B4\uC77C\uC758 \uC8E0 \uC804\uC124 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
+	NULL, legendoskRomInfo, legendoskRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Fatal Fury - King of Fighters / Garou Densetsu - Shukumei no Tatakai (Korean Translation)
 
 static struct BurnRomInfo fatfury1kRomDesc[] = {
@@ -31063,6 +31093,41 @@ struct BurnDriver BurnDrvWjammersk = {
 	NULL, wjammerskRomInfo, wjammerskRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 - Haruka-naru Tatakai (Korean Translation)
+
+static struct BurnRomInfo fatfury3kRomDesc[] = {
+	{ "069-p1k.p1",   0x100000, 0xec113189, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
+	{ "069-sp2.sp2",  0x200000, 0xdbe963ed, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
+
+	{ "069-s1k.s1",   0x020000, 0x805d1bf7, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "069-c1k.c1",   0x400000, 0x457867ef, 3 | BRF_GRA },           //  3 Sprite data		/ TC5332205
+	{ "069-c2k.c2",   0x400000, 0xa4f0b619, 3 | BRF_GRA },           //  4 					/ TC5332205
+	{ "069-c3k.c3",   0x400000, 0xcd48d3c2, 3 | BRF_GRA },           //  5 					/ TC5332205
+	{ "069-c4k.c4",   0x400000, 0x810b71f6, 3 | BRF_GRA },           //  6 					/ TC5332205
+	{ "069-c5k.c5",   0x200000, 0xd701785c, 3 | BRF_GRA },           //  7 					/ TC5332205
+	{ "069-c6k.c6",   0x200000, 0xe9fdeaf6, 3 | BRF_GRA },           //  8 					/ TC5332205
+
+	{ "069-m1.m1",    0x020000, 0xfce72926, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code			/ TC531001
+
+	{ "069-v1.v1",    0x400000, 0x2bdbd4db, 5 | BRF_SND },           // 10 Sound data		/ TC5332204
+	{ "069-v2.v2",    0x400000, 0xa698a487, 5 | BRF_SND },           // 11 					/ TC5332204
+	{ "069-v3.v3",    0x200000, 0x581c5304, 5 | BRF_SND },           // 12 					/ TC5316200
+};
+
+STDROMPICKEXT(fatfury3k, fatfury3k, neogeo)
+STD_ROM_FN(fatfury3k)
+
+struct BurnDriver BurnDrvFatfury3k = {
+	"fatfury3k", "fatfury3", "neogeo", NULL, "2026",
+	"Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 - Haruka-naru Tatakai (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 - Haruka-naru Tatakai (Korean Translation)\0uD398\uC774\uD138 \uD4E8\uB9AC 3 - \uB85C\uB4DC \uD22C \uB354 \uD30C\uC774\uB110 \uBE45\uD1A0\uB9AC / \uC544\uB791\uC804\uC124 3 - \uC544\uB4DD\uD55C \uC2F8\uC6C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_FATFURY,
+	NULL, fatfury3kRomInfo, fatfury3kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
 };
 
 // Street Hoop / Street Slam / Dunk Dream (Korean Translation)

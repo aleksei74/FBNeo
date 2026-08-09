@@ -55,6 +55,7 @@ struct _ga20_state
 	INT32 rom_size;
 	UINT16 regs[0x40];
 	struct IremGA20_channel_def channel[4];
+	INT16 volume_table[4][256];
 	INT32 frequency;
 	double gain;
 	INT32 output_dir;
@@ -70,6 +71,15 @@ static UINT32 computed_steps;
 
 static INT32 nNumChips;
 
+static void iremga20_rebuild_volume_table(ga20_state *state, INT32 channel)
+{
+	const INT32 volume = state->channel[channel].volume;
+
+	for (INT32 sample = 0; sample < 256; sample++) {
+		state->volume_table[channel][sample] = (INT16)((sample - 0x80) * volume);
+	}
+}
+
 void iremga20_update(INT32 device, INT16 *buffer, INT32 length)
 {
 #if defined FBNEO_DEBUG
@@ -78,22 +88,25 @@ void iremga20_update(INT32 device, INT16 *buffer, INT32 length)
 #endif
 
 	chip = &chips[device];
-	UINT32 rate[4], pos[4], frac[4], end[4], vol[4], play[4];
+	UINT32 step[4], pos[4], frac[4], end[4], play[4];
 	UINT8 *pSamples;
 	INT32 i, sampleout;
 
 	/* precache some values */
 	for (i=0; i < 4; i++)
 	{
-		rate[i] = chip->channel[i].rate;
+		step[i] = chip->channel[i].rate * computed_steps;
 		pos[i] = chip->channel[i].pos;
 		frac[i] = chip->channel[i].frac;
 		end[i] = chip->channel[i].end - 0x20;
-		vol[i] = chip->channel[i].volume;
 		play[i] = chip->channel[i].play;
 	}
+	if (!(play[0] | play[1] | play[2] | play[3])) return;
 
 	pSamples = chip->rom;
+	const INT32 outputLeft = chip->output_dir & BURN_SND_ROUTE_LEFT;
+	const INT32 outputRight = chip->output_dir & BURN_SND_ROUTE_RIGHT;
+	const double gain = chip->gain;
 
 	for (i = 0; i < length; i++, buffer+=2)
 	{
@@ -102,32 +115,32 @@ void iremga20_update(INT32 device, INT16 *buffer, INT32 length)
 		// update the 4 channels inline
 		if (play[0])
 		{
-			sampleout += (pSamples[pos[0]] - 0x80) * vol[0];
-			frac[0] += rate[0] * computed_steps;
+			sampleout += chip->volume_table[0][pSamples[pos[0]]];
+			frac[0] += step[0];
 			pos[0] += frac[0] >> 24;
 			frac[0] &= 0xffffff;
 			play[0] = (pos[0] < end[0]);
 		}
 		if (play[1])
 		{
-			sampleout += (pSamples[pos[1]] - 0x80) * vol[1];
-			frac[1] += rate[1] * computed_steps;
+			sampleout += chip->volume_table[1][pSamples[pos[1]]];
+			frac[1] += step[1];
 			pos[1] += frac[1] >> 24;
 			frac[1] &= 0xffffff;
 			play[1] = (pos[1] < end[1]);
 		}
 		if (play[2])
 		{
-			sampleout += (pSamples[pos[2]] - 0x80) * vol[2];
-			frac[2] += rate[2] * computed_steps;
+			sampleout += chip->volume_table[2][pSamples[pos[2]]];
+			frac[2] += step[2];
 			pos[2] += frac[2] >> 24;
 			frac[2] &= 0xffffff;
 			play[2] = (pos[2] < end[2]);
 		}
 		if (play[3])
 		{
-			sampleout += (pSamples[pos[3]] - 0x80) * vol[3];
-			frac[3] += rate[3] * computed_steps;
+			sampleout += chip->volume_table[3][pSamples[pos[3]]];
+			frac[3] += step[3];
 			pos[3] += frac[3] >> 24;
 			frac[3] &= 0xffffff;
 			play[3] = (pos[3] < end[3]);
@@ -135,20 +148,11 @@ void iremga20_update(INT32 device, INT16 *buffer, INT32 length)
 
 		sampleout >>= 2;
 
-		INT32 nLeftSample = 0, nRightSample = 0;
-		
-		if ((chip->output_dir & BURN_SND_ROUTE_LEFT) == BURN_SND_ROUTE_LEFT) {
-			nLeftSample += (INT32)(sampleout * chip->gain);
-		}
-		if ((chip->output_dir & BURN_SND_ROUTE_RIGHT) == BURN_SND_ROUTE_RIGHT) {
-			nRightSample += (INT32)(sampleout * chip->gain);
-		}
-		
-		nLeftSample = BURN_SND_CLIP(nLeftSample);
-		nRightSample = BURN_SND_CLIP(nRightSample);
-		
-		buffer[0] = BURN_SND_CLIP(buffer[0] + nLeftSample);
-		buffer[1] = BURN_SND_CLIP(buffer[1] + nRightSample);
+		const INT32 routedSample = BURN_SND_CLIP((INT32)(sampleout * gain));
+		buffer[0] = BURN_SND_CLIP(buffer[0] + (outputLeft ? routedSample : 0));
+		buffer[1] = BURN_SND_CLIP(buffer[1] + (outputRight ? routedSample : 0));
+
+		if (!(play[0] | play[1] | play[2] | play[3])) break;
 	}
 
 	/* update the regs now */
@@ -197,6 +201,7 @@ void iremga20_write(INT32 device, INT32 offset, INT32 data)
 
 		case 5: //AT: gain control
 			chip->channel[channel].volume = (data * MAX_VOL) / (data + 10);
+			iremga20_rebuild_volume_table(chip, channel);
 			break;
 
 		case 6: //AT: this is always written 2(enabling both channels?)
@@ -245,6 +250,7 @@ void iremga20_reset(INT32 device)
 		chip->channel[i].frac = 0;
 		chip->channel[i].end = 0;
 		chip->channel[i].volume = 0;
+		iremga20_rebuild_volume_table(chip, i);
 		chip->channel[i].pan = 0;
 		chip->channel[i].effect = 0;
 		chip->channel[i].play = 0;
@@ -315,6 +321,14 @@ void iremga20_scan(INT32 nAction, INT32 *pnMin)
 			chip = &chips[i];
 			SCAN_VAR(chip->channel);
 			SCAN_VAR(chip->regs);
+		}
+
+		if (nAction & ACB_WRITE) {
+			for (INT32 i = 0; i < MAX_GA20; i++) {
+				for (INT32 channel = 0; channel < 4; channel++) {
+					iremga20_rebuild_volume_table(&chips[i], channel);
+				}
+			}
 		}
 	}
 }

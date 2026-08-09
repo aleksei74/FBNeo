@@ -45,6 +45,19 @@ static void h8_sci0_receive_next()
 	}
 }
 
+static void h8_sci1_receive_next()
+{
+	if (!h8_state.sci1_external || !(h8_state.per_regs[0xba] & 0x10) ||
+		(h8_state.per_regs[0xbc] & 0x40) ||
+		h8_state.sci1_rx_head == h8_state.sci1_rx_tail) return;
+
+	h8_state.per_regs[0xbd] = h8_state.sci1_rx[h8_state.sci1_rx_tail++];
+	h8_state.per_regs[0xbc] |= 0x40;
+	if (h8_state.per_regs[0xba] & 0x40) {
+		h8_3002_InterruptRequest(&h8_state, 57, 1);
+	}
+}
+
 static const UINT8 h8_timer16_base[5] = { 0x64, 0x6e, 0x78, 0x82, 0x92 };
 
 static INT32 h8_timer16_channel(UINT8 offset)
@@ -74,6 +87,14 @@ static UINT8 h8_mem_read8_handler(UINT32 address)
 		}
 		if (h8_state.sci0_external && offset == 0xb5) {
 			return h8_state.per_regs[0xb5];
+		}
+		if (h8_state.sci1_external && offset == 0xbc) {
+			UINT8 status = h8_state.per_regs[0xbc] | 0x84;
+			h8_state.sci1_ssr_read = status;
+			return status;
+		}
+		if (h8_state.sci1_external && offset == 0xbd) {
+			return h8_state.per_regs[0xbd];
 		}
 
 		if (channel >= 0) {
@@ -124,6 +145,27 @@ static void h8_mem_write8_handler(UINT32 address, UINT8 data)
 			h8_state.sci0_ssr_read &= status;
 			h8_state.per_regs[0xb4] = status;
 			h8_sci0_receive_next();
+			if (h8_write) h8_write(address, data);
+			return;
+		}
+		if (h8_state.sci1_external && offset == 0xba && (data & 0x80)) {
+			h8_3002_InterruptRequest(&h8_state, 58, 1);
+		}
+		if (h8_state.sci1_external && offset == 0xba && (data & 0x04)) {
+			h8_3002_InterruptRequest(&h8_state, 59, 1);
+		}
+		if (h8_state.sci1_external && offset == 0xba) {
+			h8_state.per_regs[0xba] = data;
+			h8_sci1_receive_next();
+			if (h8_write) h8_write(address, data);
+			return;
+		}
+		if (h8_state.sci1_external && offset == 0xbc) {
+			UINT8 status = h8_state.per_regs[0xbc] | 0x84;
+			status = (status & (~h8_state.sci1_ssr_read | data | 0x84));
+			h8_state.sci1_ssr_read &= status;
+			h8_state.per_regs[0xbc] = status;
+			h8_sci1_receive_next();
 			if (h8_write) h8_write(address, data);
 			return;
 		}
@@ -465,6 +507,7 @@ void H83002Reset()
 	memset(&h8_state, 0, sizeof(h8_state));
 	h8_state.per_regs[0x60] = 0xe0;
 	h8_state.per_regs[0xb4] = 0x84;
+	h8_state.per_regs[0xbc] = 0x84;
 	for (INT32 channel = 0; channel < 5; channel++) {
 		UINT8 base = h8_timer16_base[channel];
 		h8_state.per_regs[base + 2] = 0xf8;
@@ -580,6 +623,26 @@ void H83002SCI0Receive(UINT8 data)
 	h8_state.sci0_rx[h8_state.sci0_rx_head] = data;
 	h8_state.sci0_rx_head = next;
 	h8_sci0_receive_next();
+}
+
+void H83002SCI1Enable(INT32 enabled)
+{
+	h8_state.sci1_external = enabled != 0;
+	h8_state.sci1_rx_head = 0;
+	h8_state.sci1_rx_tail = 0;
+	h8_state.sci1_ssr_read = 0;
+	h8_state.per_regs[0xbc] = 0x84;
+}
+
+void H83002SCI1Receive(UINT8 data)
+{
+	if (!h8_state.sci1_external) return;
+
+	UINT8 next = h8_state.sci1_rx_head + 1;
+	if (next == h8_state.sci1_rx_tail) return;
+	h8_state.sci1_rx[h8_state.sci1_rx_head] = data;
+	h8_state.sci1_rx_head = next;
+	h8_sci1_receive_next();
 }
 
 INT32 H83002Scan(INT32 nAction)

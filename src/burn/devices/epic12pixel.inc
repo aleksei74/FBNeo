@@ -34,6 +34,15 @@
 			{
 #endif
 
+#if FAST_BLEND_LUT == 1
+			const UINT32 dest_pen = *bmp;
+			*bmp =
+				(blend_table[(((pen >> 19) & 0x1f) << 5) | ((dest_pen >> 19) & 0x1f)] << 19) |
+				(blend_table[(((pen >> 11) & 0x1f) << 5) | ((dest_pen >> 11) & 0x1f)] << 11) |
+				(blend_table[(((pen >>  3) & 0x1f) << 5) | ((dest_pen >>  3) & 0x1f)] <<  3) |
+				(pen & 0x20000000);
+#else
+
 			// convert source to clr
 			pen_to_clr(pen, &s_clr.trgb);
 			//s_clr.u32 = (pen >> 3); // using the union is actually significantly slower than our pen_to_clr to function!
@@ -56,15 +65,15 @@
 					//g_profiler.start(PROFILER_USER1);
 					// this is used extensively in the games (ingame, futari title screens etc.)
 
-					s_clr.trgb.r = epic12_device_colrtable_add[salpha_table[(s_clr.trgb.r)]][dalpha_table[(d_clr.trgb.r)]];
-					s_clr.trgb.g = epic12_device_colrtable_add[salpha_table[(s_clr.trgb.g)]][dalpha_table[(d_clr.trgb.g)]];
-					s_clr.trgb.b = epic12_device_colrtable_add[salpha_table[(s_clr.trgb.b)]][dalpha_table[(d_clr.trgb.b)]];
+					s_clr.trgb.r = blend_table[(s_clr.trgb.r << 5) | d_clr.trgb.r];
+					s_clr.trgb.g = blend_table[(s_clr.trgb.g << 5) | d_clr.trgb.g];
+					s_clr.trgb.b = blend_table[(s_clr.trgb.b << 5) | d_clr.trgb.b];
 					#elif _DMODE == 1
 					//g_profiler.start(PROFILER_USER2);
 					// futari ~7%
-					s_clr.trgb.r = epic12_device_colrtable_add[salpha_table[(s_clr.trgb.r)]][epic12_device_colrtable[(s_clr.trgb.r)][(d_clr.trgb.r)]];
-					s_clr.trgb.g = epic12_device_colrtable_add[salpha_table[(s_clr.trgb.g)]][epic12_device_colrtable[(s_clr.trgb.g)][(d_clr.trgb.g)]];
-					s_clr.trgb.b = epic12_device_colrtable_add[salpha_table[(s_clr.trgb.b)]][epic12_device_colrtable[(s_clr.trgb.b)][(d_clr.trgb.b)]];
+					s_clr.trgb.r = blend_table[(s_clr.trgb.r << 5) | d_clr.trgb.r];
+					s_clr.trgb.g = blend_table[(s_clr.trgb.g << 5) | d_clr.trgb.g];
+					s_clr.trgb.b = blend_table[(s_clr.trgb.b << 5) | d_clr.trgb.b];
 					#elif _DMODE == 2
 					//g_profiler.start(PROFILER_USER3);
 					clr_mul_fixed(&clr0.trgb, s_alpha, &s_clr.trgb);
@@ -81,9 +90,9 @@
 					#elif _DMODE == 5
 					// futari black character select ~13%
 					//g_profiler.start(PROFILER_USER6);
-					s_clr.trgb.r =  epic12_device_colrtable_add[salpha_table[(s_clr.trgb.r)]][epic12_device_colrtable_rev[(s_clr.trgb.r)][(d_clr.trgb.r)]];
-					s_clr.trgb.g =  epic12_device_colrtable_add[salpha_table[(s_clr.trgb.g)]][epic12_device_colrtable_rev[(s_clr.trgb.g)][(d_clr.trgb.g)]];
-					s_clr.trgb.b =  epic12_device_colrtable_add[salpha_table[(s_clr.trgb.b)]][epic12_device_colrtable_rev[(s_clr.trgb.b)][(d_clr.trgb.b)]];
+					s_clr.trgb.r = blend_table[(s_clr.trgb.r << 5) | d_clr.trgb.r];
+					s_clr.trgb.g = blend_table[(s_clr.trgb.g << 5) | d_clr.trgb.g];
+					s_clr.trgb.b = blend_table[(s_clr.trgb.b << 5) | d_clr.trgb.b];
 
 					#elif _DMODE == 6
 					//g_profiler.start(PROFILER_USER7);
@@ -104,9 +113,9 @@
 			//  g_profiler.start(PROFILER_USER4);
 					#if _DMODE == 0
 					// this is used heavily on espgal2 highscore screen (~28%) optimized to avoid use of temp clr0 variable
-					s_clr.trgb.r = epic12_device_colrtable_add[epic12_device_colrtable[(d_clr.trgb.r)][(s_clr.trgb.r)]][dalpha_table[(d_clr.trgb.r)]];
-					s_clr.trgb.g = epic12_device_colrtable_add[epic12_device_colrtable[(d_clr.trgb.g)][(s_clr.trgb.g)]][dalpha_table[(d_clr.trgb.g)]];
-					s_clr.trgb.b = epic12_device_colrtable_add[epic12_device_colrtable[(d_clr.trgb.b)][(s_clr.trgb.b)]][dalpha_table[(d_clr.trgb.b)]];
+					s_clr.trgb.r = blend_table[(s_clr.trgb.r << 5) | d_clr.trgb.r];
+					s_clr.trgb.g = blend_table[(s_clr.trgb.g << 5) | d_clr.trgb.g];
+					s_clr.trgb.b = blend_table[(s_clr.trgb.b << 5) | d_clr.trgb.b];
 					#elif _DMODE == 1
 					clr_mul_3param(&clr0.trgb, &s_clr.trgb, &d_clr.trgb);
 					clr_add_with_clr_mul_3param(&s_clr.trgb, &clr0.trgb, &d_clr.trgb, &s_clr.trgb);
@@ -184,6 +193,8 @@
 			// write result
 			*bmp = clr_to_pen(&s_clr.trgb)|(pen&0x20000000);
 			//*bmp = (s_clr.u32<<3)|(pen&0x20000000); // using the union is actually significantly slower than our clr_to_pen function!
+
+#endif
 
 #endif // END NOT REALLY SIMPLE
 

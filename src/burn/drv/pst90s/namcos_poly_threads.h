@@ -12,6 +12,8 @@
 
 typedef void (*NamcosPolyThreadCallback)(void *context, INT32 begin, INT32 end);
 
+class NamcosPolyThreadPool;
+
 static INT64 NamcosPolyEstimateWork(const INT32 *px, const INT32 *py, INT32 points)
 {
 	INT64 area2 = ((INT64)px[1] - px[0]) * ((INT64)py[2] - py[0]) -
@@ -38,6 +40,8 @@ struct NamcosFrameConvertContext {
 	static const INT32 MAX_MAP_HEIGHT = 1024;
 
 	const UINT16 *vram;
+	UINT64 vramGeneration;
+	const UINT64 *vramRowGeneration;
 	UINT16 *output;
 	INT32 outputWidth;
 	INT32 outputHeight;
@@ -47,7 +51,12 @@ struct NamcosFrameConvertContext {
 	INT32 displayY;
 	INT32 cropTop;
 	INT32 cropHeight;
+	INT32 outputShiftX;
+	INT32 verticalReconstruct2x;
 	INT32 rgb24;
+	INT32 vertical;
+	INT32 allowOutputReuse;
+	NamcosPolyThreadPool *threadPool;
 	INT32 mapped;
 	const UINT16 *sourceXMap;
 	const UINT16 *sourceYMap;
@@ -56,6 +65,7 @@ struct NamcosFrameConvertContext {
 struct NamcosFrameMapCache {
 	INT32 xOutputWidth;
 	INT32 xSourceWidth;
+	INT32 xOutputShift;
 	INT32 yOutputHeight;
 	INT32 ySourceHeight;
 	INT32 yDisplayY;
@@ -78,13 +88,16 @@ static void NamcosFramePrepareMaps(NamcosFrameConvertContext *context)
 	if (!context->mapped) return;
 
 	if (NamcosFrameMaps.xOutputWidth != context->outputWidth ||
-		NamcosFrameMaps.xSourceWidth != context->sourceWidth) {
+		NamcosFrameMaps.xSourceWidth != context->sourceWidth ||
+		NamcosFrameMaps.xOutputShift != context->outputShiftX) {
 		for (INT32 x = 0; x < context->outputWidth; x++) {
-			NamcosFrameMaps.sourceXMap[x] =
-				(UINT16)(((INT64)x * context->sourceWidth) / context->outputWidth);
+			const INT32 shiftedX = x - context->outputShiftX;
+			NamcosFrameMaps.sourceXMap[x] = shiftedX < 0 ? 0xffff :
+				(UINT16)(((INT64)shiftedX * context->sourceWidth) / context->outputWidth);
 		}
 		NamcosFrameMaps.xOutputWidth = context->outputWidth;
 		NamcosFrameMaps.xSourceWidth = context->sourceWidth;
+		NamcosFrameMaps.xOutputShift = context->outputShiftX;
 	}
 
 	if (NamcosFrameMaps.yOutputHeight != context->outputHeight ||
@@ -93,7 +106,7 @@ static void NamcosFramePrepareMaps(NamcosFrameConvertContext *context)
 		NamcosFrameMaps.yCropTop != context->cropTop ||
 		NamcosFrameMaps.yCropHeight != context->cropHeight) {
 		for (INT32 y = 0; y < context->outputHeight; y++) {
-			const INT32 sourceY = context->cropTop +
+			INT32 sourceY = context->cropTop +
 				(INT32)(((INT64)y * context->cropHeight) / context->outputHeight);
 			NamcosFrameMaps.sourceYMap[y] = (UINT16)((context->displayY +
 				((INT64)sourceY * context->sourceHeight) / context->outputHeight) & 0x3ff);
@@ -118,15 +131,20 @@ static void NamcosFrameConvertRows(void *opaque, INT32 begin, INT32 end)
 		if (context->mapped) {
 			sy = context->sourceYMap[y];
 		} else {
-			const INT32 sourceY = context->cropTop + (INT32)(((INT64)y * context->cropHeight) / context->outputHeight);
+			INT32 sourceY = context->cropTop + (INT32)(((INT64)y * context->cropHeight) / context->outputHeight);
 			sy = (context->displayY + ((INT64)sourceY * context->sourceHeight) / context->outputHeight) & 0x3ff;
 		}
 		UINT16 *destination = context->output + (y * context->outputWidth);
-
 		if (context->rgb24) {
 			for (INT32 x = 0; x < context->outputWidth; x++) {
+				const INT32 shiftedX = x - context->outputShiftX;
 				const UINT32 sourcePixel = context->mapped ? context->sourceXMap[x] :
-					(UINT32)(((INT64)x * context->sourceWidth) / context->outputWidth);
+					(shiftedX < 0 ? 0xffff :
+					(UINT32)(((INT64)shiftedX * context->sourceWidth) / context->outputWidth));
+				if (sourcePixel == 0xffff) {
+					destination[x] = 0;
+					continue;
+				}
 				const UINT32 sourceByte = sourcePixel * 3;
 				const UINT32 sx = context->displayX + (sourceByte >> 1);
 				const UINT16 word0 = context->vram[(sy << 10) | (sx & 0x3ff)];
@@ -148,7 +166,8 @@ static void NamcosFrameConvertRows(void *opaque, INT32 begin, INT32 end)
 				destination[x] = (r >> 3) | ((g >> 3) << 5) | ((b >> 3) << 10);
 			}
 		} else {
-			if (context->sourceWidth == context->outputWidth && context->displayX >= 0 &&
+			if (context->outputShiftX == 0 &&
+				context->sourceWidth == context->outputWidth && context->displayX >= 0 &&
 				context->displayX + context->outputWidth <= 1024) {
 				const UINT16 *source = context->vram + (sy << 10) + context->displayX;
 				for (INT32 x = 0; x < context->outputWidth; x++) {
@@ -158,8 +177,14 @@ static void NamcosFrameConvertRows(void *opaque, INT32 begin, INT32 end)
 			}
 
 			for (INT32 x = 0; x < context->outputWidth; x++) {
+				const INT32 shiftedX = x - context->outputShiftX;
 				const UINT32 sourceX = context->mapped ? context->sourceXMap[x] :
-					(UINT32)(((INT64)x * context->sourceWidth) / context->outputWidth);
+					(shiftedX < 0 ? 0xffff :
+					(UINT32)(((INT64)shiftedX * context->sourceWidth) / context->outputWidth));
+				if (sourceX == 0xffff) {
+					destination[x] = 0;
+					continue;
+				}
 				const UINT32 sx = (context->displayX + sourceX) & 0x3ff;
 				destination[x] = context->vram[(sy << 10) | sx] & 0x7fff;
 			}
@@ -242,12 +267,14 @@ public:
 		Shutdown();
 	}
 
-	void Configure()
+	void Configure(INT32 forceSingle = 0)
 	{
 		Shutdown();
 
 		const UINT32 cores = NamcosPolyDetectCores();
-		if (cores >= 12) {
+		if (forceSingle) {
+			m_worker_count = 0;
+		} else if (cores >= 12) {
 			m_worker_count = 7;
 		} else if (cores >= 8) {
 			m_worker_count = 5;

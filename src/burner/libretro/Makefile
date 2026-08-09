@@ -20,6 +20,10 @@ SUPPORT_LARGE_FILES = 1
 # Use a temporary file to hold the list of objects, as it can exceed windows shell command limits
 SPLIT_UP_LINK ?= 0
 REGEN_HEADERS ?= 0
+NAMCOS_OPENGL = 0
+NAMCOS_OPENGL_ES = 0
+NAMCOS_OPENGL_ES2 = 0
+NAMCOS_OPENGL_LIBS =
 
 SPACE :=
 SPACE := $(SPACE) $(SPACE)
@@ -44,6 +48,9 @@ ifeq ($(platform),)
 			arch = ppc
 		endif
 	else ifneq ($(findstring MINGW,$(shell uname -a)),)
+		platform = win
+		EXE_EXT=.exe
+	else ifneq ($(findstring MSYS,$(shell uname -a)),)
 		platform = win
 		EXE_EXT=.exe
 	endif
@@ -73,29 +80,68 @@ ifneq (,$(findstring unix,$(platform)))
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -lpthread
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	ifeq ($(platform),unix)
+		NAMCOS_OPENGL = 1
+		NAMCOS_OPENGL_ES = 1
+		NAMCOS_OPENGL_ES2 = 1
+		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	else ifneq (,$(findstring android,$(platform)))
+		NAMCOS_OPENGL = 1
+		NAMCOS_OPENGL_ES = 1
+		NAMCOS_OPENGL_ES2 = 1
+		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	else ifneq (,$(findstring rpi,$(platform)))
+		NAMCOS_OPENGL = 1
+		NAMCOS_OPENGL_ES = 1
+		NAMCOS_OPENGL_ES2 = 1
+		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	else
+		NAMCOS_OPENGL = 1
+		NAMCOS_OPENGL_LIBS += -lGL
+	endif
 
 	# Raspberry Pi
 	ifneq (,$(findstring rpi1,$(platform)))
+		CC = arm-linux-gnueabihf-gcc
+		CXX = arm-linux-gnueabihf-g++
+		AR = arm-linux-gnueabihf-ar
 		PLATFORM_DEFINES := -marm -mcpu=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard
+		INCLUDE_7Z_SUPPORT = 0
 		HAVE_NEON = 0
 		USE_CYCLONE = 1
 	else ifneq (,$(findstring rpi2,$(platform)))
+		CC = arm-linux-gnueabihf-gcc
+		CXX = arm-linux-gnueabihf-g++
+		AR = arm-linux-gnueabihf-ar
 		PLATFORM_DEFINES := -marm -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+		INCLUDE_7Z_SUPPORT = 0
 		HAVE_NEON = 1
 		USE_CYCLONE = 1
 	else ifneq (,$(findstring rpi3,$(platform)))
-		ifneq (,$(findstring rpi3_64,$(platform)))
-			PLATFORM_DEFINES := -march=armv8-a+crc+simd -mtune=cortex-a53
-		else
-			PLATFORM_DEFINES := -marm -mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard
-			HAVE_NEON = 1
-			USE_CYCLONE = 1
-		endif
-	else ifneq (,$(findstring rpi4_64,$(platform)))
-		PLATFORM_DEFINES := -march=armv8-a+crc+simd -mtune=cortex-a72
-	else ifneq (,$(findstring rpi5_64,$(platform)))
-		PLATFORM_DEFINES := -march=armv8.2-a+crc+simd -mtune=cortex-a76
+		CC = arm-linux-gnueabihf-gcc
+		CXX = arm-linux-gnueabihf-g++
+		AR = arm-linux-gnueabihf-ar
+		PLATFORM_DEFINES := -marm -mcpu=cortex-a53 -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard
+		INCLUDE_7Z_SUPPORT = 0
+		HAVE_NEON = 1
+		USE_CYCLONE = 1
+	else ifneq (,$(findstring rpi4,$(platform)))
+		CC = arm-linux-gnueabihf-gcc
+		CXX = arm-linux-gnueabihf-g++
+		AR = arm-linux-gnueabihf-ar
+		PLATFORM_DEFINES := -marm -mcpu=cortex-a72 -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard
+		INCLUDE_7Z_SUPPORT = 0
+		HAVE_NEON = 1
+		USE_CYCLONE = 0
+	else ifneq (,$(findstring rpi5,$(platform)))
+		CC = arm-linux-gnueabihf-gcc
+		CXX = arm-linux-gnueabihf-g++
+		AR = arm-linux-gnueabihf-ar
+		PLATFORM_DEFINES := -marm -mcpu=cortex-a76 -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard
+		INCLUDE_7Z_SUPPORT = 0
+		HAVE_NEON = 1
+		USE_CYCLONE = 0
 	endif
 
 	# Solaris
@@ -118,19 +164,91 @@ ifneq (,$(findstring unix,$(platform)))
 		endif
 	endif
 
-# webOS (32/64-bit)
-else ifeq ($(platform), webos)
+# Raspberry Pi 3 (x64)
+else ifeq ($(platform), ras3_x64)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	CC = aarch64-linux-gnu-gcc
+	CXX = aarch64-linux-gnu-g++
+	AR = aarch64-linux-gnu-gcc-ar
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -lpthread -ldl
+	HAVE_NEON = 0
+	USE_CYCLONE = 0
+	ARCH = arm64
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
+	CFLAGS += -mcpu=cortex-a53 -mabi=lp64 -Wno-psabi -mtune=cortex-a53 $(CPUFLAGS)
+	CXXFLAGS += -mcpu=cortex-a53 -mabi=lp64 -Wno-psabi -mtune=cortex-a53 $(CPUFLAGS)
+	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
+
+# Raspberry Pi 4 (x64)
+else ifeq ($(platform), ras4_x64)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	CC = aarch64-linux-gnu-gcc
+	CXX = aarch64-linux-gnu-g++
+	AR = aarch64-linux-gnu-gcc-ar
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
+	ENDIANNESS_DEFINES := -DLSB_FIRST
+	HAVE_NEON = 0
+	USE_CYCLONE = 0
+	ARCH = arm64
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
+	CFLAGS += -mcpu=cortex-a72 -mabi=lp64 -Wno-psabi -mtune=cortex-a72 $(CPUFLAGS)
+	CXXFLAGS += -mcpu=cortex-a72 -mabi=lp64 -Wno-psabi -mtune=cortex-a72 $(CPUFLAGS)
+	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
+
+# Raspberry Pi 5 (x64)
+else ifeq ($(platform), ras5_x64)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	CC = aarch64-linux-gnu-gcc
+	CXX = aarch64-linux-gnu-g++
+	AR = aarch64-linux-gnu-gcc-ar
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
+	ENDIANNESS_DEFINES := -DLSB_FIRST
+	HAVE_NEON = 0
+	USE_CYCLONE = 0
+	ARCH = arm64
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
+	CFLAGS += -mcpu=cortex-a76 -mabi=lp64 -Wno-psabi -mtune=cortex-a76 $(CPUFLAGS)
+	CXXFLAGS += -mcpu=cortex-a76 -mabi=lp64 -Wno-psabi -mtune=cortex-a76 $(CPUFLAGS)
+	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
+
+# webOS (32/64-bit)
+else ifeq ($(platform), webos)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
+	ENDIANNESS_DEFINES := -DLSB_FIRST
+	LDFLAGS += -pthread -ldl
 	ifneq (,$(findstring arm,$(CROSS_COMPILE)))
 		HAVE_NEON = 1
 	endif
 
 # OS X
 else ifeq ($(platform), osx)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_LIBS += -framework OpenGL
 	TARGET := $(TARGET_NAME)_libretro.dylib
 	fpic := -fPIC
 	SHARED := -dynamiclib
@@ -159,6 +277,8 @@ else ifeq ($(platform), osx)
 
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_LIBS += -framework OpenGLES
 	TARGET := $(TARGET_NAME)_libretro_ios.dylib
 	fpic := -fPIC
 	SHARED := -dynamiclib
@@ -189,6 +309,8 @@ else ifneq (,$(findstring ios,$(platform)))
         CXXFLAGS += $(MINVERSION)
 
 else ifeq ($(platform), tvos-arm64)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_LIBS += -framework OpenGLES
 	TARGET := $(TARGET_NAME)_libretro_tvos.dylib
 	fpic := -fPIC
 	SHARED := -dynamiclib
@@ -203,6 +325,8 @@ else ifeq ($(platform), tvos-arm64)
 
 # Theos iOS
 else ifeq ($(platform), theos_ios)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_LIBS += -framework OpenGLES
 	DEPLOYMENT_IOSVERSION = 5.0
 	TARGET = iphone:latest:$(DEPLOYMENT_IOSVERSION)
 	ARCHS = armv7 armv7s
@@ -216,6 +340,10 @@ else ifeq ($(platform), theos_ios)
 
 # QNX
 else ifeq ($(platform), qnx)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	TARGET := $(TARGET_NAME)_libretro_$(platform).so
 	fpic := -fPIC
 	SHARED := -lcpp -lm -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
@@ -298,15 +426,17 @@ else ifeq ($(platform), switch)
 # Nintendo Switch (libnx)
 else ifeq ($(platform), libnx)
 	include $(DEVKITPRO)/libnx/switch_rules
-	AR="$(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-ar$(BINARY_EXT)"
+	CC = "$(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-gcc$(BINARY_EXT)"
+	CXX = "$(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-g++$(BINARY_EXT)"
+	AR = "$(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-ar$(BINARY_EXT)"
 	EXT=a
 	TARGET := $(TARGET_NAME)_libretro_$(platform).$(EXT)
 	DEFINES := -DSWITCH=1 -U__linux__ -U__linux -DRARCH_INTERNAL
 	CFLAGS	:=	$(DEFINES) -g \
 		-fPIE -I$(LIBNX)/include/ -ffunction-sections -fdata-sections -ftls-model=local-exec -Wl,--allow-multiple-definition -specs=$(LIBNX)/switch.specs
 	CFLAGS += $(INCDIRS)
-	CFLAGS	+=	$(INCLUDE)  -D__SWITCH__ -DHAVE_LIBNX
-	CXXFLAGS := $(ASFLAGS) $(CFLAGS) -fno-rtti -std=gnu++11
+	CFLAGS += $(INCLUDE) -D__SWITCH__ -DHAVE_LIBNX
+	CXXFLAGS := $(ASFLAGS) $(CFLAGS) -fno-rtti -std=gnu++11 -pthread
 	CFLAGS += -std=gnu11
 	STATIC_LINKING = 1
 	# 2021-05-18 : disabling 7z again for libnx, it seems the lib version linked to RA is old
@@ -315,6 +445,10 @@ else ifeq ($(platform), libnx)
 
 # Funkey S
 else ifeq ($(platform), funkey)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
@@ -337,48 +471,122 @@ else ifeq ($(platform), funkey)
 	CXXFLAGS += $(PLATFORM_FLAGS)
 
 # Classic Platforms ####################
-# Platform affix = classic_<ISA>_<µARCH>
+# Platform affix = classic_<ISA>_<uARCH>
 # Help at https://modmyclassic.com/comp
 
 # (armv7 a7, hard point, neon based) ### 
 # NESC, SNESC, C64 mini 
 else ifeq ($(platform), classic_armv7_a7)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	CC = arm-linux-gnueabihf-gcc
+	CXX = arm-linux-gnueabihf-g++
+	AR = arm-linux-gnueabihf-ar
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	PLATFORM_FLAGS = -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
-	USE_EXPERIMENTAL_FLAGS = 1
+	PLATFORM_FLAGS = -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv7ve
+	USE_EXPERIMENTAL_FLAGS = 0
 	HAVE_NEON = 1
 	USE_CYCLONE = 1
 	ARCH = arm
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
-		PLATFORM_FLAGS += -march=armv7-a
-	else
-		PLATFORM_FLAGS += -march=armv7ve
-		# If gcc is 5.0 or later
-		ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
-			LDFLAGS += -static-libgcc -static-libstdc++
-		endif
-	endif
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CFLAGS += $(PLATFORM_FLAGS)
 	CXXFLAGS += $(PLATFORM_FLAGS)
 
 # (armv8 a35, hard point, neon based) ###
 # Playstation Classic
 else ifeq ($(platform), classic_armv8_a35)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	CC = arm-linux-gnueabihf-gcc
+	CXX = arm-linux-gnueabihf-g++
+	AR = arm-linux-gnueabihf-ar
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	PLATFORM_FLAGS = -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard -march=armv8-a
-	USE_EXPERIMENTAL_FLAGS = 1
+	USE_EXPERIMENTAL_FLAGS = 0
 	HAVE_NEON = 1
 	USE_CYCLONE = 1
 	ARCH = arm
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CFLAGS += $(PLATFORM_FLAGS)
 	CXXFLAGS += $(PLATFORM_FLAGS)
+
+# Playstation Classic
+else ifeq ($(platform), classic_armv8_a35_x64)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	CC = aarch64-linux-gnu-gcc
+	CXX = aarch64-linux-gnu-g++
+	AR = aarch64-linux-gnu-gcc-ar
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
+	HAVE_NEON = 0
+	USE_CYCLONE = 0
+	ARCH = arm64
+	ENDIANNESS_DEFINES := -DLSB_FIRST
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
+	CFLAGS += -mcpu=cortex-a35 -mabi=lp64 -Wno-psabi -mtune=cortex-a35 $(CPUFLAGS)
+	CXXFLAGS += -mcpu=cortex-a35 -mabi=lp64 -Wno-psabi -mtune=cortex-a35 $(CPUFLAGS)
+	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
+
+# Odroid N2
+else ifeq ($(platform), odroid-n2)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	CC = arm-linux-gnueabihf-gcc
+	CXX = arm-linux-gnueabihf-g++
+	AR = arm-linux-gnueabihf-ar
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
+	PLATFORM_DEFINES := -marm -mcpu=cortex-a73 -mfpu=neon-vfpv4 -mfloat-abi=hard
+	HAVE_NEON = 1
+	USE_CYCLONE = 0
+	ARCH = arm
+	ENDIANNESS_DEFINES := -DLSB_FIRST
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	CPUFLAGS += -DHOST_CPU=0x20000006 -DTARGET_LINUX_ARMv8 -frename-registers
+	CFLAGS += -mcpu=cortex-a73 -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
+	CXXFLAGS += -mcpu=cortex-a73 -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
+	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
+
+# Odroid N2 (x64)
+else ifeq ($(platform), odroid-n2_x64)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_ES = 1
+	NAMCOS_OPENGL_ES2 = 1
+	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
+	CC = aarch64-linux-gnu-gcc
+	CXX = aarch64-linux-gnu-g++
+	AR = aarch64-linux-gnu-gcc-ar
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
+	HAVE_NEON = 0
+	USE_CYCLONE = 0
+	ARCH = arm64
+	ENDIANNESS_DEFINES := -DLSB_FIRST
+	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	CPUFLAGS += -DHOST_CPU=0x20000006 -DTARGET_LINUX_ARMv8 -frename-registers
+	CFLAGS += -mcpu=cortex-a73 -mabi=lp64 -Wno-psabi -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
+	CXXFLAGS += -mcpu=cortex-a73 -mabi=lp64 -Wno-psabi -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
+	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
+
 #######################################
 
 # Nintendo Game Cube / Wii / WiiU
@@ -409,6 +617,8 @@ else ifneq (,$(filter $(platform), ngc wii wiiu))
 
 # Emscripten
 else ifeq ($(platform), emscripten)
+	NAMCOS_OPENGL = 1
+	NAMCOS_OPENGL_LIBS += -sUSE_WEBGL2=1
 	TARGET := $(TARGET_NAME)_libretro_$(platform).bc
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 	INCLUDE_7Z_SUPPORT = 0
@@ -423,10 +633,11 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 
 	PlatformSuffix = $(subst windows_msvc2017_,,$(platform))
 	ifneq (,$(findstring desktop,$(PlatformSuffix)))
+		NAMCOS_OPENGL = 1
 		WinPartition = desktop
 		MSVC2017CompileFlags = -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -EHsc -FS
 		LDFLAGS += -MANIFEST -LTCG:incremental -NXCOMPAT -DYNAMICBASE -DEBUG -OPT:REF -INCREMENTAL:NO -SUBSYSTEM:WINDOWS -MANIFESTUAC:"level='asInvoker' uiAccess='false'" -OPT:ICF -ERRORREPORT:PROMPT -NOLOGO -TLBID:1
-		LIBS := kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib
+		LIBS := kernel32.lib user32.lib gdi32.lib opengl32.lib winspool.lib comdlg32.lib advapi32.lib
 	else ifneq (,$(findstring uwp,$(PlatformSuffix)))
 		WinPartition = uwp
 		MSVC2017CompileFlags = -DWINAPI_FAMILY=WINAPI_FAMILY_APP -D_WINDLL -D_UNICODE -DUNICODE -D__WRL_NO_DEFAULT_LIB__ -EHsc -FS
@@ -439,7 +650,6 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	CXXFLAGS += $(MSVC2017CompileFlags)
 
 	TargetArchMoniker = $(subst $(WinPartition)_,,$(PlatformSuffix))
-
 	CC  = cl.exe
 	CXX = cl.exe
 	LD = link.exe
@@ -511,14 +721,18 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 
 # Windows
 else
+	NAMCOS_OPENGL = 1
 	TARGET := $(TARGET_NAME)_libretro.dll
 	CC ?= gcc
 	CXX ?= g++
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	LDFLAGS += -static-libgcc -static-libstdc++
+	LDFLAGS += -static -static-libgcc -static-libstdc++ -pthread
+	LIBS += -lopengl32 -lgdi32
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 	SPLIT_UP_LINK = 1
 endif
+
+LIBS += $(NAMCOS_OPENGL_LIBS)
 
 # some platforms (3ds, maybe others) are unable to find "main" entry symbol if you build with their sdk
 # so let's use standard compiler for header generation since this is cross-built anyway
@@ -528,9 +742,18 @@ CXX_SYSTEM = g++
 include Makefile.common
 include $(INCLUDED_MAKEFILE)
 
-FBNEO_CXXOBJ := $(SOURCES_CXX:.cpp=.o)
-FBNEO_COBJ := $(SOURCES_C:.c=.o)
-FBNEO_SOBJ := $(SOURCES_S:.S=.o)
+OBJ_COMPILER_TARGET := $(shell $(CXX) -dumpmachine 2>/dev/null)
+OBJ_PLATFORM := $(subst $(SPACE),_,$(strip $(platform)))
+ifneq ($(OBJ_COMPILER_TARGET),)
+	OBJ_PLATFORM := $(OBJ_PLATFORM)_$(OBJ_COMPILER_TARGET)
+endif
+OBJDIR ?= .objs/$(OBJ_PLATFORM)
+
+FBNEO_CXXOBJ := $(foreach src,$(SOURCES_CXX),$(OBJDIR)/$(patsubst ../../%,%,$(src:.cpp=.o)))
+FBNEO_COBJ := $(foreach src,$(SOURCES_C),$(OBJDIR)/$(patsubst ../../%,%,$(src:.c=.o)))
+FBNEO_SOBJ := $(foreach src,$(SOURCES_S),$(OBJDIR)/$(patsubst ../../%,%,$(src:.S=.o)))
+LEGACY_OBJS := $(SOURCES_C:.c=.o) $(SOURCES_CXX:.cpp=.o) $(SOURCES_S:.S=.o)
+LEGACY_DEPS := $(LEGACY_OBJS:.o=.d)
 
 OBJS := $(FBNEO_COBJ) $(FBNEO_CXXOBJ) $(FBNEO_SOBJ)
 DEPS := $(OBJS:.o=.d)
@@ -540,6 +763,18 @@ FBNEO_DEFINES += -D__LIBRETRO__ \
 	$(PLATFORM_DEFINES) \
 	$(NEON_FLAGS) \
 	$(ARM_FLAGS)
+
+ifeq ($(NAMCOS_OPENGL),1)
+	FBNEO_DEFINES += -DFBNEO_NAMCOS_OPENGL
+endif
+
+ifeq ($(NAMCOS_OPENGL_ES),1)
+	FBNEO_DEFINES += -DFBNEO_NAMCOS_OPENGL_ES
+endif
+
+ifeq ($(NAMCOS_OPENGL_ES2),1)
+	FBNEO_DEFINES += -DFBNEO_NAMCOS_OPENGL_ES2
+endif
 
 INCFLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(dir))
 
@@ -730,21 +965,38 @@ else
 	LD = $(CXX)
 endif
 
-%.o: %.c
+$(OBJDIR)/%.o: ../../%.c
+	@mkdir -p $(dir $@)
 	$(CC) -c $(OBJOUT)$@ $< $(CFLAGS) $(INCFLAGS)
 
 # Disabling file_stream_transform for those files
 # In the following file, it's lacking a stdout implementation
-$(MAIN_FBNEO_DIR)/cpu/mips3/x64/mips3_x64.o: $(MAIN_FBNEO_DIR)/cpu/mips3/x64/mips3_x64.cpp
+$(OBJDIR)/cpu/mips3/x64/mips3_x64.o: $(MAIN_FBNEO_DIR)/cpu/mips3/x64/mips3_x64.cpp
+	@mkdir -p $(dir $@)
 	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
 
-$(MAIN_FBNEO_DIR)/cpu/mips3_intf.o: $(MAIN_FBNEO_DIR)/cpu/mips3_intf.cpp
+$(OBJDIR)/cpu/mips3_intf.o: $(MAIN_FBNEO_DIR)/cpu/mips3_intf.cpp
+	@mkdir -p $(dir $@)
 	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
 
-%.o: %.cpp
+$(OBJDIR)/burner/libretro/ips_manager.o: $(MAIN_FBNEO_DIR)/burner/libretro/ips_manager.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
+
+$(OBJDIR)/burner/libretro/romdata.o: $(MAIN_FBNEO_DIR)/burner/libretro/romdata.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
+
+$(OBJDIR)/burn/drv/snes/msu1_backend.o: $(MAIN_FBNEO_DIR)/burn/drv/snes/msu1_backend.cpp
+	@mkdir -p $(dir $@)
+	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
+
+$(OBJDIR)/%.o: ../../%.cpp
+	@mkdir -p $(dir $@)
 	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS)
 
-%.o: %.S
+$(OBJDIR)/%.o: ../../%.S
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@
 
 $(TARGET): $(OBJS)
@@ -758,7 +1010,7 @@ else
 ifeq ($(SPLIT_UP_LINK), 1)
 	$(file >$@.in,$(OBJS))
 	$(LD) $(LINKOUT)$@ $(SHARED) @$@.in $(LDFLAGS) $(LIBS)
-	@rm $@.in
+	@rm -f $@.in
 else
 	$(LD) $(LINKOUT)$@ $(SHARED) $^ $(LDFLAGS) $(LIBS)
 endif
@@ -768,12 +1020,13 @@ endif
 
 clean-objs:
 ifeq ($(SPLIT_UP_LINK), 1)
-	$(file >$@.in,$(OBJS) $(DEPS))
+	$(file >$@.in,$(OBJS) $(DEPS) $(LEGACY_OBJS) $(LEGACY_DEPS))
 	xargs rm -f <$@.in
 	rm -f $@.in
 else
-	rm -f $(OBJS) $(DEPS)
+	rm -f $(OBJS) $(DEPS) $(LEGACY_OBJS) $(LEGACY_DEPS)
 endif
+	rm -rf $(OBJDIR)
 
 clean: clean-objs
 	rm -f $(TARGET)

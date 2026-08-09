@@ -946,7 +946,6 @@ static void execute_one()
 
 	psx.exception_taken = 0;
 
-	psx.bus_error = 0;
 	psx.new_delay = 0;
 
 	switch (op >> 26)

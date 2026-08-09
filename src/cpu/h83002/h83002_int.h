@@ -30,4 +30,9 @@ struct h83xx_state
 	UINT8 sci0_rx_head;
 	UINT8 sci0_rx_tail;
 	UINT8 sci0_ssr_read;
+	UINT8 sci1_external;
+	UINT8 sci1_rx[256];
+	UINT8 sci1_rx_head;
+	UINT8 sci1_rx_tail;
+	UINT8 sci1_ssr_read;
 };

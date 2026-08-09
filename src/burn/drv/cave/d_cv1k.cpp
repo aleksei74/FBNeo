@@ -43,6 +43,9 @@ static INT32 DriverClock; // selected cpu clockrate
 static INT32 nPrevBurnCPUSpeedAdjust;
 static UINT8 nPrevCPUTenth;
 static INT32 speedhack_burn; // 10ms @ cpu clock, calculated in DrvFrame
+static INT32 nPrevBlitterDipB;
+static INT32 nPrevBlitterDipC;
+static INT32 nPrevBlitterBurnCycles;
 
 static struct BurnInputInfo Cv1kInputList[] = {
 	{"P1 Coin",			BIT_DIGITAL,	DrvJoy1 + 2,	"p1 coin"	},
@@ -204,11 +207,13 @@ static void __fastcall main_write_long(UINT32 offset, UINT32 data)
 		return;
 	}
 
-	if (offset > 0x03fffff) bprintf(0, _T("mwl %x  %x\n"), offset, data);
+	// Unhandled writes are intentionally ignored. Logging here is prohibitively
+	// expensive when a game polls an unknown register.
 }
 static void __fastcall main_write_word(UINT32 offset, UINT16 data)
 {
-	if (offset > 0x03fffff) bprintf(0, _T("mww %x  %x\n"), offset, data);
+	(void)offset;
+	(void)data;
 }
 static void __fastcall main_write_byte(UINT32 offset, UINT8 data)
 {
@@ -238,7 +243,8 @@ static void __fastcall main_write_byte(UINT32 offset, UINT8 data)
 		case 0x10c00003: serflash_enab_write(data); return;
 	}
 
-	if (offset > 0x03fffff) bprintf(0, _T("mwb %x  %x\n"), offset, data);
+	(void)offset;
+	(void)data;
 }
 
 static UINT32 __fastcall main_read_long(UINT32 offset)
@@ -257,8 +263,6 @@ static UINT16 __fastcall main_read_word(UINT32 offset)
 		return epic12_blitter_read(offset & 0xff);
 	}
 
-	bprintf(0, _T("mrw %x\n"), offset);
-
 	return 0;
 }
 static UINT8 __fastcall main_read_byte(UINT32 offset)
@@ -276,8 +280,6 @@ static UINT8 __fastcall main_read_byte(UINT32 offset)
 		case 0x10c00001: return (rtc9701_read_bit() & 1) | 0xfe;
 	}
 
-	bprintf(0, _T("mrb %x\n"), offset);
-
 	return 0;
 }
 
@@ -293,7 +295,6 @@ static UINT32 __fastcall main_read_port(UINT32 offset)
 		case SH3_PORT_J: return 0xff; // blitter(?)
 	}
 
-	bprintf(0, _T("mrp %x\n"), offset);
 	return 0;
 }
 static void __fastcall main_write_port(UINT32 offset, UINT32 data)
@@ -303,7 +304,7 @@ static void __fastcall main_write_port(UINT32 offset, UINT32 data)
 		case SH3_PORT_J: return; // blitter(?)
 	}
 
-	bprintf(0, _T("mwp %x, %x\n"), offset, data);
+	(void)data;
 }
 
 // hacky speedhack handler
@@ -312,10 +313,11 @@ static UINT32 hacky_idle_pc;
 
 static UINT32 __fastcall speedhack_read_long(UINT32 offset)
 {
-	UINT32 pc = Sh3GetPC(-1);
-	if ( offset == hacky_idle_ram && (pc == hacky_idle_pc || pc == hacky_idle_pc+2)) {
-		//bprintf(0, _T("l"));
-		Sh3BurnCycles(speedhack_burn);
+	if (offset == hacky_idle_ram) {
+		const UINT32 pc = Sh3GetPC(-1);
+		if (pc == hacky_idle_pc || pc == hacky_idle_pc + 2) {
+			Sh3BurnCycles(speedhack_burn);
+		}
 	}
 	UINT32 V = *((UINT32 *)(DrvMainRAM + (offset & 0xfffffc)));
 	V = (V << 16) | (V >> 16);
@@ -376,6 +378,9 @@ static INT32 DrvDoReset()
 
 	nPrevBurnCPUSpeedAdjust = -1;
 	nPrevCPUTenth = 0xff;
+	nPrevBlitterDipB = -1;
+	nPrevBlitterDipC = -1;
+	nPrevBlitterBurnCycles = -1;
 
 	hold_coin.reset();
 
@@ -570,8 +575,10 @@ static INT32 DrvFrame()
 
 		bprintf(0, _T("Main Clock %d  at %0.1f%%  Adjusted Clock %d\n"), SH3_CLOCK, dPercent, DriverClock);
 	}
-	// set blitter delay, blitter threading & speedhack via dip setting
-	{
+	// These settings are static in normal use. Avoid crossing the device and
+	// thread-control boundary every frame unless a DIP or CPU clock changed.
+	if (nPrevBlitterDipB != DrvDips[1] || nPrevBlitterDipC != DrvDips[2] ||
+		nPrevBlitterBurnCycles != speedhack_burn) {
 		INT32 delay = DrvDips[2] & 0x1f;
 
 		epic12_set_blitterdelay_method(DrvDips[2] & 0x20);
@@ -582,6 +589,10 @@ static INT32 DrvFrame()
 		// test stuff for el_rika
 		epic12_set_blitter_clipping_margin(!(DrvDips[2] & 0x40));
 		epic12_set_blitter_sleep_on_busy(!(DrvDips[2] & 0x80));
+
+		nPrevBlitterDipB = DrvDips[1];
+		nPrevBlitterDipC = DrvDips[2];
+		nPrevBlitterBurnCycles = speedhack_burn;
 	}
 
 	{
