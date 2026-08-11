@@ -141,7 +141,7 @@ TCHAR szAppBurnVer[16];
 
 static char szRomsetPath[MAX_PATH]        = { 0 };
 
-#define TYPES_MAX	(29)	// Maximum number of machine types
+#define TYPES_MAX	(31)	// Maximum number of machine types
 
 static const TCHAR szTypeEnum[2][TYPES_MAX][13] = {
 	{
@@ -149,6 +149,7 @@ static const TCHAR szTypeEnum[2][TYPES_MAX][13] = {
 		_T("romdata"),												// romdata_dir
 		_T("coleco"),		_T("colecovision"),
 		_T("gamegear"),
+		_T("gba"),
 		_T("megadriv"),		_T("megadrive"),		_T("genesis"),
 		_T("msx"),			_T("msx1"),
 		_T("pce"),			_T("pcengine"),
@@ -161,7 +162,7 @@ static const TCHAR szTypeEnum[2][TYPES_MAX][13] = {
 		_T("nes"),
 		_T("fds"),
 		_T("ngp"),
-		_T("astro"),		_T("astrohome"),
+		_T("astro"),		_T("astrohome"),		_T("astrocade"),
 		_T("chf"),			_T("channelf")							// consoles_dir
 	},
 	{
@@ -169,6 +170,7 @@ static const TCHAR szTypeEnum[2][TYPES_MAX][13] = {
 		_T(""),														// romdata
 		_T("cv_"),			_T("cv_"),
 		_T("gg_"),
+		_T("gba_"),
 		_T("md_"),			_T("md_"),				_T("md_"),
 		_T("msx_"),			_T("msx_"),
 		_T("pce_"),			_T("pce_"),
@@ -181,7 +183,7 @@ static const TCHAR szTypeEnum[2][TYPES_MAX][13] = {
 		_T("nes_"),
 		_T("fds_"),
 		_T("ngp_"),
-		_T("astro_"),		_T("astro_"),
+		_T("astro_"),		_T("astro_"),			_T("astro_"),
 		_T("chf_"),			_T("chf_")								// Signage of the console
 	}
 };
@@ -470,7 +472,11 @@ void retro_set_environment(retro_environment_t cb)
 		{ "Rom", "zip|7z", true, true, true, NULL, 0 },
 	};
 	static const struct retro_subsystem_rom_info subsystem_iso[] = {
-		{ "Iso", "ccd|cue",    true, true, true, NULL, 0 },
+#ifdef INCLUDE_CHD_SUPPORT
+		{ "Iso", "ccd|cue|chd",    true, true, true, NULL, 0 },
+#else
+		{ "Iso", "ccd|cue",        true, true, true, NULL, 0 },
+#endif
 	};
 	static const struct retro_subsystem_info subsystems[] = {
 		{ "Bally Astrocade Home Computer",       "astro", subsystem_rom, 1, RETRO_GAME_TYPE_ASTRO },
@@ -483,6 +489,7 @@ void retro_set_environment(retro_environment_t cb)
 		{ "Nintendo Entertainment System",       "nes",   subsystem_rom, 1, RETRO_GAME_TYPE_NES   },
 		{ "Nintendo Family Disk System",         "fds",   subsystem_rom, 1, RETRO_GAME_TYPE_FDS   },
 		{ "Super Nintendo Entertainment System", "snes",  subsystem_rom, 1, RETRO_GAME_TYPE_SNES  },
+		{ "Nintendo Gameboy Advance",           "gba",   subsystem_rom, 1, RETRO_GAME_TYPE_GBA   },
 		{ "Sega GameGear",                       "gg",    subsystem_rom, 1, RETRO_GAME_TYPE_GG    },
 		{ "Sega Master System",                  "sms",   subsystem_rom, 1, RETRO_GAME_TYPE_SMS   },
 		{ "Sega Megadrive",                      "md",    subsystem_rom, 1, RETRO_GAME_TYPE_MD    },
@@ -517,7 +524,11 @@ void retro_get_system_info(struct retro_system_info *info)
 	info->library_version = strdup(library_version);
 	info->need_fullpath = true;
 	info->block_extract = true;
+#ifdef INCLUDE_CHD_SUPPORT
+	info->valid_extensions = "zip|7z|cue|ccd|chd";
+#else
 	info->valid_extensions = "zip|7z|cue|ccd";
+#endif
 
 	free(library_version);
 }
@@ -1326,6 +1337,9 @@ int CreateAllDatfiles(char* dat_folder)
 
 	snprintf_nowarn(szFilename, sizeof(szFilename), "%s%c%s (%s).dat", dat_folder, PATH_DEFAULT_SLASH_C(), APP_TITLE, "ClrMame Pro XML, SNES Games only");
 	create_datfile(szFilename, DAT_SNES_ONLY);
+
+	snprintf_nowarn(szFilename, sizeof(szFilename), "%s%c%s (%s).dat", dat_folder, PATH_DEFAULT_SLASH_C(), APP_TITLE, "ClrMame Pro XML, GBA Games only");
+	create_datfile(szFilename, DAT_GBA_ONLY);
 
 	snprintf_nowarn(szFilename, sizeof(szFilename), "%s%c%s (%s).dat", dat_folder, PATH_DEFAULT_SLASH_C(), APP_TITLE, "ClrMame Pro XML, MSX 1 Games only");
 	create_datfile(szFilename, DAT_MSX_ONLY);
@@ -2181,7 +2195,12 @@ static bool retro_load_game_common()
 		// Start CD reader emulation if needed
 		if (nGameType == RETRO_GAME_TYPE_NEOCD || nGameType == RETRO_GAME_TYPE_PCECD) {
 			const char* ext = path_get_extension(CDEmuImage);
-			if (!string_is_equal_noncase(ext, "cue") && !string_is_equal_noncase(ext, "ccd")) {
+			if (!string_is_equal_noncase(ext, "cue")
+			 && !string_is_equal_noncase(ext, "ccd")
+#ifdef INCLUDE_CHD_SUPPORT
+			 && !string_is_equal_noncase(ext, "chd")
+#endif
+			) {
 				static char uguiText[4096];
 				const char* s1 = RETRO_ERROR_MESSAGES_13;
 				const char* s2 = RETRO_ERROR_MESSAGES_07;
@@ -2462,6 +2481,10 @@ bool retro_load_game(const struct retro_game_info *info)
 		HandleMessage(RETRO_LOG_INFO, "[FBNeo] subsystem snes identified from parent folder\n");
 		if (strncmp(g_driver_name, "snes_", 4) != 0) prefix = "snes_";
 	}
+	if(strcmp(g_rom_parent_dir, "gba")==0) {
+		HandleMessage(RETRO_LOG_INFO, "[FBNeo] subsystem gba identified from parent folder\n");
+		if (strncmp(g_driver_name, "gba_", 4) != 0) prefix = "gba_";
+	}
 	if(strcmp(g_rom_parent_dir, "ngp")==0) {
 		HandleMessage(RETRO_LOG_INFO, "[FBNeo] subsystem ngp identified from parent folder\n");
 		if (strncmp(g_driver_name, "ngp_", 4) != 0) prefix = "ngp_";
@@ -2540,6 +2563,9 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 			break;
 		case RETRO_GAME_TYPE_SNES:
 			prefix = "snes_";
+			break;
+		case RETRO_GAME_TYPE_GBA:
+			prefix = "gba_";
 			break;
 		case RETRO_GAME_TYPE_NGP:
 			prefix = "ngp_";
