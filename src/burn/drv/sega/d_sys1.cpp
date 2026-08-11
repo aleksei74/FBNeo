@@ -8516,20 +8516,20 @@ struct BurnDriver BurnDrvWbmlh = {
 // Wonder Boy: Monster Land (Korean Translation bootleg of New Ver., MC-8123, 317-0043)
 
 static struct BurnRomInfo wbmldkRomDesc[] = {
-	{ "decrypted_epr-11031ak.90",	0x08000, 0xdf434f42, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
-	{ "decrypted_epr-11032k.91",	0x08000, 0xcfb031c0, BRF_ESS | BRF_PRG }, //  1
-	{ "decrypted_epr-11033.92",		0x08000, 0x39e07286, BRF_ESS | BRF_PRG }, //  2
+	{ "decrypted_ep11031ak.90",		0x08000, 0x948cbf4c, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
+	{ "decrypted_epr11032k.91",		0x08000, 0x1898880e, BRF_ESS | BRF_PRG }, //  1
+	{ "decrypted_epr11033.92",		0x08000, 0x39e07286, BRF_ESS | BRF_PRG }, //  2
 
-	{ "epr-11037.126",				0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
+	{ "epr11037.126",				0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
 
-	{ "epr-11034k.4",				0x20000, 0xb1e99f88, BRF_GRA },           //  4 Tiles
-	{ "epr-11035k.5",				0x20000, 0xfad6d391, BRF_GRA },           //  5
-	{ "epr-11036k.6",				0x20000, 0xe5b7dd2c, BRF_GRA },           //  6
+	{ "epr11034k.4",					0x20000, 0xb1e99f88, BRF_GRA },           //  4 Tiles
+	{ "epr11035k.5",					0x20000, 0xfad6d391, BRF_GRA },           //  5
+	{ "epr11036k.6",					0x20000, 0xe5b7dd2c, BRF_GRA },           //  6
 
-	{ "epr-11028.87",				0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
-	{ "epr-11027.86",				0x08000, 0x277d8f1d, BRF_GRA },           //  8
-	{ "epr-11030.89",				0x08000, 0xf05ffc76, BRF_GRA },           //  9
-	{ "epr-11029.88",				0x08000, 0xcedc9c61, BRF_GRA },           // 10
+	{ "epr11028.87",					0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
+	{ "epr11027.86",					0x08000, 0x277d8f1d, BRF_GRA },           //  8
+	{ "epr11030.89",					0x08000, 0xf05ffc76, BRF_GRA },           //  9
+	{ "epr11029.88",					0x08000, 0xcedc9c61, BRF_GRA },           // 10
 
 	{ "pr11026.20",					0x00100, 0x27057298, BRF_GRA },           // 11 Red PROM
 	{ "pr11025.14",					0x00100, 0x41e4d86b, BRF_GRA },           // 12 Blue
@@ -8553,20 +8553,20 @@ struct BurnDriver BurnDrvWbmldk = {
 // Wonder Boy: Monster Land (Korean Translation bootleg of Old Ver., MC-8123, 317-0043)
 
 static struct BurnRomInfo wbmlkodRomDesc[] = {
-	{ "decrypted_epr-11031k.90",	0x08000, 0xe0ec544a, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
-	{ "decrypted_epr-11032k.91",	0x08000, 0xcfb031c0, BRF_ESS | BRF_PRG }, //  1
-	{ "decrypted_epr-11033.92",		0x08000, 0x39e07286, BRF_ESS | BRF_PRG }, //  2
+	{ "decrypted_ep11031k.90",		0x08000, 0xab23a444, BRF_ESS | BRF_PRG }, //  0 Z80 #1 Program Code
+	{ "decrypted_epr11032k.91",		0x08000, 0x1898880e, BRF_ESS | BRF_PRG }, //  1
+	{ "decrypted_epr11033.92",		0x08000, 0x39e07286, BRF_ESS | BRF_PRG }, //  2
 
-	{ "epr-11037.126",				0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
+	{ "epr11037.126",				0x08000, 0x7a4ee585, BRF_ESS | BRF_PRG }, //  3 Z80 #2 Program Code
 
-	{ "epr-11034k.4",				0x20000, 0xb1e99f88, BRF_GRA },           //  4 Tiles
-	{ "epr-11035k.5",				0x20000, 0xfad6d391, BRF_GRA },           //  5
-	{ "epr-11036k.6",				0x20000, 0xe5b7dd2c, BRF_GRA },           //  6
+	{ "epr11034k.4",					0x20000, 0xb1e99f88, BRF_GRA },           //  4 Tiles
+	{ "epr11035k.5",					0x20000, 0xfad6d391, BRF_GRA },           //  5
+	{ "epr11036k.6",					0x20000, 0xe5b7dd2c, BRF_GRA },           //  6
 
-	{ "epr-11028.87",				0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
-	{ "epr-11027.86",				0x08000, 0x277d8f1d, BRF_GRA },           //  8
-	{ "epr-11030.89",				0x08000, 0xf05ffc76, BRF_GRA },           //  9
-	{ "epr-11029.88",				0x08000, 0xcedc9c61, BRF_GRA },           // 10
+	{ "epr11028.87",					0x08000, 0xaf0b3972, BRF_GRA },           //  7 Sprites
+	{ "epr11027.86",					0x08000, 0x277d8f1d, BRF_GRA },           //  8
+	{ "epr11030.89",					0x08000, 0xf05ffc76, BRF_GRA },           //  9
+	{ "epr11029.88",					0x08000, 0xcedc9c61, BRF_GRA },           // 10
 
 	{ "pr11026.20",					0x00100, 0x27057298, BRF_GRA },           // 11 Red PROM
 	{ "pr11025.14",					0x00100, 0x41e4d86b, BRF_GRA },           // 12 Blue
