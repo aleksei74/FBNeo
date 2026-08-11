@@ -2518,6 +2518,7 @@ DRV		BurnDrvfds_bigchadogspi;
 DRV		BurnDrvfds_bigchagogobo;
 DRV		BurnDrvfds_bigchagunfig;
 DRV		BurnDrvfds_bigchajuusen;
+DRV		BurnDrvBigfight;
 DRV		BurnDrvBigkarnka;
 DRV		BurnDrvBigkarnk;
 DRV		BurnDrvBigkong;
@@ -31708,6 +31709,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvfds_bigchagogobo,	// Big Challenge! Go! Go! Bowling (Japan)
 	&BurnDrvfds_bigchagunfig,	// Big Challenge! Gun Fighter (Japan)
 	&BurnDrvfds_bigchajuusen,	// Big Challenge! Juudou Senshuken (Japan)
+	&BurnDrvBigfight,			// Big Fight - Big Trouble In The Atlantic Ocean
 	&BurnDrvBigkarnka,			// Big Karnak (ver. 1.0, checksum 1e38b94)
 	&BurnDrvBigkarnk,			// Big Karnak (ver. 1.0, checksum 1e38c94)
 	&BurnDrvBigkong,			// Big Kong
@@ -60884,6 +60886,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "fds_bigchagogobo", "nes/d_nes.cpp"},
 	{ "fds_bigchagunfig", "nes/d_nes.cpp"},
 	{ "fds_bigchajuusen", "nes/d_nes.cpp"},
+	{ "bigfight", "pst90s/d_bigfight.cpp"},
 	{ "bigkarnka", "pst90s/d_gaelco.cpp"},
 	{ "bigkarnk", "pst90s/d_gaelco.cpp"},
 	{ "bigkong", "pre90s/d_cclimber.cpp"},

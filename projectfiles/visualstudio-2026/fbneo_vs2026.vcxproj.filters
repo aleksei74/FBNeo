@@ -1870,6 +1870,9 @@
     <ClCompile Include="..\..\src\burn\drv\pst90s\d_bestleag.cpp">
       <Filter>burn\drv\pst90s</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\burn\drv\pst90s\d_bigfight.cpp">
+      <Filter>burn\drv\pst90s</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\burn\drv\pst90s\d_bigstrkb.cpp">
       <Filter>burn\drv\pst90s</Filter>
     </ClCompile>
