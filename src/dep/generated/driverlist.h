@@ -12680,22 +12680,8 @@ DRV		BurnDrvgba_kill3dp;
 DRV		BurnDrvgba_kill3dpu;
 DRV		BurnDrvsnes_Killinste;
 DRV		BurnDrvcv_kinstinct;
-#if defined FBNEO_DEBUG
-DRV		BurnDrvKinstp47;		// Works best in 64-bit build [NOT WORKING]
-DRV		BurnDrvKinst13;			// Works best in 64-bit build [NOT WORKING]
-DRV		BurnDrvKinst14;			// Works best in 64-bit build [NOT WORKING]
-DRV		BurnDrvKinst15ai;		// Works best in 64-bit build [NOT WORKING]
-DRV		BurnDrvKinst;			// Works best in 64-bit build [NOT WORKING]
-#endif
 DRV		BurnDrvsnes_Killinst;
 DRV		BurnDrvsnes_Killinstee;
-#if defined FBNEO_DEBUG
-DRV		BurnDrvKinst210;		// Works best in 64-bit build [NOT WORKING]
-DRV		BurnDrvKinst211;		// Works best in 64-bit build [NOT WORKING]
-DRV		BurnDrvKinst213;		// Works best in 64-bit build [NOT WORKING]
-DRV		BurnDrvKinst214ai;		// Works best in 64-bit build [NOT WORKING]
-DRV		BurnDrvKinst2;			// Works best in 64-bit build [NOT WORKING]
-#endif
 DRV		BurnDrvMSX_killstation;
 DRV		BurnDrvMSX_killstationa;
 DRV		BurnDrvmd_killshow;
@@ -41884,22 +41870,8 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgba_kill3dpu,		// Killer 3D Pool (USA)
 	&BurnDrvsnes_Killinste,		// Killer Instinct (Euro)
 	&BurnDrvcv_kinstinct,		// Killer Instinct (HB, Demo)
-#if defined FBNEO_DEBUG
-	&BurnDrvKinstp47,			// Killer Instinct (ROM proto ver. 4.7) [Works best in 64-bit build, NOT WORKING]
-	&BurnDrvKinst13,			// Killer Instinct (ROM ver. 1.3) [Works best in 64-bit build, NOT WORKING]
-	&BurnDrvKinst14,			// Killer Instinct (ROM ver. 1.4) [Works best in 64-bit build, NOT WORKING]
-	&BurnDrvKinst15ai,			// Killer Instinct (ROM ver. 1.5 AnyIDE) [Works best in 64-bit build, NOT WORKING]
-	&BurnDrvKinst,				// Killer Instinct (ROM ver. 1.5d) [Works best in 64-bit build, NOT WORKING]
-#endif
 	&BurnDrvsnes_Killinst,		// Killer Instinct (USA, Rev. 1)
 	&BurnDrvsnes_Killinstee,	// Killer Instinct - Eyedol Edition (Hack)
-#if defined FBNEO_DEBUG
-	&BurnDrvKinst210,			// Killer Instinct II (ROM ver. 1.0) [Works best in 64-bit build, NOT WORKING]
-	&BurnDrvKinst211,			// Killer Instinct II (ROM ver. 1.1) [Works best in 64-bit build, NOT WORKING]
-	&BurnDrvKinst213,			// Killer Instinct II (ROM ver. 1.3) [Works best in 64-bit build, NOT WORKING]
-	&BurnDrvKinst214ai,			// Killer Instinct II (ROM ver. 1.4 AnyIDE) [Works best in 64-bit build, NOT WORKING]
-	&BurnDrvKinst2,				// Killer Instinct II (ROM ver. 1.4) [Works best in 64-bit build, NOT WORKING]
-#endif
 	&BurnDrvMSX_killstation,	// Killer Station (Japan)
 	&BurnDrvMSX_killstationa,	// Killer Station (Japan, Alt)
 	&BurnDrvmd_killshow,		// Killing Game Show, The (Japan)
@@ -71008,18 +70980,8 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gba_kill3dpu", "gba/d_gba.cpp"},
 	{ "snes_killinste", "snes/d_snes.cpp"},
 	{ "cv_kinstinct", "coleco/d_coleco.cpp"},
-	{ "kinstp47", "midway/d_kinst.cpp"},
-	{ "kinst13", "midway/d_kinst.cpp"},
-	{ "kinst14", "midway/d_kinst.cpp"},
-	{ "kinst15ai", "midway/d_kinst.cpp"},
-	{ "kinst", "midway/d_kinst.cpp"},
 	{ "snes_killinst", "snes/d_snes.cpp"},
 	{ "snes_killinstee", "snes/d_snes.cpp"},
-	{ "kinst210", "midway/d_kinst.cpp"},
-	{ "kinst211", "midway/d_kinst.cpp"},
-	{ "kinst213", "midway/d_kinst.cpp"},
-	{ "kinst214ai", "midway/d_kinst.cpp"},
-	{ "kinst2", "midway/d_kinst.cpp"},
 	{ "msx_killstation", "msx/d_msx.cpp"},
 	{ "msx_killstationa", "msx/d_msx.cpp"},
 	{ "md_killshow", "megadrive/d_megadrive.cpp"},
