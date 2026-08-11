@@ -13641,7 +13641,7 @@
 		<description>Popeye - Tale of Teasing Witch Sea Hag (Hack, English)</description>
 		<year>2008</year>
 		<manufacturer>KingMike's Translations</manufacturer>
-		<rom name="Popeye - Tale of Teasing Witch Sea Hag T-Eng (2008)(KingMike?™s Translations).sfc" size="1572864" crc="749a6f69"/>
+		<rom name="Popeye - Tale of Teasing Witch Sea Hag T-Eng (2008)(KingMikeâ€™s Translations).sfc" size="1572864" crc="749a6f69"/>
 		<video type="raster" orientation="horizontal" width="512" height="448" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>

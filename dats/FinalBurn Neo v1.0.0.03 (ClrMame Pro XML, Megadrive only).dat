@@ -7259,11 +7259,11 @@
 		<driver status="good"/>
 	</game>
 	<game name="ffightmd" sourcefile="megadrive/d_megadrive.cpp">
-		<comment>Homebrew, Public version Christmas 2025</comment>
-		<description>Final Fight MD (HB, v0.92b)</description>
-		<year>2025</year>
+		<comment>Homebrew</comment>
+		<description>Final Fight MD (HB, v0.94b+)</description>
+		<year>2026</year>
 		<manufacturer>MXRetroDev - CFX</manufacturer>
-		<rom name="Final Fight MD v0.92b (2025)(MXRetroDev - CFX).bin" size="4194304" crc="ae245026"/>
+		<rom name="Final Fight MD v0.94b+ (2026)(MXRetroDev - CFX).bin" size="4194304" crc="16512148"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -16140,10 +16140,10 @@
 	</game>
 	<game name="queenreversi" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Queen?™s Reversi (HB, v1.01)</description>
+		<description>Queenâ€™s Reversi (HB, v1.01)</description>
 		<year>2026</year>
 		<manufacturer>NK-Soft</manufacturer>
-		<rom name="Queen?™s Reversi v1.01 (2026)(NK-Soft).bin" size="1703936" crc="00c79e37"/>
+		<rom name="Queenâ€™s Reversi v1.01 (2026)(NK-Soft).bin" size="1703936" crc="00c79e37"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
