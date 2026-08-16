@@ -24,7 +24,6 @@ SUPPORT_LARGE_FILES = 1
 SPLIT_UP_LINK ?= 0
 REGEN_HEADERS ?= 0
 NAMCOS_OPENGL = 0
-NAMCOS_OPENGL_ES = 0
 NAMCOS_OPENGL_ES2 = 0
 NAMCOS_OPENGL_LIBS =
 
@@ -86,17 +85,14 @@ ifneq (,$(findstring unix,$(platform)))
 	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	ifeq ($(platform),unix)
 		NAMCOS_OPENGL = 1
-		NAMCOS_OPENGL_ES = 1
 		NAMCOS_OPENGL_ES2 = 1
 		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	else ifneq (,$(findstring android,$(platform)))
 		NAMCOS_OPENGL = 1
-		NAMCOS_OPENGL_ES = 1
 		NAMCOS_OPENGL_ES2 = 1
 		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	else ifneq (,$(findstring rpi,$(platform)))
 		NAMCOS_OPENGL = 1
-		NAMCOS_OPENGL_ES = 1
 		NAMCOS_OPENGL_ES2 = 1
 		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	else
@@ -170,7 +166,6 @@ ifneq (,$(findstring unix,$(platform)))
 # Raspberry Pi 3 (x64)
 else ifeq ($(platform), ras3_x64)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
@@ -192,7 +187,6 @@ else ifeq ($(platform), ras3_x64)
 # Raspberry Pi 4 (x64)
 else ifeq ($(platform), ras4_x64)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
@@ -214,7 +208,6 @@ else ifeq ($(platform), ras4_x64)
 # Raspberry Pi 5 (x64)
 else ifeq ($(platform), ras5_x64)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
@@ -236,7 +229,6 @@ else ifeq ($(platform), ras5_x64)
 # webOS (32/64-bit)
 else ifeq ($(platform), webos)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	TARGET := $(TARGET_NAME)_libretro.so
@@ -344,7 +336,6 @@ else ifeq ($(platform), theos_ios)
 # QNX
 else ifeq ($(platform), qnx)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	TARGET := $(TARGET_NAME)_libretro_$(platform).so
@@ -369,7 +360,7 @@ else ifneq (,$(filter $(platform), ps3 psl1ght))
 	# RetroArch no longer vendors zlib, build our own copy
 	EXTERNAL_ZLIB = 0
 	STATIC_LINKING = 1
-	INCLUDE_7Z_SUPPORT = 1
+	INCLUDE_7Z_SUPPORT = 0
 
 	CC = $(PS3DEV)/ppu/bin/ppu-$(COMMONLV)gcc$(EXE_EXT)
 	CXX = $(PS3DEV)/ppu/bin/ppu-$(COMMONLV)g++$(EXE_EXT)
@@ -443,13 +434,12 @@ else ifeq ($(platform), libnx)
 	CFLAGS += -std=gnu11
 	STATIC_LINKING = 1
 	# 2021-05-18 : disabling 7z again for libnx, it seems the lib version linked to RA is old
-	INCLUDE_7Z_SUPPORT = 1
+	INCLUDE_7Z_SUPPORT = 0
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 
 # Funkey S
 else ifeq ($(platform), funkey)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	TARGET := $(TARGET_NAME)_libretro.so
@@ -481,7 +471,6 @@ else ifeq ($(platform), funkey)
 # NESC, SNESC, C64 mini 
 else ifeq ($(platform), classic_armv7_a7)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = arm-linux-gnueabihf-gcc
@@ -504,7 +493,6 @@ else ifeq ($(platform), classic_armv7_a7)
 # Playstation Classic
 else ifeq ($(platform), classic_armv8_a35)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = arm-linux-gnueabihf-gcc
@@ -526,7 +514,6 @@ else ifeq ($(platform), classic_armv8_a35)
 # Playstation Classic
 else ifeq ($(platform), classic_armv8_a35_x64)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
@@ -548,7 +535,6 @@ else ifeq ($(platform), classic_armv8_a35_x64)
 # Odroid N2
 else ifeq ($(platform), odroid-n2)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = arm-linux-gnueabihf-gcc
@@ -571,7 +557,6 @@ else ifeq ($(platform), odroid-n2)
 # Odroid N2 (x64)
 else ifeq ($(platform), odroid-n2_x64)
 	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES = 1
 	NAMCOS_OPENGL_ES2 = 1
 	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
@@ -624,7 +609,7 @@ else ifeq ($(platform), emscripten)
 	NAMCOS_OPENGL_LIBS += -sUSE_WEBGL2=1
 	TARGET := $(TARGET_NAME)_libretro_$(platform).bc
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	INCLUDE_7Z_SUPPORT = 1
+	INCLUDE_7Z_SUPPORT = 0
 	EXTERNAL_ZLIB = 1
 	STATIC_LINKING = 1
 	FASTMATH = 0
@@ -653,6 +638,7 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 	CXXFLAGS += $(MSVC2017CompileFlags)
 
 	TargetArchMoniker = $(subst $(WinPartition)_,,$(PlatformSuffix))
+
 	CC  = cl.exe
 	CXX = cl.exe
 	LD = link.exe
@@ -769,10 +755,6 @@ FBNEO_DEFINES += -D__LIBRETRO__ \
 
 ifeq ($(NAMCOS_OPENGL),1)
 	FBNEO_DEFINES += -DFBNEO_NAMCOS_OPENGL
-endif
-
-ifeq ($(NAMCOS_OPENGL_ES),1)
-	FBNEO_DEFINES += -DFBNEO_NAMCOS_OPENGL_ES
 endif
 
 ifeq ($(NAMCOS_OPENGL_ES2),1)

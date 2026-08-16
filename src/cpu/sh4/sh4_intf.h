@@ -36,6 +36,7 @@ void Sh3SetIRQLine(INT32 line, INT32 state);
 
 INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType);
 INT32 Sh3MapHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd, INT32 nType);
+INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd);
 
 INT32 Sh3SetReadPortHandler(pSh3ReadLongHandler pHandler);
 INT32 Sh3SetWritePortHandler(pSh3WriteLongHandler pHandler);

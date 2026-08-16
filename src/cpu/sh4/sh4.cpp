@@ -555,6 +555,7 @@ INT32 Sh3Scan(INT32 nAction)
 #define	SH3_MAXHANDLER	(8)
 
 static UINT8 *MemMapR[SH3_PAGE_COUNT];
+static UINT8 *MemMapRL[SH3_PAGE_COUNT];
 static UINT8 *MemMapW[SH3_PAGE_COUNT];
 static UINT8 *MemMapF[SH3_PAGE_COUNT];
 static pSh3ReadByteHandler ReadByte[SH3_MAXHANDLER];
@@ -574,6 +575,7 @@ static INT32 Sh3MapInit()
 {
 	//bprintf(0, _T("Init Sh3 MEMMAP\n"));
 	memset(MemMapR, 0, sizeof(MemMapR));
+	memset(MemMapRL, 0, sizeof(MemMapRL));
 	memset(MemMapW, 0, sizeof(MemMapW));
 	memset(MemMapF, 0, sizeof(MemMapF));
 
@@ -584,11 +586,15 @@ INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType)
 {
 	UINT8* Ptr = pMemory - nStart;
 	UINT8** pMemMapR = MemMapR + (nStart >> SH3_SHIFT);
+	UINT8** pMemMapRL = MemMapRL + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapW = MemMapW + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapF = MemMapF + (nStart >> SH3_SHIFT);
 
-	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapR++, pMemMapW++, pMemMapF++) {
-		if (nType & MAP_READ)	  pMemMapR[0] = Ptr + i;
+	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapR++, pMemMapRL++, pMemMapW++, pMemMapF++) {
+		if (nType & MAP_READ) {
+			pMemMapR[0] = Ptr + i;
+			pMemMapRL[0] = Ptr + i;
+		}
 		if (nType & MAP_WRITE)	  pMemMapW[0] = Ptr + i;
 		if (nType & MAP_FETCHOP)  pMemMapF[0] = Ptr + i;
 	}
@@ -599,14 +605,29 @@ INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType)
 INT32 Sh3MapHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd, INT32 nType)
 {
 	UINT8** pMemMapR = MemMapR + (nStart >> SH3_SHIFT);
+	UINT8** pMemMapRL = MemMapRL + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapW = MemMapW + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapF = MemMapF + (nStart >> SH3_SHIFT);
 
-	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapR++, pMemMapW++, pMemMapF++) {
-		if (nType & MAP_READ)	 pMemMapR[0] = (UINT8*)nHandler;
+	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapR++, pMemMapRL++, pMemMapW++, pMemMapF++) {
+		if (nType & MAP_READ) {
+			pMemMapR[0] = (UINT8*)nHandler;
+			pMemMapRL[0] = (UINT8*)nHandler;
+		}
 		if (nType & MAP_WRITE)	 pMemMapW[0] = (UINT8*)nHandler;
 		if (nType & MAP_FETCHOP) pMemMapF[0] = (UINT8*)nHandler;
 	}
+	return 0;
+}
+
+INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd)
+{
+	UINT8** pMemMapRL = MemMapRL + (nStart >> SH3_SHIFT);
+
+	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapRL++) {
+		pMemMapRL[0] = (UINT8*)nHandler;
+	}
+
 	return 0;
 }
 
@@ -963,7 +984,7 @@ static inline UINT32 RL(UINT32 A)
 		WaitState(A, 0);
 	}
 
-	UINT8 *pr = MemMapR[ A >> SH3_SHIFT ];
+	UINT8 *pr = MemMapRL[ A >> SH3_SHIFT ];
 	if ( (uintptr_t)pr >= SH3_MAXHANDLER ) {
 		UINT32 V = *((UINT32 *)(pr + (A & SH3_PAGEM)));
 		V = (V << 16) | (V >> 16);
