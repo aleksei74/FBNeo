@@ -41,7 +41,8 @@ enum NamcosGlRasterPrimitiveType
 	NAMCOS_GL_RASTER_GOURAUD_POLYGON,
 	NAMCOS_GL_RASTER_TEXTURED_POLYGON,
 	NAMCOS_GL_RASTER_FLAT_RECTANGLE,
-	NAMCOS_GL_RASTER_TEXTURED_RECTANGLE
+	NAMCOS_GL_RASTER_TEXTURED_RECTANGLE,
+	NAMCOS_GL_RASTER_VRAM_COPY
 };
 
 struct NamcosGlRasterVertex
@@ -62,6 +63,8 @@ struct NamcosGlRasterPrimitive
 	UINT32 vertexCount;
 	INT32 width;
 	INT32 height;
+	INT32 sourceX;
+	INT32 sourceY;
 	INT32 semiTransparent;
 	INT32 rawTexture;
 	INT32 gouraud;
@@ -71,13 +74,14 @@ struct NamcosGlRasterPrimitive
 
 struct NamcosGlRasterDrawVertex
 {
-	float x;
-	float y;
-	float red;
-	float green;
-	float blue;
-	float u;
-	float v;
+	INT16 x;
+	INT16 y;
+	UINT8 red;
+	UINT8 green;
+	UINT8 blue;
+	UINT8 u;
+	UINT8 v;
+	UINT8 padding;
 };
 
 struct NamcosGlRasterRect
@@ -88,13 +92,16 @@ struct NamcosGlRasterRect
 	INT32 y2;
 };
 
+static const INT32 NAMCOS_GL_RASTER_DIRTY_RECTS = 32;
+static const INT32 NAMCOS_GL_RASTER_UPLOAD_SPANS = 16;
+
 struct NamcosGlRasterDirtyBounds
 {
 	INT32 x1;
 	INT32 y1;
 	INT32 x2;
 	INT32 y2;
-	NamcosGlRasterRect rects[8];
+	NamcosGlRasterRect rects[NAMCOS_GL_RASTER_DIRTY_RECTS];
 	INT32 rectCount;
 	bool sparse;
 	bool valid;
@@ -130,8 +137,16 @@ struct NamcosGlRasterDirtyBounds
 		if (right > x2) x2 = right;
 		if (bottom > y2) y2 = bottom;
 		if (!sparse) return;
+		// Draws commonly land inside an area already marked dirty.  Avoid
+		// rebuilding the sparse list when the accumulated region is unchanged.
+		if (rectCount == 1) {
+			const NamcosGlRasterRect &rect = rects[0];
+			if (left >= rect.x1 && top >= rect.y1 && right <= rect.x2 &&
+				bottom <= rect.y2) return;
+		}
 
 		NamcosGlRasterRect merged = { left, top, right, bottom };
+		INT64 mergedArea = (INT64)(right - left + 1) * (bottom - top + 1);
 		for (INT32 i = 0; i < rectCount;) {
 			const NamcosGlRasterRect &rect = rects[i];
 			if (merged.x2 + 1 < rect.x1 || rect.x2 + 1 < merged.x1 ||
@@ -139,14 +154,25 @@ struct NamcosGlRasterDirtyBounds
 				i++;
 				continue;
 			}
-			if (rect.x1 < merged.x1) merged.x1 = rect.x1;
-			if (rect.y1 < merged.y1) merged.y1 = rect.y1;
-			if (rect.x2 > merged.x2) merged.x2 = rect.x2;
-			if (rect.y2 > merged.y2) merged.y2 = rect.y2;
+			NamcosGlRasterRect candidate = merged;
+			if (rect.x1 < candidate.x1) candidate.x1 = rect.x1;
+			if (rect.y1 < candidate.y1) candidate.y1 = rect.y1;
+			if (rect.x2 > candidate.x2) candidate.x2 = rect.x2;
+			if (rect.y2 > candidate.y2) candidate.y2 = rect.y2;
+			const INT64 rectArea = (INT64)(rect.x2 - rect.x1 + 1) *
+				(rect.y2 - rect.y1 + 1);
+			const INT64 candidateArea = (INT64)(candidate.x2 - candidate.x1 + 1) *
+				(candidate.y2 - candidate.y1 + 1);
+			if (candidateArea > (mergedArea + rectArea) * 2) {
+				i++;
+				continue;
+			}
+			merged = candidate;
+			mergedArea = candidateArea;
 			rects[i] = rects[--rectCount];
 			i = 0;
 		}
-		if (rectCount == 8) {
+		if (rectCount == NAMCOS_GL_RASTER_DIRTY_RECTS) {
 			rectCount = 0;
 			sparse = false;
 			return;
@@ -154,28 +180,168 @@ struct NamcosGlRasterDirtyBounds
 		rects[rectCount++] = merged;
 	}
 
-	INT32 GetReadbackRects(NamcosGlRasterRect *output, INT32 capacity) const
+	INT32 GetReadbackRects(NamcosGlRasterRect *output, INT32 capacity,
+		INT64 callCost = 16384) const
+	{
+		// Readback stalls the GPU, so avoiding a call is worth more than the
+		// equivalent texture-to-texture copy operation.
+		return GetCopyRects(output, capacity, callCost);
+	}
+
+	INT32 GetCopyRects(NamcosGlRasterRect *output, INT32 capacity,
+		INT64 callCost = 4096) const
 	{
 		if (!valid || output == NULL || capacity <= 0) return 0;
-		if (sparse && rectCount > 1 && rectCount <= capacity) {
-			INT64 sparseArea = 0;
-			for (INT32 i = 0; i < rectCount; i++) {
-				sparseArea += (INT64)(rects[i].x2 - rects[i].x1 + 1) *
-					(rects[i].y2 - rects[i].y1 + 1);
+		if (!sparse || rectCount <= 1 || rectCount > capacity) {
+			output[0] = { x1, y1, x2, y2 };
+			return 1;
+		}
+
+		NamcosGlRasterRect working[NAMCOS_GL_RASTER_DIRTY_RECTS];
+		NamcosGlRasterRect best[NAMCOS_GL_RASTER_DIRTY_RECTS];
+		INT64 workingArea[NAMCOS_GL_RASTER_DIRTY_RECTS];
+		memcpy(working, rects,
+			(size_t)rectCount * sizeof(NamcosGlRasterRect));
+		memcpy(best, rects,
+			(size_t)rectCount * sizeof(NamcosGlRasterRect));
+		INT32 count = rectCount;
+		INT32 bestCount = count;
+		INT64 area = 0;
+		for (INT32 i = 0; i < count; i++) {
+			workingArea[i] = (INT64)(working[i].x2 - working[i].x1 + 1) *
+				(working[i].y2 - working[i].y1 + 1);
+			area += workingArea[i];
+		}
+		// A copy call is considerably more expensive than a few thousand pixels,
+		// especially on GLES drivers. Track the cheapest greedy merge level.
+		INT64 bestCost = area + (INT64)count * callCost;
+		while (count > 1) {
+			INT32 bestFirst = 0;
+			INT32 bestSecond = 1;
+			INT64 bestExtra = 0x7fffffffffffffffLL;
+			INT64 bestMergedArea = workingArea[0];
+			NamcosGlRasterRect bestMerged = working[0];
+			for (INT32 first = 0; first < count - 1; first++) {
+				for (INT32 second = first + 1; second < count; second++) {
+					NamcosGlRasterRect merged = working[first];
+					if (working[second].x1 < merged.x1) merged.x1 = working[second].x1;
+					if (working[second].y1 < merged.y1) merged.y1 = working[second].y1;
+					if (working[second].x2 > merged.x2) merged.x2 = working[second].x2;
+					if (working[second].y2 > merged.y2) merged.y2 = working[second].y2;
+					const INT64 mergedArea =
+						(INT64)(merged.x2 - merged.x1 + 1) *
+						(merged.y2 - merged.y1 + 1);
+					const INT64 extra = mergedArea - workingArea[first] -
+						workingArea[second];
+					if (extra < bestExtra) {
+						bestExtra = extra;
+						bestFirst = first;
+						bestSecond = second;
+						bestMerged = merged;
+						bestMergedArea = mergedArea;
+					}
+				}
 			}
-			const INT64 boundingArea = (INT64)(x2 - x1 + 1) *
-				(y2 - y1 + 1);
-			if (sparseArea * 2 <= boundingArea) {
-				memcpy(output, rects,
-					(size_t)rectCount * sizeof(NamcosGlRasterRect));
-				return rectCount;
+			working[bestFirst] = bestMerged;
+			workingArea[bestFirst] = bestMergedArea;
+			--count;
+			working[bestSecond] = working[count];
+			workingArea[bestSecond] = workingArea[count];
+			area += bestExtra;
+			const INT64 cost = area + (INT64)count * callCost;
+			if (cost < bestCost) {
+				bestCost = cost;
+				bestCount = count;
+				memcpy(best, working,
+					(size_t)count * sizeof(NamcosGlRasterRect));
 			}
 		}
-		output[0].x1 = x1;
-		output[0].y1 = y1;
-		output[0].x2 = x2;
-		output[0].y2 = y2;
-		return 1;
+		memcpy(output, best,
+			(size_t)bestCount * sizeof(NamcosGlRasterRect));
+		return bestCount;
+	}
+
+	bool Intersects(INT32 left, INT32 top, INT32 right, INT32 bottom) const
+	{
+		if (!valid || right < x1 || x2 < left || bottom < y1 || y2 < top)
+			return false;
+		if (!sparse) return true;
+		for (INT32 i = 0; i < rectCount; i++) {
+			if (right >= rects[i].x1 && rects[i].x2 >= left &&
+				bottom >= rects[i].y1 && rects[i].y2 >= top) return true;
+		}
+		return false;
+	}
+
+	void Exclude(INT32 left, INT32 top, INT32 right, INT32 bottom)
+	{
+		if (!Intersects(left, top, right, bottom)) return;
+
+		NamcosGlRasterRect source[NAMCOS_GL_RASTER_DIRTY_RECTS];
+		const INT32 sourceCount = sparse ? rectCount : 1;
+		if (sparse) {
+			memcpy(source, rects,
+				(size_t)sourceCount * sizeof(NamcosGlRasterRect));
+		} else {
+			source[0].x1 = x1;
+			source[0].y1 = y1;
+			source[0].x2 = x2;
+			source[0].y2 = y2;
+		}
+
+		NamcosGlRasterRect remaining[NAMCOS_GL_RASTER_DIRTY_RECTS];
+		INT32 remainingCount = 0;
+		for (INT32 i = 0; i < sourceCount; i++) {
+			const NamcosGlRasterRect &rect = source[i];
+			const INT32 clipX1 = left > rect.x1 ? left : rect.x1;
+			const INT32 clipY1 = top > rect.y1 ? top : rect.y1;
+			const INT32 clipX2 = right < rect.x2 ? right : rect.x2;
+			const INT32 clipY2 = bottom < rect.y2 ? bottom : rect.y2;
+			if (clipX1 > clipX2 || clipY1 > clipY2) {
+				if (remainingCount == NAMCOS_GL_RASTER_DIRTY_RECTS) return;
+				remaining[remainingCount++] = rect;
+				continue;
+			}
+
+			NamcosGlRasterRect split[4];
+			INT32 splitCount = 0;
+			if (rect.y1 < clipY1) {
+				split[splitCount++] = { rect.x1, rect.y1, rect.x2, clipY1 - 1 };
+			}
+			if (clipY2 < rect.y2) {
+				split[splitCount++] = { rect.x1, clipY2 + 1, rect.x2, rect.y2 };
+			}
+			if (rect.x1 < clipX1) {
+				split[splitCount++] = { rect.x1, clipY1, clipX1 - 1, clipY2 };
+			}
+			if (clipX2 < rect.x2) {
+				split[splitCount++] = { clipX2 + 1, clipY1, rect.x2, clipY2 };
+			}
+			if (remainingCount + splitCount > NAMCOS_GL_RASTER_DIRTY_RECTS) return;
+			for (INT32 part = 0; part < splitCount; part++) {
+				remaining[remainingCount++] = split[part];
+			}
+		}
+
+		if (remainingCount == 0) {
+			Reset();
+			return;
+		}
+		memcpy(rects, remaining,
+			(size_t)remainingCount * sizeof(NamcosGlRasterRect));
+		rectCount = remainingCount;
+		sparse = true;
+		x1 = rects[0].x1;
+		y1 = rects[0].y1;
+		x2 = rects[0].x2;
+		y2 = rects[0].y2;
+		for (INT32 i = 1; i < rectCount; i++) {
+			if (rects[i].x1 < x1) x1 = rects[i].x1;
+			if (rects[i].y1 < y1) y1 = rects[i].y1;
+			if (rects[i].x2 > x2) x2 = rects[i].x2;
+			if (rects[i].y2 > y2) y2 = rects[i].y2;
+		}
+		valid = true;
 	}
 };
 
@@ -201,12 +367,15 @@ struct NamcosGlRasterUploadTracker
 		valid = true;
 	}
 
-	void RememberRange(const UINT64 *source, INT32 first, INT32 rows)
+	void SetAndRememberRange(UINT64 *destination, UINT64 generation,
+		INT32 first, INT32 rows)
 	{
-		if (source == NULL || first < 0 || rows <= 0 || first + rows > 1024)
-			return;
-		memcpy(rowGeneration + first, source + first,
-			(size_t)rows * sizeof(UINT64));
+		if (destination == NULL || first < 0 || rows <= 0 ||
+			first + rows > 1024) return;
+		for (INT32 row = first; row < first + rows; row++) {
+			destination[row] = generation;
+			rowGeneration[row] = generation;
+		}
 		valid = true;
 	}
 };
@@ -220,13 +389,12 @@ struct NamcosGlRasterUploadSpan
 static inline INT32 NamcosGlRasterBuildUploadSpans(
 	const NamcosGlRasterUploadTracker *tracker, const UINT64 *rowGeneration,
 	NamcosGlRasterUploadSpan *spans, INT32 capacity,
-	INT32 *boundingFirst, INT32 *boundingRows)
+	INT32 *boundingFirst, INT32 *boundingRows, INT32 callCostRows = 8)
 {
 	if (tracker == NULL || rowGeneration == NULL || spans == NULL ||
 		capacity <= 0 || boundingFirst == NULL || boundingRows == NULL) {
 		return -1;
 	}
-
 	INT32 first = 0;
 	while (first < 1024 && tracker->rowGeneration[first] ==
 		rowGeneration[first]) first++;
@@ -242,7 +410,10 @@ static inline INT32 NamcosGlRasterBuildUploadSpans(
 	*boundingRows = last - first;
 
 	INT32 spanCount = 0;
-	INT32 changedRows = 0;
+	INT32 uploadRows = 0;
+	// One span needs a texture upload and a framebuffer copy.  Treat the
+	// driver overhead as extra VRAM rows when deciding whether separated
+	// updates should share one transfer.
 	INT32 row = first;
 	while (row < last) {
 		while (row < last && tracker->rowGeneration[row] ==
@@ -251,14 +422,26 @@ static inline INT32 NamcosGlRasterBuildUploadSpans(
 		const INT32 spanFirst = row;
 		while (row < last && tracker->rowGeneration[row] !=
 			rowGeneration[row]) row++;
+		const INT32 spanRows = row - spanFirst;
+		if (spanCount > 0) {
+			NamcosGlRasterUploadSpan *previous = &spans[spanCount - 1];
+			const INT32 previousEnd = previous->firstRow + previous->rowCount;
+			const INT32 gapRows = spanFirst - previousEnd;
+			if (gapRows <= callCostRows) {
+				previous->rowCount = row - previous->firstRow;
+				uploadRows += gapRows + spanRows;
+				continue;
+			}
+		}
 		if (spanCount == capacity) return -1;
 		spans[spanCount].firstRow = spanFirst;
-		spans[spanCount].rowCount = row - spanFirst;
-		changedRows += row - spanFirst;
+		spans[spanCount].rowCount = spanRows;
+		uploadRows += spanRows;
 		spanCount++;
 	}
 
-	if (spanCount > 1 && changedRows * 2 > *boundingRows) return -1;
+	if (spanCount > 1 && uploadRows + spanCount * callCostRows >=
+		*boundingRows + callCostRows) return -1;
 	return spanCount;
 }
 
@@ -385,6 +568,14 @@ static inline void NamcosGlRasterDecodeColor(UINT32 value,
 	vertex->blue = (UINT8)((value >> 16) & 0xff);
 }
 
+static inline void NamcosGlRasterCopyColor(NamcosGlRasterVertex *destination,
+	const NamcosGlRasterVertex *source)
+{
+	destination->red = source->red;
+	destination->green = source->green;
+	destination->blue = source->blue;
+}
+
 static inline void NamcosGlRasterDecodePosition(UINT32 value,
 	const NamcosGlRasterState *state, NamcosGlRasterVertex *vertex)
 {
@@ -400,7 +591,6 @@ static inline bool NamcosGlRasterDecodePacket(
 		return false;
 	}
 
-	memset(primitive, 0, sizeof(*primitive));
 	const UINT32 *words = packet->words;
 	const UINT8 command = packet->command;
 	primitive->semiTransparent = (words[0] & 0x02000000) != 0;
@@ -419,6 +609,35 @@ static inline bool NamcosGlRasterDecodePacket(
 			primitive->vertex[0].y + primitive->height <= 1024;
 	}
 
+	if (command == 0x80 && packet->wordCount >= 4) {
+		const INT32 sourceX = words[1] & 0x3ff;
+		const INT32 sourceY = (words[1] >> 16) & 0x3ff;
+		const INT32 destinationX = words[2] & 0x3ff;
+		const INT32 destinationY = (words[2] >> 16) & 0x3ff;
+		const INT32 width = words[3] & 0xffff;
+		const INT32 height = words[3] >> 16;
+		if (width <= 0 || height <= 0 || sourceX + width > 1024 ||
+			sourceY + height > 1024 || destinationX + width > 1024 ||
+			destinationY + height > 1024) return false;
+		const bool overlaps = sourceX < destinationX + width &&
+			destinationX < sourceX + width && sourceY < destinationY + height &&
+			destinationY < sourceY + height;
+		if (overlaps) return false;
+		primitive->type = NAMCOS_GL_RASTER_VRAM_COPY;
+		primitive->vertexCount = 1;
+		primitive->vertex[0].x = destinationX;
+		primitive->vertex[0].y = destinationY;
+		primitive->vertex[0].red = 0;
+		primitive->vertex[0].green = 0;
+		primitive->vertex[0].blue = 0;
+		primitive->sourceX = sourceX;
+		primitive->sourceY = sourceY;
+		primitive->width = width;
+		primitive->height = height;
+		primitive->semiTransparent = 0;
+		return true;
+	}
+
 	if (command >= 0x20 && command <= 0x23 && packet->wordCount >= 4) {
 		primitive->type = NAMCOS_GL_RASTER_FLAT_POLYGON;
 		primitive->vertexCount = 3;
@@ -426,7 +645,8 @@ static inline bool NamcosGlRasterDecodePacket(
 		for (UINT32 i = 0; i < 3; i++) {
 			NamcosGlRasterDecodePosition(words[i + 1], &packet->state,
 				&primitive->vertex[i]);
-			if (i != 0) NamcosGlRasterDecodeColor(words[0], &primitive->vertex[i]);
+			if (i != 0) NamcosGlRasterCopyColor(&primitive->vertex[i],
+				&primitive->vertex[0]);
 		}
 		return true;
 	}
@@ -434,10 +654,12 @@ static inline bool NamcosGlRasterDecodePacket(
 	if (command >= 0x28 && command <= 0x2b && packet->wordCount >= 5) {
 		primitive->type = NAMCOS_GL_RASTER_FLAT_POLYGON;
 		primitive->vertexCount = 4;
+		NamcosGlRasterDecodeColor(words[0], &primitive->vertex[0]);
 		for (UINT32 i = 0; i < 4; i++) {
 			NamcosGlRasterDecodePosition(words[i + 1], &packet->state,
 				&primitive->vertex[i]);
-			NamcosGlRasterDecodeColor(words[0], &primitive->vertex[i]);
+			if (i != 0) NamcosGlRasterCopyColor(&primitive->vertex[i],
+				&primitive->vertex[0]);
 		}
 		return true;
 	}
@@ -482,11 +704,17 @@ static inline bool NamcosGlRasterDecodePacket(
 		primitive->vertexCount = points;
 		primitive->rawTexture = (words[0] & 0x01000000) != 0;
 		primitive->gouraud = gouraud;
+		if (!gouraud) NamcosGlRasterDecodeColor(words[0], &primitive->vertex[0]);
 		for (UINT32 i = 0; i < points; i++) {
 			const UINT32 colorIndex = gouraud ? i * 3 : 0;
 			const UINT32 positionIndex = gouraud ? i * 3 + 1 : i * 2 + 1;
 			const UINT32 textureIndex = positionIndex + 1;
-			NamcosGlRasterDecodeColor(words[colorIndex], &primitive->vertex[i]);
+			if (gouraud) {
+				NamcosGlRasterDecodeColor(words[colorIndex], &primitive->vertex[i]);
+			} else if (i != 0) {
+				NamcosGlRasterCopyColor(&primitive->vertex[i],
+					&primitive->vertex[0]);
+			}
 			NamcosGlRasterDecodePosition(words[positionIndex], &packet->state,
 				&primitive->vertex[i]);
 			primitive->vertex[i].u = (UINT8)(words[textureIndex] & 0xff);
@@ -572,13 +800,28 @@ static inline void NamcosGlRasterCopyDrawVertex(
 	NamcosGlRasterDrawVertex *destination,
 	const NamcosGlRasterVertex *source)
 {
-	destination->x = (float)source->x;
-	destination->y = (float)source->y;
-	destination->red = (float)source->red / 255.0f;
-	destination->green = (float)source->green / 255.0f;
-	destination->blue = (float)source->blue / 255.0f;
-	destination->u = (float)source->u;
-	destination->v = (float)source->v;
+	destination->x = (INT16)source->x;
+	destination->y = (INT16)source->y;
+	destination->red = source->red;
+	destination->green = source->green;
+	destination->blue = source->blue;
+	destination->u = source->u;
+	destination->v = source->v;
+	destination->padding = 0;
+}
+
+static inline void NamcosGlRasterCopyColorDrawVertex(
+	NamcosGlRasterDrawVertex *destination,
+	const NamcosGlRasterVertex *source)
+{
+	destination->x = (INT16)source->x;
+	destination->y = (INT16)source->y;
+	destination->red = source->red;
+	destination->green = source->green;
+	destination->blue = source->blue;
+	destination->u = 0;
+	destination->v = 0;
+	destination->padding = 0;
 }
 
 static inline bool NamcosGlRasterTriangleIsOversized(
@@ -606,22 +849,23 @@ static inline UINT32 NamcosGlRasterBuildColorTriangles(
 		(primitive->type != NAMCOS_GL_RASTER_FLAT_POLYGON &&
 		 primitive->type != NAMCOS_GL_RASTER_GOURAUD_POLYGON &&
 		 primitive->type != NAMCOS_GL_RASTER_FLAT_RECTANGLE &&
-		 primitive->type != NAMCOS_GL_RASTER_FILL)) {
+		 primitive->type != NAMCOS_GL_RASTER_FILL &&
+		 primitive->type != NAMCOS_GL_RASTER_VRAM_COPY)) {
 		return 0;
 	}
 
 	if (primitive->type == NAMCOS_GL_RASTER_FLAT_RECTANGLE ||
-		primitive->type == NAMCOS_GL_RASTER_FILL) {
-		NamcosGlRasterVertex corners[4];
-		for (UINT32 i = 0; i < 4; i++) corners[i] = primitive->vertex[0];
-		corners[1].x += primitive->width;
-		corners[2].y += primitive->height;
-		corners[3].x += primitive->width;
-		corners[3].y += primitive->height;
-		static const UINT8 order[6] = { 0, 1, 2, 1, 3, 2 };
-		for (UINT32 i = 0; i < 6; i++) {
-			NamcosGlRasterCopyDrawVertex(&vertices[i], &corners[order[i]]);
-		}
+		primitive->type == NAMCOS_GL_RASTER_FILL ||
+		primitive->type == NAMCOS_GL_RASTER_VRAM_COPY) {
+		NamcosGlRasterCopyColorDrawVertex(&vertices[0], &primitive->vertex[0]);
+		vertices[1] = vertices[0];
+		vertices[1].x += (INT16)primitive->width;
+		vertices[2] = vertices[0];
+		vertices[2].y += (INT16)primitive->height;
+		vertices[3] = vertices[1];
+		vertices[4] = vertices[1];
+		vertices[4].y += (INT16)primitive->height;
+		vertices[5] = vertices[2];
 		return 6;
 	}
 
@@ -629,7 +873,7 @@ static inline UINT32 NamcosGlRasterBuildColorTriangles(
 		if (NamcosGlRasterTriangleIsOversized(&primitive->vertex[0],
 			&primitive->vertex[1], &primitive->vertex[2])) return 0;
 		for (UINT32 i = 0; i < 3; i++) {
-			NamcosGlRasterCopyDrawVertex(&vertices[i], &primitive->vertex[i]);
+			NamcosGlRasterCopyColorDrawVertex(&vertices[i], &primitive->vertex[i]);
 		}
 		return 3;
 	}
@@ -643,7 +887,6 @@ static inline UINT32 NamcosGlRasterBuildColorTriangles(
 		UINT32 count;
 		static const UINT8 firstTriangle[3] = { 0, 1, 2 };
 		static const UINT8 secondTriangle[3] = { 1, 2, 3 };
-		static const UINT8 quadOrder[6] = { 0, 1, 3, 0, 3, 2 };
 		if (cull0) {
 			order = secondTriangle;
 			count = 3;
@@ -651,11 +894,20 @@ static inline UINT32 NamcosGlRasterBuildColorTriangles(
 			order = firstTriangle;
 			count = 3;
 		} else {
-			order = quadOrder;
-			count = 6;
+			NamcosGlRasterCopyColorDrawVertex(&vertices[0],
+				&primitive->vertex[0]);
+			NamcosGlRasterCopyColorDrawVertex(&vertices[1],
+				&primitive->vertex[1]);
+			NamcosGlRasterCopyColorDrawVertex(&vertices[2],
+				&primitive->vertex[3]);
+			NamcosGlRasterCopyColorDrawVertex(&vertices[5],
+				&primitive->vertex[2]);
+			vertices[3] = vertices[0];
+			vertices[4] = vertices[2];
+			return 6;
 		}
 		for (UINT32 i = 0; i < count; i++) {
-			NamcosGlRasterCopyDrawVertex(&vertices[i],
+			NamcosGlRasterCopyColorDrawVertex(&vertices[i],
 				&primitive->vertex[order[i]]);
 		}
 		return count;
@@ -673,21 +925,18 @@ static inline UINT32 NamcosGlRasterBuildTexturedTriangles(
 		return 0;
 	}
 	if (primitive->type == NAMCOS_GL_RASTER_TEXTURED_RECTANGLE) {
-		NamcosGlRasterVertex corners[4];
-		for (UINT32 i = 0; i < 4; i++) corners[i] = primitive->vertex[0];
-		corners[1].x += primitive->width;
-		corners[1].u = (UINT8)(corners[1].u + primitive->width);
-		corners[2].y += primitive->height;
-		corners[2].v = (UINT8)(corners[2].v + primitive->height);
-		corners[3].x += primitive->width;
-		corners[3].y += primitive->height;
-		corners[3].u = (UINT8)(corners[3].u + primitive->width);
-		corners[3].v = (UINT8)(corners[3].v + primitive->height);
-		static const UINT8 rectangleOrder[6] = { 0, 1, 2, 1, 3, 2 };
-		for (UINT32 i = 0; i < 6; i++) {
-			NamcosGlRasterCopyDrawVertex(&vertices[i],
-				&corners[rectangleOrder[i]]);
-		}
+		NamcosGlRasterCopyDrawVertex(&vertices[0], &primitive->vertex[0]);
+		vertices[1] = vertices[0];
+		vertices[1].x += (INT16)primitive->width;
+		vertices[1].u = (UINT8)(vertices[1].u + primitive->width);
+		vertices[2] = vertices[0];
+		vertices[2].y += (INT16)primitive->height;
+		vertices[2].v = (UINT8)(vertices[2].v + primitive->height);
+		vertices[3] = vertices[1];
+		vertices[4] = vertices[1];
+		vertices[4].y += (INT16)primitive->height;
+		vertices[4].v = (UINT8)(vertices[4].v + primitive->height);
+		vertices[5] = vertices[2];
 		return 6;
 	}
 	if (primitive->vertexCount != 3 && primitive->vertexCount != 4) return 0;
@@ -699,11 +948,12 @@ static inline UINT32 NamcosGlRasterBuildTexturedTriangles(
 		return 3;
 	}
 
-	static const UINT8 order[6] = { 0, 1, 2, 1, 3, 2 };
-	for (UINT32 i = 0; i < 6; i++) {
-		NamcosGlRasterCopyDrawVertex(&vertices[i],
-			&primitive->vertex[order[i]]);
-	}
+	NamcosGlRasterCopyDrawVertex(&vertices[0], &primitive->vertex[0]);
+	NamcosGlRasterCopyDrawVertex(&vertices[1], &primitive->vertex[1]);
+	NamcosGlRasterCopyDrawVertex(&vertices[2], &primitive->vertex[2]);
+	NamcosGlRasterCopyDrawVertex(&vertices[4], &primitive->vertex[3]);
+	vertices[3] = vertices[1];
+	vertices[5] = vertices[2];
 	return 6;
 }
 
@@ -723,7 +973,8 @@ static inline bool NamcosGlRasterGetDrawBounds(
 	INT32 bottom = top;
 	if (primitive->type == NAMCOS_GL_RASTER_FILL ||
 		primitive->type == NAMCOS_GL_RASTER_FLAT_RECTANGLE ||
-		primitive->type == NAMCOS_GL_RASTER_TEXTURED_RECTANGLE) {
+		primitive->type == NAMCOS_GL_RASTER_TEXTURED_RECTANGLE ||
+		primitive->type == NAMCOS_GL_RASTER_VRAM_COPY) {
 		right += primitive->width - 1;
 		bottom += primitive->height - 1;
 	} else {
@@ -735,7 +986,8 @@ static inline bool NamcosGlRasterGetDrawBounds(
 		}
 	}
 
-	if (primitive->type != NAMCOS_GL_RASTER_FILL) {
+	if (primitive->type != NAMCOS_GL_RASTER_FILL &&
+		primitive->type != NAMCOS_GL_RASTER_VRAM_COPY) {
 		if (left < (INT32)packet->state.drawX1) left = packet->state.drawX1;
 		if (top < (INT32)packet->state.drawY1) top = packet->state.drawY1;
 		if (right > (INT32)packet->state.drawX2) right = packet->state.drawX2;
@@ -785,6 +1037,176 @@ static inline void NamcosGlRasterGetTextureState(
 	state[7] = (primitive->clut >> 6) & 0x3ff;
 }
 
+static inline bool NamcosGlRasterDirtyIntersectsWrapped(
+	const NamcosGlRasterDirtyBounds *dirty, INT32 x, INT32 y,
+	INT32 width, INT32 height)
+{
+	if (dirty == NULL || !dirty->valid || width <= 0 || height <= 0)
+		return false;
+	x &= 0x3ff;
+	y &= 0x3ff;
+	if (width > 1024) width = 1024;
+	if (height > 1024) height = 1024;
+	const INT32 firstWidth = width < 1024 - x ? width : 1024 - x;
+	const INT32 firstHeight = height < 1024 - y ? height : 1024 - y;
+	if (dirty->Intersects(x, y, x + firstWidth - 1,
+		y + firstHeight - 1)) return true;
+	if (width > firstWidth && dirty->Intersects(0, y,
+		width - firstWidth - 1, y + firstHeight - 1)) return true;
+	if (height > firstHeight && dirty->Intersects(x, 0,
+		x + firstWidth - 1, height - firstHeight - 1)) return true;
+	return width > firstWidth && height > firstHeight &&
+		dirty->Intersects(0, 0, width - firstWidth - 1,
+			height - firstHeight - 1);
+}
+
+static inline INT32 NamcosGlRasterBuildWrappedReadRects(
+	const NamcosGlRasterDirtyBounds *dirty, INT32 x, INT32 y,
+	INT32 width, INT32 height, NamcosGlRasterRect *output, INT32 capacity,
+	INT64 readbackCallCost = 16384)
+{
+	if (dirty == NULL || !dirty->valid || output == NULL || capacity < 4 ||
+		width <= 0 || height <= 0) return 0;
+	x &= 0x3ff;
+	y &= 0x3ff;
+	if (width > 1024) width = 1024;
+	if (height > 1024) height = 1024;
+	const INT32 firstWidth = width < 1024 - x ? width : 1024 - x;
+	const INT32 firstHeight = height < 1024 - y ? height : 1024 - y;
+	const INT32 widths[2] = { firstWidth, width - firstWidth };
+	const INT32 heights[2] = { firstHeight, height - firstHeight };
+	const INT32 xs[2] = { x, 0 };
+	const INT32 ys[2] = { y, 0 };
+	NamcosGlRasterRect fallback[4];
+	INT32 fallbackCount = 0;
+	INT64 fallbackArea = 0;
+	for (INT32 yPart = 0; yPart < 2; yPart++) {
+		for (INT32 xPart = 0; xPart < 2; xPart++) {
+			if (widths[xPart] <= 0 || heights[yPart] <= 0) continue;
+			NamcosGlRasterRect rect;
+			rect.x1 = xs[xPart];
+			rect.y1 = ys[yPart];
+			rect.x2 = rect.x1 + widths[xPart] - 1;
+			rect.y2 = rect.y1 + heights[yPart] - 1;
+			if (!dirty->Intersects(rect.x1, rect.y1, rect.x2, rect.y2)) continue;
+			fallback[fallbackCount++] = rect;
+			fallbackArea += (INT64)widths[xPart] * heights[yPart];
+		}
+	}
+	if (fallbackCount == 0) return 0;
+
+	NamcosGlRasterRect dirtyRects[NAMCOS_GL_RASTER_DIRTY_RECTS];
+	const INT32 dirtyCount = dirty->GetReadbackRects(dirtyRects,
+		NAMCOS_GL_RASTER_DIRTY_RECTS, readbackCallCost);
+	INT32 sparseCount = 0;
+	INT64 sparseArea = 0;
+	for (INT32 request = 0; request < fallbackCount; request++) {
+		for (INT32 source = 0; source < dirtyCount; source++) {
+			NamcosGlRasterRect rect;
+			rect.x1 = fallback[request].x1 > dirtyRects[source].x1 ?
+				fallback[request].x1 : dirtyRects[source].x1;
+			rect.y1 = fallback[request].y1 > dirtyRects[source].y1 ?
+				fallback[request].y1 : dirtyRects[source].y1;
+			rect.x2 = fallback[request].x2 < dirtyRects[source].x2 ?
+				fallback[request].x2 : dirtyRects[source].x2;
+			rect.y2 = fallback[request].y2 < dirtyRects[source].y2 ?
+				fallback[request].y2 : dirtyRects[source].y2;
+			if (rect.x2 < rect.x1 || rect.y2 < rect.y1) continue;
+			if (sparseCount == capacity) {
+				sparseCount = capacity + 1;
+				break;
+			}
+			output[sparseCount++] = rect;
+			sparseArea += (INT64)(rect.x2 - rect.x1 + 1) *
+				(rect.y2 - rect.y1 + 1);
+		}
+		if (sparseCount > capacity) break;
+	}
+	if (sparseCount > 0 && sparseCount <= 8 &&
+		sparseArea * 4 <= fallbackArea) return sparseCount;
+	if (fallbackCount > capacity) return 0;
+	memcpy(output, fallback, (size_t)fallbackCount * sizeof(fallback[0]));
+	return fallbackCount;
+}
+
+static inline bool NamcosGlRasterTextureStateReadsDirty(
+	const UINT32 *state, const NamcosGlRasterDirtyBounds *dirty)
+{
+	if (state == NULL || dirty == NULL || !dirty->valid)
+		return false;
+	const INT32 mode = (INT32)state[2];
+	const bool interleaved = state[3] != 0;
+	const INT32 textureWords = interleaved ? 256 :
+		(mode == 0 ? 64 : (mode == 1 ? 128 : 256));
+	if (NamcosGlRasterDirtyIntersectsWrapped(dirty, (INT32)state[0],
+		(INT32)state[1], textureWords, 256)) return true;
+	if (mode < 2) {
+		const INT32 clutWords = mode == 0 ? 16 : 256;
+		if (NamcosGlRasterDirtyIntersectsWrapped(dirty, (INT32)state[6],
+			(INT32)state[7], clutWords, 1)) return true;
+	}
+	return false;
+}
+
+static inline bool NamcosGlRasterTexturePrimitiveReadsDirty(
+	const UINT32 *state, const NamcosGlRasterPrimitive *primitive,
+	const NamcosGlRasterDirtyBounds *dirty)
+{
+	if (state == NULL || primitive == NULL || dirty == NULL ||
+		!dirty->valid) return false;
+	const INT32 mode = (INT32)state[2];
+	if (state[3] != 0 || mode < 0 || mode > 2 ||
+		state[4] != 0xff || state[5] != 0xff) {
+		return NamcosGlRasterTextureStateReadsDirty(state, dirty);
+	}
+
+	INT32 minU;
+	INT32 maxU;
+	INT32 minV;
+	INT32 maxV;
+	if (primitive->type == NAMCOS_GL_RASTER_TEXTURED_RECTANGLE) {
+		if (primitive->vertexCount == 0 || primitive->width <= 0 ||
+			primitive->height <= 0 || primitive->width > 256 ||
+			primitive->height > 256) {
+			return NamcosGlRasterTextureStateReadsDirty(state, dirty);
+		}
+		minU = primitive->vertex[0].u;
+		minV = primitive->vertex[0].v;
+		maxU = minU + primitive->width - 1;
+		maxV = minV + primitive->height - 1;
+		if (maxU > 255 || maxV > 255) {
+			return NamcosGlRasterTextureStateReadsDirty(state, dirty);
+		}
+	} else if (primitive->type == NAMCOS_GL_RASTER_TEXTURED_POLYGON &&
+		(primitive->vertexCount == 3 || primitive->vertexCount == 4)) {
+		minU = maxU = primitive->vertex[0].u;
+		minV = maxV = primitive->vertex[0].v;
+		for (UINT32 i = 1; i < primitive->vertexCount; i++) {
+			const INT32 u = primitive->vertex[i].u;
+			const INT32 v = primitive->vertex[i].v;
+			if (u < minU) minU = u;
+			if (u > maxU) maxU = u;
+			if (v < minV) minV = v;
+			if (v > maxV) maxV = v;
+		}
+	} else {
+		return NamcosGlRasterTextureStateReadsDirty(state, dirty);
+	}
+
+	const INT32 shift = mode == 0 ? 2 : (mode == 1 ? 1 : 0);
+	const INT32 firstWord = minU >> shift;
+	const INT32 lastWord = maxU >> shift;
+	if (NamcosGlRasterDirtyIntersectsWrapped(dirty,
+		(INT32)state[0] + firstWord, (INT32)state[1] + minV,
+		lastWord - firstWord + 1, maxV - minV + 1)) return true;
+	if (mode < 2) {
+		const INT32 clutWords = mode == 0 ? 16 : 256;
+		if (NamcosGlRasterDirtyIntersectsWrapped(dirty, (INT32)state[6],
+			(INT32)state[7], clutWords, 1)) return true;
+	}
+	return false;
+}
+
 static inline bool NamcosGlRasterIsVramCommand(UINT8 command)
 {
 	return command == 0x02 ||
@@ -794,19 +1216,30 @@ static inline bool NamcosGlRasterIsVramCommand(UINT8 command)
 
 static inline bool NamcosGlRasterCanSubmitCommand(UINT8 command)
 {
-	// Keep texturing and semi-transparency on the software
-	// rasterizer. Small GPU batches cost more than their VRAM synchronization.
-	// Bit 0 controls raw texture modulation and has no effect on untextured
-	// polygons, so both encodings can share the hardware path.
+	// Bits 0 and 1 select raw texture modulation and semi-transparency. The
+	// hardware path handles both through the synchronized VRAM sample texture,
+	// so all four encodings share one primitive decoder. VRAM transfers and
+	// unsupported line shapes remain on the ordered software path.
 	if (command == 0x02) return true;
-	switch (command & 0xfe) {
+	if (command == 0x80) return true;
+	switch (command & 0xfc) {
 		case 0x20:
+		case 0x24:
+		case 0x28:
+		case 0x2c:
 		case 0x30:
+		case 0x34:
+		case 0x38:
+		case 0x3c:
 		case 0x40:
 		case 0x60:
+		case 0x64:
 		case 0x68:
+		case 0x6c:
 		case 0x70:
+		case 0x74:
 		case 0x78:
+		case 0x7c:
 			return true;
 	}
 	return false;

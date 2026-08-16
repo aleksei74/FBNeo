@@ -58,6 +58,8 @@ struct _ga20_state
 	INT16 volume_table[4][256];
 	INT32 frequency;
 	double gain;
+	UINT32 gain_fixed;
+	INT32 gain_fixed_valid;
 	INT32 output_dir;
 };
 
@@ -77,6 +79,40 @@ static void iremga20_rebuild_volume_table(ga20_state *state, INT32 channel)
 
 	for (INT32 sample = 0; sample < 256; sample++) {
 		state->volume_table[channel][sample] = (INT16)((sample - 0x80) * volume);
+	}
+}
+
+static inline INT32 iremga20_apply_fixed_gain(INT32 sample, UINT32 gain)
+{
+	const INT64 scaled = (INT64)sample * gain;
+	return (scaled < 0) ? -(INT32)((-scaled) >> 20) : (INT32)(scaled >> 20);
+}
+
+static void iremga20_rebuild_gain(ga20_state *state)
+{
+	const double scaledGain = state->gain * (1 << 20);
+	const UINT32 firstCandidate = (UINT32)scaledGain;
+
+	state->gain_fixed = firstCandidate;
+	state->gain_fixed_valid = 0;
+
+	for (UINT32 candidate = firstCandidate; candidate <= firstCandidate + 1; candidate++) {
+		INT32 valid = 1;
+
+		for (INT32 sample = -0x8000; sample < 0x8000; sample++) {
+			const INT32 expected = BURN_SND_CLIP((INT32)(sample * state->gain));
+			const INT32 result = BURN_SND_CLIP(iremga20_apply_fixed_gain(sample, candidate));
+			if (result != expected) {
+				valid = 0;
+				break;
+			}
+		}
+
+		if (valid) {
+			state->gain_fixed = candidate;
+			state->gain_fixed_valid = 1;
+			break;
+		}
 	}
 }
 
@@ -101,59 +137,61 @@ void iremga20_update(INT32 device, INT16 *buffer, INT32 length)
 		end[i] = chip->channel[i].end - 0x20;
 		play[i] = chip->channel[i].play;
 	}
-	if (!(play[0] | play[1] | play[2] | play[3])) return;
+	UINT32 activeMask = (play[0] != 0) | ((play[1] != 0) << 1) | ((play[2] != 0) << 2) | ((play[3] != 0) << 3);
+	if (!activeMask) return;
 
 	pSamples = chip->rom;
-	const INT32 outputLeft = chip->output_dir & BURN_SND_ROUTE_LEFT;
-	const INT32 outputRight = chip->output_dir & BURN_SND_ROUTE_RIGHT;
+	const INT32 outputLeftMask = -(INT32)((chip->output_dir & BURN_SND_ROUTE_LEFT) != 0);
+	const INT32 outputRightMask = -(INT32)((chip->output_dir & BURN_SND_ROUTE_RIGHT) != 0);
 	const double gain = chip->gain;
+	const UINT32 gainFixed = chip->gain_fixed;
+	const INT32 useFixedGain = chip->gain_fixed_valid;
+	const INT16 *volume[4] = {
+		chip->volume_table[0], chip->volume_table[1],
+		chip->volume_table[2], chip->volume_table[3]
+	};
+
+#define GA20_MIX_CHANNEL(channel) do { \
+		sampleout += volume[channel][pSamples[pos[channel]]]; \
+		frac[channel] += step[channel]; \
+		pos[channel] += frac[channel] >> 24; \
+		frac[channel] &= 0xffffff; \
+		play[channel] = (pos[channel] < end[channel]); \
+		if (!play[channel]) activeMask &= ~(1U << channel); \
+	} while (0)
 
 	for (i = 0; i < length; i++, buffer+=2)
 	{
 		sampleout = 0;
 
-		// update the 4 channels inline
-		if (play[0])
-		{
-			sampleout += chip->volume_table[0][pSamples[pos[0]]];
-			frac[0] += step[0];
-			pos[0] += frac[0] >> 24;
-			frac[0] &= 0xffffff;
-			play[0] = (pos[0] < end[0]);
-		}
-		if (play[1])
-		{
-			sampleout += chip->volume_table[1][pSamples[pos[1]]];
-			frac[1] += step[1];
-			pos[1] += frac[1] >> 24;
-			frac[1] &= 0xffffff;
-			play[1] = (pos[1] < end[1]);
-		}
-		if (play[2])
-		{
-			sampleout += chip->volume_table[2][pSamples[pos[2]]];
-			frac[2] += step[2];
-			pos[2] += frac[2] >> 24;
-			frac[2] &= 0xffffff;
-			play[2] = (pos[2] < end[2]);
-		}
-		if (play[3])
-		{
-			sampleout += chip->volume_table[3][pSamples[pos[3]]];
-			frac[3] += step[3];
-			pos[3] += frac[3] >> 24;
-			frac[3] &= 0xffffff;
-			play[3] = (pos[3] < end[3]);
+		switch (activeMask) {
+			case 0x1: GA20_MIX_CHANNEL(0); break;
+			case 0x2: GA20_MIX_CHANNEL(1); break;
+			case 0x3: GA20_MIX_CHANNEL(0); GA20_MIX_CHANNEL(1); break;
+			case 0x4: GA20_MIX_CHANNEL(2); break;
+			case 0x5: GA20_MIX_CHANNEL(0); GA20_MIX_CHANNEL(2); break;
+			case 0x6: GA20_MIX_CHANNEL(1); GA20_MIX_CHANNEL(2); break;
+			case 0x7: GA20_MIX_CHANNEL(0); GA20_MIX_CHANNEL(1); GA20_MIX_CHANNEL(2); break;
+			case 0x8: GA20_MIX_CHANNEL(3); break;
+			case 0x9: GA20_MIX_CHANNEL(0); GA20_MIX_CHANNEL(3); break;
+			case 0xa: GA20_MIX_CHANNEL(1); GA20_MIX_CHANNEL(3); break;
+			case 0xb: GA20_MIX_CHANNEL(0); GA20_MIX_CHANNEL(1); GA20_MIX_CHANNEL(3); break;
+			case 0xc: GA20_MIX_CHANNEL(2); GA20_MIX_CHANNEL(3); break;
+			case 0xd: GA20_MIX_CHANNEL(0); GA20_MIX_CHANNEL(2); GA20_MIX_CHANNEL(3); break;
+			case 0xe: GA20_MIX_CHANNEL(1); GA20_MIX_CHANNEL(2); GA20_MIX_CHANNEL(3); break;
+			case 0xf: GA20_MIX_CHANNEL(0); GA20_MIX_CHANNEL(1); GA20_MIX_CHANNEL(2); GA20_MIX_CHANNEL(3); break;
 		}
 
 		sampleout >>= 2;
 
-		const INT32 routedSample = BURN_SND_CLIP((INT32)(sampleout * gain));
-		buffer[0] = BURN_SND_CLIP(buffer[0] + (outputLeft ? routedSample : 0));
-		buffer[1] = BURN_SND_CLIP(buffer[1] + (outputRight ? routedSample : 0));
+		const INT32 routedSample = BURN_SND_CLIP(useFixedGain ? iremga20_apply_fixed_gain(sampleout, gainFixed) : (INT32)(sampleout * gain));
+		buffer[0] = BURN_SND_CLIP(buffer[0] + (routedSample & outputLeftMask));
+		buffer[1] = BURN_SND_CLIP(buffer[1] + (routedSample & outputRightMask));
 
-		if (!(play[0] | play[1] | play[2] | play[3])) break;
+		if (!activeMask) break;
 	}
+
+#undef GA20_MIX_CHANNEL
 
 	/* update the regs now */
 	for (i=0; i < 4; i++)
@@ -273,6 +311,7 @@ void iremga20_init(INT32 device, UINT8 *rom, INT32 rom_size, INT32 frequency)
 	
 	chip->gain = 1.00;
 	chip->output_dir = BURN_SND_ROUTE_BOTH;
+	iremga20_rebuild_gain(chip);
 
 	iremga20_reset(device);
 	
@@ -292,6 +331,7 @@ void itemga20_set_route(INT32 device, double nVolume, INT32 nRouteDir)
 	
 	chip->gain = nVolume;
 	chip->output_dir = nRouteDir;
+	iremga20_rebuild_gain(chip);
 }
 
 void iremga20_exit()

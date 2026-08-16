@@ -79,7 +79,8 @@ public:
 		m_context = NULL;
 	}
 
-	void ParallelFor(INT32 count, INT32 minimum, PsikyoshThreadCallback callback, void *context)
+	void ParallelFor(INT32 count, INT32 minimum, PsikyoshThreadCallback callback, void *context,
+		PsikyoshThreadCallback mainCallback = NULL, void *mainContext = NULL)
 	{
 		const INT32 cores = m_worker_count + 1;
 		INT32 parts = (minimum > 0) ? (count / minimum) : cores;
@@ -87,6 +88,7 @@ public:
 		if (parts > cores) parts = cores;
 		if (parts > count) parts = count;
 		if (parts < 2) {
+			if (mainCallback) mainCallback(mainContext, 0, 0);
 			callback(context, 0, count);
 			return;
 		}
@@ -102,6 +104,7 @@ public:
 		}
 		m_work.notify_all();
 
+		if (mainCallback) mainCallback(mainContext, 0, 0);
 		callback(context, 0, count / parts);
 
 		std::unique_lock<std::mutex> lock(m_mutex);

@@ -88,6 +88,29 @@ void BurnYM2151UpdateRequest()
 		nRightSample[chip][3] += (INT32)(pYM2151Buffer[buffer][(nFractionalPosition >> 16) - 0]/* * YM2151Volumes[route]*/);	\
 	}
 
+template <bool FixedM92Volume, bool AddSignal>
+static void BurnYM2151RenderMono(INT16 *pSoundBuf, INT32 nSegmentLength, double volume)
+{
+	for (INT32 i = (nFractionalPosition & 0xFFFF0000) >> 15; i < nSegmentLength; i += 2, nFractionalPosition += nSampleSize) {
+		const INT32 position = nFractionalPosition >> 16;
+		const INT32 fraction = (nFractionalPosition >> 4) & 0x0fff;
+		const INT32 sampleN = (INT32)pYM2151Buffer[0][position - 3] + pYM2151Buffer[1][position - 3];
+		const INT32 sample0 = (INT32)pYM2151Buffer[0][position - 2] + pYM2151Buffer[1][position - 2];
+		const INT32 sample1 = (INT32)pYM2151Buffer[0][position - 1] + pYM2151Buffer[1][position - 1];
+		const INT32 sample2 = (INT32)pYM2151Buffer[0][position - 0] + pYM2151Buffer[1][position - 0];
+		const INT32 interpolated = INTERPOLATE4PS_16BIT(fraction, sampleN, sample0, sample1, sample2);
+		const INT32 sample = BURN_SND_CLIP(FixedM92Volume ? (interpolated * 2) / 5 : (INT32)(interpolated * volume));
+
+		if (AddSignal) {
+			pSoundBuf[i + 0] = BURN_SND_CLIP(pSoundBuf[i + 0] + sample);
+			pSoundBuf[i + 1] = BURN_SND_CLIP(pSoundBuf[i + 1] + sample);
+		} else {
+			pSoundBuf[i + 0] = sample;
+			pSoundBuf[i + 1] = sample;
+		}
+	}
+}
+
 void BurnYM2151Render(INT16* pSoundBuf, INT32 nSegmentEnd)
 {
 #if defined FBNEO_DEBUG
@@ -127,6 +150,23 @@ void BurnYM2151Render(INT16* pSoundBuf, INT32 nSegmentEnd)
 		pYM2151Buffer[3] = pBuffer + 3 * 4096 + 4;
 	}
 
+	const INT32 monoFastPath = !bYM2151_MultiChip &&
+		YM2151RouteDirs[0][BURN_SND_YM2151_YM2151_ROUTE_1] == BURN_SND_ROUTE_BOTH &&
+		YM2151RouteDirs[0][BURN_SND_YM2151_YM2151_ROUTE_2] == BURN_SND_ROUTE_BOTH &&
+		YM2151Volumes[0][BURN_SND_YM2151_YM2151_ROUTE_1] == YM2151Volumes[0][BURN_SND_YM2151_YM2151_ROUTE_2];
+
+	if (monoFastPath) {
+		const double volume = YM2151Volumes[0][BURN_SND_YM2151_YM2151_ROUTE_1];
+		const INT32 fixedM92Volume = volume == 0.40;
+
+		if (fixedM92Volume) {
+			if (bYM2151AddSignal) BurnYM2151RenderMono<true, true>(pSoundBuf, nSegmentLength, volume);
+			else BurnYM2151RenderMono<true, false>(pSoundBuf, nSegmentLength, volume);
+		} else {
+			if (bYM2151AddSignal) BurnYM2151RenderMono<false, true>(pSoundBuf, nSegmentLength, volume);
+			else BurnYM2151RenderMono<false, false>(pSoundBuf, nSegmentLength, volume);
+		}
+	} else {
 	for (INT32 i = (nFractionalPosition & 0xFFFF0000) >> 15; i < nSegmentLength; i += 2, nFractionalPosition += nSampleSize) {
 		INT32 nLeftSample[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
 		INT32 nRightSample[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
@@ -159,6 +199,7 @@ void BurnYM2151Render(INT16* pSoundBuf, INT32 nSegmentEnd)
 			pSoundBuf[i + 0] = nTotalLeftSample[0] + nTotalLeftSample[1];
 			pSoundBuf[i + 1] = nTotalRightSample[0] + nTotalRightSample[1];
 		}
+	}
 	}
 
 	if (!bBurnYM2151IsBuffered || (bBurnYM2151IsBuffered && nSegmentEnd >= nBurnSoundLen)) {
@@ -423,4 +464,3 @@ UINT8 BurnYM2151Read()
 {
 	return BurnYM2151Read(0);
 }
-

@@ -177,6 +177,19 @@
 		<video type="raster" orientation="horizontal" width="272" height="228" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="amidar" romof="coleco" sourcefile="coleco/d_coleco.cpp">
+		<comment>Homebrew, SGM - Super Game Module</comment>
+		<description>Amidar (HB)</description>
+		<year>2024</year>
+		<manufacturer>Opcode Games - Konami</manufacturer>
+		<rom name="Amidar (2024)(Opcode).rom" size="131072" crc="e4676d56"/>
+		<rom name="coleco.rom" merge="coleco.rom" size="8192" crc="3aa93ef3"/>
+		<rom name="colecoa.rom" merge="colecoa.rom" size="8192" crc="39bb16fc"/>
+		<rom name="svi603.rom" merge="svi603.rom" size="8192" crc="19e91b82"/>
+		<rom name="czz50.rom" merge="czz50.rom" size="16384" crc="4999abc6"/>
+		<video type="raster" orientation="horizontal" width="272" height="228" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="antarct" romof="coleco" sourcefile="coleco/d_coleco.cpp">
 		<description>Antarctic Adventure (USA, Euro)</description>
 		<year>1984</year>
@@ -1981,6 +1994,19 @@
 		<year>2015</year>
 		<manufacturer>Windmill Software</manufacturer>
 		<rom name="Digger (2015)(CollectorVision).rom" size="24576" crc="77088cab"/>
+		<rom name="coleco.rom" merge="coleco.rom" size="8192" crc="3aa93ef3"/>
+		<rom name="colecoa.rom" merge="colecoa.rom" size="8192" crc="39bb16fc"/>
+		<rom name="svi603.rom" merge="svi603.rom" size="8192" crc="19e91b82"/>
+		<rom name="czz50.rom" merge="czz50.rom" size="16384" crc="4999abc6"/>
+		<video type="raster" orientation="horizontal" width="272" height="228" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="dkarcade" romof="coleco" sourcefile="coleco/d_coleco.cpp">
+		<comment>Homebrew, SGM - Super Game Module</comment>
+		<description>DK Arcade (HB)</description>
+		<year>2023</year>
+		<manufacturer>Opcode Games - Nintendo</manufacturer>
+		<rom name="DK Arcade (2023)(Opcode).rom" size="131072" crc="76004c98"/>
 		<rom name="coleco.rom" merge="coleco.rom" size="8192" crc="3aa93ef3"/>
 		<rom name="colecoa.rom" merge="colecoa.rom" size="8192" crc="39bb16fc"/>
 		<rom name="svi603.rom" merge="svi603.rom" size="8192" crc="19e91b82"/>
@@ -5193,12 +5219,12 @@
 		<video type="raster" orientation="horizontal" width="272" height="228" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="pacar" romof="coleco" sourcefile="coleco/d_coleco.cpp">
-		<comment>Homebrew, Published by Team Pixelboy</comment>
-		<description>Pacar (HB)</description>
-		<year>1983-2017</year>
-		<manufacturer>Sega</manufacturer>
-		<rom name="Pacar (2017)(Team Pixelboy).rom" size="32768" crc="a82c9593"/>
+	<game name="pacmandx" romof="coleco" sourcefile="coleco/d_coleco.cpp">
+		<comment>Homebrew, SGM - Super Game Module</comment>
+		<description>Pac-Man DX (SGM) (HB)</description>
+		<year>2025</year>
+		<manufacturer>Opcode Games</manufacturer>
+		<rom name="Pac-Man DX - SGM (2025)(Opcode Games).rom" size="262144" crc="de785ee3"/>
 		<rom name="coleco.rom" merge="coleco.rom" size="8192" crc="3aa93ef3"/>
 		<rom name="colecoa.rom" merge="colecoa.rom" size="8192" crc="39bb16fc"/>
 		<rom name="svi603.rom" merge="svi603.rom" size="8192" crc="19e91b82"/>
@@ -5206,12 +5232,12 @@
 		<video type="raster" orientation="horizontal" width="272" height="228" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="pacmandx" romof="coleco" sourcefile="coleco/d_coleco.cpp">
-		<comment>Homebrew, SGM - Super Game Module</comment>
-		<description>Pacman DX (SGM) (HB)</description>
-		<year>2025</year>
-		<manufacturer>Opcode Games</manufacturer>
-		<rom name="Pacman DX - SGM (2023)(Opcode Games).rom" size="262144" crc="de785ee3"/>
+	<game name="pacar" romof="coleco" sourcefile="coleco/d_coleco.cpp">
+		<comment>Homebrew, Published by Team Pixelboy</comment>
+		<description>Pacar (HB)</description>
+		<year>1983-2017</year>
+		<manufacturer>Sega</manufacturer>
+		<rom name="Pacar (2017)(Team Pixelboy).rom" size="32768" crc="a82c9593"/>
 		<rom name="coleco.rom" merge="coleco.rom" size="8192" crc="3aa93ef3"/>
 		<rom name="colecoa.rom" merge="colecoa.rom" size="8192" crc="39bb16fc"/>
 		<rom name="svi603.rom" merge="svi603.rom" size="8192" crc="19e91b82"/>
@@ -8395,4 +8421,4 @@
 		<rom name="svi603.rom" size="8192" crc="19e91b82"/>
 		<rom name="czz50.rom" size="16384" crc="4999abc6"/>
 	</game>
-</datafile>
+</datafile>

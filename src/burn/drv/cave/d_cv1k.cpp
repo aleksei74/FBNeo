@@ -42,7 +42,8 @@ static INT32 is_type_d;
 static INT32 DriverClock; // selected cpu clockrate
 static INT32 nPrevBurnCPUSpeedAdjust;
 static UINT8 nPrevCPUTenth;
-static INT32 speedhack_burn; // 10ms @ cpu clock, calculated in DrvFrame
+static INT32 speedhack_burn; // 10us at the selected CPU clock
+static INT32 speedhack_mapped;
 static INT32 nPrevBlitterDipB;
 static INT32 nPrevBlitterDipC;
 static INT32 nPrevBlitterBurnCycles;
@@ -307,7 +308,7 @@ static void __fastcall main_write_port(UINT32 offset, UINT32 data)
 	(void)data;
 }
 
-// hacky speedhack handler
+// Verified idle-loop speedhack
 static UINT32 hacky_idle_ram;
 static UINT32 hacky_idle_pc;
 
@@ -319,46 +320,30 @@ static UINT32 __fastcall speedhack_read_long(UINT32 offset)
 			Sh3BurnCycles(speedhack_burn);
 		}
 	}
-	UINT32 V = *((UINT32 *)(DrvMainRAM + (offset & 0xfffffc)));
-	V = (V << 16) | (V >> 16);
-	return V;
-}
-
-static UINT16 __fastcall speedhack_read_word(UINT32 offset)
-{
-#if 0
-	// speedhack for all games uses long handler, just passthru for word/byte
-	// reads since this is a high-traffic area. (0xc000000 - 0xc00ffff)
-	UINT32 pc = Sh3GetPC(-1);
-	if ( offset == hacky_idle_ram && (pc == hacky_idle_pc || pc == hacky_idle_pc+2)) {
-		//bprintf(0, _T("w"));
-		Sh3BurnCycles(speedhack_burn);
-	}
-#endif
-	return *((UINT16 *)(DrvMainRAM + (offset & 0xfffffe)));
-}
-
-static UINT8 __fastcall speedhack_read_byte(UINT32 offset)
-{
-#if 0
-	UINT32 pc = Sh3GetPC(-1);
-	if ( offset == hacky_idle_ram && (pc == hacky_idle_pc || pc == hacky_idle_pc+2)) {
-		//bprintf(0, _T("b"));
-		Sh3BurnCycles(speedhack_burn);
-	}
-#endif
-	return DrvMainRAM[(offset & 0xffffff) ^ 1];
+	UINT32 value = *((UINT32 *)(DrvMainRAM + (offset & 0xfffffc)));
+	return (value << 16) | (value >> 16);
 }
 
 static void speedhack_set(UINT32 ram, UINT32 pc)
 {
 	hacky_idle_ram = ram;
 	hacky_idle_pc = pc;
+	speedhack_mapped = -1;
+}
 
-	Sh3MapHandler(1, 0xc000000, 0xc00ffff, MAP_READ);
-	Sh3SetReadByteHandler (1, speedhack_read_byte);
-	Sh3SetReadWordHandler (1, speedhack_read_word);
-	Sh3SetReadLongHandler (1, speedhack_read_long);
+static void speedhack_apply(INT32 enable)
+{
+	enable = (enable && hacky_idle_ram && hacky_idle_pc) ? 1 : 0;
+	if (enable == speedhack_mapped) return;
+
+	if (enable) {
+		Sh3MapReadLongHandler(1, 0xc000000, 0xc00ffff);
+		Sh3SetReadLongHandler (1, speedhack_read_long);
+	} else {
+		Sh3MapMemory(DrvMainRAM, 0xc000000, 0xc00ffff, MAP_READ);
+	}
+
+	speedhack_mapped = enable;
 }
 
 static INT32 DrvDoReset()
@@ -512,7 +497,8 @@ static INT32 DrvInit()
 	Sh3SetReadPortHandler(main_read_port);
 	Sh3SetWritePortHandler(main_write_port);
 
-	init_speedhack(); // install the hacky speedhack handler
+	init_speedhack(); // locate the game's verified idle loop
+	speedhack_apply(DrvDips[1] & 0x02);
 
 	Sh3Close();
 
@@ -541,6 +527,9 @@ static INT32 DrvExit()
 	GenericTilesExit();
 
 	is_type_d = 0;
+	hacky_idle_ram = 0;
+	hacky_idle_pc = 0;
+	speedhack_mapped = -1;
 
 	return 0;
 }
@@ -568,7 +557,7 @@ static INT32 DrvFrame()
 		double dPercent = i_percent + (0.1 * (DrvDips[3] & 0xf)); // .x tenth percent comes from DIPS
 
 		DriverClock = (INT32)((INT64)SH3_CLOCK * dPercent / 100);
-		speedhack_burn = (double)((double)DriverClock / 1000000) * 10; // 10us
+		speedhack_burn = DriverClock / 100000; // 10us
 
 		Sh3SetClockCV1k(DriverClock);
 		ymz770_set_buffered(Sh3TotalCycles, DriverClock);
@@ -581,6 +570,7 @@ static INT32 DrvFrame()
 		nPrevBlitterBurnCycles != speedhack_burn) {
 		INT32 delay = DrvDips[2] & 0x1f;
 
+		speedhack_apply(DrvDips[1] & 0x02);
 		epic12_set_blitterdelay_method(DrvDips[2] & 0x20);
 		epic12_set_blitterdelay((delay) ? ((delay - 1) + 50) : 0, speedhack_burn);
 		epic12_set_blitterthreading(DrvDips[1] & 1);
@@ -624,13 +614,11 @@ static INT32 DrvFrame()
 	{
 		CPU_RUN(0, Sh3);
 	}
-
 	Sh3SetIRQLine(2, CPU_IRQSTATUS_HOLD);
 
 	if (pBurnSoundOut) {
 		ymz770_update(pBurnSoundOut, nBurnSoundLen);
 	}
-
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
 
 	Sh3Close();
@@ -640,7 +628,6 @@ static INT32 DrvFrame()
 	if (DrvDips[1] & 4) { // Thread Sync: Before Draw
 		epic12_wait_blitterthread();
 	}
-
 	if (pBurnDraw) {
 		BurnDrvRedraw();
 	}

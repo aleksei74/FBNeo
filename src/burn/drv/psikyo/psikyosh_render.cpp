@@ -15,6 +15,7 @@ UINT32  *pPsikyoshPalRAM;
 UINT32  *pPsikyoshZoomRAM;
 
 static UINT8 *DrvTransTab;
+static UINT8 *DrvOpaqueTab;
 static UINT8 alphatable[0x100];
 static UINT16 nibbleExpand[0x100];
 
@@ -62,6 +63,23 @@ static void draw_blendy_tile(INT32 gfx, INT32 code, INT32 color, INT32 sx, INT32
 
 		UINT32 *pal = pBurnDrvPalette + (color << 4);
 		UINT8 *src = pPsikyoshTiles + (code << 7);
+
+		if (!fx && !fy && alpha == 0xff && z <= 0 &&
+			sx >= 0 && sx <= nScreenWidth - 16 &&
+			sy >= 0 && sy <= nScreenHeight - 16 &&
+			(DrvOpaqueTab[code >> 3] & (1 << (code & 7)))) {
+			for (INT32 y = 0; y < 16; y++) {
+				UINT32 *dest = DrvTmpDraw + (sy + y) * nScreenWidth + sx;
+				const UINT8 *source = src + y * 8;
+
+				for (INT32 x = 0; x < 8; x++) {
+					const UINT8 packed = source[x];
+					dest[x * 2 + 0] = pal[packed >> 4];
+					dest[x * 2 + 1] = pal[packed & 0x0f];
+				}
+			}
+			return;
+		}
 	
 		INT32 inc = 8;
 		if (fy) {
@@ -156,6 +174,21 @@ static void draw_blendy_tile(INT32 gfx, INT32 code, INT32 color, INT32 sx, INT32
 		UINT32 *pal = pBurnDrvPalette + (color << 4);
 		UINT8 *src = pPsikyoshTiles + (code << 8);
 
+		if (!fx && !fy && alpha == 0xff && z <= 0 &&
+			sx >= 0 && sx <= nScreenWidth - 16 &&
+			sy >= 0 && sy <= nScreenHeight - 16 &&
+			(DrvOpaqueTab[(code >> 3) + 0x10000] & (1 << (code & 7)))) {
+			for (INT32 y = 0; y < 16; y++) {
+				UINT32 *dest = DrvTmpDraw + (sy + y) * nScreenWidth + sx;
+				const UINT8 *source = src + y * 16;
+
+				for (INT32 x = 0; x < 16; x++) {
+					dest[x] = pal[source[x]];
+				}
+			}
+			return;
+		}
+
 		INT32 inc = 16;
 		if (fy) {
 			inc = -16;
@@ -243,24 +276,23 @@ static void draw_blendy_tile(INT32 gfx, INT32 code, INT32 color, INT32 sx, INT32
 	}
 }
 
-static void draw_prezoom(INT32 gfx, INT32 code, INT32 high, INT32 wide)
+struct PsikyoshPrezoomContext {
+	INT32 gfx;
+	INT32 tileno;
+	INT32 wide;
+};
+
+static void draw_prezoom_rows(void *opaque, INT32 begin, INT32 end)
 {
-	// these probably aren't the safest routines, but they should be pretty fast.
+	PsikyoshPrezoomContext *context = (PsikyoshPrezoomContext*)opaque;
 
-	if (gfx) {
-		INT32 tileno = (code & 0x3ffff) - nGraphicsMin1;
-		if (tileno < 0 || tileno > nGraphicsSize1) tileno = 0;
-		if (nDrvZoomPrev == tileno && nDrvZoomPrevGfx == gfx &&
-			nDrvZoomPrevHigh == high && nDrvZoomPrevWide == wide) return;
-		nDrvZoomPrev = tileno;
-		nDrvZoomPrevGfx = gfx;
-		nDrvZoomPrevHigh = high;
-		nDrvZoomPrevWide = wide;
-		UINT32 *gfxptr = (UINT32*)(pPsikyoshTiles + (tileno << 8));
-
-		for (INT32 ytile = 0; ytile < high; ytile++)
+	if (context->gfx) {
+		for (INT32 ytile = begin; ytile < end; ytile++)
 		{
-			for (INT32 xtile = 0; xtile < wide; xtile++)
+			UINT32 *gfxptr = (UINT32*)(pPsikyoshTiles +
+				((context->tileno + ytile * context->wide) << 8));
+
+			for (INT32 xtile = 0; xtile < context->wide; xtile++)
 			{
 				UINT32 *dest = (UINT32*)(DrvZoomBmp + (ytile << 12) + (xtile << 4));
 
@@ -276,18 +308,12 @@ static void draw_prezoom(INT32 gfx, INT32 code, INT32 high, INT32 wide)
 			}
 		}
 	} else {
-		INT32 tileno = (code & 0x7ffff) - nGraphicsMin0;
-		if (tileno < 0 || tileno > nGraphicsSize0) tileno = 0;
-		if (nDrvZoomPrev == tileno && nDrvZoomPrevGfx == gfx &&
-			nDrvZoomPrevHigh == high && nDrvZoomPrevWide == wide) return;
-		nDrvZoomPrev = tileno;
-		nDrvZoomPrevGfx = gfx;
-		nDrvZoomPrevHigh = high;
-		nDrvZoomPrevWide = wide;
-		UINT8 *gfxptr = pPsikyoshTiles + (tileno << 7);
-		for (INT32 ytile = 0; ytile < high; ytile++)
+		for (INT32 ytile = begin; ytile < end; ytile++)
 		{
-			for (INT32 xtile = 0; xtile < wide; xtile++)
+			UINT8 *gfxptr = pPsikyoshTiles +
+				((context->tileno + ytile * context->wide) << 7);
+
+			for (INT32 xtile = 0; xtile < context->wide; xtile++)
 			{
 				UINT8 *dest = DrvZoomBmp + (ytile << 12) + (xtile << 4);
 
@@ -302,6 +328,34 @@ static void draw_prezoom(INT32 gfx, INT32 code, INT32 high, INT32 wide)
 				}
 			}
 		}
+	}
+}
+
+static void draw_prezoom(INT32 gfx, INT32 code, INT32 high, INT32 wide)
+{
+	INT32 tileno;
+
+	if (gfx) {
+		tileno = (code & 0x3ffff) - nGraphicsMin1;
+		if (tileno < 0 || tileno > nGraphicsSize1) tileno = 0;
+	} else {
+		tileno = (code & 0x7ffff) - nGraphicsMin0;
+		if (tileno < 0 || tileno > nGraphicsSize0) tileno = 0;
+	}
+
+	if (nDrvZoomPrev == tileno && nDrvZoomPrevGfx == gfx &&
+		nDrvZoomPrevHigh == high && nDrvZoomPrevWide == wide) return;
+
+	nDrvZoomPrev = tileno;
+	nDrvZoomPrevGfx = gfx;
+	nDrvZoomPrevHigh = high;
+	nDrvZoomPrevWide = wide;
+
+	PsikyoshPrezoomContext context = { gfx, tileno, wide };
+	if (PsikyoshThreads.IsParallel() && wide * high >= 64 && high >= 4) {
+		PsikyoshThreads.ParallelFor(high, 1, draw_prezoom_rows, &context);
+	} else {
+		draw_prezoom_rows(&context, 0, high);
 	}
 }
 
@@ -805,19 +859,13 @@ static void draw_background(UINT8 req_pri)
 struct PsikyoshFramePrepareContext {
 	UINT32 *draw;
 	UINT16 *priority;
-	UINT32 *palette;
-	const UINT32 *paletteRam;
 	const UINT32 *line;
 	INT32 width;
-	INT32 height;
-	INT32 paletteEntries;
 };
 
 static void prepare_frame_rows(void *opaque, INT32 begin, INT32 end)
 {
 	PsikyoshFramePrepareContext *context = (PsikyoshFramePrepareContext*)opaque;
-	const INT32 paletteBegin = (INT32)(((INT64)begin * context->paletteEntries) / context->height);
-	const INT32 paletteEnd = (INT32)(((INT64)end * context->paletteEntries) / context->height);
 
 	for (INT32 y = begin; y < end; y++) {
 		UINT32 *draw = context->draw + y * context->width;
@@ -834,10 +882,15 @@ static void prepare_frame_rows(void *opaque, INT32 begin, INT32 end)
 		}
 		memset(priority, 0, context->width * sizeof(UINT16));
 	}
+}
 
-	for (INT32 i = paletteBegin; i < paletteEnd; i++) {
-		context->palette[i] = context->paletteRam[i] >> 8;
+static void prepare_frame_main(void *, INT32, INT32)
+{
+	for (INT32 i = 0; i < 0x5000 / 4; i++) {
+		pBurnDrvPalette[i] = pPsikyoshPalRAM[i] >> 8;
 	}
+
+	build_sprite_priority_list();
 }
 
 struct PsikyoshLineContext {
@@ -866,6 +919,17 @@ static void postlineblend_rows(void *opaque, INT32 begin, INT32 end)
 			}
 		}
 	}
+}
+
+static INT32 count_postlineblend_rows(const UINT32 *line)
+{
+	INT32 count = 0;
+
+	for (INT32 y = 0; y < nScreenHeight; y++) {
+		count += (line[y] & 0xff) != 0;
+	}
+
+	return count;
 }
 
 struct PsikyoshTransferContext {
@@ -902,18 +966,22 @@ INT32 PsikyoshDraw()
 	UINT32 *psikyosh_vidregs = pPsikyoshVidRegs;
 	PsikyoshLineContext line = { DrvTmpDraw, pPsikyoshBgRAM, nScreenWidth };
 	PsikyoshFramePrepareContext prepare = {
-		DrvTmpDraw, DrvPriBmp, pBurnDrvPalette, pPsikyoshPalRAM,
-		pPsikyoshBgRAM, nScreenWidth, nScreenHeight, 0x5000 / 4
+		DrvTmpDraw, DrvPriBmp, pPsikyoshBgRAM, nScreenWidth
 	};
-	PsikyoshThreads.ParallelFor(nScreenHeight, 64, prepare_frame_rows, &prepare);
-	build_sprite_priority_list();
+	PsikyoshThreads.ParallelFor(nScreenHeight, 60, prepare_frame_rows, &prepare,
+		prepare_frame_main, NULL);
 
 	for (UINT32 i = 0; i < 8; i++) {
 		draw_sprites(i);
 		draw_background(i);
 		if ((psikyosh_vidregs[2] & 0x0f) == i) {
 			line.line = pPsikyoshBgRAM + 0x0400/4;
-			PsikyoshThreads.ParallelFor(nScreenHeight, 64, postlineblend_rows, &line);
+			const INT32 activeRows = count_postlineblend_rows(line.line);
+			if (activeRows >= 64) {
+				PsikyoshThreads.ParallelFor(nScreenHeight, 60, postlineblend_rows, &line);
+			} else if (activeRows) {
+				postlineblend_rows(&line, 0, nScreenHeight);
+			}
 		}
 	}
 
@@ -947,6 +1015,7 @@ static void fill_alphatable()
 
 struct PsikyoshTransTabContext {
 	UINT8 *destination;
+	UINT8 *opaqueDestination;
 	const UINT8 *graphics;
 	INT32 graphicsSize;
 	INT32 tileBytes;
@@ -958,37 +1027,62 @@ static void calculate_transtab_range(void *opaque, INT32 begin, INT32 end)
 
 	for (INT32 output = begin; output < end; output++) {
 		UINT8 transparent = 0xff;
+		UINT8 opaqueBits = 0;
 
 		for (INT32 bit = 0; bit < 8; bit++) {
 			const INT32 tileOffset = (output * 8 + bit) * context->tileBytes;
 			if (tileOffset >= context->graphicsSize) break;
 
-			const UINT64 *source = (const UINT64*)(context->graphics + tileOffset);
+			const UINT8 *tile = context->graphics + tileOffset;
+			const UINT64 *source = (const UINT64*)tile;
 			UINT64 used = 0;
 			for (INT32 i = 0; i < context->tileBytes / (INT32)sizeof(UINT64); i++) {
 				used |= source[i];
 			}
 			if (used) transparent &= ~(1 << bit);
+
+			bool tileOpaque = true;
+			if (context->tileBytes == 0x80) {
+				for (INT32 i = 0; i < 0x80; i++) {
+					if ((tile[i] & 0x0f) == 0 || (tile[i] & 0xf0) == 0) {
+						tileOpaque = false;
+						break;
+					}
+				}
+			} else {
+				for (INT32 i = 0; i < 0x100; i++) {
+					if (tile[i] == 0) {
+						tileOpaque = false;
+						break;
+					}
+				}
+			}
+			if (tileOpaque) opaqueBits |= 1 << bit;
 		}
 
 		context->destination[output] = transparent;
+		context->opaqueDestination[output] = opaqueBits;
 	}
 }
 
 static void calculate_transtab()
 {
 	DrvTransTab = (UINT8*)BurnMalloc(0x18000);
+	DrvOpaqueTab = (UINT8*)BurnMalloc(0x18000);
 
 	memset (DrvTransTab, 0xff, 0x18000);
+	memset (DrvOpaqueTab, 0x00, 0x18000);
 
 	PsikyoshTransTabContext context4 = {
-		DrvTransTab + 0x00000, pPsikyoshTiles, nGraphicsSize, 0x80
+		DrvTransTab + 0x00000, DrvOpaqueTab + 0x00000,
+		pPsikyoshTiles, nGraphicsSize, 0x80
 	};
 	PsikyoshThreads.ParallelFor((nGraphicsSize + 0x3ff) / 0x400,
 		0x400, calculate_transtab_range, &context4);
 
 	PsikyoshTransTabContext context8 = {
-		DrvTransTab + 0x10000, pPsikyoshTiles, nGraphicsSize, 0x100
+		DrvTransTab + 0x10000, DrvOpaqueTab + 0x10000,
+		pPsikyoshTiles, nGraphicsSize, 0x100
 	};
 	PsikyoshThreads.ParallelFor((nGraphicsSize + 0x7ff) / 0x800,
 		0x200, calculate_transtab_range, &context8);
@@ -1026,6 +1120,7 @@ void PsikyoshVideoExit()
 	BurnFree (DrvTmpDraw_ptr);
 	DrvTmpDraw = NULL;
 	BurnFree (DrvTransTab);
+	BurnFree (DrvOpaqueTab);
 	
 	nDrvZoomPrev		= -1;
 	nDrvZoomPrevGfx		= -1;

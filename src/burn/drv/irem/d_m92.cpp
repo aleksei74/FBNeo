@@ -58,6 +58,7 @@ static UINT8 DrvJoy3[8];
 static UINT8 DrvJoy4[8];
 static UINT8 DrvInput[9];
 static UINT8 DrvReset = 0;
+static UINT8 DrvSpeedHack = 0;
 
 static INT32 m92_main_bank;
 
@@ -79,6 +80,36 @@ static INT32 msm6295_bank;
 
 static INT32 leaguemna = 0;
 static M92ThreadPool M92Threads;
+static UINT32 m92_speedhack_address = ~0U;
+static UINT32 m92_speedhack_pc = ~0U;
+
+static const UINT16 M92TransMask[3][3][2] = {
+	{ { 0xffff, 0x0001 }, { 0x00ff, 0xff01 }, { 0x0001, 0xffff } },
+	{ { 0xffff, 0x0001 }, { 0x00ff, 0xff01 }, { 0x0001, 0xffff } },
+	{ { 0xffff, 0x0000 }, { 0x00ff, 0xff00 }, { 0x0001, 0xfffe } }
+};
+static UINT8 M92PixelAction[3][2][2][3][16];
+
+static void M92BuildPixelActions()
+{
+	for (INT32 layer = 0; layer < 3; layer++) {
+		for (INT32 drawPriority0 = 0; drawPriority0 < 2; drawPriority0++) {
+			for (INT32 drawPriority1 = 0; drawPriority1 < 2; drawPriority1++) {
+				for (INT32 group = 0; group < 3; group++) {
+					const UINT16 priority0Mask = drawPriority0 ? M92TransMask[layer][group][1] : 0xffff;
+					const UINT16 priority1Mask = drawPriority1 ? M92TransMask[layer][group][0] : 0xffff;
+					for (INT32 pixel = 0; pixel < 16; pixel++) {
+						const UINT16 pixelMask = 1U << pixel;
+						const bool draw0 = !(priority0Mask & pixelMask);
+						const bool draw1 = !(priority1Mask & pixelMask);
+						M92PixelAction[layer][drawPriority0][drawPriority1][group][pixel] =
+							(draw0 || draw1) | (draw1 << 1);
+					}
+				}
+			}
+		}
+	}
+}
 
 typedef struct _m92_layer m92_layer;
 struct _m92_layer
@@ -122,6 +153,7 @@ static struct BurnInputInfo p2CommonInputList[] = {
 	{"Dip A",			BIT_DIPSWITCH,	DrvInput + 5,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvInput + 6,	"dip"		},
 	{"Dip C",			BIT_DIPSWITCH,	DrvInput + 7,	"dip"		},
+	{"Speed Hacks",		BIT_DIPSWITCH,	&DrvSpeedHack,	"dip"		},
 };
 
 STDINPUTINFO(p2Common)
@@ -205,6 +237,7 @@ static struct BurnInputInfo p4CommonInputList[] = {
 	{"Dip A",			BIT_DIPSWITCH,	DrvInput + 5,	"dip"		}, // 22
 	{"Dip B",			BIT_DIPSWITCH,	DrvInput + 6,	"dip"		},
 	{"Dip C",			BIT_DIPSWITCH,	DrvInput + 7,	"dip"		},
+	{"Speed Hacks",		BIT_DIPSWITCH,	&DrvSpeedHack,	"dip"		},
 };
 
 STDINPUTINFO(p4Common)
@@ -252,6 +285,7 @@ static struct BurnInputInfo nbbatmanInputList[] = {
 	{"Dip B",			BIT_DIPSWITCH,	DrvInput + 6,	"dip"		},
 	{"Dip C",			BIT_DIPSWITCH,	DrvInput + 7,	"dip"		},
 	{"Dip D",			BIT_DIPSWITCH,	DrvInput + 8,	"dip"		},
+	{"Speed Hacks",		BIT_DIPSWITCH,	&DrvSpeedHack,	"dip"		},
 };
 
 STDINPUTINFO(nbbatman)
@@ -620,6 +654,11 @@ static struct BurnDIPInfo RtypeleoDIPList[]=
 	{0x12, 0xff, 0xff, 0xaf, NULL					},
 	{0x13, 0xff, 0xff, 0xfd, NULL					},
 	{0x14, 0xff, 0xff, 0xf0, NULL					},
+	{0x15, 0xff, 0xff, 0x01, NULL					},
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"				},
+	{0x15, 0x01, 0x01, 0x00, "No"					},
+	{0x15, 0x01, 0x01, 0x01, "Yes"					},
 
 	{0   , 0xfe, 0   ,    4, "Lives"				},
 	{0x12, 0x01, 0x03, 0x02, "2"					},
@@ -929,6 +968,11 @@ static struct BurnDIPInfo HookDIPList[]=
 	{0x00, 0xff, 0xff, 0xbf, NULL                             },
 	{0x01, 0xff, 0xff, 0xff, NULL                             },
 	{0x02, 0xff, 0xff, 0xff, NULL                             },
+	{0x03, 0xff, 0xff, 0x01, NULL                             },
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"                    },
+	{0x03, 0x01, 0x01, 0x00, "No"                             },
+	{0x03, 0x01, 0x01, 0x01, "Yes"                            },
 
 	{0   , 0xfe, 0   ,    4, "Lives"                          },
 	{0x00, 0x01, 0x03, 0x00, "1"                              },
@@ -997,6 +1041,11 @@ static struct BurnDIPInfo NbbatmanDIPList[]=
 	{0x23, 0xff, 0xff, 0xff, NULL					},
 	{0x24, 0xff, 0xff, 0xff, NULL					},
 	{0x25, 0xff, 0xff, 0x00, NULL                   },
+	{0x26, 0xff, 0xff, 0x01, NULL                   },
+
+	{0   , 0xfe, 0   ,    2, "Speed Hacks"				},
+	{0x26, 0x01, 0x01, 0x00, "No"					},
+	{0x26, 0x01, 0x01, 0x01, "Yes"					},
 
 	{0   , 0xfe, 0   ,    4, "Lives"				},
 	{0x22, 0x01, 0x03, 0x00, "1"					},
@@ -1310,6 +1359,13 @@ static void m92YM2151IRQHandler(INT32 nStatus)
 
 static UINT8 __fastcall m92ReadByte(UINT32 address)
 {
+	if ((address & ~0x1ffU) == (m92_speedhack_address & ~0x1ffU)) {
+		if (DrvSpeedHack && address == m92_speedhack_address && VezGetPC(0) == m92_speedhack_pc) {
+			VezRunEnd();
+		}
+		return DrvV33RAM[address - 0xe0000];
+	}
+
 	if ((address & 0xff800) == 0xf8800 )
 		return DrvPalRAM[ address - 0xf8800 + PalBank ];
 
@@ -1844,6 +1900,10 @@ static INT32 DrvInit(INT32 (*pRomLoadCallback)(), const UINT8 *sound_decrypt_tab
 		VezMapArea(0xe0000, 0xeffff, 0, DrvV33RAM);
 		VezMapArea(0xe0000, 0xeffff, 1, DrvV33RAM);
 		VezMapArea(0xe0000, 0xeffff, 2, DrvV33RAM);
+		if (m92_speedhack_address != ~0U) {
+			const UINT32 page = m92_speedhack_address & ~0x1ffU;
+			VezMemCallback(page, page + 0x1ff, 0);
+		}
 		VezMapArea(0xf8000, 0xf87ff, 0, DrvSprRAM);
 		VezMapArea(0xf8000, 0xf87ff, 1, DrvSprRAM);
 		VezMapArea(0xff800, 0xfffff, 0, DrvV33ROM + 0x7f800);  // vectors?
@@ -1887,6 +1947,7 @@ static INT32 DrvInit(INT32 (*pRomLoadCallback)(), const UINT8 *sound_decrypt_tab
 	MSM6295SetRoute(0, 1.00, BURN_SND_ROUTE_BOTH);
 
 	GenericTilesInit();
+	M92BuildPixelActions();
 	M92Threads.Configure();
 
 	DrvDoReset();
@@ -1916,6 +1977,8 @@ static INT32 DrvExit()
 	m92_ok_to_blank = 0;
 	no_palbank = 0;
 	leaguemna = 0;
+	m92_speedhack_address = ~0U;
+	m92_speedhack_pc = ~0U;
 
 	return 0;
 }
@@ -1924,55 +1987,91 @@ static void RenderTilePrio(UINT16 *dest, UINT8 *gfx, INT32 code, INT32 color, IN
 {
 	if (sx <= (0-width) || sx >= nScreenWidth || sy <= (0-height) || sy >= nScreenHeight || sy + height <= clipStart || sy >= clipFinish) return;
 
-	INT32 flip = 0;
-	if (flipy) flip |= (height - 1) * width;
-	if (flipx) flip |= width - 1;
-
 	gfx += code * width * height;
 
 	const UINT32 priorityMask = (UINT32)prio | (1U << 31); // always on!
+	const bool blockPriorityOne = (priorityMask & 2) != 0;
 
 	if (sx >= 0 && sx + width <= nScreenWidth && sy >= clipStart && sy + height <= clipFinish) {
 		for (INT32 y = 0; y < height; y++) {
 			const INT32 sourceRow = flipy ? (height - 1 - y) : y;
-			if (!(DrvGfxUsage1[code * height + sourceRow] & 0xfffe)) continue;
+			const UINT16 usage = DrvGfxUsage1[code * height + sourceRow];
+			if (!(usage & 0xfffe)) continue;
 
 			const INT32 row = (sy + y) * nScreenWidth + sx;
+			const INT32 sourceStep = flipx ? -1 : 1;
+			const UINT8 *source = gfx + sourceRow * width;
+			if (flipx) source += width - 1;
+			UINT16 *destRow = dest + row;
+			UINT8 *priorityRow = pri + row;
 
-			for (INT32 x = 0; x < width; x++) {
-				const INT32 pxl = gfx[((y * width) + x) ^ flip];
-				if (pxl == 0) continue;
+			if (usage & 1) {
+				for (INT32 x = 0; x < width; x++) {
+					const INT32 pxl = *source;
+					if (x != width - 1) source += sourceStep;
+					if (pxl == 0) continue;
 
-				if ((priorityMask & (1U << (pri[row + x] & 0x1f))) == 0) {
-					dest[row + x] = pxl | color;
+					const UINT8 priority = priorityRow[x] & 0x1f;
+					if (priority != 0x1f && (!blockPriorityOne || priority != 1)) {
+						destRow[x] = pxl | color;
+					}
+					priorityRow[x] |= 0x1f;
 				}
-				pri[row + x] |= 0x1f;
+			} else {
+				for (INT32 x = 0; x < width; x++) {
+					const INT32 pxl = *source;
+					if (x != width - 1) source += sourceStep;
+					const UINT8 priority = priorityRow[x] & 0x1f;
+					if (priority != 0x1f && (!blockPriorityOne || priority != 1)) {
+						destRow[x] = pxl | color;
+					}
+					priorityRow[x] |= 0x1f;
+				}
 			}
 		}
 		return;
 	}
 
-	for (INT32 y = 0; y < height; y++, sy++) {
-		if (sy < clipStart || sy >= clipFinish) continue;
+	const INT32 firstX = (sx < 0) ? -sx : 0;
+	const INT32 lastX = (sx + width > nScreenWidth) ? nScreenWidth - sx : width;
+
+	for (INT32 y = 0; y < height; y++) {
+		const INT32 screenY = sy + y;
+		if (screenY < clipStart || screenY >= clipFinish) continue;
 		const INT32 sourceRow = flipy ? (height - 1 - y) : y;
-		if (!(DrvGfxUsage1[code * height + sourceRow] & 0xfffe)) continue;
+		const UINT16 usage = DrvGfxUsage1[code * height + sourceRow];
+		if (!(usage & 0xfffe)) continue;
 
-		INT32 row = sy * nScreenWidth;
+		const INT32 sourceStep = flipx ? -1 : 1;
+		const INT32 firstSourceX = flipx ? width - 1 - firstX : firstX;
+		const INT32 pixelCount = lastX - firstX;
+		const UINT8 *source = gfx + sourceRow * width + firstSourceX;
+		UINT16 *destRow = dest + screenY * nScreenWidth + sx + firstX;
+		UINT8 *priorityRow = pri + screenY * nScreenWidth + sx + firstX;
 
-		for (INT32 x = 0; x < width; x++, sx++) {
-			if (sx < 0 || sx >= nScreenWidth) continue;
+		if (usage & 1) {
+			for (INT32 x = 0; x < pixelCount; x++) {
+				const INT32 pxl = *source;
+				if (x != pixelCount - 1) source += sourceStep;
+				if (pxl == 0) continue;
 
-			INT32 pxl = gfx[((y * width) + x) ^ flip];
-
-			if (pxl == 0) continue;
-
-			if ((priorityMask & (1U << (pri[row + sx] & 0x1f))) == 0) {
-				dest[row + sx] = pxl | color;
+				const UINT8 priority = priorityRow[x] & 0x1f;
+				if (priority != 0x1f && (!blockPriorityOne || priority != 1)) {
+					destRow[x] = pxl | color;
+				}
+				priorityRow[x] |= 0x1f;
 			}
-			pri[row + sx] |= 0x1f;
+		} else {
+			for (INT32 x = 0; x < pixelCount; x++) {
+				const INT32 pxl = *source;
+				if (x != pixelCount - 1) source += sourceStep;
+				const UINT8 priority = priorityRow[x] & 0x1f;
+				if (priority != 0x1f && (!blockPriorityOne || priority != 1)) {
+					destRow[x] = pxl | color;
+				}
+				priorityRow[x] |= 0x1f;
+			}
 		}
-
-		sx -= width;
 	}
 }
 
@@ -1991,6 +2090,10 @@ struct M92SpriteEntry {
 
 static void draw_sprite_entry(const M92SpriteEntry *entry, INT32 clipStart, INT32 clipFinish)
 {
+	const INT32 top = entry->y - (entry->yMulti - 1) * 16;
+	const INT32 bottom = entry->y + 16;
+	if (bottom <= clipStart || top >= clipFinish || bottom <= 0 || top >= nScreenHeight) return;
+
 	INT32 x = entry->x;
 
 	if (entry->flipx) x += 16 * (entry->xMulti - 1);
@@ -2108,17 +2211,15 @@ static void draw_layer_byline(INT32 start, INT32 finish, INT32 layer, INT32 draw
 
 	if (m92_kludge == 3) scrollx -= 13; // ppan - shift background right a bit more
 
-	static const UINT16 transmask[3][3][2] = { // layer, group, value
-		{ { 0xffff, 0x0001 }, { 0x00ff, 0xff01 }, { 0x0001, 0xffff } },
-		{ { 0xffff, 0x0001 }, { 0x00ff, 0xff01 }, { 0x0001, 0xffff } },
-		{ { 0xffff, 0x0000 }, { 0x00ff, 0xff00 }, { 0x0001, 0xfffe } }
-	};
 	UINT16 priority0Mask[3];
 	UINT16 priority1Mask[3];
+	UINT16 visibleMask[3];
+	const UINT8 (*pixelAction)[16] = M92PixelAction[layer][drawPriority0 != 0][drawPriority1 != 0];
 
 	for (INT32 group = 0; group < 3; group++) {
-		priority0Mask[group] = drawPriority0 ? transmask[layer][group][1] : 0xffff;
-		priority1Mask[group] = drawPriority1 ? transmask[layer][group][0] : 0xffff;
+		priority0Mask[group] = drawPriority0 ? M92TransMask[layer][group][1] : 0xffff;
+		priority1Mask[group] = drawPriority1 ? M92TransMask[layer][group][0] : 0xffff;
+		visibleMask[group] = (~priority0Mask[group] | ~priority1Mask[group]) & 0xffff;
 	}
 
 	for (INT32 sy = start; sy < finish; sy++)
@@ -2133,11 +2234,15 @@ static void draw_layer_byline(INT32 start, INT32 finish, INT32 layer, INT32 draw
 		const INT32 tileRow = (scrolly_1 >> 3) * wide;
 		const INT32 xOffset = scrollx_1 & 0x07;
 		INT32 tileX = scrollx_1;
+		INT32 tileColumn = (tileX >= 0) ? (tileX >> 3) : -((-tileX) >> 3);
 
-		for (INT32 sx = 0; sx < nScreenWidth + 8; sx+=8, tileX+=8)
+		for (INT32 sx = 0; sx < nScreenWidth + 8; sx+=8)
 		{
-			const INT32 tileColumn = (tileX >= 0) ? (tileX >> 3) : -((-tileX) >> 3);
-			INT32 offs  = tileRow + (tileColumn & wideMask);
+			const INT32 currentTileColumn = tileColumn;
+			if (tileX >= 0 || tileX <= -8) tileColumn++;
+			tileX += 8;
+
+			INT32 offs  = tileRow + (currentTileColumn & wideMask);
 			INT32 attr  = BURN_ENDIAN_SWAP_INT16(ptr->vram[(offs * 2) + 1]);
 			INT32 code  = BURN_ENDIAN_SWAP_INT16(ptr->vram[(offs * 2) + 0]) | ((attr & 0x8000) << 1);
 			INT32 color =(attr & 0x007f) << 4;
@@ -2148,46 +2253,44 @@ static void draw_layer_byline(INT32 start, INT32 finish, INT32 layer, INT32 draw
 			if (attr & 0x0180) group = (attr & 0x0100) ? 2 : 1;
 
 			{
-				INT32 x_xor = 0;
 				INT32 romoff = romoff_1;
 				if (flipy) romoff ^= 0x38;
-				if (flipx) x_xor = 7;
 
 				const INT32 tileCode = code & graphics_mask[0];
-				const UINT32 maskPriority0 = priority0Mask[group];
-				const UINT32 maskPriority1 = priority1Mask[group];
-				const UINT32 visibleMask = (~maskPriority0 | ~maskPriority1) & 0xffff;
-				if (!(DrvGfxUsage0[tileCode * 8 + (romoff >> 3)] & visibleMask)) continue;
+				if (!(DrvGfxUsage0[tileCode * 8 + (romoff >> 3)] & visibleMask[group])) continue;
+				const UINT8 *actions = pixelAction[group];
 
-				UINT8 *rom = DrvGfxROM0 + (tileCode * 0x40) + romoff;
+				const UINT8 *rom = DrvGfxROM0 + (tileCode * 0x40) + romoff;
+				const INT32 sourceStep = flipx ? -1 : 1;
+				if (flipx) rom += 7;
 
 				INT32 xx = sx - xOffset;
 
 				if (xx >= 0 && xx + 8 <= nScreenWidth) {
 					for (INT32 x = 0; x < 8; x++) {
-						INT32 pxl = rom[x ^ x_xor] & 0x0f;
-						const UINT32 pixelMask = 1U << pxl;
+						INT32 pxl = *rom & 0x0f;
+						if (x != 7) rom += sourceStep;
+						const UINT8 action = actions[pxl];
 
-						if (!(maskPriority0 & pixelMask)) {
+						if (action & 1) {
 							dest[xx + x] = pxl | color;
 						}
-						if (!(maskPriority1 & pixelMask)) {
-							dest[xx + x] = pxl | color;
+						if (action & 2) {
 							pri[xx + x] |= 1;
 						}
 					}
 				} else {
 					for (INT32 x = 0; x < 8; x++, xx++) {
+						INT32 pxl = *rom & 0x0f;
+						if (x != 7) rom += sourceStep;
 						if (xx < 0 || xx >= nScreenWidth) continue;
 
-						INT32 pxl = rom[x ^ x_xor] & 0x0f;
-						const UINT32 pixelMask = 1U << pxl;
+						const UINT8 action = actions[pxl];
 
-						if (!(maskPriority0 & pixelMask)) {
+						if (action & 1) {
 							dest[xx] = pxl | color;
 						}
-						if (!(maskPriority1 & pixelMask)) {
-							dest[xx] = pxl | color;
+						if (action & 2) {
 							pri[xx] |= 1;
 						}
 					}
@@ -2246,27 +2349,59 @@ static void M92TransferRows(void *opaque, INT32 begin, INT32 end)
 		UINT16 *source = context->source + y * context->width;
 		UINT8 *destination = context->destination + y * context->pitch;
 
-		switch (context->bytesPerPixel) {
+			switch (context->bytesPerPixel) {
 			case 2:
-				for (INT32 x = 0; x < context->width; x++) {
+			{
+				UINT16 *output = (UINT16*)destination;
+				INT32 x = 0;
+				for (; x <= context->width - 4; x += 4) {
+					output[x + 0] = (UINT16)context->palette[source[x + 0]];
+					output[x + 1] = (UINT16)context->palette[source[x + 1]];
+					output[x + 2] = (UINT16)context->palette[source[x + 2]];
+					output[x + 3] = (UINT16)context->palette[source[x + 3]];
+				}
+				for (; x < context->width; x++) {
 					((UINT16*)destination)[x] = (UINT16)context->palette[source[x]];
 				}
 				break;
+			}
 
 			case 3:
-				for (INT32 x = 0; x < context->width; x++) {
+			{
+				INT32 x = 0;
+				for (; x <= context->width - 4; x += 4) {
+					for (INT32 i = 0; i < 4; i++) {
+						const UINT32 color = context->palette[source[x + i]];
+						UINT8 *output = destination + (x + i) * 3;
+						output[0] = color & 0xff;
+						output[1] = (color >> 8) & 0xff;
+						output[2] = color >> 16;
+					}
+				}
+				for (; x < context->width; x++) {
 					const UINT32 color = context->palette[source[x]];
 					destination[x * 3 + 0] = color & 0xff;
 					destination[x * 3 + 1] = (color >> 8) & 0xff;
 					destination[x * 3 + 2] = color >> 16;
 				}
 				break;
+			}
 
 			case 4:
-				for (INT32 x = 0; x < context->width; x++) {
+			{
+				UINT32 *output = (UINT32*)destination;
+				INT32 x = 0;
+				for (; x <= context->width - 4; x += 4) {
+					output[x + 0] = context->palette[source[x + 0]];
+					output[x + 1] = context->palette[source[x + 1]];
+					output[x + 2] = context->palette[source[x + 2]];
+					output[x + 3] = context->palette[source[x + 3]];
+				}
+				for (; x < context->width; x++) {
 					((UINT32*)destination)[x] = context->palette[source[x]];
 				}
 				break;
+			}
 		}
 	}
 }
@@ -2582,6 +2717,9 @@ static INT32 hookRomLoad()
 
 static INT32 hookInit()
 {
+	m92_speedhack_address = 0xe0012;
+	m92_speedhack_pc = 0x055ba;
+
 	return DrvInit(hookRomLoad, hook_decryption_table, 1, 0x100000, 0x400000);
 }
 
@@ -3006,6 +3144,8 @@ static INT32 rtypeleoInit()
 	m92_ok_to_blank = 1;
 
 	no_palbank = 1;
+	m92_speedhack_address = 0xe0032;
+	m92_speedhack_pc = 0x30791;
 
 	return DrvInit(rtypeleoRomLoad, rtypeleo_decryption_table, 1, 0x200000, 0x400000);
 }
@@ -3817,6 +3957,8 @@ static INT32 nbbatmanInit()
 	m92_banks = 1;
 	m92_kludge = 4; // tilemap offset(for the "roz"-like map at beginning of stage) + cycle hacks
 	m92_ok_to_blank = 1;
+	m92_speedhack_address = 0xe0000;
+	m92_speedhack_pc = 0x005a9;
 
 	if (DrvInput[8] & 1) // dip option, use old soundCPU emulation "style", for weirdos! :)
 		decrtab = leagueman_OLD_decryption_table;

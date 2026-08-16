@@ -86,6 +86,7 @@ static UINT8 epic12_blend_s2_d0[0x20 * 0x20 * 0x20];
 static INT32 epic12_color_tables_initialized;
 
 static UINT16 *pal16 = NULL; // palette lut for 16bpp video emulation
+static UINT32 *upload_palette = NULL;
 static Epic12ThreadPool epic12_threads;
 
 #include "epic12.h"
@@ -321,6 +322,7 @@ void epic12_exit()
 
 	BurnFree(m_bitmaps);
 	BurnFree(m_ram16_copy);
+	BurnFree(upload_palette);
 
 	if (pal16) {
 		BurnFree(pal16);
@@ -336,6 +338,11 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	m_ram16 = ram;
 
 	m_ram16_copy = (UINT16*)BurnMalloc(ram_size);
+	upload_palette = (UINT32*)BurnMalloc(0x10000 * sizeof(UINT32));
+	for (UINT32 pixel = 0; pixel < 0x10000; pixel++) {
+		upload_palette[pixel] = ((pixel & 0x8000) << 14) | ((pixel & 0x7c00) << 9) |
+			((pixel & 0x03e0) << 6) | ((pixel & 0x001f) << 3);
+	}
 
 	dips = dippy;
 
@@ -575,12 +582,6 @@ static void gfx_upload_shadow_copy(UINT32 *addr)
 	m_blit_idle_op_bytes = 0;
 }
 
-static inline UINT32 epic12_expand_upload_pixel(UINT16 pixel)
-{
-	return ((pixel & 0x8000) << 14) | ((pixel & 0x7c00) << 9) |
-		   ((pixel & 0x03e0) << 6) | ((pixel & 0x001f) << 3);
-}
-
 static void gfx_upload_pixels(UINT32 *dst, UINT32 *addr, UINT32 pixels)
 {
 	const UINT32 ram_words = m_main_ramsize >> 1;
@@ -593,7 +594,7 @@ static void gfx_upload_pixels(UINT32 *dst, UINT32 *addr, UINT32 pixels)
 		const UINT16 *src = m_ram16_copy + offset;
 
 		for (UINT32 i = 0; i < chunk; i++) {
-			dst[i] = epic12_expand_upload_pixel(src[i]);
+			dst[i] = upload_palette[src[i]];
 		}
 
 		dst += chunk;

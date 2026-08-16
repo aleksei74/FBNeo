@@ -50,13 +50,8 @@ public:
 		Shutdown();
 
 		const UINT32 cores = M92DetectCores();
-		if (cores >= 12) {
-			m_worker_count = 7;
-		} else if (cores >= 8) {
-			m_worker_count = 5;
-		} else {
-			m_worker_count = (cores >= 4) ? 3 : 0;
-		}
+		m_worker_count = (cores >= 4) ? (INT32)(cores - 1) : 0;
+		if (m_worker_count > 7) m_worker_count = 7;
 
 		m_generation = 0;
 		m_stop = false;
@@ -89,7 +84,7 @@ public:
 	void ParallelFor(INT32 count, INT32 minimum, M92ThreadCallback callback, void *context)
 	{
 		const INT32 cores = m_worker_count + 1;
-		INT32 parts = (minimum > 0) ? (count / minimum) : cores;
+		INT32 parts = (minimum > 0) ? ((count + minimum - 1) / minimum) : cores;
 
 		if (parts > cores) parts = cores;
 		if (parts > count) parts = count;

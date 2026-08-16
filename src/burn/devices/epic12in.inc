@@ -153,29 +153,37 @@ static const void FUNCNAME(BLIT_PARAMS)
 		const int copy_width = dimx - startx;
 		if (copy_width > 0) {
 			if (bmp + copy_width <= gfx2 || gfx2 + copy_width <= bmp) {
-				const UINT32 *end4 = gfx2 + (copy_width & ~3);
-				while (gfx2 < end4) {
+				const UINT32 *end8 = gfx2 + (copy_width & ~7);
+				while (gfx2 < end8) {
 					const UINT32 p0 = gfx2[0];
 					const UINT32 p1 = gfx2[1];
 					const UINT32 p2 = gfx2[2];
 					const UINT32 p3 = gfx2[3];
-					const UINT32 opaque = (p0 & p1 & p2 & p3) & 0x20000000;
-					const UINT32 visible = (p0 | p1 | p2 | p3) & 0x20000000;
+					const UINT32 p4 = gfx2[4];
+					const UINT32 p5 = gfx2[5];
+					const UINT32 p6 = gfx2[6];
+					const UINT32 p7 = gfx2[7];
+					const UINT32 opaque = (p0 & p1 & p2 & p3 & p4 & p5 & p6 & p7) & 0x20000000;
+					const UINT32 visible = (p0 | p1 | p2 | p3 | p4 | p5 | p6 | p7) & 0x20000000;
 
 					if (opaque) {
-						memcpy(bmp, gfx2, 4 * sizeof(UINT32));
+						memcpy(bmp, gfx2, 8 * sizeof(UINT32));
 					} else if (visible) {
 						if (p0 & 0x20000000) bmp[0] = p0;
 						if (p1 & 0x20000000) bmp[1] = p1;
 						if (p2 & 0x20000000) bmp[2] = p2;
 						if (p3 & 0x20000000) bmp[3] = p3;
+						if (p4 & 0x20000000) bmp[4] = p4;
+						if (p5 & 0x20000000) bmp[5] = p5;
+						if (p6 & 0x20000000) bmp[6] = p6;
+						if (p7 & 0x20000000) bmp[7] = p7;
 					}
 
-					gfx2 += 4;
-					bmp += 4;
+					gfx2 += 8;
+					bmp += 8;
 				}
 
-				const UINT32 *end = gfx2 + (copy_width & 3);
+				const UINT32 *end = gfx2 + (copy_width & 7);
 				while (gfx2 < end) {
 					const UINT32 value = *gfx2++;
 					if (value & 0x20000000) *bmp = value;

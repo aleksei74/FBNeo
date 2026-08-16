@@ -82,6 +82,7 @@ enum {
 	GX_SPECIAL_TYPE4SD2 = 10,
 	GX_SPECIAL_SALMNDR2 = 12
 };
+
 enum {
 	GX_TILE_LAYOUT_5BPP = 0,
 	GX_TILE_LAYOUT_6BPP = 1,
@@ -5252,3 +5253,4 @@ struct BurnDriver BurnDrvRushhero = {
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
 };
+

@@ -302,6 +302,20 @@ static void ymz770_stream_update(INT16 **streams, INT32 samples)
 {
 	INT16 *outL = streams[0];
 	INT16 *outR = streams[1];
+	bool active = false;
+
+	for (INT32 ch = 0; ch < 16 && !active; ch++) {
+		active = m_channels[ch].is_playing || m_channels[ch].output_remaining > 0;
+	}
+	for (INT32 i = 0; i < 8 && !active; i++) {
+		active = m_sequences[i].is_playing || m_sqcs[i].is_playing;
+	}
+
+	if (!active) {
+		memset(outL, 0, samples * sizeof(INT16));
+		memset(outR, 0, samples * sizeof(INT16));
+		return;
+	}
 
 	for (int i = 0; i < samples; i++)
 	{
@@ -318,7 +332,11 @@ static void ymz770_stream_update(INT16 **streams, INT32 samples)
 			if (channel.output_remaining > 0)
 			{
 				// force finish current block
-				INT32 smpl = ((INT32)channel.output_data[channel.output_ptr++] * (channel.volume >> 17)) >> 7;   // volume is linear, 0 - 128 (100%)
+				INT32 smpl = channel.output_data[channel.output_ptr++];
+				const INT32 volume = channel.volume >> 17;
+				if (volume != 128) {
+					smpl = (smpl * volume) >> 7; // volume is linear, 0 - 128 (100%)
+				}
 				smpl = (smpl * channel.volume2) >> 7;
 				mixr += (smpl * channel.pan) >> 7;  // pan seems linear, 0 - 128, where 0 = 100% left, 128 = 100% right, 64 = 50% left 50% right
 				mixl += (smpl * (128 - channel.pan)) >> 7;

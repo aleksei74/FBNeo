@@ -887,7 +887,7 @@ static UINT8 __fastcall rungun_main_read_byte(UINT32 address)
 				UINT8 data = soundlatch[2];
 				UINT32 pc = SekGetPC(-1);
 
-				if ((DrvDips[2] & 0x01) && (data & 0x80)) {
+				if ((DrvDips[2] & 0x01) && irq5_enable && (data & 0x80)) {
 					switch (pc)
 					{
 						case 0x025e40: // EAA 1993 10.8
@@ -897,6 +897,7 @@ static UINT8 __fastcall rungun_main_read_byte(UINT32 address)
 						case 0x025f76: // JAA 1993 10.8
 						case 0x025b72: // UAB 1993 10.12
 						case 0x02d30e: // UAA 1993 9.10
+							SekBurnUntilInt();
 							SekRunEnd();
 							break;
 					}

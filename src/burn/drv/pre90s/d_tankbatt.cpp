@@ -474,9 +474,9 @@ STD_SAMPLE_FN(Tankbatt)
 
 static struct BurnRomInfo tankbattRomDesc[] = {
 	{ "tb1-1.1a",		0x000800, 0x278a0b8c,  1 | BRF_PRG | BRF_ESS },	//  0 M6502 Code
-	{ "tb1-2.1b",		0x000800, 0xe0923370,  1 | BRF_PRG | BRF_ESS },	//  1
-	{ "tb1-3.1c",		0x000800, 0x85005ea4,  1 | BRF_PRG | BRF_ESS },	//  2
-	{ "tb1-4.1d",		0x000800, 0x3dfb5bcf,  1 | BRF_PRG | BRF_ESS },	//  3
+	{ "tb1-2.1b",		0x000800, 0xe0923370,  1 | BRF_PRG | BRF_ESS },	//  1 
+	{ "tb1-3.1c",		0x000800, 0x85005ea4,  1 | BRF_PRG | BRF_ESS },	//  2 
+	{ "tb1-4.1d",		0x000800, 0x3dfb5bcf,  1 | BRF_PRG | BRF_ESS },	//  3 
 
 	{ "tb1-5.2k",		0x000800, 0xaabd4fb1,  2 | BRF_GRA },			//  4 Characters
 
@@ -501,9 +501,9 @@ struct BurnDriver BurnDrvTankbatt = {
 
 static struct BurnRomInfo tankbattbRomDesc[] = {
 	{ "tb1-1.1a",		0x000800, 0x278a0b8c,  1 | BRF_PRG | BRF_ESS },	//  0 M6502 Code
-	{ "tb1-2.1b",		0x000800, 0xe0923370,  1 | BRF_PRG | BRF_ESS },	//  1
-	{ "tb1-3.1c",		0x000800, 0x85005ea4,  1 | BRF_PRG | BRF_ESS },	//  2
-	{ "tb1-4.1d",		0x000800, 0x3dfb5bcf,  1 | BRF_PRG | BRF_ESS },	//  3
+	{ "tb1-2.1b",		0x000800, 0xe0923370,  1 | BRF_PRG | BRF_ESS },	//  1 
+	{ "tb1-3.1c",		0x000800, 0x85005ea4,  1 | BRF_PRG | BRF_ESS },	//  2 
+	{ "tb1-4.1d",		0x000800, 0x3dfb5bcf,  1 | BRF_PRG | BRF_ESS },	//  3 
 
 	{ "e.2k",			0x000800, 0x249f4e1b,  2 | BRF_GRA },			//  4 Characters
 

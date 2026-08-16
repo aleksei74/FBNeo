@@ -102,6 +102,7 @@ static INT32 cps_int10_cnt = 0;
 
 static INT32 cps3_gfx_width, cps3_gfx_height;
 static INT32 cps3_gfx_max_x, cps3_gfx_max_y;
+static UINT32 cps3_scale_step[129];
 
 static INT32 nExtraCycles;
 
@@ -277,6 +278,33 @@ static void cps3_decrypt_game(void)
 
 static INT32 last_normal_byte = 0;
 
+static inline void cps3_fill_cram(UINT32 destination, UINT32 length, UINT8 value)
+{
+	UINT8 *dest = (UINT8 *)RamCRam;
+#if BE_GFX_CRAM
+	memset(dest + destination, value, length);
+#else
+	while (length && (destination & 3)) {
+		dest[destination ^ 3] = value;
+		destination++;
+		length--;
+	}
+
+	UINT32 aligned = length & ~3U;
+	if (aligned) {
+		memset(dest + destination, value, aligned);
+		destination += aligned;
+		length -= aligned;
+	}
+
+	while (length) {
+		dest[destination ^ 3] = value;
+		destination++;
+		length--;
+	}
+#endif
+}
+
 static UINT32 process_byte( UINT8 real_byte, UINT32 destination, INT32 max_length )
 {
 	UINT8 * dest = (UINT8 *) RamCRam;
@@ -288,6 +316,10 @@ static UINT32 process_byte( UINT8 real_byte, UINT32 destination, INT32 max_lengt
 		//printf("Set RLE Mode\n");
 		INT32 cps3_rle_length = (real_byte&0x3f)+1;
 		//printf("RLE Operation (length %08x\n", cps3_rle_length );
+		if (destination + cps3_rle_length <= 0x800000) {
+			cps3_fill_cram(destination, cps3_rle_length, last_normal_byte & 0x3f);
+			return cps3_rle_length;
+		}
 		while (cps3_rle_length) {
 #if BE_GFX_CRAM
 			dest[((destination+tranfercount)&0x7fffff)] = (last_normal_byte&0x3f);
@@ -369,6 +401,13 @@ static UINT32 ProcessByte8(UINT8 b, UINT32 dst_offset)
 
  	if(lastb==lastb2) {	//rle
  		INT32 rle=(b+1)&0xff;
+		UINT32 destination = dst_offset & 0x7fffff;
+
+		if (destination + rle <= 0x800000) {
+			cps3_fill_cram(destination, rle, lastb);
+			lastb2=0xffff;
+			return rle;
+		}
 
  		for(INT32 i=0;i<rle;++i) {
 #if BE_GFX_CRAM
@@ -462,15 +501,26 @@ static void cps3_process_character_dma(UINT32 address)
 			Sh2SetIRQLine(10, CPU_IRQSTATUS_ACK);
 			break;
 		case 0x00000000:
+		{
 			// Red Earth need this. 8192 byte trans to 0x00003000 (from 0x007ec000???)
 			// seems some stars(6bit alpha) without compress
 			//bprintf(PRINT_NORMAL, _T("Character DMA (redearth) start %08x to %08x with %d\n"), real_source, real_destination, real_length);
 
-			//memcpy( (UINT8 *)RamCRam + real_destination, RomUser + real_source, real_length );
-			for (INT32 j = 0; j < real_length; j++)
-				((UINT8 *)RamCRam)[real_destination + j] = RomUser[(real_source + j) ^ 3];
+			UINT8 *dst = (UINT8 *)RamCRam + real_destination;
+			UINT8 *src = RomUser + real_source;
+#if BE_GFX_CRAM
+			memcpy(dst, src, real_length);
+#else
+			for (UINT32 j = 0; j < real_length; j += 4) {
+				dst[j + 0] = src[j + 3];
+				dst[j + 1] = src[j + 2];
+				dst[j + 2] = src[j + 1];
+				dst[j + 3] = src[j + 0];
+			}
+#endif
 			Sh2SetIRQLine(10, CPU_IRQSTATUS_ACK);
 			break;
+		}
 		default:
 			bprintf(PRINT_NORMAL, _T("Character DMA Unknown DMA List Command Type %08x\n"), dat1);
 		}
@@ -712,34 +762,46 @@ void __fastcall cps3WriteWord(UINT32 addr, UINT16 data)
 	case 0x040c00ae:
 		//bprintf(PRINT_NORMAL, _T("palettedma [%04x]  from %08x to %08x fade %08x size %d\n"), data, (paldma_source << 1), paldma_dest, paldma_fade, paldma_length);
 		if (data & 0x0002) {
-			for (UINT32 i=0; i<paldma_length; i++) {
-				UINT16 * src = (UINT16 *)RomUser;
-				UINT16 coldata = src[(paldma_source - 0x200000 + i)];
-				
-#ifdef LSB_FIRST
-				coldata = (coldata << 8) | (coldata >> 8);
-#endif
+			UINT16 *src = (UINT16 *)RomUser + paldma_source - 0x200000;
+			UINT16 *dst = Cps3CurPal + paldma_dest;
 
-				UINT32 r = (coldata & 0x001F) >>  0;
-				UINT32 g = (coldata & 0x03E0) >>  5;
-				UINT32 b = (coldata & 0x7C00) >> 10;
-				if (paldma_fade & 0x40400040) {
-					r = cps3_get_fade(r, (paldma_fade & 0x7f000000)>>24);
-					g = cps3_get_fade(g, (paldma_fade & 0x007f0000)>>16);
-					b = cps3_get_fade(b, (paldma_fade & 0x0000007f)>>0);
+			if (paldma_fade & 0x40400040) {
+				const UINT32 fade_r = (paldma_fade & 0x7f000000) >> 24;
+				const UINT32 fade_g = (paldma_fade & 0x007f0000) >> 16;
+				const UINT32 fade_b = (paldma_fade & 0x0000007f) >> 0;
+
+				for (UINT32 i = 0; i < paldma_length; i++) {
+					UINT16 coldata = src[i];
+#ifdef LSB_FIRST
+					coldata = (coldata << 8) | (coldata >> 8);
+#endif
+					UINT32 r = cps3_get_fade((coldata & 0x001f) >> 0, fade_r);
+					UINT32 g = cps3_get_fade((coldata & 0x03e0) >> 5, fade_g);
+					UINT32 b = cps3_get_fade((coldata & 0x7c00) >> 10, fade_b);
 					coldata = (coldata & 0x8000) | (r << 0) | (g << 5) | (b << 10);
-				}
-				
-				r = r << 3;
-				g = g << 3;
-				b = b << 3;
-
 #ifdef LSB_FIRST
-				RamPal[(paldma_dest + i) ^ 1] = coldata;
+					RamPal[(paldma_dest + i) ^ 1] = coldata;
 #else
-				RamPal[(paldma_dest + i)] = coldata;
+					RamPal[paldma_dest + i] = coldata;
 #endif
-				Cps3CurPal[(paldma_dest + i) ] = BurnHighCol(r, g, b, 0);
+					dst[i] = BurnHighCol(r << 3, g << 3, b << 3, 0);
+				}
+			} else {
+				for (UINT32 i = 0; i < paldma_length; i++) {
+					UINT16 coldata = src[i];
+#ifdef LSB_FIRST
+					coldata = (coldata << 8) | (coldata >> 8);
+#endif
+					UINT32 r = (coldata & 0x001f) << 3;
+					UINT32 g = (coldata & 0x03e0) >> 2;
+					UINT32 b = (coldata & 0x7c00) >> 7;
+#ifdef LSB_FIRST
+					RamPal[(paldma_dest + i) ^ 1] = coldata;
+#else
+					RamPal[paldma_dest + i] = coldata;
+#endif
+					dst[i] = BurnHighCol(r, g, b, 0);
+				}
 			}
 
 			dma_status |= 4;
@@ -1160,6 +1222,7 @@ INT32 cps3Init()
 	struct BurnRomInfo pri;
 
 	BurnSetRefreshRate(59.59949);
+	for (INT32 i = 1; i <= 128; i++) cps3_scale_step[i] = (16 << 16) / i;
 
 	// calc graphic and sound roms size
 	ii = 0; cps3_data_rom_size = 0;
@@ -1649,17 +1712,18 @@ static void cps3_drawgfxzoom_2(UINT32 code, UINT32 pal, INT32 flipx, INT32 flipy
 {
 	if (!scalex || !scaley) return;
 
-	UINT8 * source_base = (UINT8 *) RamCRam + code * 256;
-	
 	INT32 sprite_screen_height = (scaley * 16 + 0x8000) >> 16;
 	INT32 sprite_screen_width  = (scalex * 16 + 0x8000) >> 16;
 	if (sprite_screen_width && sprite_screen_height) {
-		// compute sprite increment per screen pixel
-		INT32 dx = (16 << 16) / sprite_screen_width;
-		INT32 dy = (16 << 16) / sprite_screen_height;
-
 		INT32 ex = sx + sprite_screen_width;
 		INT32 ey = sy + sprite_screen_height;
+
+		if (ex <= 0 || ey <= 0 || sx >= cps3_gfx_max_x + 1 || sy >= cps3_gfx_max_y + 1) return;
+
+		// compute sprite increment per screen pixel
+		INT32 dx = (sprite_screen_width <= 128) ? cps3_scale_step[sprite_screen_width] : (16 << 16) / sprite_screen_width;
+		INT32 dy = (sprite_screen_height <= 128) ? cps3_scale_step[sprite_screen_height] : (16 << 16) / sprite_screen_height;
+		UINT8 *source_base = (UINT8 *)RamCRam + code * 256;
 
 		INT32 x_index_base;
 		INT32 y_index;
@@ -1701,45 +1765,96 @@ static void cps3_drawgfxzoom_2(UINT32 code, UINT32 pal, INT32 flipx, INT32 flipy
 			}
 		}
 
-		if( ex > sx ) {
+		if( ex > sx && ey > sy ) {
+			const INT32 draw_width = ex - sx;
+			// A sprite tile is at most 128 screen pixels wide (7-bit draw size).
+			UINT8 source_x[128];
+			INT32 source_index = x_index_base;
+			for (INT32 x = 0; x < draw_width; x++) {
+#if BE_GFX_CRAM
+				source_x[x] = source_index >> 16;
+#else
+				source_x[x] = (source_index >> 16) ^ 3;
+#endif
+				source_index += dx;
+			}
+
 			switch( transparency ) {
 			case CPS3_TRANSPARENCY_PEN_INDEX:
+			{
+				const UINT32 palette_base = pal << alpha;
 				for( INT32 y=sy; y<ey; y++ ) {
 					UINT8 * source = source_base + (y_index>>16) * 16;
-					UINT32 * dest = RamScreen + y * 512 * 2;
-					INT32 x_index = x_index_base;
-					for(INT32 x=sx; x<ex; x++ ) {
-#if BE_GFX_CRAM
-						UINT8 c = source[ (x_index>>16) ];
-#else
-						UINT8 c = source[ (x_index>>16) ^ 3 ];
-#endif
-						if( c )	dest[x] = pal<<alpha | c;
-						x_index += dx;
+					UINT32 * dest = RamScreen + y * 512 * 2 + sx;
+					INT32 x = 0;
+					for(; x<=draw_width-4; x+=4 ) {
+						UINT8 c0 = source[source_x[x + 0]];
+						UINT8 c1 = source[source_x[x + 1]];
+						UINT8 c2 = source[source_x[x + 2]];
+						UINT8 c3 = source[source_x[x + 3]];
+						if( c0 ) dest[0] = palette_base | c0;
+						if( c1 ) dest[1] = palette_base | c1;
+						if( c2 ) dest[2] = palette_base | c2;
+						if( c3 ) dest[3] = palette_base | c3;
+						dest += 4;
+					}
+					for(; x<draw_width; x++ ) {
+						UINT8 c = source[source_x[x]];
+						if( c ) *dest = palette_base | c;
+						dest++;
 					}
 					y_index += dy;
 				}
+			}
 				break;
 			case CPS3_TRANSPARENCY_PEN_INDEX_BLEND:
-				for( INT32 y=sy; y<ey; y++ ) {
-					UINT8 * source = source_base + (y_index>>16) * 16;
-					UINT32 * dest = RamScreen + y * 512 * 2;
-					INT32 x_index = x_index_base;
-					for(INT32 x=sx; x<ex; x++ ) {
-#if BE_GFX_CRAM
-						UINT8 c = source[ (x_index>>16)];
-#else
-						UINT8 c = source[ (x_index>>16) ^ 3 ];
-#endif
-						if (c) {
-							if (alpha == 6)
-								dest[x] |= (c & 0xf) << 13;
-							else
-								dest[x] |= ((c & 1) << 15) | ((pal & 0x1) << 16);
+				if (alpha == 6) {
+					for( INT32 y=sy; y<ey; y++ ) {
+						UINT8 * source = source_base + (y_index>>16) * 16;
+						UINT32 * dest = RamScreen + y * 512 * 2 + sx;
+						INT32 x = 0;
+						for(; x<=draw_width-4; x+=4 ) {
+							UINT8 c0 = source[source_x[x + 0]];
+							UINT8 c1 = source[source_x[x + 1]];
+							UINT8 c2 = source[source_x[x + 2]];
+							UINT8 c3 = source[source_x[x + 3]];
+							if (c0) dest[0] |= (c0 & 0xf) << 13;
+							if (c1) dest[1] |= (c1 & 0xf) << 13;
+							if (c2) dest[2] |= (c2 & 0xf) << 13;
+							if (c3) dest[3] |= (c3 & 0xf) << 13;
+							dest += 4;
 						}
-						x_index += dx;
+						for(; x<draw_width; x++ ) {
+							UINT8 c = source[source_x[x]];
+							if (c) *dest |= (c & 0xf) << 13;
+							dest++;
+						}
+						y_index += dy;
 					}
-					y_index += dy;
+				} else {
+					const UINT32 palette_alpha = (pal & 0x1) << 16;
+					for( INT32 y=sy; y<ey; y++ ) {
+						UINT8 * source = source_base + (y_index>>16) * 16;
+						UINT32 * dest = RamScreen + y * 512 * 2 + sx;
+						INT32 x = 0;
+						for(; x<=draw_width-4; x+=4 ) {
+							UINT8 c0 = source[source_x[x + 0]];
+							UINT8 c1 = source[source_x[x + 1]];
+							UINT8 c2 = source[source_x[x + 2]];
+							UINT8 c3 = source[source_x[x + 3]];
+							if (c0) dest[0] |= ((c0 & 1) << 15) | palette_alpha;
+							if (c1) dest[1] |= ((c1 & 1) << 15) | palette_alpha;
+							if (c2) dest[2] |= ((c2 & 1) << 15) | palette_alpha;
+							if (c3) dest[3] |= ((c3 & 1) << 15) | palette_alpha;
+							dest += 4;
+						}
+						for(; x<draw_width; x++ ) {
+							UINT8 c = source[source_x[x]];
+							if (c) *dest |= ((c & 1) << 15) | palette_alpha;
+							dest++;
+						}
+						y_index += dy;
+					}
 				}
 				break;
 			}
@@ -1808,20 +1923,14 @@ INT32 DrvCps3Draw()
 
 	if (((fullscreenzoomwidecheck & 0xffff0000) >> 16) == 0x0265 || strcmp(BurnDrvGetTextA(DRV_NAME), "sfiii3ws") == 0)
 	{
-		INT32 Width, Height;
-		BurnDrvGetVisibleSize(&Width, &Height);
-		
-		if (Width != 496) {
+		if (cps3_gfx_width != 496) {
 			BurnDrvSetVisibleSize(496, 224);
 			BurnDrvSetAspect(16, 9);
 			ReinitialiseVideo();
 			return 1;
 		}
 	} else {
-		INT32 Width, Height;
-		BurnDrvGetVisibleSize(&Width, &Height);
-		
-		if (Width != 384) {
+		if (cps3_gfx_width != 384) {
 			BurnDrvSetVisibleSize(384, 224);
 			BurnDrvSetAspect(4, 3);
 			ReinitialiseVideo();
@@ -1886,8 +1995,6 @@ INT32 DrvCps3Draw()
 				UINT32 value2 = (SprSrc[start+j+1]);
 				UINT32 value3 = (SprSrc[start+j+2]);
 
-				INT32 tilestable[4] = { 8,1,2,4 };
-
 				UINT32 tileno = (value1&0xfffe0000)>>17;
 				INT32 flipx = (value1 & 0x00001000)>>12;
 				INT32 flipy = (value1 & 0x00000800)>>11;
@@ -1930,11 +2037,13 @@ INT32 DrvCps3Draw()
 				} else {
 					if (~nSpriteEnable & 1) continue;
 
-					ysize2 = tilestable[ysize2];
-					xsize2 = tilestable[xsize2];
+					const INT32 ysize_shift = ysize2 - 1;
+					const INT32 xsize_shift = xsize2 - 1;
+					ysize2 = 1 << ysize_shift;
+					xsize2 = 1 << xsize_shift;
 
-					xinc = ((xsizedraw2)<<16) / ((xsize2));
-					yinc = ((ysizedraw2)<<16) / ((ysize2));
+					xinc = (xsizedraw2 << 16) >> xsize_shift;
+					yinc = (ysizedraw2 << 16) >> ysize_shift;
 
 					UINT32 xscale = xinc / 16;
 					UINT32 yscale = yinc / 16;
@@ -1969,33 +2078,39 @@ INT32 DrvCps3Draw()
 					INT32 trans = (global_alpha || alpha) ? CPS3_TRANSPARENCY_PEN_INDEX_BLEND : CPS3_TRANSPARENCY_PEN_INDEX;
 
 					{
+						INT32 tileY[8];
+						UINT32 tile_y_offset = 0;
+						for (yy = 0; yy < ysize2 + 1; yy++) {
+							INT32 current_ypos;
+							if (flipy) current_ypos = ypos + ypos2 + (tile_y_offset >> 16);
+							else current_ypos = ypos + ypos2 - (tile_y_offset >> 16);
+
+							current_ypos += gscrolly;
+							current_ypos = 0x3ff - current_ypos;
+							current_ypos -= 17;
+							current_ypos &= 0x3ff;
+							if (current_ypos & 0x200) current_ypos -= 0x400;
+							tileY[yy] = current_ypos;
+							tile_y_offset += yinc;
+						}
+
 						count = 0;
+						UINT32 tile_x_offset = 0;
 						for (xx=0;xx<xsize2+1;xx++) {
 							INT32 current_xpos;
 
-							if (!flipx) current_xpos = (xpos + xpos2 + ((xx * xinc) >> 16));
-							else current_xpos = (xpos + xpos2 - ((xx * xinc) >> 16));
+							if (!flipx) current_xpos = xpos + xpos2 + (tile_x_offset >> 16);
+							else current_xpos = xpos + xpos2 - (tile_x_offset >> 16);
 
 							current_xpos += gscrollx;
 							current_xpos += 1;
 							current_xpos &=0x3ff;
 							if (current_xpos&0x200) current_xpos-=0x400;
+							tile_x_offset += xinc;
 
 							for (yy=0;yy<ysize2+1;yy++) {
-								INT32 current_ypos;
-
-								if (flipy) current_ypos = (ypos + ypos2 + ((yy * yinc) >> 16));
-								else current_ypos = (ypos + ypos2 - ((yy * yinc) >> 16));
-
-								current_ypos += gscrolly;
-								current_ypos = 0x3ff-current_ypos;
-								current_ypos -= 17;
-								current_ypos &=0x3ff;
-
-								if (current_ypos&0x200) current_ypos-=0x400;
-
 								{
-									cps3_drawgfxzoom_2(tileno+count,actualpal,flipx,flipy,current_xpos,current_ypos,xscale,yscale, color_granularity, trans);
+									cps3_drawgfxzoom_2(tileno+count,actualpal,flipx,flipy,current_xpos,tileY[yy],xscale,yscale, color_granularity, trans);
 									count++;
 								}
 							}
@@ -2007,18 +2122,61 @@ INT32 DrvCps3Draw()
 	}
 	
 	{
-		UINT32 srcx, srcy = 0;
-		UINT32 * srcbitmap;
-		UINT16 * dstbitmap = (UINT16 * )pBurnDraw;
+		UINT16 *dstbitmap = (UINT16 *)pBurnDraw;
+		UINT16 *palette = Cps3CurPal;
 
-		for (INT32 rendery=0; rendery<224; rendery++) {
-			srcbitmap = RamScreen + (srcy >> 16) * 1024;
-			srcx=0;
-			for (INT32 renderx=0; renderx<cps3_gfx_width; renderx++, dstbitmap ++) {
-				*dstbitmap = Cps3CurPal[ srcbitmap[srcx>>16] ];
-				srcx += fsz;
+		if (fsz == 0x10000) {
+			for (INT32 rendery = 0; rendery < 224; rendery++) {
+				UINT32 *srcbitmap = RamScreen + rendery * 1024;
+				INT32 renderx = 0;
+				for (; renderx <= cps3_gfx_width - 4; renderx += 4) {
+					dstbitmap[0] = palette[srcbitmap[0]];
+					dstbitmap[1] = palette[srcbitmap[1]];
+					dstbitmap[2] = palette[srcbitmap[2]];
+					dstbitmap[3] = palette[srcbitmap[3]];
+					dstbitmap += 4;
+					srcbitmap += 4;
+				}
+				for (; renderx < cps3_gfx_width; renderx++) {
+					*dstbitmap++ = palette[*srcbitmap++];
+				}
 			}
-			srcy += fsz;
+		} else if (fsz == 0x20000) {
+			for (INT32 rendery = 0; rendery < 224; rendery++) {
+				UINT32 *srcbitmap = RamScreen + (rendery * 2) * 1024;
+				INT32 renderx = 0;
+				for (; renderx <= cps3_gfx_width - 4; renderx += 4) {
+					dstbitmap[0] = palette[srcbitmap[0]];
+					dstbitmap[1] = palette[srcbitmap[2]];
+					dstbitmap[2] = palette[srcbitmap[4]];
+					dstbitmap[3] = palette[srcbitmap[6]];
+					dstbitmap += 4;
+					srcbitmap += 8;
+				}
+				for (; renderx < cps3_gfx_width; renderx++) {
+					*dstbitmap++ = palette[*srcbitmap];
+					srcbitmap += 2;
+				}
+			}
+		} else {
+			UINT32 srcy = 0;
+			for (INT32 rendery = 0; rendery < 224; rendery++) {
+				UINT32 *srcbitmap = RamScreen + (srcy >> 16) * 1024;
+				UINT32 srcx = 0;
+				INT32 renderx = 0;
+				for (; renderx <= cps3_gfx_width - 4; renderx += 4) {
+					dstbitmap[0] = palette[srcbitmap[srcx >> 16]]; srcx += fsz;
+					dstbitmap[1] = palette[srcbitmap[srcx >> 16]]; srcx += fsz;
+					dstbitmap[2] = palette[srcbitmap[srcx >> 16]]; srcx += fsz;
+					dstbitmap[3] = palette[srcbitmap[srcx >> 16]]; srcx += fsz;
+					dstbitmap += 4;
+				}
+				for (; renderx < cps3_gfx_width; renderx++) {
+					*dstbitmap++ = palette[srcbitmap[srcx >> 16]];
+					srcx += fsz;
+				}
+				srcy += fsz;
+			}
 		}
 	}
 	

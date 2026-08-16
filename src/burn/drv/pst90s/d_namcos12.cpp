@@ -103,6 +103,10 @@ static UINT32 DrvGpuImageY;
 static UINT32 DrvGpuImageW;
 static UINT32 DrvGpuImageH;
 static UINT32 DrvGpuImageCount;
+static INT32 DrvGpuImageHardwareUpload;
+static UINT32 DrvGpuImageCurX;
+static UINT32 DrvGpuImageCurY;
+static UINT32 DrvGpuImageColumn;
 static UINT32 DrvGpuReadX;
 static UINT32 DrvGpuReadY;
 static UINT32 DrvGpuReadW;
@@ -657,6 +661,10 @@ static void Namcos11ResetIo()
 	DrvGpuImageW = 0;
 	DrvGpuImageH = 0;
 	DrvGpuImageCount = 0;
+	DrvGpuImageHardwareUpload = 0;
+	DrvGpuImageCurX = 0;
+	DrvGpuImageCurY = 0;
+	DrvGpuImageColumn = 0;
 	DrvGpuReadX = DrvGpuReadY = 0;
 	DrvGpuReadW = DrvGpuReadH = DrvGpuReadCount = 0;
 	DrvGpuDisplayX = 0;
@@ -1272,18 +1280,33 @@ static inline INT32 Namcos11GpuEffectiveCheckStp(INT32)
 
 static void Namcos11GpuWriteImage(UINT32 data)
 {
-	for (INT32 i = 0; i < 2 && DrvGpuImageCount > 0; i++) {
-		UINT32 pixel = (i == 0) ? (data & 0xffff) : (data >> 16);
-		UINT32 pos = (DrvGpuImageH * DrvGpuImageW) - DrvGpuImageCount;
-		UINT32 x = (DrvGpuImageX + (pos % DrvGpuImageW)) & 0x3ff;
-		UINT32 y = (DrvGpuImageY + (pos / DrvGpuImageW)) & 0x3ff;
+	const UINT16 stp = DrvGpuDrawStp ? 0x8000 : 0;
 
-		Namcos11GpuMarkVramRows(y, 1);
-		Namcos11GpuWriteVramPixel(x, y, pixel);
+	for (INT32 i = 0; i < 2 && DrvGpuImageCount > 0; i++) {
+		const UINT16 color = (UINT16)((i == 0) ? data : (data >> 16));
+		UINT16 *pixel = &DrvGpuVram[(DrvGpuImageCurY << 10) |
+			DrvGpuImageCurX];
+
+		if (DrvGpuImageColumn == 0) {
+			DrvGpuVramRowGeneration[DrvGpuImageCurY] = DrvGpuVramGeneration;
+		}
+		if (!DrvGpuCheckStp || !(*pixel & 0x8000)) *pixel = color | stp;
 		DrvGpuImageCount--;
+		DrvGpuImageCurX = (DrvGpuImageCurX + 1) & 0x3ff;
+		if (++DrvGpuImageColumn == DrvGpuImageW) {
+			DrvGpuImageColumn = 0;
+			DrvGpuImageCurX = DrvGpuImageX & 0x3ff;
+			DrvGpuImageCurY = (DrvGpuImageCurY + 1) & 0x3ff;
+		}
 	}
 
 	if (DrvGpuImageCount == 0) {
+		if (DrvGpuImageHardwareUpload) {
+			DrvOpenGLFrame.UploadVramRect(DrvGpuVram, DrvGpuVramGeneration,
+				DrvGpuVramRowGeneration, DrvGpuImageX, DrvGpuImageY,
+				DrvGpuImageW, DrvGpuImageH);
+			DrvGpuImageHardwareUpload = 0;
+		}
 		DrvGpuPacketPos = 0;
 		DrvGpuPacketLen = 0;
 	}
@@ -2176,7 +2199,7 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 	const NamcosTextureState &texture, INT32 *spans = NULL, INT32 spanY = 0)
 {
 	const UINT32 abr = (tpage >> ((DrvGpuType == 2) ? 5 : 7)) & 3;
-	if ((DrvToukon3 || (DrvSws99 && gouraud)) && points == 4) {
+	if ((DrvToukon3 || ((DrvSws98 || DrvSws99) && gouraud)) && points == 4) {
 		INT32 tx0[3] = { px[0], px[1], px[2] };
 		INT32 ty0[3] = { py[0], py[1], py[2] };
 		INT32 tu0[3] = { pu[0], pu[1], pu[2] };
@@ -2629,7 +2652,32 @@ static bool Namcos11GpuSynchronizeHardwareVram()
 
 static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 {
-	if (DrvTektagt || DrvEhrgeiz || DrvGpuCheckStp ||
+	if (command == 0xa0) {
+		DrvGpuImageHardwareUpload = 0;
+		const UINT32 width = DrvGpuPacket[2] & 0xffff;
+		const UINT32 height = DrvGpuPacket[2] >> 16;
+		if (!DrvTektagt && !DrvEhrgeiz && !DrvSws98 && !DrvSws99 &&
+			!DrvToukon3 && !DrvFgtlayer && !DrvTekken3Inputs && !DrvGpuCheckStp &&
+			width > 0 && height > 0 && width <= 1024 && height <= 1024 &&
+			DrvOpenGLFrame.HasHardwareVram()) {
+			DrvGpuImageHardwareUpload = 1;
+			return false;
+		}
+	}
+	if (command == 0xc0 && !DrvTektagt && !DrvEhrgeiz && !DrvSws98 &&
+		!DrvSws99 && !DrvToukon3 && !DrvFgtlayer && !DrvTekken3Inputs &&
+		DrvOpenGLFrame.HasHardwareVram()) {
+		const UINT32 width = DrvGpuPacket[2] & 0xffff;
+		const UINT32 height = DrvGpuPacket[2] >> 16;
+		if (width > 0 && height > 0 && width <= 1024 && height <= 1024 &&
+			DrvOpenGLFrame.ReadVramRect(DrvGpuVram, DrvGpuVramGeneration,
+				DrvGpuVramRowGeneration, DrvGpuPacket[1] & 0xffff,
+				DrvGpuPacket[1] >> 16, width, height)) {
+			return false;
+		}
+	}
+	if (DrvTektagt || DrvEhrgeiz || DrvSws98 || DrvSws99 || DrvToukon3 ||
+		DrvFgtlayer || DrvTekken3Inputs ||
 		!NamcosGlRasterCanSubmitCommand(command) ||
 		(DrvGpuStatus & (1 << 21)) ||
 		!DrvOpenGLFrame.SupportsFullRasterizer()) {
@@ -2668,7 +2716,10 @@ static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 	packet.state.gpuType = DrvGpuType;
 
 	const bool submitted = DrvOpenGLFrame.RasterizePacket(&packet);
-	if (!submitted) DrvHardwareRasterStreak = 0;
+	if (!submitted) {
+		DrvHardwareRasterStreak = 0;
+		Namcos11GpuSynchronizeHardwareVram();
+	}
 	return submitted;
 }
 
@@ -2827,17 +2878,19 @@ static void Namcos11GpuExecutePacket()
 
 		case 0xa0:
 		{
-			Namcos11GpuSynchronizeHardwareVram();
 			DrvGpuImageX = DrvGpuPacket[1] & 0xffff;
 			DrvGpuImageY = DrvGpuPacket[1] >> 16;
 			DrvGpuImageW = DrvGpuPacket[2] & 0xffff;
 			DrvGpuImageH = DrvGpuPacket[2] >> 16;
 			DrvGpuImageCount = DrvGpuImageW * DrvGpuImageH;
+			DrvGpuImageCurX = DrvGpuImageX & 0x3ff;
+			DrvGpuImageCurY = DrvGpuImageY & 0x3ff;
+			DrvGpuImageColumn = 0;
+			if (DrvGpuImageCount) DrvGpuVramGeneration++;
 			return;
 		}
 
 		case 0xc0:
-			Namcos11GpuSynchronizeHardwareVram();
 			DrvGpuReadX = DrvGpuPacket[1] & 0xffff;
 			DrvGpuReadY = DrvGpuPacket[1] >> 16;
 			DrvGpuReadW = DrvGpuPacket[2] & 0xffff;
@@ -2895,8 +2948,6 @@ static void Namcos11GpuExecutePacket()
 static void Namcos11GpuWrite(UINT32 data)
 {
 	if (DrvGpuImageCount) {
-		Namcos11GpuSynchronizeHardwareVram();
-		DrvGpuVramGeneration++;
 		Namcos11GpuWriteImage(data);
 		return;
 	}
@@ -2981,6 +3032,7 @@ static void Namcos11GpuControl(UINT32 data)
 			DrvGpuDrawStp = 0;
 			DrvGpuCheckStp = 0;
 			DrvGpuImageCount = 0;
+			DrvGpuImageHardwareUpload = 0;
 			DrvGpuReadCount = 0;
 			DrvGpuDisplayX = 0;
 			DrvGpuDisplayY = 0;
@@ -3003,6 +3055,7 @@ static void Namcos11GpuControl(UINT32 data)
 			DrvGpuPacketLen = 0;
 			DrvGpuPolyline = 0;
 			DrvGpuImageCount = 0;
+			DrvGpuImageHardwareUpload = 0;
 			break;
 
 		case 0x02:
@@ -6041,9 +6094,12 @@ static INT32 Namcos12SetResolution()
 		width = 240;
 		height = 320;
 	} else {
+		const bool sws98OpenGL = DrvSws98 && (DrvDips[2] & 0x03) == 0x01;
 		// RGB24 is used for MDEC playback. Its temporary mode must not resize
 		// the 15-bit display selected in the game's Display Test.
-		if ((DrvGpuStatus & (1 << 21)) == 0) {
+		if (sws98OpenGL) {
+			DrvDisplayModeHeight = 480;
+		} else if ((DrvGpuStatus & (1 << 21)) == 0) {
 			DrvDisplayModeHeight = (DrvGpuScreenHeight >= 480) ? 480 : 240;
 		}
 		if (DrvDisplayModeHeight == 0) DrvDisplayModeHeight = 240;
@@ -6801,7 +6857,7 @@ static INT32 DrvDraw()
 		(DrvDips[2] & 0x03) == 0x01 && !context.rgb24 &&
 		DrvGpuScreenHeight == 240 && nScreenHeight == 480;
 	context.vertical = 0;
-	context.allowOutputReuse = !DrvLightgunGame && !DrvTektagt;
+	context.allowOutputReuse = !DrvLightgunGame && !DrvTektagt && !DrvToukon3;
 	context.threadPool = &DrvPolyThreads;
 	if (DrvSoulclbr) {
 		context.displayY = (context.displayY - (nScreenHeight >= 480 ? 21 : 10)) & 0x3ff;
@@ -7002,6 +7058,9 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(DrvGpuImageW);
 		SCAN_VAR(DrvGpuImageH);
 		SCAN_VAR(DrvGpuImageCount);
+		SCAN_VAR(DrvGpuImageCurX);
+		SCAN_VAR(DrvGpuImageCurY);
+		SCAN_VAR(DrvGpuImageColumn);
 		SCAN_VAR(DrvGpuReadX);
 		SCAN_VAR(DrvGpuReadY);
 		SCAN_VAR(DrvGpuReadW);
@@ -7038,6 +7097,7 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	}
 
 	if (nAction & ACB_WRITE) {
+		DrvGpuImageHardwareUpload = 0;
 		DrvGpuVramGeneration++;
 		for (INT32 row = 0; row < 1024; row++) {
 			DrvGpuVramRowGeneration[row] = DrvGpuVramGeneration;
