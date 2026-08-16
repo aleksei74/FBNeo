@@ -4,6 +4,9 @@ MAIN_FBNEO_DIR := $(LOCAL_PATH)/../../..
 
 INCLUDE_CPLUSPLUS11_FILES := 0
 INCLUDE_7Z_SUPPORT        := 1
+INCLUDE_CHD_SUPPORT       := 1
+# it seems libretro chd implementation won't work with this core
+CHD_LIBRETRO              := 0
 EXTERNAL_ZLIB             := 0
 BUILD_X64_EXE             := 0
 WANT_NEOGEOCD             := 0
@@ -47,6 +50,7 @@ LOCAL_LDFLAGS      := -Wl,-version-script=$(MAIN_FBNEO_DIR)/burner/libretro/link
 LOCAL_LDLIBS       := $(LDFLAGS) -lEGL -lGLESv2
 LOCAL_CPP_FEATURES := exceptions rtti
 LOCAL_DISABLE_FORMAT_STRING_CHECKS := true
+LOCAL_SHORT_COMMANDS := true
 LOCAL_ARM_MODE := arm
 
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
