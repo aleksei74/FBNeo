@@ -2566,6 +2566,9 @@
     <ClCompile Include="..\..\src\burn\drv\pre90s\d_tankbust.cpp">
       <Filter>burn\drv\pre90s</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\burn\drv\pre90s\d_tattack.cpp">
+      <Filter>burn\drv\pre90s</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\burn\drv\pre90s\d_tbowl.cpp">
       <Filter>burn\drv\pre90s</Filter>
     </ClCompile>
