@@ -167,57 +167,57 @@ void BurnYM2151Render(INT16* pSoundBuf, INT32 nSegmentEnd)
 			else BurnYM2151RenderMono<false, false>(pSoundBuf, nSegmentLength, volume);
 		}
 	} else {
-	for (INT32 i = (nFractionalPosition & 0xFFFF0000) >> 15; i < nSegmentLength; i += 2, nFractionalPosition += nSampleSize) {
-		INT32 nLeftSample[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
-		INT32 nRightSample[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
-		INT32 nTotalLeftSample[2] = { 0, 0 }, nTotalRightSample[2] = { 0, 0 };
+		for (INT32 i = (nFractionalPosition & 0xFFFF0000) >> 15; i < nSegmentLength; i += 2, nFractionalPosition += nSampleSize) {
+			INT32 nLeftSample[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
+			INT32 nRightSample[2][4] = { {0, 0, 0, 0}, {0, 0, 0, 0} };
+			INT32 nTotalLeftSample[2] = { 0, 0 }, nTotalRightSample[2] = { 0, 0 };
 
-		INTERPOLATE_ADD_SOUND_LEFT  (0, BURN_SND_YM2151_YM2151_ROUTE_1, 0)
-		INTERPOLATE_ADD_SOUND_RIGHT (0, BURN_SND_YM2151_YM2151_ROUTE_1, 0)
-		INTERPOLATE_ADD_SOUND_LEFT  (0, BURN_SND_YM2151_YM2151_ROUTE_2, 1)
-		INTERPOLATE_ADD_SOUND_RIGHT (0, BURN_SND_YM2151_YM2151_ROUTE_2, 1)
+			INTERPOLATE_ADD_SOUND_LEFT  (0, BURN_SND_YM2151_YM2151_ROUTE_1, 0)
+			INTERPOLATE_ADD_SOUND_RIGHT (0, BURN_SND_YM2151_YM2151_ROUTE_1, 0)
+			INTERPOLATE_ADD_SOUND_LEFT  (0, BURN_SND_YM2151_YM2151_ROUTE_2, 1)
+			INTERPOLATE_ADD_SOUND_RIGHT (0, BURN_SND_YM2151_YM2151_ROUTE_2, 1)
 
-		if (bYM2151_MultiChip) {
-			INTERPOLATE_ADD_SOUND_LEFT  (1, BURN_SND_YM2151_YM2151_ROUTE_1, 2)
-			INTERPOLATE_ADD_SOUND_RIGHT (1, BURN_SND_YM2151_YM2151_ROUTE_1, 2)
-			INTERPOLATE_ADD_SOUND_LEFT  (1, BURN_SND_YM2151_YM2151_ROUTE_2, 3)
-			INTERPOLATE_ADD_SOUND_RIGHT (1, BURN_SND_YM2151_YM2151_ROUTE_2, 3)
-		}
-
-		for (INT32 chip = 0; chip < (bYM2151_MultiChip + 1); chip++) {
-			nTotalLeftSample[chip]  = INTERPOLATE4PS_16BIT((nFractionalPosition >> 4) & 0x0fff, nLeftSample[chip][0], nLeftSample[chip][1], nLeftSample[chip][2], nLeftSample[chip][3]);
-			nTotalRightSample[chip] = INTERPOLATE4PS_16BIT((nFractionalPosition >> 4) & 0x0fff, nRightSample[chip][0], nRightSample[chip][1], nRightSample[chip][2], nRightSample[chip][3]);
-
-			nTotalLeftSample[chip]  = BURN_SND_CLIP(nTotalLeftSample[chip] * YM2151Volumes[chip][BURN_SND_YM2151_YM2151_ROUTE_1]);
-			nTotalRightSample[chip] = BURN_SND_CLIP(nTotalRightSample[chip] * YM2151Volumes[chip][BURN_SND_YM2151_YM2151_ROUTE_2]);
-		}
-
-		if (bYM2151AddSignal) {
-			pSoundBuf[i + 0] = BURN_SND_CLIP(pSoundBuf[i + 0] + nTotalLeftSample[0] + nTotalLeftSample[1]);
-			pSoundBuf[i + 1] = BURN_SND_CLIP(pSoundBuf[i + 1] + nTotalRightSample[0] + nTotalRightSample[1]);
-		} else {
-			pSoundBuf[i + 0] = nTotalLeftSample[0] + nTotalLeftSample[1];
-			pSoundBuf[i + 1] = nTotalRightSample[0] + nTotalRightSample[1];
-		}
-	}
-	}
-
-	if (!bBurnYM2151IsBuffered || (bBurnYM2151IsBuffered && nSegmentEnd >= nBurnSoundLen)) {
-		INT32 nExtraSamples = nSamplesNeeded - (nFractionalPosition >> 16);
-		//if (nExtraSamples !=0 && nExtraSamples !=1)
-		//	bprintf(0, _T("nSegmentEnd   %d    nExtraSamples   %d\n"),nSegmentEnd,nExtraSamples);
-		for (INT32 i = -4; i < nExtraSamples; i++) {
-			pYM2151Buffer[0][i] = pYM2151Buffer[0][(nFractionalPosition >> 16) + i];
-			pYM2151Buffer[1][i] = pYM2151Buffer[1][(nFractionalPosition >> 16) + i];
 			if (bYM2151_MultiChip) {
-				pYM2151Buffer[2][i] = pYM2151Buffer[2][(nFractionalPosition >> 16) + i];
-				pYM2151Buffer[3][i] = pYM2151Buffer[3][(nFractionalPosition >> 16) + i];
+				INTERPOLATE_ADD_SOUND_LEFT  (1, BURN_SND_YM2151_YM2151_ROUTE_1, 2)
+				INTERPOLATE_ADD_SOUND_RIGHT (1, BURN_SND_YM2151_YM2151_ROUTE_1, 2)
+				INTERPOLATE_ADD_SOUND_LEFT  (1, BURN_SND_YM2151_YM2151_ROUTE_2, 3)
+				INTERPOLATE_ADD_SOUND_RIGHT (1, BURN_SND_YM2151_YM2151_ROUTE_2, 3)
+			}
+
+			for (INT32 chip = 0; chip < (bYM2151_MultiChip + 1); chip++) {
+				nTotalLeftSample[chip]  = INTERPOLATE4PS_16BIT((nFractionalPosition >> 4) & 0x0fff, nLeftSample[chip][0], nLeftSample[chip][1], nLeftSample[chip][2], nLeftSample[chip][3]);
+				nTotalRightSample[chip] = INTERPOLATE4PS_16BIT((nFractionalPosition >> 4) & 0x0fff, nRightSample[chip][0], nRightSample[chip][1], nRightSample[chip][2], nRightSample[chip][3]);
+
+				nTotalLeftSample[chip]  = BURN_SND_CLIP(nTotalLeftSample[chip] * YM2151Volumes[chip][BURN_SND_YM2151_YM2151_ROUTE_1]);
+				nTotalRightSample[chip] = BURN_SND_CLIP(nTotalRightSample[chip] * YM2151Volumes[chip][BURN_SND_YM2151_YM2151_ROUTE_2]);
+			}
+
+			if (bYM2151AddSignal) {
+				pSoundBuf[i + 0] = BURN_SND_CLIP(pSoundBuf[i + 0] + nTotalLeftSample[0] + nTotalLeftSample[1]);
+				pSoundBuf[i + 1] = BURN_SND_CLIP(pSoundBuf[i + 1] + nTotalRightSample[0] + nTotalRightSample[1]);
+			} else {
+				pSoundBuf[i + 0] = nTotalLeftSample[0] + nTotalLeftSample[1];
+				pSoundBuf[i + 1] = nTotalRightSample[0] + nTotalRightSample[1];
 			}
 		}
 
-		nFractionalPosition &= 0xFFFF;
+		if (!bBurnYM2151IsBuffered || (bBurnYM2151IsBuffered && nSegmentEnd >= nBurnSoundLen)) {
+			INT32 nExtraSamples = nSamplesNeeded - (nFractionalPosition >> 16);
+			//if (nExtraSamples !=0 && nExtraSamples !=1)
+			//	bprintf(0, _T("nSegmentEnd   %d    nExtraSamples   %d\n"),nSegmentEnd,nExtraSamples);
+			for (INT32 i = -4; i < nExtraSamples; i++) {
+				pYM2151Buffer[0][i] = pYM2151Buffer[0][(nFractionalPosition >> 16) + i];
+				pYM2151Buffer[1][i] = pYM2151Buffer[1][(nFractionalPosition >> 16) + i];
+				if (bYM2151_MultiChip) {
+					pYM2151Buffer[2][i] = pYM2151Buffer[2][(nFractionalPosition >> 16) + i];
+					pYM2151Buffer[3][i] = pYM2151Buffer[3][(nFractionalPosition >> 16) + i];
+				}
+			}
 
-		nYM2151Position = nExtraSamples;
+			nFractionalPosition &= 0xFFFF;
+
+			nYM2151Position = nExtraSamples;
+		}
 	}
 }
 

@@ -130,6 +130,7 @@ static INT32 DrvGpuDrawOffsetY;
 static INT32 DrvGpuDefaultType = 1;
 static INT32 DrvMainRomLinear;
 static INT32 DrvTekken3Inputs;
+static INT32 DrvTekken3;
 static INT32 DrvLbgrande;
 static INT32 DrvToukon3;
 static INT32 DrvSoulclbr;
@@ -165,9 +166,6 @@ static UINT32 DrvTektagtDmaOffset;
 static UINT32 DrvTektagtProtValue[2];
 static INT32 DrvTektagtProtCount;
 static INT32 DrvTektagtDmaPending;
-static INT32 DrvBankRom64;
-static INT32 DrvBankRomCompact64;
-static UINT32 DrvBankRomPairStride;
 static INT32 DrvUseBootDecompressHook;
 static INT32 DrvGpuVpos;
 static UINT16 DrvSioStatus[2];
@@ -180,7 +178,6 @@ static UINT16 DrvKeycusP1;
 static UINT16 DrvKeycusP2;
 static UINT16 DrvKeycusP3;
 static UINT32 DrvKeycusRand;
-static INT32 DrvKeycusType;
 static INT32 DrvLightgunGame;
 static INT32 DrvNativeWidth;
 static INT32 DrvDisplayModeHeight;
@@ -1074,11 +1071,7 @@ static void Namcos11SetBank(INT32 bank, UINT16 data)
 {
 	if (bank < 0 || bank >= 8) return;
 
-	if (DrvBankRom64) {
-		DrvBank[bank] = ((((data & 0x00c0) >> 3) + (data & 0x0007)) ^ DrvBankOffset) & 0x1f;
-	} else {
-		DrvBank[bank] = ((data & 0x00c0) >> 4) + (data & 0x0003);
-	}
+	DrvBank[bank] = ((data & 0x00c0) >> 4) + (data & 0x0003);
 
 	Namcos11MapBanks();
 }
@@ -2652,20 +2645,28 @@ static bool Namcos11GpuSynchronizeHardwareVram()
 
 static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 {
+	if (DrvTektagt) {
+		if (command == 0xa0) DrvGpuImageHardwareUpload = 0;
+		return false;
+	}
+
 	if (command == 0xa0) {
 		DrvGpuImageHardwareUpload = 0;
 		const UINT32 width = DrvGpuPacket[2] & 0xffff;
 		const UINT32 height = DrvGpuPacket[2] >> 16;
-		if (!DrvTektagt && !DrvEhrgeiz && !DrvSws98 && !DrvSws99 &&
-			!DrvToukon3 && !DrvFgtlayer && !DrvTekken3Inputs && !DrvGpuCheckStp &&
+		if (!DrvEhrgeiz && !DrvSws98 && !DrvSws99 &&
+			!DrvTenkomor && !DrvToukon3 && !DrvFgtlayer && !DrvTekken3Inputs &&
 			width > 0 && height > 0 && width <= 1024 && height <= 1024 &&
 			DrvOpenGLFrame.HasHardwareVram()) {
-			DrvGpuImageHardwareUpload = 1;
-			return false;
+			if (!DrvGpuCheckStp) {
+				DrvGpuImageHardwareUpload = 1;
+				return false;
+			}
 		}
 	}
-	if (command == 0xc0 && !DrvTektagt && !DrvEhrgeiz && !DrvSws98 &&
-		!DrvSws99 && !DrvToukon3 && !DrvFgtlayer && !DrvTekken3Inputs &&
+	if (command == 0xc0 && !DrvEhrgeiz && !DrvSws98 &&
+		!DrvSws99 && !DrvTenkomor && !DrvToukon3 && !DrvFgtlayer &&
+		!DrvTekken3Inputs &&
 		DrvOpenGLFrame.HasHardwareVram()) {
 		const UINT32 width = DrvGpuPacket[2] & 0xffff;
 		const UINT32 height = DrvGpuPacket[2] >> 16;
@@ -2676,8 +2677,8 @@ static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 			return false;
 		}
 	}
-	if (DrvTektagt || DrvEhrgeiz || DrvSws98 || DrvSws99 || DrvToukon3 ||
-		DrvFgtlayer || DrvTekken3Inputs ||
+	if (DrvEhrgeiz || DrvSws98 || DrvSws99 || DrvTenkomor ||
+		DrvToukon3 || DrvFgtlayer || DrvTekken3Inputs ||
 		!NamcosGlRasterCanSubmitCommand(command) ||
 		(DrvGpuStatus & (1 << 21)) ||
 		!DrvOpenGLFrame.SupportsFullRasterizer()) {
@@ -2714,8 +2715,18 @@ static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 	packet.state.drawStp = DrvGpuDrawStp;
 	packet.state.checkStp = DrvGpuCheckStp;
 	packet.state.gpuType = DrvGpuType;
-
 	const bool submitted = DrvOpenGLFrame.RasterizePacket(&packet);
+	if (submitted && (((command >= 0x24 && command <= 0x2f) ||
+		(command >= 0x34 && command <= 0x3f)))) {
+		const UINT32 tpage = DrvGpuPacket[command >= 0x34 ? 5 : 4] >> 16;
+		if (DrvGpuType == 2) {
+			DrvGpuStatus = (DrvGpuStatus & 0xffff7800) | (tpage & 0x7ff) |
+				((tpage & 0x800) << 4);
+		} else {
+			DrvGpuStatus = (DrvGpuStatus & 0xffffe000) | (tpage & 0x1fff);
+		}
+		DrvGpuTPage = tpage;
+	}
 	if (!submitted) {
 		DrvHardwareRasterStreak = 0;
 		Namcos11GpuSynchronizeHardwareVram();
@@ -2726,8 +2737,10 @@ static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 static void Namcos11GpuExecutePacket()
 {
 	UINT8 command = DrvGpuPacket[0] >> 24;
-	if (command == 0x02 || (command >= 0x20 && command <= 0x7f) ||
-		command == 0x80) {
+	const bool writesVram = command == 0x02 ||
+		(command >= 0x20 && command <= 0x7f) || command == 0x80;
+	const bool hadHardwareVram = DrvOpenGLFrame.HasHardwareVram();
+	if (writesVram) {
 		DrvGpuVramGeneration++;
 	}
 	if (Namcos11GpuTryHardwarePacket(command)) {
@@ -2735,6 +2748,7 @@ static void Namcos11GpuExecutePacket()
 		DrvGpuPacketLen = 0;
 		return;
 	}
+	if (writesVram && hadHardwareVram) DrvGpuVramGeneration++;
 	switch (command)
 	{
 		case 0x02:
@@ -3545,153 +3559,23 @@ static void Namcos11WriteIoMasked(UINT32 address, UINT32 data, UINT32 mem_mask)
 static UINT16 Namcos11KeycusRead(UINT32 address)
 {
 	UINT32 offset = (address - 0x1fa20000) >> 1;
-	UINT16 result;
 
-	if (DrvKeycusType == 409) {
-		if (offset == 7) {
-			INT32 a2 = (DrvKeycusP1 - 0x01) & 0x1f;
-			INT32 a3 = (0x20 - DrvKeycusP1) & 0x1f;
-			INT32 r = (((DrvKeycusP2 & 0x1f) * a2) + ((DrvKeycusP3 & 0x1f) * a3)) / 0x1f;
-			INT32 g = ((((DrvKeycusP2 >> 5) & 0x1f) * a2) + (((DrvKeycusP3 >> 5) & 0x1f) * a3)) / 0x1f;
-			INT32 b = ((((DrvKeycusP2 >> 10) & 0x1f) * a2) + (((DrvKeycusP3 >> 10) & 0x1f) * a3)) / 0x1f;
-
-			return r | (g << 5) | (b << 10);
-		}
-	} else if (DrvKeycusType == 410) {
-		if (DrvKeycusP2 == 0) {
-			UINT16 value = (DrvKeycusP1 == 0xfffe) ? 410 : DrvKeycusP1;
-
-			switch (offset)
-			{
-				case 1: return (value / 1) % 10;
-				case 2: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 3: return ((value / 10000) % 10) | (((value / 10) % 10) << 8);
-			}
-		}
-	} else if (DrvKeycusType == 411) {
-		if (DrvKeycusP2 == 0x0000 && ((((DrvKeycusP1 == 0x0000 || DrvKeycusP1 == 0x0100) && DrvKeycusP3 == 0xff7f)) || DrvKeycusP1 == 0x7256)) {
-			UINT16 value = (DrvKeycusP1 == 0x7256) ? DrvKeycusP3 : 411;
-
-			switch (offset)
-			{
-				case 0: return ((value / 1) % 10) | (((value / 10) % 10) << 8);
-				case 2: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 8: return (value / 10000) % 10;
-			}
-		}
-	} else if (DrvKeycusType == 430) {
-		if (DrvKeycusP2 == 0x0000 && ((DrvKeycusP1 == 0xbfff && DrvKeycusP3 == 0x0000) || DrvKeycusP3 == 0xe296)) {
-			UINT16 value = (DrvKeycusP3 == 0xe296) ? DrvKeycusP1 : 430;
-
-			switch (offset)
-			{
-				case 1: return (value / 10000) % 10;
-				case 4: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 5: return ((value / 1) % 10) | (((value / 10) % 10) << 8);
-			}
-		}
-	} else if (DrvKeycusType == 442) {
-		if (offset == 0 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0000 || DrvKeycusP2 == 0x0021)) return 0x0000;
-		if (offset == 1 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0020 || DrvKeycusP2 == 0x3af2)) return 0x0000;
-		if (offset == 1 && DrvKeycusP1 == 0x0020 && DrvKeycusP2 == 0x0021) return 0xc442;
-	} else if (DrvKeycusType == 443) {
-		if (offset == 0 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0000 || DrvKeycusP2 == 0xffff || DrvKeycusP2 == 0xffe0)) return 0x0020;
-		if (offset == 1 && DrvKeycusP1 == 0x0020 && DrvKeycusP2 == 0xffdf) return 0x0000;
-		if (offset == 1 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0xffff || DrvKeycusP2 == 0xffe0)) return 0xc443;
-	} else if (DrvKeycusType == 432) {
-		if (DrvKeycusP1 == 0x0000 && ((((DrvKeycusP3 == 0x0000 || DrvKeycusP3 == 0x00dc) && DrvKeycusP2 == 0xefff)) || DrvKeycusP3 == 0x2f15)) {
-			UINT16 value = (DrvKeycusP3 == 0x2f15) ? DrvKeycusP2 : 432;
-
-			switch (offset)
-			{
-				case 2: return ((value / 1) % 10) | (((value / 10) % 10) << 8);
-				case 4: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 6: return ((value / 10000) % 10) | (((value / 100000) % 10) << 8);
-			}
-		}
-	} else if (DrvKeycusType == 431) {
-		if (DrvKeycusP2 == 0x0000 && ((((DrvKeycusP1 == 0x0000 || DrvKeycusP1 == 0xab50) && DrvKeycusP3 == 0x7fff)) || DrvKeycusP1 == 0x9e61)) {
-			UINT16 value = (DrvKeycusP1 == 0x9e61) ? DrvKeycusP3 : 431;
-
-			switch (offset)
-			{
-				case 0: return ((value / 1) % 10) | (((value / 10) % 10) << 8);
-				case 4: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 8: return (value / 10000) % 10;
-			}
-		}
-	} else if (offset == 0 && DrvKeycusP1 == 0x1234 && DrvKeycusP2 == 0x5678 && DrvKeycusP3 == 0x000f) {
+	if (offset == 0 && DrvKeycusP1 == 0x1234 && DrvKeycusP2 == 0x5678 && DrvKeycusP3 == 0x000f) {
 		return 0x3256;
 	}
 
 	DrvKeycusRand = (DrvKeycusRand * 1103515245) + 12345;
-	result = DrvKeycusRand >> 16;
 
-	return result;
+	return DrvKeycusRand >> 16;
 }
 
 static UINT16 Namcos11KeycusLatch(UINT32 offset)
 {
-	if (DrvKeycusType == 409) {
-		switch (offset)
-		{
-			case 1: return DrvKeycusP1;
-			case 3: return DrvKeycusP2;
-			case 7: return DrvKeycusP3;
-		}
-	} else if (DrvKeycusType == 410) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 2: return DrvKeycusP2;
-		}
-	} else if (DrvKeycusType == 411) {
-		switch (offset)
-		{
-			case 2: return DrvKeycusP1;
-			case 8: return DrvKeycusP2;
-			case 10: return DrvKeycusP3;
-		}
-	} else if (DrvKeycusType == 430) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 1: return DrvKeycusP2;
-			case 4: return DrvKeycusP3;
-		}
-	} else if (DrvKeycusType == 442) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 1: return DrvKeycusP2;
-		}
-	} else if (DrvKeycusType == 443) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 1: return DrvKeycusP2;
-		}
-	} else if (DrvKeycusType == 432) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 2: return DrvKeycusP2;
-			case 6: return DrvKeycusP3;
-		}
-	} else if (DrvKeycusType == 431) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 4: return DrvKeycusP2;
-			case 12: return DrvKeycusP3;
-		}
-	} else {
-		switch (offset)
-		{
-			case 1: return DrvKeycusP1;
-			case 2: return DrvKeycusP2;
-			case 3: return DrvKeycusP3;
-		}
+	switch (offset)
+	{
+		case 1: return DrvKeycusP1;
+		case 2: return DrvKeycusP2;
+		case 3: return DrvKeycusP3;
 	}
 
 	return 0;
@@ -3701,66 +3585,11 @@ static void Namcos11KeycusWrite(UINT32 address, UINT16 data)
 {
 	UINT32 offset = (address - 0x1fa20000) >> 1;
 
-	if (DrvKeycusType == 409) {
-		switch (offset)
-		{
-			case 1: DrvKeycusP1 = data; return;
-			case 3: DrvKeycusP2 = data; return;
-			case 7: DrvKeycusP3 = data; return;
-		}
-	} else if (DrvKeycusType == 410) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 2: DrvKeycusP2 = data; return;
-		}
-	} else if (DrvKeycusType == 411) {
-		switch (offset)
-		{
-			case 2: DrvKeycusP1 = data; return;
-			case 8: DrvKeycusP2 = data; return;
-			case 10: DrvKeycusP3 = data; return;
-		}
-	} else if (DrvKeycusType == 430) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 1: DrvKeycusP2 = data; return;
-			case 4: DrvKeycusP3 = data; return;
-		}
-	} else if (DrvKeycusType == 442) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 1: DrvKeycusP2 = data; return;
-		}
-	} else if (DrvKeycusType == 443) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 1: DrvKeycusP2 = data; return;
-		}
-	} else if (DrvKeycusType == 432) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 2: DrvKeycusP2 = data; return;
-			case 6: DrvKeycusP3 = data; return;
-		}
-	} else if (DrvKeycusType == 431) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 4: DrvKeycusP2 = data; return;
-			case 12: DrvKeycusP3 = data; return;
-		}
-	} else {
-		switch (offset)
-		{
-			case 1: DrvKeycusP1 = data; return;
-			case 2: DrvKeycusP2 = data; return;
-			case 3: DrvKeycusP3 = data; return;
-		}
+	switch (offset)
+	{
+		case 1: DrvKeycusP1 = data; return;
+		case 2: DrvKeycusP2 = data; return;
+		case 3: DrvKeycusP3 = data; return;
 	}
 }
 
@@ -6001,8 +5830,6 @@ static INT32 DrvInit()
 	DrvJvsSensePending = 0;
 	DrvJvsCoinCount = 0;
 	DrvJvsCoinLast = 0;
-	DrvBankRom64 = (DrvKeycusType == 443);
-	DrvBankRomPairStride = DrvBankRom64 ? (DrvBankRomCompact64 ? 0x0800000 : 0x1000000) : 0x0400000;
 	DrvBankRomSize = DrvTektagt ? 0x3800000 : ((DrvAplarail || DrvTechnodr) ? 0x3400000 : (DrvMdhorse ? 0x3000000 : (DrvToukon3 ? 0x0800000 : ((DrvLbgrande || DrvEhrgeiz || DrvSws98 || DrvTenkomor) ? 0x1c00000 : (DrvPacapp ? 0x1800000 : (DrvPtblank2 ? 0x1000000 : (DrvMrdrillr ? 0x0800000 : 0x2000000)))))));
 
 	BurnAllocMemIndex();
@@ -6058,7 +5885,7 @@ static INT32 Tekken3Init()
 	DrvGpuDefaultType = 2;
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 1;
-	DrvKeycusType = 0;
+	DrvTekken3 = 1;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6073,7 +5900,6 @@ static INT32 LbgrandeInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvLbgrande = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6136,7 +5962,6 @@ static INT32 Toukon3Init()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvToukon3 = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6156,7 +5981,6 @@ static INT32 SoulclbrInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 1;
 	DrvSoulclbr = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6171,7 +5995,6 @@ static INT32 EhrgeizInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvEhrgeiz = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6186,7 +6009,6 @@ static INT32 Sws98Init()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvSws98 = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6206,7 +6028,6 @@ static INT32 Sws99Init()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvSws99 = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6226,7 +6047,6 @@ static INT32 AplarailInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvAplarail = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6241,7 +6061,6 @@ static INT32 MdhorseInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvMdhorse = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6256,7 +6075,6 @@ static INT32 TechnodrInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvTechnodr = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6271,7 +6089,6 @@ static INT32 TenkomorInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvTenkomor = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6286,7 +6103,6 @@ static INT32 FgtlayerInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvFgtlayer = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6301,7 +6117,6 @@ static INT32 Ptblank2Init()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvPtblank2 = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 1;
 
@@ -6316,7 +6131,6 @@ static INT32 PacappInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvPacapp = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6331,7 +6145,6 @@ static INT32 MrdrillrInit()
 	DrvMainRomLinear = 2;
 	DrvTekken3Inputs = 0;
 	DrvMrdrillr = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6347,7 +6160,6 @@ static INT32 TektagtInit()
 	DrvTekken3Inputs = 0;
 	DrvTektagt = 1;
 	if (DrvTektagtRomType == 0) DrvTektagtRomType = 1;
-	DrvKeycusType = 0;
 	DrvUseBootDecompressHook = 0;
 	DrvLightgunGame = 0;
 
@@ -6370,10 +6182,10 @@ static INT32 DrvExit()
 	if (DrvNativeWidth) BurnDrvSetVisibleSize(DrvNativeWidth, 240);
 	DrvNativeWidth = 0;
 	DrvDisplayModeHeight = 0;
-	DrvBankRomCompact64 = 0;
 	DrvTekken3Inputs = 0;
 	DrvLbgrande = 0;
 	DrvToukon3 = 0;
+	DrvTekken3 = 0;
 	DrvSoulclbr = 0;
 	DrvEhrgeiz = 0;
 	DrvSws98 = 0;
@@ -6577,18 +6389,6 @@ static void DrvPaletteUpdate()
 		DrvPalette[i] = BurnHighCol(pal5bit(i >> 0), pal5bit(i >> 5), pal5bit(i >> 10), 0);
 	}
 	DrvOpenGLFrame.InvalidatePalette();
-}
-
-static void Namcos11RemoveTopBorder()
-{
-	if (DrvKeycusType != 406) return;
-
-	const INT32 border = 10 * nScreenHeight / 240;
-
-	for (INT32 y = 0; y < nScreenHeight; y++) {
-		INT32 sourceY = border + (y * (nScreenHeight - border)) / nScreenHeight;
-		memcpy(pTransDraw + (y * nScreenWidth), pTransDraw + (sourceY * nScreenWidth), nScreenWidth * sizeof(UINT16));
-	}
 }
 
 static void Namcos12FixedDisplayRange(INT32 sourceTop, INT32 sourceBottom)
@@ -6863,13 +6663,27 @@ static INT32 DrvDraw()
 		context.displayY = (context.displayY - (nScreenHeight >= 480 ? 21 : 10)) & 0x3ff;
 		if (nScreenHeight == 240) context.outputShiftX = 0;
 	}
-	const UINT8 renderingType = DrvTektagt ? 0 : (DrvDips[2] & 0x03);
+	const UINT8 renderingType = DrvDips[2] & 0x03;
 	const bool ehrgeizOpenGLCrop = DrvEhrgeiz && renderingType == 0x01;
+	const bool tekken3OpenGLCrop = DrvTekken3 && renderingType == 0x01;
+	const bool tektagtOpenGLCrop = DrvTektagt && renderingType == 0x01;
+	const bool openGLContextCrop = ehrgeizOpenGLCrop || tekken3OpenGLCrop ||
+		tektagtOpenGLCrop;
 	const INT32 uncroppedHeight = context.cropHeight;
 	if (ehrgeizOpenGLCrop) {
 		const INT32 scale = context.sourceHeight >= 480 ? 2 : 1;
 		context.cropTop = 6 * scale;
 		context.cropHeight = context.sourceHeight - (11 * scale) - (scale - 1);
+	} else if (tekken3OpenGLCrop) {
+		const INT32 scale = context.sourceHeight >= 480 ? 2 : 1;
+		context.cropTop = 10 * scale;
+		context.cropHeight = context.sourceHeight - (12 * scale) - (scale - 1);
+	} else if (tektagtOpenGLCrop) {
+		const bool highResolution = context.sourceHeight >= 480;
+		const INT32 cropTop = highResolution ? 20 : 10;
+		const INT32 cropBottom = highResolution ? 15 : 8;
+		context.cropTop = cropTop;
+		context.cropHeight = context.sourceHeight - cropTop - cropBottom;
 	}
 	if (DrvSws99 && context.rgb24) {
 		const INT32 activeWidth = ((INT32)(DrvGpuHorizEnd - DrvGpuHorizStart) *
@@ -6909,7 +6723,7 @@ static INT32 DrvDraw()
 		converted = false;
 	}
 	if (!converted) {
-		if (ehrgeizOpenGLCrop) {
+		if (openGLContextCrop) {
 			context.cropTop = 0;
 			context.cropHeight = uncroppedHeight;
 		}
@@ -6919,13 +6733,20 @@ static INT32 DrvDraw()
 	}
 
 	if (!directOutput) {
-		if (!(converted && ehrgeizOpenGLCrop)) Namcos12RemoveMdecBorders();
-		Namcos11RemoveTopBorder();
+		if (!(converted && openGLContextCrop)) Namcos12RemoveMdecBorders();
 	}
 	if (!directOutput) Namcos12ShiftSoulclbrDown();
 	if (!directOutput) Namcos12CropSoulclbrBorders();
 
 	if (!directOutput) Namcos11TransferOutput();
+	if (DrvTektagt && renderingType == 0x01 && pBurnDraw != NULL &&
+		nBurnBpp > 0 && nScreenWidth > 1) {
+		for (INT32 y = 0; y < nScreenHeight; y++) {
+			UINT8 *row = pBurnDraw + (y * nBurnPitch);
+			memcpy(row + ((nScreenWidth - 1) * nBurnBpp),
+				row + ((nScreenWidth - 2) * nBurnBpp), nBurnBpp);
+		}
+	}
 	Namcos12FilterSoulclbrPartialFrame();
 	if (DrvLightgunGame) BurnGunDrawTargets();
 	return 0;

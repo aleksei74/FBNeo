@@ -13,18 +13,33 @@
 #define NAMCOS_GL_ARM_NEON 1
 #endif
 
+#if !defined(_WIN32) && defined(__SSE2__)
+#include <emmintrin.h>
+#define NAMCOS_GL_X86_SSE2 1
+#endif
+
 static const UINT32 NAMCOS_GL_RASTER_BATCH_VERTICES = 6 * 4096;
-static const UINT32 NAMCOS_GL_RASTER_STREAM_VERTICES = 6 * 8192;
+static const UINT32 NAMCOS_GL_RASTER_STREAM_VERTICES = 6 * 32768;
 static const INT32 NAMCOS_GL_RASTER_FAST_CLEAR_PIXELS = 64 * 64;
 
 static void NamcosGlCopyWrappedVramToLinear(const UINT16 *source,
 	UINT16 *destination, INT32 x, INT32 y, INT32 width, INT32 height)
 {
 	for (INT32 yy = 0; yy < height; yy++) {
-		for (INT32 xx = 0; xx < width; xx++) {
-			destination[(size_t)yy * width + xx] =
-				source[((size_t)((y + yy) & 0x3ff) << 10) |
-					((x + xx) & 0x3ff)];
+		const UINT16 *sourceRow = source +
+			((size_t)((y + yy) & 0x3ff) << 10);
+		UINT16 *destinationRow = destination + (size_t)yy * width;
+		INT32 sourceX = x & 0x3ff;
+		INT32 remaining = width;
+
+		while (remaining > 0) {
+			const INT32 run = (remaining < 1024 - sourceX) ?
+				remaining : 1024 - sourceX;
+			memcpy(destinationRow, sourceRow + sourceX,
+				(size_t)run * sizeof(UINT16));
+			destinationRow += run;
+			remaining -= run;
+			sourceX = 0;
 		}
 	}
 }
@@ -33,9 +48,20 @@ static void NamcosGlCopyLinearToWrappedVram(const UINT16 *source,
 	UINT16 *destination, INT32 x, INT32 y, INT32 width, INT32 height)
 {
 	for (INT32 yy = 0; yy < height; yy++) {
-		for (INT32 xx = 0; xx < width; xx++) {
-			destination[((size_t)((y + yy) & 0x3ff) << 10) |
-				((x + xx) & 0x3ff)] = source[(size_t)yy * width + xx];
+		const UINT16 *sourceRow = source + (size_t)yy * width;
+		UINT16 *destinationRow = destination +
+			((size_t)((y + yy) & 0x3ff) << 10);
+		INT32 destinationX = x & 0x3ff;
+		INT32 remaining = width;
+
+		while (remaining > 0) {
+			const INT32 run = (remaining < 1024 - destinationX) ?
+				remaining : 1024 - destinationX;
+			memcpy(destinationRow + destinationX, sourceRow,
+				(size_t)run * sizeof(UINT16));
+			sourceRow += run;
+			remaining -= run;
+			destinationX = 0;
 		}
 	}
 }
@@ -63,6 +89,39 @@ static void NamcosGlUnpackVramRow(const UINT8 *source,
 		output = vorrq_u16(output, vshlq_n_u16(blue, 10));
 		output = vorrq_u16(output, alpha);
 		vst1q_u16(destination + x, output);
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i byteMask = _mm_set1_epi32(0xff);
+	const __m128i scale = _mm_set1_epi16(249);
+	const __m128i round = _mm_set1_epi16(1014);
+	const __m128i alphaThreshold = _mm_set1_epi16(127);
+	const __m128i alphaMask = _mm_set1_epi32(0x8000);
+	const __m128i packBias = _mm_set1_epi32(0x8000);
+	const __m128i packXor = _mm_set1_epi16((short)0x8000);
+	const __m128i zero = _mm_setzero_si128();
+	for (; x + 4 <= width; x += 4) {
+		const __m128i rgba = _mm_loadu_si128(
+			(const __m128i *)(source + (size_t)x * 4));
+		const __m128i redBytes = _mm_and_si128(rgba, byteMask);
+		const __m128i greenBytes = _mm_and_si128(
+			_mm_srli_epi32(rgba, 8), byteMask);
+		const __m128i blueBytes = _mm_and_si128(
+			_mm_srli_epi32(rgba, 16), byteMask);
+		const __m128i alphaBytes = _mm_and_si128(
+			_mm_srli_epi32(rgba, 24), byteMask);
+		const __m128i red = _mm_srli_epi16(_mm_add_epi16(
+			_mm_mullo_epi16(redBytes, scale), round), 11);
+		const __m128i green = _mm_slli_epi32(_mm_srli_epi16(_mm_add_epi16(
+			_mm_mullo_epi16(greenBytes, scale), round), 11), 5);
+		const __m128i blue = _mm_slli_epi32(_mm_srli_epi16(_mm_add_epi16(
+			_mm_mullo_epi16(blueBytes, scale), round), 11), 10);
+		const __m128i alpha = _mm_and_si128(
+			_mm_cmpgt_epi16(alphaBytes, alphaThreshold), alphaMask);
+		const __m128i color = _mm_or_si128(
+			_mm_or_si128(red, green), _mm_or_si128(blue, alpha));
+		const __m128i packed = _mm_xor_si128(_mm_packs_epi32(
+			_mm_sub_epi32(color, packBias), zero), packXor);
+		_mm_storel_epi64((__m128i *)(destination + x), packed);
 	}
 #endif
 	for (; x < width; x++) {
@@ -146,6 +205,22 @@ static void NamcosGlVramTo5551Row(const UINT16 *source,
 			vshrq_n_u16(vandq_u16(pixel, alphaMask), 15));
 		vst1q_u16(destination + x, output);
 	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i redMask = _mm_set1_epi16(0x001f);
+	const __m128i greenMask = _mm_set1_epi16(0x03e0);
+	const __m128i blueMask = _mm_set1_epi16(0x7c00);
+	const __m128i alphaMask = _mm_set1_epi16((short)0x8000);
+	for (; x + 8 <= width; x += 8) {
+		const __m128i pixel = _mm_loadu_si128((const __m128i *)(source + x));
+		__m128i output = _mm_slli_epi16(_mm_and_si128(pixel, redMask), 11);
+		output = _mm_or_si128(output,
+			_mm_slli_epi16(_mm_and_si128(pixel, greenMask), 1));
+		output = _mm_or_si128(output,
+			_mm_srli_epi16(_mm_and_si128(pixel, blueMask), 9));
+		output = _mm_or_si128(output,
+			_mm_srli_epi16(_mm_and_si128(pixel, alphaMask), 15));
+		_mm_storeu_si128((__m128i *)(destination + x), output);
+	}
 #endif
 	for (; x < width; x++) destination[x] = NamcosGlVramTo5551(source[x]);
 }
@@ -169,6 +244,22 @@ static void NamcosGl5551ToVramRow(const UINT16 *source,
 		output = vorrq_u16(output,
 			vshlq_n_u16(vandq_u16(pixel, alphaMask), 15));
 		vst1q_u16(destination + x, output);
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i redMask = _mm_set1_epi16((short)0xf800);
+	const __m128i greenMask = _mm_set1_epi16(0x07c0);
+	const __m128i blueMask = _mm_set1_epi16(0x003e);
+	const __m128i alphaMask = _mm_set1_epi16(0x0001);
+	for (; x + 8 <= width; x += 8) {
+		const __m128i pixel = _mm_loadu_si128((const __m128i *)(source + x));
+		__m128i output = _mm_srli_epi16(_mm_and_si128(pixel, redMask), 11);
+		output = _mm_or_si128(output,
+			_mm_srli_epi16(_mm_and_si128(pixel, greenMask), 1));
+		output = _mm_or_si128(output,
+			_mm_slli_epi16(_mm_and_si128(pixel, blueMask), 9));
+		output = _mm_or_si128(output,
+			_mm_slli_epi16(_mm_and_si128(pixel, alphaMask), 15));
+		_mm_storeu_si128((__m128i *)(destination + x), output);
 	}
 #endif
 	for (; x < width; x++) destination[x] = NamcosGl5551ToVram(source[x]);
@@ -302,6 +393,51 @@ static void NamcosGlReadVram5551RectParallel(const UINT16 *source,
 #endif
 
 #if defined(_WIN32)
+
+struct NamcosGlWinUnpackVramContext
+{
+	const UINT8 *source;
+	UINT16 *destination;
+	INT32 x;
+	INT32 y;
+	INT32 width;
+	INT32 height;
+};
+
+static void NamcosGlWinUnpackVramRows(void *opaque, INT32 begin, INT32 end)
+{
+	NamcosGlWinUnpackVramContext *context =
+		(NamcosGlWinUnpackVramContext *)opaque;
+	for (INT32 row = begin; row < end; row++) {
+		const UINT8 *source = context->source +
+			(size_t)(context->height - 1 - row) * context->width * 4;
+		UINT16 *destination = context->destination +
+			(size_t)(context->y + row) * 1024 + context->x;
+		for (INT32 x = 0; x < context->width; x++) {
+			destination[x] = NamcosGlRasterUnpackVramPixel(source + x * 4);
+		}
+	}
+}
+
+static void NamcosGlUnpackVramRectParallel(const UINT8 *source,
+	UINT16 *destination, INT32 x, INT32 y, INT32 width, INT32 height,
+	NamcosPolyThreadPool *threadPool)
+{
+	NamcosGlWinUnpackVramContext context;
+	context.source = source;
+	context.destination = destination;
+	context.x = x;
+	context.y = y;
+	context.width = width;
+	context.height = height;
+	const INT64 work = (INT64)width * height;
+	if (threadPool != NULL) {
+		threadPool->ParallelForWork(height, work, 32768,
+			NamcosGlWinUnpackVramRows, &context);
+	} else {
+		NamcosGlWinUnpackVramRows(&context, 0, height);
+	}
+}
 
 struct NamcosGlCopyVram16Context
 {
@@ -445,7 +581,401 @@ struct NamcosGlReadConvertContext
 	INT32 destinationBytes;
 	INT32 redOffset;
 	INT32 blueOffset;
+	INT32 native5551;
+	INT32 directRgb565;
+	INT32 directXrgb8888;
 };
+
+static void NamcosGlConvertNative16XrgbRow(const UINT16 *source,
+	UINT32 *destination, INT32 width, INT32 native5551)
+{
+	INT32 x = 0;
+#if defined(NAMCOS_GL_ARM_NEON)
+	const uint16x8_t mask5 = vdupq_n_u16(0x001f);
+	for (; x + 8 <= width; x += 8) {
+		const uint16x8_t pixel = vld1q_u16(source + x);
+		const uint16x8_t red5 = vandq_u16(vshrq_n_u16(pixel, 11), mask5);
+		const uint16x8_t green5 = vandq_u16(vshrq_n_u16(pixel, 6), mask5);
+		const uint16x8_t blue5 = vandq_u16(native5551 ?
+			vshrq_n_u16(pixel, 1) : pixel, mask5);
+		const uint16x8_t red8 = vorrq_u16(vshlq_n_u16(red5, 3),
+			vshrq_n_u16(red5, 2));
+		const uint16x8_t green8 = vorrq_u16(vshlq_n_u16(green5, 3),
+			vshrq_n_u16(green5, 2));
+		const uint16x8_t blue8 = vorrq_u16(vshlq_n_u16(blue5, 3),
+			vshrq_n_u16(blue5, 2));
+		for (INT32 half = 0; half < 2; half++) {
+			const uint32x4_t red = vmovl_u16(half == 0 ?
+				vget_low_u16(red8) : vget_high_u16(red8));
+			const uint32x4_t green = vmovl_u16(half == 0 ?
+				vget_low_u16(green8) : vget_high_u16(green8));
+			const uint32x4_t blue = vmovl_u16(half == 0 ?
+				vget_low_u16(blue8) : vget_high_u16(blue8));
+			vst1q_u32(destination + x + half * 4,
+				vorrq_u32(vorrq_u32(vshlq_n_u32(red, 16),
+				vshlq_n_u32(green, 8)), blue));
+		}
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i mask5 = _mm_set1_epi16(0x001f);
+	const __m128i zero = _mm_setzero_si128();
+	for (; x + 8 <= width; x += 8) {
+		const __m128i pixel = _mm_loadu_si128((const __m128i *)(source + x));
+		const __m128i red5 = _mm_and_si128(_mm_srli_epi16(pixel, 11), mask5);
+		const __m128i green5 = _mm_and_si128(_mm_srli_epi16(pixel, 6), mask5);
+		const __m128i blue5 = _mm_and_si128(native5551 ?
+			_mm_srli_epi16(pixel, 1) : pixel, mask5);
+		__m128i red8 = _mm_or_si128(_mm_slli_epi16(red5, 3),
+			_mm_srli_epi16(red5, 2));
+		__m128i green8 = _mm_or_si128(_mm_slli_epi16(green5, 3),
+			_mm_srli_epi16(green5, 2));
+		__m128i blue8 = _mm_or_si128(_mm_slli_epi16(blue5, 3),
+			_mm_srli_epi16(blue5, 2));
+		for (INT32 half = 0; half < 2; half++) {
+			const __m128i red = _mm_unpacklo_epi16(red8, zero);
+			const __m128i green = _mm_unpacklo_epi16(green8, zero);
+			const __m128i blue = _mm_unpacklo_epi16(blue8, zero);
+			const __m128i color = _mm_or_si128(_mm_or_si128(
+				_mm_slli_epi32(red, 16), _mm_slli_epi32(green, 8)), blue);
+			_mm_storeu_si128((__m128i *)(destination + x + half * 4), color);
+			red8 = _mm_srli_si128(red8, 8);
+			green8 = _mm_srli_si128(green8, 8);
+			blue8 = _mm_srli_si128(blue8, 8);
+		}
+	}
+#endif
+	for (; x < width; x++) {
+		const UINT16 pixel = source[x];
+		const UINT32 red5 = (pixel >> 11) & 0x1f;
+		const UINT32 green5 = (pixel >> 6) & 0x1f;
+		const UINT32 blue5 = (pixel >> (native5551 ? 1 : 0)) & 0x1f;
+		const UINT32 red8 = (red5 << 3) | (red5 >> 2);
+		const UINT32 green8 = (green5 << 3) | (green5 >> 2);
+		const UINT32 blue8 = (blue5 << 3) | (blue5 >> 2);
+		destination[x] = (red8 << 16) | (green8 << 8) | blue8;
+	}
+}
+
+static void NamcosGlConvertNative16Rgb565Row(const UINT16 *source,
+	UINT16 *destination, INT32 width, INT32 native5551)
+{
+	INT32 x = 0;
+#if defined(NAMCOS_GL_ARM_NEON)
+	const uint16x8_t mask5 = vdupq_n_u16(0x001f);
+	for (; x + 8 <= width; x += 8) {
+		const uint16x8_t pixel = vld1q_u16(source + x);
+		const uint16x8_t red = vandq_u16(pixel, vdupq_n_u16(0xf800));
+		const uint16x8_t green5 = vandq_u16(vshrq_n_u16(pixel, 6), mask5);
+		const uint16x8_t green6 = vorrq_u16(vshlq_n_u16(green5, 1),
+			vshrq_n_u16(green5, 4));
+		const uint16x8_t blue = vandq_u16(native5551 ?
+			vshrq_n_u16(pixel, 1) : pixel, mask5);
+		vst1q_u16(destination + x, vorrq_u16(vorrq_u16(red,
+			vshlq_n_u16(green6, 5)), blue));
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i mask5 = _mm_set1_epi16(0x001f);
+	const __m128i redMask = _mm_set1_epi16((short)0xf800);
+	for (; x + 8 <= width; x += 8) {
+		const __m128i pixel = _mm_loadu_si128((const __m128i *)(source + x));
+		const __m128i red = _mm_and_si128(pixel, redMask);
+		const __m128i green5 = _mm_and_si128(_mm_srli_epi16(pixel, 6), mask5);
+		const __m128i green6 = _mm_or_si128(_mm_slli_epi16(green5, 1),
+			_mm_srli_epi16(green5, 4));
+		const __m128i blue = _mm_and_si128(native5551 ?
+			_mm_srli_epi16(pixel, 1) : pixel, mask5);
+		_mm_storeu_si128((__m128i *)(destination + x),
+			_mm_or_si128(_mm_or_si128(red, _mm_slli_epi16(green6, 5)), blue));
+	}
+#endif
+	for (; x < width; x++) {
+		const UINT16 pixel = source[x];
+		const UINT16 green5 = (pixel >> 6) & 0x001f;
+		const UINT16 green6 = (UINT16)((green5 << 1) | (green5 >> 4));
+		destination[x] = (UINT16)((pixel & 0xf800) | (green6 << 5) |
+			((pixel >> (native5551 ? 1 : 0)) & 0x001f));
+	}
+}
+
+static void NamcosGlConvertRgbaRgb565Row(const UINT8 *source,
+	UINT16 *destination, INT32 width, INT32 redOffset, INT32 blueOffset)
+{
+	INT32 x = 0;
+#if defined(NAMCOS_GL_ARM_NEON)
+	for (; x + 8 <= width; x += 8) {
+		const uint8x8x4_t rgba = vld4_u8(source + (size_t)x * 4);
+		const uint8x8_t red8 = redOffset == 0 ? rgba.val[0] : rgba.val[2];
+		const uint8x8_t blue8 = blueOffset == 0 ? rgba.val[0] : rgba.val[2];
+		const uint16x8_t red = vshlq_n_u16(
+			vmovl_u8(vshr_n_u8(red8, 3)), 11);
+		const uint16x8_t green = vshlq_n_u16(
+			vmovl_u8(vshr_n_u8(rgba.val[1], 2)), 5);
+		const uint16x8_t blue = vmovl_u8(vshr_n_u8(blue8, 3));
+		vst1q_u16(destination + x,
+			vorrq_u16(vorrq_u16(red, green), blue));
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i redMask = _mm_set1_epi32(0x000000f8);
+	const __m128i greenMask = _mm_set1_epi32(0x0000fc00);
+	const __m128i bias32 = _mm_set1_epi32(0x00008000);
+	const __m128i bias16 = _mm_set1_epi16((short)0x8000);
+	const __m128i zero = _mm_setzero_si128();
+	for (; x + 4 <= width; x += 4) {
+		const __m128i rgba = _mm_loadu_si128(
+			(const __m128i *)(source + (size_t)x * 4));
+		const __m128i redBytes = redOffset == 0 ? rgba :
+			_mm_srli_epi32(rgba, 16);
+		const __m128i blueBytes = blueOffset == 0 ? rgba :
+			_mm_srli_epi32(rgba, 16);
+		const __m128i red = _mm_slli_epi32(
+			_mm_and_si128(redBytes, redMask), 8);
+		const __m128i green = _mm_srli_epi32(
+			_mm_and_si128(rgba, greenMask), 5);
+		const __m128i blue = _mm_srli_epi32(
+			_mm_and_si128(blueBytes, redMask), 3);
+		const __m128i color = _mm_or_si128(_mm_or_si128(red, green), blue);
+		const __m128i packed = _mm_xor_si128(
+			_mm_packs_epi32(_mm_sub_epi32(color, bias32), zero), bias16);
+		_mm_storel_epi64((__m128i *)(destination + x), packed);
+	}
+#endif
+	for (; x < width; x++) {
+		const UINT8 *pixel = source + (size_t)x * 4;
+		destination[x] = (UINT16)(((pixel[redOffset] & 0xf8) << 8) |
+			((pixel[1] & 0xfc) << 3) | (pixel[blueOffset] >> 3));
+	}
+}
+
+static void NamcosGlConvertRgbaXrgbRow(const UINT8 *source,
+	UINT32 *destination, INT32 width, INT32 redOffset, INT32 blueOffset)
+{
+	INT32 x = 0;
+#if defined(NAMCOS_GL_ARM_NEON)
+	for (; x + 8 <= width; x += 8) {
+		const uint8x8x4_t rgba = vld4_u8(source + (size_t)x * 4);
+		const uint8x8_t red5 = vshr_n_u8(
+			redOffset == 0 ? rgba.val[0] : rgba.val[2], 3);
+		const uint8x8_t green5 = vshr_n_u8(rgba.val[1], 3);
+		const uint8x8_t blue5 = vshr_n_u8(
+			blueOffset == 0 ? rgba.val[0] : rgba.val[2], 3);
+		const uint16x8_t red8 = vmovl_u8(vorr_u8(vshl_n_u8(red5, 3),
+			vshr_n_u8(red5, 2)));
+		const uint16x8_t green8 = vmovl_u8(vorr_u8(vshl_n_u8(green5, 3),
+			vshr_n_u8(green5, 2)));
+		const uint16x8_t blue8 = vmovl_u8(vorr_u8(vshl_n_u8(blue5, 3),
+			vshr_n_u8(blue5, 2)));
+		for (INT32 half = 0; half < 2; half++) {
+			const uint32x4_t red = vmovl_u16(half == 0 ?
+				vget_low_u16(red8) : vget_high_u16(red8));
+			const uint32x4_t green = vmovl_u16(half == 0 ?
+				vget_low_u16(green8) : vget_high_u16(green8));
+			const uint32x4_t blue = vmovl_u16(half == 0 ?
+				vget_low_u16(blue8) : vget_high_u16(blue8));
+			vst1q_u32(destination + x + half * 4,
+				vorrq_u32(vorrq_u32(vshlq_n_u32(red, 16),
+				vshlq_n_u32(green, 8)), blue));
+		}
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i channelMask = _mm_set1_epi32(0x000000f8);
+	for (; x + 4 <= width; x += 4) {
+		const __m128i rgba = _mm_loadu_si128(
+			(const __m128i *)(source + (size_t)x * 4));
+		const __m128i redBytes = redOffset == 0 ? rgba :
+			_mm_srli_epi32(rgba, 16);
+		const __m128i blueBytes = blueOffset == 0 ? rgba :
+			_mm_srli_epi32(rgba, 16);
+		const __m128i red5 = _mm_and_si128(redBytes, channelMask);
+		const __m128i green5 = _mm_and_si128(
+			_mm_srli_epi32(rgba, 8), channelMask);
+		const __m128i blue5 = _mm_and_si128(blueBytes, channelMask);
+		const __m128i red = _mm_slli_epi32(
+			_mm_or_si128(red5, _mm_srli_epi32(red5, 5)), 16);
+		const __m128i green = _mm_slli_epi32(
+			_mm_or_si128(green5, _mm_srli_epi32(green5, 5)), 8);
+		const __m128i blue = _mm_or_si128(blue5, _mm_srli_epi32(blue5, 5));
+		_mm_storeu_si128((__m128i *)(destination + x),
+			_mm_or_si128(_mm_or_si128(red, green), blue));
+	}
+#endif
+	for (; x < width; x++) {
+		const UINT8 *pixel = source + (size_t)x * 4;
+		const UINT32 red5 = pixel[redOffset] >> 3;
+		const UINT32 green5 = pixel[1] >> 3;
+		const UINT32 blue5 = pixel[blueOffset] >> 3;
+		const UINT32 red8 = (red5 << 3) | (red5 >> 2);
+		const UINT32 green8 = (green5 << 3) | (green5 >> 2);
+		const UINT32 blue8 = (blue5 << 3) | (blue5 >> 2);
+		destination[x] = (red8 << 16) | (green8 << 8) | blue8;
+	}
+}
+
+#if defined(NAMCOS_GL_X86_SSE2)
+static inline void NamcosGlStoreBgr24x4(__m128i color, UINT8 *destination)
+{
+	const UINT32 c0 = (UINT32)_mm_cvtsi128_si32(color);
+	const UINT32 c1 = (UINT32)_mm_cvtsi128_si32(_mm_srli_si128(color, 4));
+	const UINT32 c2 = (UINT32)_mm_cvtsi128_si32(_mm_srli_si128(color, 8));
+	const UINT32 c3 = (UINT32)_mm_cvtsi128_si32(_mm_srli_si128(color, 12));
+	const UINT32 packed[3] = {
+		c0 | (c1 << 24),
+		(c1 >> 8) | (c2 << 16),
+		(c2 >> 16) | (c3 << 8)
+	};
+	memcpy(destination, packed, sizeof(packed));
+}
+#endif
+
+static void NamcosGlConvertNative16Rgb888Row(const UINT16 *source,
+	UINT8 *destination, INT32 width, INT32 native5551)
+{
+	INT32 x = 0;
+#if defined(NAMCOS_GL_ARM_NEON)
+	const uint16x8_t mask5 = vdupq_n_u16(0x001f);
+	for (; x + 8 <= width; x += 8) {
+		const uint16x8_t pixel = vld1q_u16(source + x);
+		const uint16x8_t red5 = vandq_u16(vshrq_n_u16(pixel, 11), mask5);
+		const uint16x8_t green5 = vandq_u16(vshrq_n_u16(pixel, 6), mask5);
+		const uint16x8_t blue5 = vandq_u16(native5551 ?
+			vshrq_n_u16(pixel, 1) : pixel, mask5);
+		uint8x8x3_t bgr;
+		bgr.val[0] = vmovn_u16(vorrq_u16(vshlq_n_u16(blue5, 3),
+			vshrq_n_u16(blue5, 2)));
+		bgr.val[1] = vmovn_u16(vorrq_u16(vshlq_n_u16(green5, 3),
+			vshrq_n_u16(green5, 2)));
+		bgr.val[2] = vmovn_u16(vorrq_u16(vshlq_n_u16(red5, 3),
+			vshrq_n_u16(red5, 2)));
+		vst3_u8(destination + (size_t)x * 3, bgr);
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i mask5 = _mm_set1_epi16(0x001f);
+	const __m128i zero = _mm_setzero_si128();
+	for (; x + 4 <= width; x += 4) {
+		const __m128i pixel = _mm_loadl_epi64((const __m128i *)(source + x));
+		const __m128i red5 = _mm_and_si128(_mm_srli_epi16(pixel, 11), mask5);
+		const __m128i green5 = _mm_and_si128(_mm_srli_epi16(pixel, 6), mask5);
+		const __m128i blue5 = _mm_and_si128(native5551 ?
+			_mm_srli_epi16(pixel, 1) : pixel, mask5);
+		const __m128i red8 = _mm_or_si128(_mm_slli_epi16(red5, 3),
+			_mm_srli_epi16(red5, 2));
+		const __m128i green8 = _mm_or_si128(_mm_slli_epi16(green5, 3),
+			_mm_srli_epi16(green5, 2));
+		const __m128i blue8 = _mm_or_si128(_mm_slli_epi16(blue5, 3),
+			_mm_srli_epi16(blue5, 2));
+		const __m128i color = _mm_or_si128(_mm_or_si128(
+			_mm_slli_epi32(_mm_unpacklo_epi16(red8, zero), 16),
+			_mm_slli_epi32(_mm_unpacklo_epi16(green8, zero), 8)),
+			_mm_unpacklo_epi16(blue8, zero));
+		NamcosGlStoreBgr24x4(color, destination + (size_t)x * 3);
+	}
+#endif
+	for (; x < width; x++) {
+		const UINT16 pixel = source[x];
+		const UINT32 red5 = (pixel >> 11) & 0x1f;
+		const UINT32 green5 = (pixel >> 6) & 0x1f;
+		const UINT32 blue5 = (pixel >> (native5551 ? 1 : 0)) & 0x1f;
+		destination[(size_t)x * 3 + 0] = (UINT8)((blue5 << 3) | (blue5 >> 2));
+		destination[(size_t)x * 3 + 1] = (UINT8)((green5 << 3) | (green5 >> 2));
+		destination[(size_t)x * 3 + 2] = (UINT8)((red5 << 3) | (red5 >> 2));
+	}
+}
+
+static void NamcosGlConvertRgbaRgb888Row(const UINT8 *source,
+	UINT8 *destination, INT32 width, INT32 redOffset, INT32 blueOffset)
+{
+	INT32 x = 0;
+#if defined(NAMCOS_GL_ARM_NEON)
+	for (; x + 8 <= width; x += 8) {
+		const uint8x8x4_t rgba = vld4_u8(source + (size_t)x * 4);
+		const uint8x8_t red5 = vshr_n_u8(
+			redOffset == 0 ? rgba.val[0] : rgba.val[2], 3);
+		const uint8x8_t green5 = vshr_n_u8(rgba.val[1], 3);
+		const uint8x8_t blue5 = vshr_n_u8(
+			blueOffset == 0 ? rgba.val[0] : rgba.val[2], 3);
+		uint8x8x3_t bgr;
+		bgr.val[0] = vorr_u8(vshl_n_u8(blue5, 3), vshr_n_u8(blue5, 2));
+		bgr.val[1] = vorr_u8(vshl_n_u8(green5, 3), vshr_n_u8(green5, 2));
+		bgr.val[2] = vorr_u8(vshl_n_u8(red5, 3), vshr_n_u8(red5, 2));
+		vst3_u8(destination + (size_t)x * 3, bgr);
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i channelMask = _mm_set1_epi32(0x000000f8);
+	for (; x + 4 <= width; x += 4) {
+		const __m128i rgba = _mm_loadu_si128(
+			(const __m128i *)(source + (size_t)x * 4));
+		const __m128i redBytes = redOffset == 0 ? rgba :
+			_mm_srli_epi32(rgba, 16);
+		const __m128i blueBytes = blueOffset == 0 ? rgba :
+			_mm_srli_epi32(rgba, 16);
+		const __m128i red5 = _mm_and_si128(redBytes, channelMask);
+		const __m128i green5 = _mm_and_si128(
+			_mm_srli_epi32(rgba, 8), channelMask);
+		const __m128i blue5 = _mm_and_si128(blueBytes, channelMask);
+		const __m128i color = _mm_or_si128(_mm_or_si128(
+			_mm_slli_epi32(_mm_or_si128(red5, _mm_srli_epi32(red5, 5)), 16),
+			_mm_slli_epi32(_mm_or_si128(green5, _mm_srli_epi32(green5, 5)), 8)),
+			_mm_or_si128(blue5, _mm_srli_epi32(blue5, 5)));
+		NamcosGlStoreBgr24x4(color, destination + (size_t)x * 3);
+	}
+#endif
+	for (; x < width; x++) {
+		const UINT8 *pixel = source + (size_t)x * 4;
+		const UINT8 red5 = pixel[redOffset] >> 3;
+		const UINT8 green5 = pixel[1] >> 3;
+		const UINT8 blue5 = pixel[blueOffset] >> 3;
+		destination[(size_t)x * 3 + 0] = (UINT8)((blue5 << 3) | (blue5 >> 2));
+		destination[(size_t)x * 3 + 1] = (UINT8)((green5 << 3) | (green5 >> 2));
+		destination[(size_t)x * 3 + 2] = (UINT8)((red5 << 3) | (red5 >> 2));
+	}
+}
+
+static void NamcosGlConvertNative16IndexedRow(const UINT16 *source,
+	UINT16 *destination, INT32 width, INT32 native5551)
+{
+	INT32 x = 0;
+#if defined(NAMCOS_GL_ARM_NEON)
+	const uint16x8_t redMask = vdupq_n_u16(0xf800);
+	const uint16x8_t greenMask = vdupq_n_u16(0x07c0);
+	const uint16x8_t blueMask = vdupq_n_u16(native5551 ? 0x003e : 0x001f);
+	for (; x + 8 <= width; x += 8) {
+		const uint16x8_t pixel = vld1q_u16(source + x);
+		uint16x8_t output = vshrq_n_u16(vandq_u16(pixel, redMask), 11);
+		output = vorrq_u16(output,
+			vshrq_n_u16(vandq_u16(pixel, greenMask), 1));
+		output = vorrq_u16(output, native5551 ?
+			vshlq_n_u16(vandq_u16(pixel, blueMask), 9) :
+			vshlq_n_u16(vandq_u16(pixel, blueMask), 10));
+		vst1q_u16(destination + x, output);
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i redMask = _mm_set1_epi16((short)0xf800);
+	const __m128i greenMask = _mm_set1_epi16(0x07c0);
+	const __m128i blueMask = _mm_set1_epi16(native5551 ? 0x003e : 0x001f);
+	for (; x + 8 <= width; x += 8) {
+		const __m128i pixel = _mm_loadu_si128((const __m128i *)(source + x));
+		__m128i output = _mm_srli_epi16(_mm_and_si128(pixel, redMask), 11);
+		output = _mm_or_si128(output,
+			_mm_srli_epi16(_mm_and_si128(pixel, greenMask), 1));
+		output = _mm_or_si128(output, native5551 ?
+			_mm_slli_epi16(_mm_and_si128(pixel, blueMask), 9) :
+			_mm_slli_epi16(_mm_and_si128(pixel, blueMask), 10));
+		_mm_storeu_si128((__m128i *)(destination + x), output);
+	}
+#endif
+	if (native5551) {
+		for (; x < width; x++) {
+			const UINT16 pixel = source[x];
+			destination[x] = (UINT16)(((pixel >> 11) & 0x001f) |
+				((pixel >> 1) & 0x03e0) | ((pixel << 9) & 0x7c00));
+		}
+	} else {
+		for (; x < width; x++) {
+			const UINT16 pixel = source[x];
+			destination[x] = (UINT16)(((pixel >> 11) & 0x001f) |
+				((pixel >> 1) & 0x03e0) | ((pixel << 10) & 0x7c00));
+		}
+	}
+}
 
 static void NamcosGlConvertRgbaIndexedRow(const UINT8 *source,
 	UINT16 *destination, INT32 width, INT32 redOffset, INT32 blueOffset)
@@ -463,6 +993,26 @@ static void NamcosGlConvertRgbaIndexedRow(const UINT8 *source,
 			vmovl_u8(vshr_n_u8(blue8, 3)), 10);
 		vst1q_u16(destination + x,
 			vorrq_u16(vorrq_u16(red, green), blue));
+	}
+#elif defined(NAMCOS_GL_X86_SSE2)
+	const __m128i channelMask = _mm_set1_epi32(0xf8);
+	const __m128i zero = _mm_setzero_si128();
+	for (; x + 4 <= width; x += 4) {
+		const __m128i rgba = _mm_loadu_si128(
+			(const __m128i *)(source + (size_t)x * 4));
+		const __m128i redBytes = redOffset == 0 ? rgba :
+			_mm_srli_epi32(rgba, 16);
+		const __m128i blueBytes = blueOffset == 0 ? rgba :
+			_mm_srli_epi32(rgba, 16);
+		const __m128i red = _mm_srli_epi32(
+			_mm_and_si128(redBytes, channelMask), 3);
+		const __m128i green = _mm_slli_epi32(
+			_mm_and_si128(_mm_srli_epi32(rgba, 8), channelMask), 2);
+		const __m128i blue = _mm_slli_epi32(
+			_mm_and_si128(blueBytes, channelMask), 7);
+		const __m128i color = _mm_or_si128(_mm_or_si128(red, green), blue);
+		_mm_storel_epi64((__m128i *)(destination + x),
+			_mm_packs_epi32(color, zero));
 	}
 #endif
 	for (; x < width; x++) {
@@ -483,28 +1033,42 @@ static void NamcosGlConvertNative16Rows(void *opaque, INT32 begin, INT32 end)
 		if (context->destinationBytes == 4) {
 			UINT32 *destination = (UINT32 *)(context->destination +
 				y * context->destinationPitch);
-			for (INT32 x = 0; x < context->width; x++) {
-				destination[x] = context->directReadTable[source[x]];
+			if (context->directXrgb8888) {
+				NamcosGlConvertNative16XrgbRow(source, destination, context->width,
+					context->native5551);
+			} else {
+				for (INT32 x = 0; x < context->width; x++) {
+					destination[x] = context->directReadTable[source[x]];
+				}
 			}
 		} else if (context->destinationBytes == 2) {
 			UINT16 *destination = (UINT16 *)(context->destination +
 				y * context->destinationPitch);
-			for (INT32 x = 0; x < context->width; x++) {
-				destination[x] = (UINT16)context->directReadTable[source[x]];
+			if (context->directRgb565) {
+				NamcosGlConvertNative16Rgb565Row(source, destination, context->width,
+					context->native5551);
+			} else {
+				for (INT32 x = 0; x < context->width; x++) {
+					destination[x] = (UINT16)context->directReadTable[source[x]];
+				}
 			}
 		} else if (context->destinationBytes == 3) {
 			UINT8 *destination = context->destination + y * context->destinationPitch;
-			for (INT32 x = 0; x < context->width; x++, destination += 3) {
-				const UINT32 color = context->directReadTable[source[x]];
-				destination[0] = (UINT8)color;
-				destination[1] = (UINT8)(color >> 8);
-				destination[2] = (UINT8)(color >> 16);
+			if (context->directXrgb8888) {
+				NamcosGlConvertNative16Rgb888Row(source, destination, context->width,
+					context->native5551);
+			} else {
+				for (INT32 x = 0; x < context->width; x++, destination += 3) {
+					const UINT32 color = context->directReadTable[source[x]];
+					destination[0] = (UINT8)color;
+					destination[1] = (UINT8)(color >> 8);
+					destination[2] = (UINT8)(color >> 16);
+				}
 			}
 		} else {
 			UINT16 *destination = context->indexedDestination + y * context->width;
-			for (INT32 x = 0; x < context->width; x++) {
-				destination[x] = context->readTable[source[x]];
-			}
+			NamcosGlConvertNative16IndexedRow(source, destination, context->width,
+				context->native5551);
 		}
 	}
 }
@@ -515,23 +1079,49 @@ static void NamcosGlConvertRgbaRows(void *opaque, INT32 begin, INT32 end)
 
 	for (INT32 y = begin; y < end; y++) {
 		const UINT8 *source = context->source + (size_t)y * context->sourcePitch;
-		if (context->destinationBytes != 0) {
+		if (context->destinationBytes == 4) {
+			UINT32 *destination = (UINT32 *)(context->destination +
+				y * context->destinationPitch);
+			if (context->directXrgb8888) {
+				NamcosGlConvertRgbaXrgbRow(source, destination, context->width,
+					context->redOffset, context->blueOffset);
+			} else {
+				for (INT32 x = 0; x < context->width; x++, source += 4) {
+					const UINT16 color = (UINT16)((source[context->redOffset] >> 3) |
+						((source[1] & 0xf8) << 2) |
+						((source[context->blueOffset] & 0xf8) << 7));
+					destination[x] = context->palette[color];
+				}
+			}
+		} else if (context->destinationBytes == 2) {
+			UINT16 *destination = (UINT16 *)(context->destination +
+				y * context->destinationPitch);
+			if (context->directRgb565) {
+				NamcosGlConvertRgbaRgb565Row(source, destination, context->width,
+					context->redOffset, context->blueOffset);
+			} else {
+				for (INT32 x = 0; x < context->width; x++, source += 4) {
+					const UINT16 color = (UINT16)((source[context->redOffset] >> 3) |
+						((source[1] & 0xf8) << 2) |
+						((source[context->blueOffset] & 0xf8) << 7));
+					destination[x] = (UINT16)context->palette[color];
+				}
+			}
+		} else if (context->destinationBytes == 3) {
 			UINT8 *destination = context->destination + y * context->destinationPitch;
-			for (INT32 x = 0; x < context->width; x++, source += 4) {
-				const UINT16 color = (UINT16)((source[context->redOffset] >> 3) |
-					((source[1] & 0xf8) << 2) |
-					((source[context->blueOffset] & 0xf8) << 7));
-				const UINT32 outputColor = context->palette[color];
-				if (context->destinationBytes == 4) {
-					*(UINT32 *)destination = outputColor;
-				} else if (context->destinationBytes == 2) {
-					*(UINT16 *)destination = (UINT16)outputColor;
-				} else {
+			if (context->directXrgb8888) {
+				NamcosGlConvertRgbaRgb888Row(source, destination, context->width,
+					context->redOffset, context->blueOffset);
+			} else {
+				for (INT32 x = 0; x < context->width; x++, source += 4, destination += 3) {
+					const UINT16 color = (UINT16)((source[context->redOffset] >> 3) |
+						((source[1] & 0xf8) << 2) |
+						((source[context->blueOffset] & 0xf8) << 7));
+					const UINT32 outputColor = context->palette[color];
 					destination[0] = (UINT8)outputColor;
 					destination[1] = (UINT8)(outputColor >> 8);
 					destination[2] = (UINT8)(outputColor >> 16);
 				}
-				destination += context->destinationBytes;
 			}
 		} else {
 			UINT16 *destination = context->indexedDestination + y * context->width;
@@ -542,14 +1132,15 @@ static void NamcosGlConvertRgbaRows(void *opaque, INT32 begin, INT32 end)
 }
 
 static void NamcosGlConvertReadRows(const NamcosFrameConvertContext *frame,
-	NamcosPolyThreadCallback callback, NamcosGlReadConvertContext *context)
+	NamcosPolyThreadCallback callback, NamcosGlReadConvertContext *context,
+	INT32 rows)
 {
-	const INT64 work = (INT64)frame->outputWidth * frame->outputHeight;
+	const INT64 work = (INT64)frame->outputWidth * rows;
 	if (frame->threadPool != NULL) {
-		frame->threadPool->ParallelForWork(frame->outputHeight, work, 32768,
+		frame->threadPool->ParallelForWork(rows, work, 32768,
 			callback, context);
 	} else {
-		callback(context, 0, frame->outputHeight);
+		callback(context, 0, rows);
 	}
 }
 
@@ -632,51 +1223,50 @@ static void NamcosPackRgb24(const NamcosFrameConvertContext *frame, UINT8 *outpu
 	}
 }
 
-struct NamcosCopyPackedRowsContext
+#if defined(FBNEO_NAMCOS_OPENGL_ES2)
+
+struct NamcosCopyPitchedRowsContext
 {
 	const UINT8 *source;
 	UINT8 *destination;
-	const UINT8 *selectedRows;
 	size_t rowBytes;
-	INT32 firstRow;
+	INT32 sourcePitch;
+	INT32 destinationPitch;
 };
 
-static void NamcosCopyPackedRowsWorker(void *opaque, INT32 begin, INT32 end)
+static void NamcosCopyPitchedRowsWorker(void *opaque, INT32 begin, INT32 end)
 {
-	NamcosCopyPackedRowsContext *context =
-		(NamcosCopyPackedRowsContext *)opaque;
+	NamcosCopyPitchedRowsContext *context =
+		(NamcosCopyPitchedRowsContext *)opaque;
 	for (INT32 row = begin; row < end; row++) {
-		const INT32 y = context->firstRow + row;
-		if (context->selectedRows != NULL && !context->selectedRows[y]) continue;
-		memcpy(context->destination + (size_t)y * context->rowBytes,
-			context->source + (size_t)y * context->rowBytes,
+		memcpy(context->destination + (size_t)row * context->destinationPitch,
+			context->source + (size_t)row * context->sourcePitch,
 			context->rowBytes);
 	}
 }
 
-static void NamcosCopyPackedRows(const UINT8 *source, UINT8 *destination,
-	size_t rowBytes, INT32 rows, const UINT8 *selectedRows,
-	INT32 selectedCount, NamcosPolyThreadPool *threadPool, INT32 firstRow = 0,
-	INT32 rowCount = -1)
+static void NamcosCopyPitchedRows(const UINT8 *source, UINT8 *destination,
+	size_t rowBytes, INT32 sourcePitch, INT32 destinationPitch, INT32 rows,
+	NamcosPolyThreadPool *threadPool)
 {
-	if (selectedCount <= 0) return;
-	if (rowCount < 0) rowCount = rows;
-	if (rowCount <= 0) return;
-
-	NamcosCopyPackedRowsContext context;
+	if (source == NULL || destination == NULL || rowBytes == 0 || rows <= 0)
+		return;
+	NamcosCopyPitchedRowsContext context;
 	context.source = source;
 	context.destination = destination;
-	context.selectedRows = selectedRows;
 	context.rowBytes = rowBytes;
-	context.firstRow = firstRow;
-	const INT64 work = (INT64)rowBytes * selectedCount;
+	context.sourcePitch = sourcePitch;
+	context.destinationPitch = destinationPitch;
+	const INT64 work = (INT64)rowBytes * rows;
 	if (threadPool != NULL) {
-		threadPool->ParallelForWork(rowCount, work, 196608,
-			NamcosCopyPackedRowsWorker, &context);
+		threadPool->ParallelForWork(rows, work, 196608,
+			NamcosCopyPitchedRowsWorker, &context);
 	} else {
-		NamcosCopyPackedRowsWorker(&context, 0, rowCount);
+		NamcosCopyPitchedRowsWorker(&context, 0, rows);
 	}
 }
+
+#endif
 
 #if defined(_WIN32) || defined(FBNEO_NAMCOS_OPENGL_ES2)
 
@@ -792,6 +1382,26 @@ static void NamcosFrameGetObservedRows(const NamcosFrameConvertContext *frame,
 	*rowCount = last > first ? last - first : 0;
 }
 
+struct NamcosFrameObservedRows
+{
+	INT32 firstRow;
+	INT32 rowCount;
+	bool valid;
+};
+
+static void NamcosFrameGetObservedRowsCached(
+	const NamcosFrameConvertContext *frame, NamcosFrameObservedRows *observed,
+	INT32 *firstRow, INT32 *rowCount)
+{
+	if (!observed->valid) {
+		NamcosFrameGetObservedRows(frame, &observed->firstRow,
+			&observed->rowCount);
+		observed->valid = true;
+	}
+	*firstRow = observed->firstRow;
+	*rowCount = observed->rowCount;
+}
+
 static bool NamcosFrameRowsMatch(const UINT64 *remembered,
 	const UINT64 *current, INT32 displayY, INT32 firstRow, INT32 rowCount)
 {
@@ -826,10 +1436,19 @@ static void NamcosFrameRememberRows(UINT64 *remembered, const UINT64 *current,
 	}
 }
 
-static bool NamcosFrameOutputMatches(const NamcosFrameOutputKey *key,
+static void NamcosFrameRememberUploadRows(UINT64 *remembered,
+	const UINT64 *current, INT32 displayY, INT32 rowCount)
+{
+	if (current != NULL) {
+		NamcosFrameRememberRows(remembered, current, displayY, 0, rowCount);
+	} else {
+		memset(remembered, 0, (size_t)rowCount * sizeof(UINT64));
+	}
+}
+
+static bool NamcosFrameOutputLayoutMatches(const NamcosFrameOutputKey *key,
 	const NamcosFrameConvertContext *frame, const void *destination,
-	INT32 pitch, INT32 bytes, const UINT32 *palette,
-	const UINT64 *rowGeneration)
+	INT32 pitch, INT32 bytes, const UINT32 *palette)
 {
 	if (!frame->allowOutputReuse || destination == NULL ||
 		key->destination != destination || key->palette != palette ||
@@ -845,18 +1464,108 @@ static bool NamcosFrameOutputMatches(const NamcosFrameOutputKey *key,
 		key->verticalReconstruct2x != frame->verticalReconstruct2x) {
 		return false;
 	}
+	return true;
+}
+
+static bool NamcosFrameOutputMatches(const NamcosFrameOutputKey *key,
+	const NamcosFrameConvertContext *frame, const void *destination,
+	INT32 pitch, INT32 bytes, const UINT32 *palette,
+	const UINT64 *rowGeneration, NamcosFrameObservedRows *observed)
+{
+	if (!NamcosFrameOutputLayoutMatches(key, frame, destination, pitch,
+		bytes, palette)) return false;
 	if (key->generation == frame->vramGeneration) return true;
 	if (frame->vramRowGeneration == NULL || frame->sourceHeight > 1024) return false;
 	INT32 firstRow;
 	INT32 rowCount;
-	NamcosFrameGetObservedRows(frame, &firstRow, &rowCount);
+	NamcosFrameGetObservedRowsCached(frame, observed, &firstRow, &rowCount);
 	return NamcosFrameRowsMatch(rowGeneration, frame->vramRowGeneration,
 		frame->displayY, firstRow, rowCount);
 }
 
+static bool NamcosFrameGetPartialReadback(const NamcosFrameOutputKey *key,
+	const NamcosFrameConvertContext *frame, const void *destination,
+	INT32 pitch, INT32 bytes, const UINT32 *palette,
+	const UINT64 *rowGeneration, INT32 *readY, INT32 *readHeight,
+	UINT8 *dirtyOutputRows = NULL)
+{
+	if (readY == NULL || readHeight == NULL ||
+		!NamcosFrameOutputLayoutMatches(key, frame, destination, pitch,
+			bytes, palette) || frame->vramRowGeneration == NULL ||
+		frame->vertical || frame->verticalReconstruct2x ||
+		frame->sourceHeight > 1024 || frame->outputHeight > 1024) {
+		return false;
+	}
+	const bool scale1x = frame->sourceHeight == frame->outputHeight;
+	const bool scale2x = frame->outputHeight == frame->sourceHeight * 2;
+	const bool scaleHalf = frame->sourceHeight == frame->outputHeight * 2;
+	const bool cropped1x = scale1x && frame->cropTop >= 0 &&
+		frame->cropHeight > 0 &&
+		frame->cropTop + frame->cropHeight <= frame->sourceHeight;
+	if ((!scale1x && !scale2x && !scaleHalf) ||
+		(!cropped1x && (frame->cropTop != 0 ||
+			frame->cropHeight != frame->outputHeight))) return false;
+
+	if (dirtyOutputRows != NULL) {
+		memset(dirtyOutputRows, 0, (size_t)frame->outputHeight);
+	}
+	INT32 first = frame->outputHeight;
+	INT32 last = -1;
+	const INT32 sourceFirst = cropped1x ? frame->cropTop : 0;
+	const INT32 sourceLast = cropped1x ?
+		frame->cropTop + frame->cropHeight : frame->sourceHeight;
+	for (INT32 y = sourceFirst; y < sourceLast; y++) {
+		if (rowGeneration[y] !=
+			frame->vramRowGeneration[(frame->displayY + y) & 0x3ff]) {
+			INT32 mappedFirst;
+			INT32 mappedLast;
+			if (cropped1x && (frame->cropTop != 0 ||
+				frame->cropHeight != frame->outputHeight)) {
+				const INT32 relative = y - frame->cropTop;
+				mappedFirst = (INT32)(((INT64)relative * frame->outputHeight) /
+					frame->cropHeight);
+				mappedLast = (INT32)((((INT64)(relative + 1) *
+					frame->outputHeight) + frame->cropHeight - 1) /
+					frame->cropHeight) - 1;
+			} else if (scale2x) {
+				mappedFirst = y * 2;
+				mappedLast = mappedFirst + 1;
+			} else if (scaleHalf) {
+				mappedFirst = y / 2;
+				mappedLast = mappedFirst;
+			} else {
+				mappedFirst = y;
+				mappedLast = y;
+			}
+			if (mappedFirst > 0) mappedFirst--;
+			if (mappedLast + 1 < frame->outputHeight) mappedLast++;
+			if (mappedFirst < first) first = mappedFirst;
+			if (mappedLast > last) last = mappedLast;
+			if (dirtyOutputRows != NULL) {
+				memset(dirtyOutputRows + mappedFirst, 1,
+					(size_t)(mappedLast - mappedFirst + 1));
+			}
+		}
+	}
+	if (last < first) return false;
+	INT32 dirtyRows = last - first + 1;
+	if (dirtyOutputRows != NULL) {
+		dirtyRows = 0;
+		for (INT32 y = first; y <= last; y++) {
+			if (dirtyOutputRows[y]) dirtyRows++;
+		}
+	}
+	if (dirtyRows >= (frame->outputHeight * 3) / 4) return false;
+
+	*readY = first;
+	*readHeight = last - first + 1;
+	return true;
+}
+
 static void NamcosFrameRememberOutput(NamcosFrameOutputKey *key,
 	const NamcosFrameConvertContext *frame, const void *destination,
-	INT32 pitch, INT32 bytes, const UINT32 *palette, UINT64 *rowGeneration)
+	INT32 pitch, INT32 bytes, const UINT32 *palette, UINT64 *rowGeneration,
+	NamcosFrameObservedRows *observed)
 {
 	key->generation = frame->vramGeneration;
 	key->destination = destination;
@@ -878,14 +1587,15 @@ static void NamcosFrameRememberOutput(NamcosFrameOutputKey *key,
 	if (frame->vramRowGeneration != NULL) {
 		INT32 firstRow;
 		INT32 rowCount;
-		NamcosFrameGetObservedRows(frame, &firstRow, &rowCount);
+		NamcosFrameGetObservedRowsCached(frame, observed, &firstRow, &rowCount);
 		NamcosFrameRememberRows(rowGeneration, frame->vramRowGeneration,
 			frame->displayY, firstRow, rowCount);
 	}
 }
 
 static bool NamcosFrameUploadMatches(const NamcosFrameUploadKey *key,
-	const NamcosFrameConvertContext *frame, const UINT64 *rowGeneration)
+	const NamcosFrameConvertContext *frame, const UINT64 *rowGeneration,
+	NamcosFrameObservedRows *observed)
 {
 	if (key->displayX != frame->displayX || key->displayY != frame->displayY ||
 		key->sourceHeight != frame->sourceHeight) {
@@ -901,13 +1611,14 @@ static bool NamcosFrameUploadMatches(const NamcosFrameUploadKey *key,
 	if (frame->vramRowGeneration == NULL) return false;
 	INT32 firstRow;
 	INT32 rowCount;
-	NamcosFrameGetObservedRows(frame, &firstRow, &rowCount);
+	NamcosFrameGetObservedRowsCached(frame, observed, &firstRow, &rowCount);
 	return NamcosFrameRowsMatch(rowGeneration, frame->vramRowGeneration,
 		frame->displayY, firstRow, rowCount);
 }
 
 static void NamcosFrameRememberUpload(NamcosFrameUploadKey *key,
-	const NamcosFrameConvertContext *frame, UINT64 *rowGeneration)
+	const NamcosFrameConvertContext *frame, UINT64 *rowGeneration,
+	NamcosFrameObservedRows *observed)
 {
 	key->generation = frame->vramGeneration;
 	key->displayX = frame->displayX;
@@ -922,7 +1633,7 @@ static void NamcosFrameRememberUpload(NamcosFrameUploadKey *key,
 	if (frame->vramRowGeneration != NULL) {
 		INT32 firstRow;
 		INT32 rowCount;
-		NamcosFrameGetObservedRows(frame, &firstRow, &rowCount);
+		NamcosFrameGetObservedRowsCached(frame, observed, &firstRow, &rowCount);
 		NamcosFrameRememberRows(rowGeneration, frame->vramRowGeneration,
 			frame->displayY, firstRow, rowCount);
 	}
@@ -944,6 +1655,110 @@ static bool NamcosFrameGetMergedDirtySpan(const UINT8 *dirtyRows, INT32 rows,
 	*start = first;
 	*count = span;
 	return true;
+}
+
+struct NamcosFrameRowSpan
+{
+	INT32 start;
+	INT32 count;
+};
+
+static INT32 NamcosFrameBuildUploadSpans(const UINT8 *dirtyRows, INT32 rows,
+	size_t rowBytes, NamcosFrameRowSpan *spans, INT32 capacity,
+	size_t extraCallBytes = 8192)
+{
+	if (dirtyRows == NULL || rows <= 0 || rowBytes == 0 || spans == NULL ||
+		capacity <= 0) return 0;
+
+	INT32 first = 0;
+	while (first < rows && !dirtyRows[first]) first++;
+	if (first == rows) return 0;
+	INT32 last = rows;
+	while (last > first && !dirtyRows[last - 1]) last--;
+
+	static const INT32 maxTrackedSpans = 8;
+	const INT32 maxSpans = capacity < maxTrackedSpans ?
+		capacity : maxTrackedSpans;
+	INT32 selectedGapFirst[maxTrackedSpans - 1];
+	INT32 selectedGapRows[maxTrackedSpans - 1];
+	INT32 selectedCount = 0;
+	INT32 y = first;
+	while (y < last) {
+		while (y < last && dirtyRows[y]) y++;
+		const INT32 gapFirst = y;
+		while (y < last && !dirtyRows[y]) y++;
+		if (y == last) break;
+		const size_t gapBytes = (size_t)(y - gapFirst) * rowBytes;
+		if (gapBytes <= extraCallBytes || maxSpans <= 1) continue;
+
+		INT32 insert = selectedCount;
+		if (selectedCount == maxSpans - 1) {
+			if (y - gapFirst <= selectedGapRows[selectedCount - 1]) continue;
+			insert--;
+		} else {
+			selectedCount++;
+		}
+		while (insert > 0 && y - gapFirst > selectedGapRows[insert - 1]) {
+			selectedGapRows[insert] = selectedGapRows[insert - 1];
+			selectedGapFirst[insert] = selectedGapFirst[insert - 1];
+			insert--;
+		}
+		selectedGapRows[insert] = y - gapFirst;
+		selectedGapFirst[insert] = gapFirst;
+	}
+
+	// Selected gaps are ranked by size. Sort the small retained set by row so
+	// upload/readback spans can be emitted without scanning every row again.
+	for (INT32 i = 1; i < selectedCount; i++) {
+		const INT32 gapFirst = selectedGapFirst[i];
+		const INT32 gapRows = selectedGapRows[i];
+		INT32 insert = i;
+		while (insert > 0 && gapFirst < selectedGapFirst[insert - 1]) {
+			selectedGapFirst[insert] = selectedGapFirst[insert - 1];
+			selectedGapRows[insert] = selectedGapRows[insert - 1];
+			insert--;
+		}
+		selectedGapFirst[insert] = gapFirst;
+		selectedGapRows[insert] = gapRows;
+	}
+	INT32 spanCount = 0;
+	INT32 spanFirst = first;
+	for (INT32 gap = 0; gap < selectedCount; gap++) {
+		spans[spanCount].start = spanFirst;
+		spans[spanCount].count = selectedGapFirst[gap] - spanFirst;
+		spanCount++;
+		spanFirst = selectedGapFirst[gap] + selectedGapRows[gap];
+	}
+	spans[spanCount].start = spanFirst;
+	spans[spanCount].count = last - spanFirst;
+	spanCount++;
+
+	size_t uploadBytes = (size_t)(last - first) * rowBytes;
+	for (INT32 gap = 0; gap < selectedCount; gap++) {
+		uploadBytes -= (size_t)selectedGapRows[gap] * rowBytes;
+	}
+	const size_t boundingBytes = (size_t)(last - first) * rowBytes;
+	const size_t extraCallCost = (size_t)(spanCount - 1) * extraCallBytes;
+	if (spanCount > 1 && uploadBytes + extraCallCost >= boundingBytes) {
+		spans[0].start = first;
+		spans[0].count = last - first;
+		return 1;
+	}
+	return spanCount;
+}
+
+static bool NamcosFrameReadbackSpansWorthwhile(const NamcosFrameRowSpan *spans,
+	INT32 spanCount, INT32 rows, size_t rowBytes, size_t extraCallBytes)
+{
+	if (spans == NULL || spanCount <= 0 || rows <= 0 || rowBytes == 0)
+		return false;
+
+	size_t readBytes = 0;
+	for (INT32 span = 0; span < spanCount; span++) {
+		readBytes += (size_t)spans[span].count * rowBytes;
+	}
+	readBytes += (size_t)(spanCount - 1) * extraCallBytes;
+	return readBytes < (size_t)rows * rowBytes;
 }
 
 static bool NamcosStringContainsNoCase(const char *text, const char *needle)
@@ -995,6 +1810,17 @@ static bool NamcosPaletteIsRgb565(const UINT32 *palette)
 		(UINT16)palette[0x7c00] == 0x001f;
 }
 
+static bool NamcosPaletteIsXrgb8888(const UINT32 *palette)
+{
+	return palette != NULL &&
+		palette[0x001f] == 0x00ff0000 &&
+		palette[0x03e0] == 0x0000ff00 &&
+		palette[0x7c00] == 0x000000ff &&
+		palette[0x0010] == 0x00840000 &&
+		palette[0x0200] == 0x00008400 &&
+		palette[0x4000] == 0x00000084;
+}
+
 static bool NamcosFrameOutputIsUniform(const UINT8 *output, INT32 width,
 	INT32 height, INT32 pitch, INT32 bytesPerPixel, bool ignoreAlpha)
 {
@@ -1002,35 +1828,53 @@ static bool NamcosFrameOutputIsUniform(const UINT8 *output, INT32 width,
 		return false;
 	}
 
-	const INT32 pixels = width * height;
+	// This is a recovery heuristic for failed GL readbacks, not an image
+	// comparison.  A bounded, evenly distributed sample catches an all-black or
+	// all-white surface without scanning up to 640x480 pixels every frame.
+	const INT32 sampleWidth = width < 128 ? width : 128;
+	const INT32 sampleHeight = height < 96 ? height : 96;
+	const INT32 pixels = sampleWidth * sampleHeight;
 	const INT32 tolerance = pixels / 50;
 	INT32 nonBlackPixels = 0;
 	INT32 nonWhitePixels = 0;
-	for (INT32 y = 0; y < height; y++) {
-		const UINT8 *row = output + (size_t)y * pitch;
-		for (INT32 x = 0; x < width; x++) {
-			const UINT8 *pixel = row + (size_t)x * bytesPerPixel;
-			bool black;
-			bool white;
-			if (bytesPerPixel == 2) {
-				UINT16 first;
-				memcpy(&first, pixel, sizeof(first));
-				const INT32 red = ignoreAlpha ? (first & 0x1f) : ((first >> 11) & 0x1f);
-				const INT32 green = ignoreAlpha ? ((first >> 5) & 0x1f) : ((first >> 5) & 0x3f);
-				const INT32 blue = ignoreAlpha ? ((first >> 10) & 0x1f) : (first & 0x1f);
-				black = red <= 1 && green <= 1 && blue <= 1;
-				white = red >= 30 && green >= (ignoreAlpha ? 30 : 62) && blue >= 30;
-			} else {
-				const INT32 red = pixel[2];
-				const INT32 green = pixel[1];
-				const INT32 blue = pixel[0];
-				black = red <= 8 && green <= 8 && blue <= 8;
-				white = red >= 247 && green >= 247 && blue >= 247;
+	INT32 sampleXs[128];
+	for (INT32 sampleX = 0; sampleX < sampleWidth; sampleX++) {
+		sampleXs[sampleX] = (sampleX * width) / sampleWidth;
+	}
+	const INT32 centerRow = sampleHeight / 2;
+	for (INT32 distance = 0; distance < sampleHeight; distance++) {
+		const INT32 sampleY = (distance & 1) ?
+			centerRow - ((distance + 1) / 2) : centerRow + (distance / 2);
+		if (sampleY >= 0 && sampleY < sampleHeight) {
+			const INT32 y = (sampleY * height) / sampleHeight;
+			const UINT8 *row = output + (size_t)y * pitch;
+			for (INT32 sampleX = 0; sampleX < sampleWidth; sampleX++) {
+				const INT32 x = sampleXs[sampleX];
+				const UINT8 *pixel = row + (size_t)x * bytesPerPixel;
+				bool black;
+				bool white;
+				if (bytesPerPixel == 2) {
+					UINT16 first;
+					memcpy(&first, pixel, sizeof(first));
+					const INT32 red = ignoreAlpha ? (first & 0x1f) : ((first >> 11) & 0x1f);
+					const INT32 green = ignoreAlpha ? ((first >> 5) & 0x1f) : ((first >> 5) & 0x3f);
+					const INT32 blue = ignoreAlpha ? ((first >> 10) & 0x1f) : (first & 0x1f);
+					black = red <= 1 && green <= 1 && blue <= 1;
+					white = red >= 30 && green >= (ignoreAlpha ? 30 : 62) && blue >= 30;
+				} else {
+					const INT32 red = pixel[2];
+					const INT32 green = pixel[1];
+					const INT32 blue = pixel[0];
+					black = red <= 8 && green <= 8 && blue <= 8;
+					white = red >= 247 && green >= 247 && blue >= 247;
+				}
+				if (!black) nonBlackPixels++;
+				if (!white) nonWhitePixels++;
+				if ((sampleX & 31) == 31 && nonBlackPixels > tolerance &&
+					nonWhitePixels > tolerance) return false;
 			}
-			if (!black) nonBlackPixels++;
-			if (!white) nonWhitePixels++;
+			if (nonBlackPixels > tolerance && nonWhitePixels > tolerance) return false;
 		}
-		if (nonBlackPixels > tolerance && nonWhitePixels > tolerance) return false;
 	}
 	return nonBlackPixels <= tolerance || nonWhitePixels <= tolerance;
 }
@@ -1179,25 +2023,22 @@ public:
 		  rasterPendingCount(0),
 		  rasterValidationCounter(0),
 		  rasterSampleValidationCounter(0),
+		  rasterUploadValidationCounter(0),
+		  rasterReadbackValidationCounter(0),
+		  readbackValidationCounter(0),
+		  validatedReadFormat(0),
+		  validatedReadType(0),
+		  validatedReadPackAlignment(-1),
+		  validatedReadPackRowLength(-1),
 		  lastRasterClearColor(0),
 		  rasterClearColorValid(false),
 		  rasterPositionAttribute(-1),
 		  rasterColorAttribute(-1),
 		  rasterTextureAttribute(-1),
+		  rasterStateAttribute(-1),
+		  rasterTextureState0Attribute(-1),
+		  rasterTextureState1Attribute(-1),
 		  rasterSampleUniform(-1),
-		  rasterTextureState0Uniform(-1),
-		  rasterTextureState1Uniform(-1),
-		  rasterFlagsUniform(-1),
-		  rasterMaskUniform(-1),
-		  rasterTextureUniformValid(false),
-		  rasterFlagsUniformValid(false),
-		  lastRasterTextured(false),
-		  lastRasterRawTexture(false),
-		  lastRasterSemiTransparent(false),
-		  lastRasterAbr(0),
-		  rasterMaskUniformValid(false),
-		  lastRasterDrawStp(false),
-		  lastRasterCheckStp(false),
 		  rasterSampleTextureBound(false),
 		  rasterScissorValid(false),
 		  lastRasterScissorX(0),
@@ -1279,7 +2120,6 @@ public:
 		  available(false),
 		  failed(false)
 	{
-		memset(lastRasterTextureState, 0, sizeof(lastRasterTextureState));
 		for (INT32 i = 0; i < 4; i++) {
 			uploadSlots[i].pixels = NULL;
 			uploadSlots[i].pixelCapacity = 0;
@@ -1344,8 +2184,9 @@ public:
 		const INT32 firstHeight = height < 1024 - startY ? height : 1024 - startY;
 
 		bool uploaded = false;
-		if ((wglGetCurrentContext() == context || wglMakeCurrent(dc, context)) &&
-			rasterTransferPixels != NULL &&
+		if (rasterTransferPixels != NULL &&
+			(rasterStateActive || wglGetCurrentContext() == context ||
+				wglMakeCurrent(dc, context)) &&
 			(!rasterStateActive || FlushRasterVertices())) {
 			SetUnpackAlignment(2);
 			SetUnpackRowLength(0);
@@ -1354,7 +2195,9 @@ public:
 			const INT32 xs[2] = { startX, 0 };
 			const INT32 ys[2] = { startY, 0 };
 
-			glGetError();
+			const bool validateUpload =
+				(rasterUploadValidationCounter++ & 0x3f) == 0;
+			if (validateUpload) glGetError();
 			glBindTexture(GL_TEXTURE_2D, rasterTexture);
 			uploaded = true;
 			for (INT32 yPart = 0; yPart < 2; yPart++) {
@@ -1372,7 +2215,7 @@ public:
 						rasterTransferPixels);
 				}
 			}
-			uploaded = glGetError() == GL_NO_ERROR;
+			uploaded = !validateUpload || glGetError() == GL_NO_ERROR;
 			if (uploaded) {
 				for (INT32 yPart = 0; yPart < 2; yPart++) {
 					for (INT32 xPart = 0; xPart < 2; xPart++) {
@@ -1431,33 +2274,36 @@ public:
 		if (!NamcosGlRasterDirtyIntersectsWrapped(&rasterDirty,
 			x, y, width, height)) return true;
 		const bool preserveRasterState = rasterStateActive;
-		if ((wglGetCurrentContext() != context && !wglMakeCurrent(dc, context)) ||
-			rasterTransferPixels == NULL || !FlushRasterVertices()) {
+		if (rasterTransferPixels == NULL ||
+			(!rasterStateActive && wglGetCurrentContext() != context &&
+				!wglMakeCurrent(dc, context)) || !FlushRasterVertices()) {
 			return SynchronizeVram(vram, generation, rowGeneration);
 		}
 
 		NamcosGlRasterRect readRects[64];
 		const INT32 readCount = NamcosGlRasterBuildWrappedReadRects(&rasterDirty,
-			x, y, width, height, readRects, 64);
+			x, y, width, height, readRects, 64, 65536);
 		if (readCount <= 0) return true;
 		bool read = true;
 
 		bindFramebuffer(GL_FRAMEBUFFER, rasterFramebuffer);
 		SetPackAlignment(2);
 		SetPackRowLength(0);
-		glGetError();
+		const bool validateReadback =
+			(rasterReadbackValidationCounter++ & 0x3f) == 0;
+		if (validateReadback) glGetError();
 		for (INT32 i = 0; i < readCount; i++) {
 			const INT32 partWidth = readRects[i].x2 - readRects[i].x1 + 1;
 			const INT32 partHeight = readRects[i].y2 - readRects[i].y1 + 1;
 			glReadPixels(readRects[i].x1,
 				1024 - readRects[i].y2 - 1,
-				partWidth, partHeight, GL_RGBA,
-				GL_UNSIGNED_SHORT_1_5_5_5_REV, rasterTransferPixels);
-			NamcosGlReadVram16RectParallel((UINT16 *)rasterTransferPixels, vram,
+				partWidth, partHeight, GL_RGBA, GL_UNSIGNED_BYTE,
+				rasterTransferPixels);
+			NamcosGlUnpackVramRectParallel(rasterTransferPixels, vram,
 				readRects[i].x1, readRects[i].y1, partWidth, partHeight,
 				rasterThreadPool);
 		}
-		read = glGetError() == GL_NO_ERROR;
+		read = !validateReadback || glGetError() == GL_NO_ERROR;
 		if (!preserveRasterState) EndRasterState(true);
 		if (read) {
 			for (INT32 i = 0; i < readCount; i++) {
@@ -1493,19 +2339,17 @@ public:
 	{
 		if (!rasterVramSynchronized) return true;
 		const bool dirty = rasterDirty.valid;
-		const INT32 firstDirtyRow = dirty ? rasterDirty.y1 : 0;
-		const INT32 lastDirtyRow = dirty ? rasterDirty.y2 : -1;
 		// The CPU fallback only needs the latest framebuffer contents.  The
 		// sample texture is re-uploaded together with the CPU VRAM before the
 		// next hardware packet, so copying dirty pixels to it here is wasted.
 		if (dirty && !FlushRasterVertices()) return false;
 		if (!ReadbackRasterVram(vram)) return false;
-		if (rowGeneration != NULL && dirty) {
-			// GPU draws stay authoritative until this readback; commit rows once here.
-			rasterUploadTracker.SetAndRememberRange(rowGeneration, generation,
-				firstDirtyRow,
-				lastDirtyRow - firstDirtyRow + 1);
-		}
+		// CPU fallback commands may immediately modify the read-back rows.  Do
+		// not retain upload generations across this ownership transition or a
+		// following hardware packet can reuse stale texture rows.
+		(void)generation;
+		(void)rowGeneration;
+		rasterUploadTracker.Reset();
 		rasterVramSynchronized = false;
 		InvalidateUploadCaches();
 		return true;
@@ -1559,13 +2403,45 @@ public:
 			frame->sourceHeight <= 0 || frame->sourceHeight > 1024) {
 			return false;
 		}
+		void *outputDestination = directDestination != NULL ?
+			directDestination : (void *)frame->output;
+		const INT32 outputPitch = directDestination != NULL ?
+			directPitch : frame->outputWidth * 2;
+		const INT32 outputBytes = directDestination != NULL ? directBytes : 2;
+		const UINT32 *outputPalette = directDestination != NULL ? palette : NULL;
+		NamcosFrameObservedRows observedRows = { 0, 0, false };
+		if (outputFrameValid && NamcosFrameOutputMatches(&outputFrameKey, frame,
+			outputDestination, outputPitch, outputBytes, outputPalette,
+			outputRowGeneration, &observedRows)) {
+			return true;
+		}
+		INT32 readY = 0;
+		INT32 readHeight = frame->outputHeight;
+		UINT8 readDirtyRows[1024];
+		bool partialReadback = outputFrameValid &&
+			NamcosFrameGetPartialReadback(&outputFrameKey, frame,
+				outputDestination, outputPitch, outputBytes, outputPalette,
+				outputRowGeneration, &readY, &readHeight, readDirtyRows);
+		NamcosFrameRowSpan readSpans[4];
+		INT32 readSpanCount = partialReadback ?
+			NamcosFrameBuildUploadSpans(readDirtyRows, frame->outputHeight,
+				(size_t)frame->outputWidth * outputBytes, readSpans, 4, 65536) : 0;
+		if (partialReadback && !NamcosFrameReadbackSpansWorthwhile(readSpans,
+			readSpanCount, frame->outputHeight,
+			(size_t)frame->outputWidth * outputBytes, 65536)) {
+			partialReadback = false;
+			readY = 0;
+			readHeight = frame->outputHeight;
+			readSpanCount = 0;
+		}
 
 		if (!EnsureInitialized(frame->outputWidth, frame->outputHeight)) {
 			return false;
 		}
 
-		if ((wglGetCurrentContext() != context || wglGetCurrentDC() != dc) &&
-			!wglMakeCurrent(dc, context)) {
+		// This converter owns the context and always binds it to the same DC.
+		// Checking the context is sufficient and avoids another WGL query per frame.
+		if (wglGetCurrentContext() != context && !wglMakeCurrent(dc, context)) {
 			Disable();
 			return false;
 		}
@@ -1583,22 +2459,10 @@ public:
 			uploadModeValid = true;
 			lastUploadRgb24 = rgb24;
 		}
-		void *outputDestination = directDestination != NULL ?
-			directDestination : (void *)frame->output;
-		const INT32 outputPitch = directDestination != NULL ?
-			directPitch : frame->outputWidth * 2;
-		const INT32 outputBytes = directDestination != NULL ? directBytes : 2;
-		const UINT32 *outputPalette = directDestination != NULL ? palette : NULL;
-		if (outputFrameValid && NamcosFrameOutputMatches(&outputFrameKey, frame,
-			outputDestination, outputPitch, outputBytes, outputPalette,
-			outputRowGeneration)) {
-			return true;
-		}
-
 		const bool rasterSource = rasterVramSynchronized && !rgb24;
 		if (!rasterSource && (!uploadFrameValid ||
 			!NamcosFrameUploadMatches(&uploadFrameKey, frame,
-				uploadRowGeneration))) {
+				uploadRowGeneration, &observedRows))) {
 			if (rgb24) {
 				SetUnpackAlignment(1);
 				SetUnpackRowLength(0);
@@ -1609,7 +2473,8 @@ public:
 				uploadSlotIndex = 0;
 				INT32 uploadFirstRow;
 				INT32 uploadRows;
-				NamcosFrameGetObservedRows(frame, &uploadFirstRow, &uploadRows);
+				NamcosFrameGetObservedRowsCached(frame, &observedRows,
+					&uploadFirstRow, &uploadRows);
 				const INT32 uploadX = frame->displayX & 0x3ff;
 				const INT32 uploadY = (frame->displayY + uploadFirstRow) & 0x3ff;
 				const INT32 firstColumns = frame->sourceWidth < 1024 - uploadX ?
@@ -1637,7 +2502,7 @@ public:
 				}
 			}
 			NamcosFrameRememberUpload(&uploadFrameKey, frame,
-				uploadRowGeneration);
+				uploadRowGeneration, &observedRows);
 			uploadFrameValid = true;
 		}
 
@@ -1645,6 +2510,7 @@ public:
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
 			glClear(GL_COLOR_BUFFER_BIT);
+			rasterClearColorValid = false;
 		}
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_FALSE);
 
@@ -1697,50 +2563,101 @@ public:
 		}
 		drawUniformsValid = true;
 		if (rasterSource) glBindTexture(GL_TEXTURE_2D, rasterTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		if (partialReadback && readSpanCount > 0) {
+			glEnable(GL_SCISSOR_TEST);
+			for (INT32 span = 0; span < readSpanCount; span++) {
+				glScissor(0, readSpans[span].start, frame->outputWidth,
+					readSpans[span].count);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+			glDisable(GL_SCISSOR_TEST);
+		} else {
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+		}
 		if (rasterSource) glBindTexture(GL_TEXTURE_2D, texture);
 		glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
-
+		auto readDirectRows = [&](GLenum format, GLenum type,
+			UINT8 *destination, INT32 destinationPitch) {
+			if (partialReadback && readSpanCount > 1) {
+				for (INT32 span = 0; span < readSpanCount; span++) {
+					glReadPixels(0, readSpans[span].start, frame->outputWidth,
+						readSpans[span].count, format, type, destination +
+						(size_t)readSpans[span].start * destinationPitch);
+				}
+			} else {
+				glReadPixels(0, partialReadback ? readY : 0, frame->outputWidth,
+					partialReadback ? readHeight : frame->outputHeight,
+					format, type, destination +
+					(partialReadback ? (size_t)readY * destinationPitch : 0));
+			}
+		};
+		// Every desktop readback path checks the accumulated GL error directly
+		// after glReadPixels, so a separate query here only adds a driver call.
 		if (directBytes == 2) {
 			if (NamcosPaletteIsRgb565(palette)) {
 				SetPackAlignment(2);
 				SetPackRowLength(directPitch / 2);
-				glReadPixels(0, 0, frame->outputWidth, frame->outputHeight, GL_RGB,
-					GL_UNSIGNED_SHORT_5_6_5, directDestination);
-				if (glGetError() != GL_NO_ERROR) {
+				readDirectRows(GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
+					directDestination, directPitch);
+				if (!ValidateReadback(GL_RGB, GL_UNSIGNED_SHORT_5_6_5)) {
 					Disable();
 					return false;
 				}
 				NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-					directPitch, directBytes, palette, outputRowGeneration);
+					directPitch, directBytes, palette, outputRowGeneration,
+					&observedRows);
 				outputFrameValid = true;
 				return true;
 			}
 			UINT16 *readDestination = directPitch == frame->outputWidth * 2 ?
 				(UINT16 *)directDestination : frame->output;
+			const INT32 paletteReadY = partialReadback ? readY : 0;
+			const INT32 paletteReadHeight = partialReadback ? readHeight :
+				frame->outputHeight;
 			SetPackAlignment(2);
 			SetPackRowLength(0);
-			glReadPixels(0, 0, frame->outputWidth, frame->outputHeight, GL_RGBA,
-				GL_UNSIGNED_SHORT_1_5_5_5_REV, readDestination);
-			if (glGetError() != GL_NO_ERROR) {
+			if (partialReadback && readSpanCount > 1) {
+				for (INT32 span = 0; span < readSpanCount; span++) {
+					glReadPixels(0, readSpans[span].start, frame->outputWidth,
+						readSpans[span].count, GL_RGBA,
+						GL_UNSIGNED_SHORT_1_5_5_5_REV, readDestination +
+						(size_t)readSpans[span].start * frame->outputWidth);
+				}
+			} else {
+				glReadPixels(0, paletteReadY, frame->outputWidth, paletteReadHeight,
+					GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV,
+					readDestination + (size_t)paletteReadY * frame->outputWidth);
+			}
+			if (!ValidateReadback(GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV)) {
 				Disable();
 				return false;
 			}
-			NamcosGlPaletteConvertContext convertContext;
-			convertContext.source = readDestination;
-			convertContext.destination = directDestination;
-			convertContext.palette = palette;
-			convertContext.width = frame->outputWidth;
-			convertContext.destinationPitch = directPitch;
-			const INT64 convertWork = (INT64)frame->outputWidth * frame->outputHeight;
-			if (frame->threadPool != NULL) {
-				frame->threadPool->ParallelForWork(frame->outputHeight, convertWork,
-					32768, NamcosGlConvertPaletteRows, &convertContext);
-			} else {
-				NamcosGlConvertPaletteRows(&convertContext, 0, frame->outputHeight);
+			const INT32 convertSpanCount = partialReadback && readSpanCount > 1 ?
+				readSpanCount : 1;
+			for (INT32 span = 0; span < convertSpanCount; span++) {
+				const INT32 spanY = convertSpanCount > 1 ? readSpans[span].start :
+					paletteReadY;
+				const INT32 spanRows = convertSpanCount > 1 ? readSpans[span].count :
+					paletteReadHeight;
+				NamcosGlPaletteConvertContext convertContext;
+				convertContext.source = readDestination +
+					(size_t)spanY * frame->outputWidth;
+				convertContext.destination = directDestination +
+					(size_t)spanY * directPitch;
+				convertContext.palette = palette;
+				convertContext.width = frame->outputWidth;
+				convertContext.destinationPitch = directPitch;
+				const INT64 convertWork = (INT64)frame->outputWidth * spanRows;
+				if (frame->threadPool != NULL) {
+					frame->threadPool->ParallelForWork(spanRows, convertWork, 32768,
+						NamcosGlConvertPaletteRows, &convertContext);
+				} else {
+					NamcosGlConvertPaletteRows(&convertContext, 0, spanRows);
+				}
 			}
 			NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-				directPitch, directBytes, palette, outputRowGeneration);
+				directPitch, directBytes, palette, outputRowGeneration,
+				&observedRows);
 			outputFrameValid = true;
 			return true;
 		}
@@ -1748,30 +2665,43 @@ public:
 		if (directDestination != NULL) {
 			SetPackAlignment(directBytes == 4 ? 4 : 1);
 			SetPackRowLength(directPitch / directBytes);
-			glReadPixels(0, 0, frame->outputWidth, frame->outputHeight,
-				directBytes == 4 ? GL_BGRA : GL_BGR, GL_UNSIGNED_BYTE,
-				directDestination);
-			if (glGetError() != GL_NO_ERROR) {
+			readDirectRows(directBytes == 4 ? GL_BGRA : GL_BGR,
+				GL_UNSIGNED_BYTE, directDestination, directPitch);
+			if (!ValidateReadback(directBytes == 4 ? GL_BGRA : GL_BGR,
+				GL_UNSIGNED_BYTE)) {
 				Disable();
 				return false;
 			}
 			NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-				directPitch, directBytes, palette, outputRowGeneration);
+				directPitch, directBytes, palette, outputRowGeneration,
+				&observedRows);
 			outputFrameValid = true;
 			return true;
 		}
 
 		SetPackAlignment(2);
 		SetPackRowLength(0);
-		glReadPixels(0, 0, frame->outputWidth, frame->outputHeight, GL_RGBA,
-			GL_UNSIGNED_SHORT_1_5_5_5_REV, frame->output);
+		if (partialReadback && readSpanCount > 1) {
+			for (INT32 span = 0; span < readSpanCount; span++) {
+				glReadPixels(0, readSpans[span].start, frame->outputWidth,
+					readSpans[span].count, GL_RGBA,
+					GL_UNSIGNED_SHORT_1_5_5_5_REV, frame->output +
+					(size_t)readSpans[span].start * frame->outputWidth);
+			}
+		} else {
+			glReadPixels(0, partialReadback ? readY : 0, frame->outputWidth,
+				partialReadback ? readHeight : frame->outputHeight, GL_RGBA,
+				GL_UNSIGNED_SHORT_1_5_5_5_REV, frame->output +
+				(partialReadback ? (size_t)readY * frame->outputWidth : 0));
+		}
 
-		if (glGetError() != GL_NO_ERROR) {
+		if (!ValidateReadback(GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV)) {
 			Disable();
 			return false;
 		}
 		NamcosFrameRememberOutput(&outputFrameKey, frame, outputDestination,
-			outputPitch, outputBytes, outputPalette, outputRowGeneration);
+			outputPitch, outputBytes, outputPalette, outputRowGeneration,
+			&observedRows);
 		outputFrameValid = true;
 
 		return true;
@@ -1848,6 +2778,11 @@ public:
 		viewportHeight = 0;
 		lastPackAlignment = -1;
 		lastPackRowLength = -1;
+		readbackValidationCounter = 0;
+		validatedReadFormat = 0;
+		validatedReadType = 0;
+		validatedReadPackAlignment = -1;
+		validatedReadPackRowLength = -1;
 		lastUnpackAlignment = -1;
 		lastUnpackRowLength = -1;
 		drawUniformsValid = false;
@@ -1862,6 +2797,22 @@ private:
 		if (lastPackAlignment == alignment) return;
 		glPixelStorei(GL_PACK_ALIGNMENT, alignment);
 		lastPackAlignment = alignment;
+	}
+
+	bool ValidateReadback(GLenum format, GLenum type)
+	{
+		const bool stateChanged = validatedReadFormat != format ||
+			validatedReadType != type ||
+			validatedReadPackAlignment != lastPackAlignment ||
+			validatedReadPackRowLength != lastPackRowLength;
+		if (stateChanged || (++readbackValidationCounter & 0x3f) == 0) {
+			if (glGetError() != GL_NO_ERROR) return false;
+			validatedReadFormat = format;
+			validatedReadType = type;
+			validatedReadPackAlignment = lastPackAlignment;
+			validatedReadPackRowLength = lastPackRowLength;
+		}
+		return true;
 	}
 
 	void SetPackRowLength(INT32 length)
@@ -1895,6 +2846,7 @@ private:
 		INT32 width;
 		INT32 rows;
 		UINT8 denseFrames;
+		bool pixelCacheValid;
 		bool valid;
 	};
 
@@ -1902,6 +2854,7 @@ private:
 	{
 		for (INT32 i = 0; i < 4; i++) {
 			uploadSlots[i].denseFrames = 0;
+			uploadSlots[i].pixelCacheValid = false;
 			uploadSlots[i].valid = false;
 		}
 		rgbCacheValid = false;
@@ -2093,6 +3046,8 @@ private:
 		rasterPendingCount = 0;
 		rasterValidationCounter = 0;
 		rasterSampleValidationCounter = 0;
+		rasterUploadValidationCounter = 0;
+		rasterReadbackValidationCounter = 0;
 		rasterClearColorValid = false;
 		if (rasterProgram != 0 && deleteProgram != NULL) {
 			deleteProgram(rasterProgram);
@@ -2113,14 +3068,10 @@ private:
 		rasterPositionAttribute = -1;
 		rasterColorAttribute = -1;
 		rasterTextureAttribute = -1;
+		rasterStateAttribute = -1;
+		rasterTextureState0Attribute = -1;
+		rasterTextureState1Attribute = -1;
 		rasterSampleUniform = -1;
-		rasterTextureState0Uniform = -1;
-		rasterTextureState1Uniform = -1;
-		rasterFlagsUniform = -1;
-		rasterMaskUniform = -1;
-		rasterTextureUniformValid = false;
-		rasterFlagsUniformValid = false;
-		rasterMaskUniformValid = false;
 		rasterSampleTextureBound = false;
 		rasterScissorValid = false;
 		rasterVramSynchronized = false;
@@ -2178,28 +3129,36 @@ private:
 			"in vec2 aPosition;\n"
 			"in vec3 aColor;\n"
 			"in vec2 aTexture;\n"
+			"in float aState;\n"
+			"in vec4 aTextureState0;\n"
+			"in vec4 aTextureState1;\n"
 			"out vec3 vColor;\n"
 			"out vec2 vTexture;\n"
+			"out float vState;\n"
+			"out vec4 vTextureAddress;\n"
+			"out vec4 vTextureControl;\n"
 			"void main() {\n"
 			" vec2 clip = vec2(aPosition.x / 512.0 - 1.0,"
 			" 1.0 - aPosition.y / 512.0);\n"
 			" gl_Position = vec4(clip, 0.0, 1.0);\n"
 			" vColor = aColor;\n"
-			" vTexture = aTexture;\n"
+			" vTexture = aTexture; vState = aState;\n"
+			" vTextureAddress = aTextureState0; vTextureControl = aTextureState1;\n"
 			"}\n";
 		static const char fragmentText[] =
 			"#version 130\n"
 			"in vec3 vColor;\n"
 			"in vec2 vTexture;\n"
+			"in float vState;\n"
+			"in vec4 vTextureAddress;\n"
+			"in vec4 vTextureControl;\n"
 			"uniform sampler2D uVram;\n"
-			"uniform vec4 uTextureState0;\n"
-			"uniform vec4 uTextureState1;\n"
-			"uniform vec4 uFlags;\n"
-			"uniform vec4 uMask;\n"
+			"#define uTextureState0 vec4(vTextureAddress.xy, vTextureControl.xy)\n"
+			"#define uTextureState1 vec4(vTextureControl.zw, vTextureAddress.zw)\n"
 			"out vec4 outputColor;\n"
 			"int wordAt(int x, int y) {\n"
 			" vec4 c = texelFetch(uVram, ivec2(x & 1023, 1023 - (y & 1023)), 0);\n"
-			" ivec3 q = ivec3(floor(c.rgb * 31.0 + 0.5));\n"
+			" ivec3 q = ivec3(c.rgb * 31.0 + 0.5);\n"
 			" return q.r | (q.g << 5) | (q.b << 10) | (c.a >= 0.5 ? 32768 : 0);\n"
 			"}\n"
 			"vec4 unpackWord(int word) {\n"
@@ -2207,8 +3166,8 @@ private:
 			"  float((word >> 10) & 31), (word & 32768) != 0 ? 1.0 : 0.0);\n"
 			"}\n"
 			"int textureWord() {\n"
-			" int u = int(floor(vTexture.x)) & int(uTextureState1.x);\n"
-			" int v = int(floor(vTexture.y)) & int(uTextureState1.y);\n"
+			" int u = int(vTexture.x) & int(uTextureState1.x);\n"
+			" int v = int(vTexture.y) & int(uTextureState1.y);\n"
 			" int tx = int(uTextureState0.x); int ty = int(uTextureState0.y);\n"
 			" int mode = int(uTextureState0.z); bool interleaved = uTextureState0.w != 0.0;\n"
 			" int x = tx; int y = (ty + (v & 255)) & 1023; int data;\n"
@@ -2228,24 +3187,25 @@ private:
 			" return 0;\n"
 			"}\n"
 			"void main() {\n"
-			" bool vramCopy = uFlags.x > 1.5; bool textured = uFlags.x > 0.5 && !vramCopy;\n"
-			" int texel = vramCopy ? wordAt(int(uTextureState0.x) + int(gl_FragCoord.x) - int(uTextureState0.z), int(uTextureState0.y) + 1023 - int(gl_FragCoord.y) - int(uTextureState0.w)) : (textured ? textureWord() : 0);\n"
+			" int state = int(vState + 0.5); bool textured = (state & 1) != 0; bool vramCopy = (state & 2) != 0;\n"
+			" if (state == 0 || state == 64) { outputColor = vec4(floor(clamp(vColor, 0.0, 1.0) * 31.0 + 0.5) / 31.0, state == 64 ? 1.0 : 0.0); return; }\n"
+			" int texel = vramCopy ? wordAt(int(vTextureAddress.x) + int(gl_FragCoord.x) - int(vTextureAddress.z), int(vTextureAddress.y) + 1023 - int(gl_FragCoord.y) - int(vTextureAddress.w)) : (textured ? textureWord() : 0);\n"
 			" if (textured && texel == 0) discard;\n"
 			" vec4 color = (textured || vramCopy) ? unpackWord(texel) : vec4(floor(clamp(vColor, 0.0, 1.0) * 31.0 + 0.5), 0.0);\n"
-			" if (textured && uFlags.y == 0.0) color.rgb = min(vec3(31.0), floor(color.rgb * floor(vColor * 255.0 + 0.5) / 128.0));\n"
-			" bool blend = uFlags.z != 0.0 && (!textured || (texel & 32768) != 0);\n"
+			" if (textured && (state & 4) == 0) color.rgb = min(vec3(31.0), floor(color.rgb * floor(vColor * 255.0 + 0.5) / 128.0));\n"
+			" bool blend = (state & 8) != 0 && (!textured || (texel & 32768) != 0);\n"
 			" int backgroundWord = 0;\n"
-			" if (uMask.y != 0.0 || blend) backgroundWord = wordAt(int(gl_FragCoord.x), 1023 - int(gl_FragCoord.y));\n"
-			" if (uMask.y != 0.0 && (backgroundWord & 32768) != 0) discard;\n"
+			" if ((state & 128) != 0 || blend) backgroundWord = wordAt(int(gl_FragCoord.x), 1023 - int(gl_FragCoord.y));\n"
+			" if ((state & 128) != 0 && (backgroundWord & 32768) != 0) discard;\n"
 			" if (blend) {\n"
-			"  vec3 bg = unpackWord(backgroundWord).rgb; int abr = int(uFlags.w);\n"
+			"  vec3 bg = unpackWord(backgroundWord).rgb; int abr = (state >> 4) & 3;\n"
 			"  if (abr == 0) color.rgb = floor(color.rgb * 0.5) + floor(bg * 0.5);\n"
 			"  else if (abr == 1) color.rgb = min(vec3(31.0), color.rgb + bg);\n"
 			"  else if (abr == 2) color.rgb = max(vec3(0.0), bg - color.rgb);\n"
 			"  else color.rgb = min(vec3(31.0), floor(color.rgb * 0.25) + bg);\n"
 			"  if (textured) color.a = 1.0; else color.a = 0.0;\n"
 			" }\n"
-			" if (uMask.x != 0.0) color.a = 1.0;\n"
+			" if ((state & 64) != 0) color.a = 1.0;\n"
 			" outputColor = vec4(color.rgb / 31.0, color.a);\n"
 			"}\n";
 		static const char legacyVertexText[] =
@@ -2253,25 +3213,39 @@ private:
 			"attribute vec2 aPosition;\n"
 			"attribute vec3 aColor;\n"
 			"attribute vec2 aTexture;\n"
+			"attribute float aState;\n"
+			"attribute vec4 aTextureState0;\n"
+			"attribute vec4 aTextureState1;\n"
 			"varying vec3 vColor;\n"
 			"varying vec2 vTexture;\n"
+			"varying vec4 vStateBits;\n"
+			"varying vec3 vStateControl;\n"
+			"varying vec4 vTextureAddress;\n"
+			"varying vec4 vTextureControl;\n"
 			"void main() {\n"
 			" vec2 clip = vec2(aPosition.x / 512.0 - 1.0, 1.0 - aPosition.y / 512.0);\n"
 			" gl_Position = vec4(clip, 0.0, 1.0);\n"
 			" vColor = aColor;\n"
 			" vTexture = aTexture;\n"
+			" vStateBits = vec4(mod(aState, 2.0), mod(floor(aState * 0.5), 2.0),"
+			" mod(floor(aState * 0.25), 2.0), mod(floor(aState * 0.125), 2.0));\n"
+			" vStateControl = vec3(mod(floor(aState * 0.0625), 4.0),"
+			" mod(floor(aState * 0.015625), 2.0), step(127.5, aState));\n"
+			" vTextureAddress = aTextureState0; vTextureControl = aTextureState1;\n"
 			"}\n";
 		static const char legacyFragmentText[] =
 			"#version 110\n"
 			"varying vec3 vColor;\n"
 			"varying vec2 vTexture;\n"
+			"varying vec4 vStateBits;\n"
+			"varying vec3 vStateControl;\n"
+			"varying vec4 vTextureAddress;\n"
+			"varying vec4 vTextureControl;\n"
 			"uniform sampler2D uVram;\n"
-			"uniform vec4 uTextureState0;\n"
-			"uniform vec4 uTextureState1;\n"
-			"uniform vec4 uFlags;\n"
-			"uniform vec4 uMask;\n"
-			"float window8(float a, float b) {\n"
-			" float ah = floor(a / 8.0); float bh = floor(b / 8.0);\n"
+			"#define uTextureState0 vec4(vTextureAddress.xy, vTextureControl.xy)\n"
+			"#define uTextureState1 vec4(vTextureControl.zw, vTextureAddress.zw)\n"
+			"float window8(float a, float bh) {\n"
+			" float ah = floor(a / 8.0);\n"
 			" vec4 weight = vec4(1.0, 2.0, 4.0, 8.0);\n"
 			" vec4 bits = mod(floor(ah / weight), 2.0) * mod(floor(bh / weight), 2.0);\n"
 			" float bit16 = mod(floor(ah / 16.0), 2.0) * mod(floor(bh / 16.0), 2.0);\n"
@@ -2292,8 +3266,8 @@ private:
 			"void textureWord(out vec4 textureColor) {\n"
 			" float sourceU = floor(vTexture.x); float sourceV = floor(vTexture.y);\n"
 			" float u = sourceU; float v = sourceV;\n"
-			" if (uTextureState1.x < 254.5) u = window8(sourceU, uTextureState1.x);\n"
-			" if (uTextureState1.y < 254.5) v = window8(sourceV, uTextureState1.y);\n"
+			" if (uTextureState1.x < 30.5) u = window8(sourceU, uTextureState1.x);\n"
+			" if (uTextureState1.y < 30.5) v = window8(sourceV, uTextureState1.y);\n"
 			" float tx = uTextureState0.x; float ty = uTextureState0.y;\n"
 			" float mode = uTextureState0.z; bool interleaved = uTextureState0.w != 0.0;\n"
 			" float x = tx; float y = mod(ty + v, 1024.0); float data;\n"
@@ -2315,25 +3289,26 @@ private:
 			" textureColor = vec4(0.0);\n"
 			"}\n"
 			"void main() {\n"
-			" bool vramCopy = uFlags.x > 1.5; bool textured = uFlags.x > 0.5 && !vramCopy; vec4 textureColor = vec4(0.0);\n"
-			" if (vramCopy) textureColor = colorAt(uTextureState0.x + floor(gl_FragCoord.x) - uTextureState0.z, uTextureState0.y + 1023.0 - floor(gl_FragCoord.y) - uTextureState0.w);\n"
+			" bool textured = vStateBits.x >= 0.5; bool vramCopy = vStateBits.y >= 0.5; vec4 textureColor = vec4(0.0);\n"
+			" if (dot(vStateBits, vec4(1.0)) < 0.5 && vStateControl.x < 0.5 && vStateControl.z < 0.5) { gl_FragColor = vec4(floor(clamp(vColor, 0.0, 1.0) * 31.0 + 0.5) / 31.0, vStateControl.y); return; }\n"
+			" if (vramCopy) textureColor = colorAt(vTextureAddress.x + floor(gl_FragCoord.x) - vTextureAddress.z, vTextureAddress.y + 1023.0 - floor(gl_FragCoord.y) - vTextureAddress.w);\n"
 			" if (textured) textureWord(textureColor);\n"
 			" if (textured && dot(textureColor, vec4(1.0)) < 0.5) discard;\n"
 			" vec4 color = (textured || vramCopy) ? textureColor : vec4(floor(clamp(vColor, 0.0, 1.0) * 31.0 + 0.5), 0.0);\n"
-			" if (textured && uFlags.y == 0.0) color.rgb = min(vec3(31.0), floor(color.rgb * floor(vColor * 255.0 + 0.5) / 128.0));\n"
-			" bool blend = uFlags.z != 0.0 && (!textured || textureColor.a >= 0.5);\n"
+			" if (textured && vStateBits.z < 0.5) color.rgb = min(vec3(31.0), floor(color.rgb * floor(vColor * 255.0 + 0.5) / 128.0));\n"
+			" bool blend = vStateBits.w >= 0.5 && (!textured || textureColor.a >= 0.5);\n"
 			" vec4 backgroundColor = vec4(0.0);\n"
-			" if (uMask.y != 0.0 || blend) backgroundColor = colorAt(floor(gl_FragCoord.x), 1023.0 - floor(gl_FragCoord.y));\n"
-			" if (uMask.y != 0.0 && backgroundColor.a >= 0.5) discard;\n"
+			" if (vStateControl.z >= 0.5 || blend) backgroundColor = colorAt(floor(gl_FragCoord.x), 1023.0 - floor(gl_FragCoord.y));\n"
+			" if (vStateControl.z >= 0.5 && backgroundColor.a >= 0.5) discard;\n"
 			" if (blend) {\n"
-			"  vec3 bg = backgroundColor.rgb; float abr = uFlags.w;\n"
+			"  vec3 bg = backgroundColor.rgb; float abr = vStateControl.x;\n"
 			"  if (abr < 0.5) color.rgb = floor(color.rgb * 0.5) + floor(bg * 0.5);\n"
 			"  else if (abr < 1.5) color.rgb = min(vec3(31.0), color.rgb + bg);\n"
 			"  else if (abr < 2.5) color.rgb = max(vec3(0.0), bg - color.rgb);\n"
 			"  else color.rgb = min(vec3(31.0), floor(color.rgb * 0.25) + bg);\n"
 			"  color.a = textured ? 1.0 : 0.0;\n"
 			" }\n"
-			" if (uMask.x != 0.0) color.a = 1.0;\n"
+			" if (vStateControl.y >= 0.5) color.a = 1.0;\n"
 			" gl_FragColor = vec4(color.rgb / 31.0, color.a);\n"
 			"}\n";
 
@@ -2369,26 +3344,22 @@ private:
 		rasterPositionAttribute = getAttribLocation(rasterProgram, "aPosition");
 		rasterColorAttribute = getAttribLocation(rasterProgram, "aColor");
 		rasterTextureAttribute = getAttribLocation(rasterProgram, "aTexture");
+		rasterStateAttribute = getAttribLocation(rasterProgram, "aState");
+		rasterTextureState0Attribute = getAttribLocation(rasterProgram,
+			"aTextureState0");
+		rasterTextureState1Attribute = getAttribLocation(rasterProgram,
+			"aTextureState1");
 		rasterSampleUniform = getUniformLocation(rasterProgram, "uVram");
-		rasterTextureState0Uniform = getUniformLocation(rasterProgram,
-			"uTextureState0");
-		rasterTextureState1Uniform = getUniformLocation(rasterProgram,
-			"uTextureState1");
-		rasterFlagsUniform = getUniformLocation(rasterProgram, "uFlags");
-		rasterMaskUniform = getUniformLocation(rasterProgram, "uMask");
 		if (rasterPositionAttribute < 0 || rasterColorAttribute < 0 ||
-			rasterTextureAttribute < 0 || rasterSampleUniform < 0 ||
-			rasterTextureState0Uniform < 0 || rasterTextureState1Uniform < 0 ||
-			rasterFlagsUniform < 0 || rasterMaskUniform < 0) {
+			rasterTextureAttribute < 0 || rasterStateAttribute < 0 ||
+			rasterTextureState0Attribute < 0 ||
+			rasterTextureState1Attribute < 0 || rasterSampleUniform < 0) {
 			rasterizerFailureReason = 4;
 			DestroyRasterizerResources();
 			return false;
 		}
 		useProgram(rasterProgram);
 		uniform1i(rasterSampleUniform, 0);
-		uniform4f(rasterTextureState0Uniform, 0.0f, 0.0f, 0.0f, 0.0f);
-		uniform4f(rasterTextureState1Uniform, 0.0f, 0.0f, 0.0f, 0.0f);
-		uniform4f(rasterFlagsUniform, 0.0f, 0.0f, 0.0f, 0.0f);
 		useProgram(program);
 
 		glGenTextures(1, &rasterTexture);
@@ -2432,6 +3403,12 @@ private:
 			return false;
 		}
 		bindBuffer(GL_ARRAY_BUFFER, rasterVertexBuffer);
+		enableVertexAttribArray(rasterPositionAttribute);
+		enableVertexAttribArray(rasterColorAttribute);
+		enableVertexAttribArray(rasterTextureAttribute);
+		enableVertexAttribArray(rasterStateAttribute);
+		enableVertexAttribArray(rasterTextureState0Attribute);
+		enableVertexAttribArray(rasterTextureState1Attribute);
 		bufferData(GL_ARRAY_BUFFER,
 			sizeof(NamcosGlRasterDrawVertex) *
 				NAMCOS_GL_RASTER_STREAM_VERTICES, NULL,
@@ -2454,9 +3431,6 @@ private:
 		glEnable(GL_SCISSOR_TEST);
 		useProgram(rasterProgram);
 		bindBuffer(GL_ARRAY_BUFFER, rasterVertexBuffer);
-		enableVertexAttribArray(rasterPositionAttribute);
-		enableVertexAttribArray(rasterColorAttribute);
-		enableVertexAttribArray(rasterTextureAttribute);
 		vertexAttribPointer(rasterPositionAttribute, 2, GL_SHORT, GL_FALSE,
 			sizeof(NamcosGlRasterDrawVertex),
 			(const void *)offsetof(NamcosGlRasterDrawVertex, x));
@@ -2466,12 +3440,18 @@ private:
 		vertexAttribPointer(rasterTextureAttribute, 2, GL_UNSIGNED_BYTE, GL_FALSE,
 			sizeof(NamcosGlRasterDrawVertex),
 			(const void *)offsetof(NamcosGlRasterDrawVertex, u));
+		vertexAttribPointer(rasterStateAttribute, 1, GL_UNSIGNED_BYTE, GL_FALSE,
+			sizeof(NamcosGlRasterDrawVertex),
+			(const void *)offsetof(NamcosGlRasterDrawVertex, padding));
+		vertexAttribPointer(rasterTextureState0Attribute, 4, GL_SHORT,
+			GL_FALSE, sizeof(NamcosGlRasterDrawVertex),
+			(const void *)offsetof(NamcosGlRasterDrawVertex, textureState0));
+		vertexAttribPointer(rasterTextureState1Attribute, 4, GL_UNSIGNED_BYTE,
+			GL_FALSE, sizeof(NamcosGlRasterDrawVertex),
+			(const void *)offsetof(NamcosGlRasterDrawVertex, textureControl0));
 		rasterSampleTextureBound = false;
-		rasterScissorValid = false;
-		rasterClearColorValid = false;
-		rasterStateActive = glGetError() == GL_NO_ERROR;
-		if (!rasterStateActive) EndRasterState(true);
-		return rasterStateActive;
+		rasterStateActive = true;
+		return true;
 	}
 
 	bool FlushRasterVertices()
@@ -2508,36 +3488,50 @@ private:
 		useProgram(program);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		rasterSampleTextureBound = false;
-		rasterScissorValid = false;
 		rasterStateActive = false;
 	}
 
-	bool SynchronizeRasterSample()
+	bool SynchronizeRasterSample(const NamcosGlRasterRect *selectedRects = NULL,
+		INT32 selectedCount = 0, bool selectedCoversAllDirty = false)
 	{
 		if (!FlushRasterVertices()) return false;
 		if (!rasterSampleTextureBound) {
 			glBindTexture(GL_TEXTURE_2D, rasterSampleTexture);
 			rasterSampleTextureBound = true;
 		}
-		if (!rasterSampleValid) {
+		const bool completeSync = !rasterSampleValid;
+		if (completeSync) {
 			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0,
 				1024, 1024);
+			rasterSampleDirty.Reset();
 		} else if (rasterSampleDirty.valid) {
 			NamcosGlRasterRect rects[NAMCOS_GL_RASTER_DIRTY_RECTS];
-			const INT32 count = rasterSampleDirty.GetCopyRects(rects,
-				NAMCOS_GL_RASTER_DIRTY_RECTS);
+			const bool selective = selectedRects != NULL && selectedCount > 0;
+			const INT32 count = selective ? selectedCount :
+				rasterSampleDirty.GetCopyRects(rects,
+					NAMCOS_GL_RASTER_DIRTY_RECTS, 65536);
 			for (INT32 i = 0; i < count; i++) {
-				const INT32 width = rects[i].x2 - rects[i].x1 + 1;
-				const INT32 height = rects[i].y2 - rects[i].y1 + 1;
-				const INT32 glY = 1024 - rects[i].y2 - 1;
+				const NamcosGlRasterRect &rect = selective ? selectedRects[i] :
+					rects[i];
+				const INT32 width = rect.x2 - rect.x1 + 1;
+				const INT32 height = rect.y2 - rect.y1 + 1;
+				const INT32 glY = 1024 - rect.y2 - 1;
 				glCopyTexSubImage2D(GL_TEXTURE_2D, 0,
-					rects[i].x1, glY, rects[i].x1, glY, width, height);
+					rect.x1, glY, rect.x1, glY, width, height);
+			}
+			if (selective && !selectedCoversAllDirty) {
+				for (INT32 i = 0; i < count; i++) {
+					rasterSampleDirty.Exclude(selectedRects[i].x1,
+						selectedRects[i].y1, selectedRects[i].x2,
+						selectedRects[i].y2);
+				}
+			} else {
+				rasterSampleDirty.Reset();
 			}
 		}
 		if ((++rasterSampleValidationCounter & 0xff) == 0 &&
 			glGetError() != GL_NO_ERROR) return false;
 		rasterSampleValid = true;
-		rasterSampleDirty.Reset();
 		return true;
 	}
 
@@ -2639,8 +3633,41 @@ private:
 		}
 		const bool checkStp = !fill && packet->state.checkStp != 0;
 		if (textured || vramCopy || primitive->semiTransparent || checkStp) {
+			NamcosGlRasterRect selected[NAMCOS_GL_RASTER_DIRTY_RECTS];
+			const bool selectiveDestination = !textured && !vramCopy &&
+				(primitive->semiTransparent || checkStp);
+			const bool selectiveVramCopy = vramCopy &&
+				!primitive->semiTransparent && !checkStp;
+			const bool selectiveTexture = textured &&
+				!primitive->semiTransparent && !checkStp;
+			INT32 selectedCount = 0;
+			bool selectedCoversAllDirty = false;
 			bool synchronizeSample = !rasterSampleValid;
-			if (!synchronizeSample &&
+			if (!synchronizeSample && selectiveTexture) {
+				bool dependencyKnown = false;
+				selectedCount = NamcosGlRasterBuildTextureSelectiveCopyRects(
+					textureState, primitive, &rasterSampleDirty, selected,
+					NAMCOS_GL_RASTER_DIRTY_RECTS, &selectedCoversAllDirty,
+					&dependencyKnown);
+				synchronizeSample = dependencyKnown ? selectedCount > 0 :
+					NamcosGlRasterTextureStateReadsDirty(textureState,
+						&rasterSampleDirty);
+			} else if (!synchronizeSample &&
+				(selectiveDestination || selectiveVramCopy)) {
+				const INT32 selectedX = selectiveVramCopy ?
+					primitive->sourceX : x1;
+				const INT32 selectedY = selectiveVramCopy ?
+					primitive->sourceY : y1;
+				const INT32 selectedWidth = selectiveVramCopy ?
+					primitive->width : x2 - x1 + 1;
+				const INT32 selectedHeight = selectiveVramCopy ?
+					primitive->height : y2 - y1 + 1;
+				selectedCount = NamcosGlRasterBuildSelectiveCopyRects(
+					&rasterSampleDirty, selectedX, selectedY, selectedWidth,
+					selectedHeight, selected, NAMCOS_GL_RASTER_DIRTY_RECTS,
+					&selectedCoversAllDirty);
+				synchronizeSample = selectedCount > 0;
+			} else if (!synchronizeSample &&
 				(primitive->semiTransparent || checkStp)) {
 				synchronizeSample = rasterSampleDirty.Intersects(x1, y1, x2, y2);
 			}
@@ -2650,76 +3677,46 @@ private:
 					primitive->sourceX + primitive->width - 1,
 					primitive->sourceY + primitive->height - 1);
 			}
-			if (!synchronizeSample && textured) {
+			if (!synchronizeSample && textured && !selectiveTexture) {
 				synchronizeSample = NamcosGlRasterTexturePrimitiveReadsDirty(
 					textureState, primitive, &rasterSampleDirty);
 			}
 			if (synchronizeSample) {
-				if (!SynchronizeRasterSample()) return false;
+				if (!SynchronizeRasterSample(selectedCount > 0 ? selected : NULL,
+					selectedCount, selectedCoversAllDirty)) return false;
 			} else if (!rasterSampleTextureBound) {
 				glBindTexture(GL_TEXTURE_2D, rasterSampleTexture);
 				rasterSampleTextureBound = true;
-			}
-			if (textured || vramCopy) {
-				if (vramCopy || !rasterTextureUniformValid || memcmp(textureState,
-					lastRasterTextureState, sizeof(textureState)) != 0) {
-					if (!FlushRasterVertices()) return false;
-					uniform4f(rasterTextureState0Uniform,
-						(GLfloat)textureState[0], (GLfloat)textureState[1],
-						(GLfloat)textureState[2], (GLfloat)textureState[3]);
-					uniform4f(rasterTextureState1Uniform,
-						(GLfloat)textureState[4], (GLfloat)textureState[5],
-						(GLfloat)textureState[6], (GLfloat)textureState[7]);
-					memcpy(lastRasterTextureState, textureState,
-						sizeof(textureState));
-					rasterTextureUniformValid = true;
-				}
 			}
 		}
 		const bool rawTexture = textured && primitive->rawTexture;
 		const UINT32 blendTpage = textured ? primitive->tpage : packet->state.tpage;
 		const UINT32 abr = primitive->semiTransparent ? (blendTpage >>
 			(packet->state.gpuType == 2 ? 5 : 7)) & 3 : 0;
-		if (vramCopy || !rasterFlagsUniformValid || lastRasterTextured != textured ||
-			lastRasterRawTexture != rawTexture ||
-			lastRasterSemiTransparent != primitive->semiTransparent ||
-			lastRasterAbr != abr) {
-			if (!FlushRasterVertices()) return false;
-			uniform4f(rasterFlagsUniform, vramCopy ? 2.0f : (textured ? 1.0f : 0.0f),
-				rawTexture ? 1.0f : 0.0f,
-				primitive->semiTransparent ? 1.0f : 0.0f, (GLfloat)abr);
-			lastRasterTextured = textured;
-			lastRasterRawTexture = rawTexture;
-			lastRasterSemiTransparent = primitive->semiTransparent;
-			lastRasterAbr = abr;
-			rasterFlagsUniformValid = true;
-		}
 		const bool drawStp = !fill && packet->state.drawStp != 0;
 		const bool maskCheck = checkStp;
-		if (!rasterMaskUniformValid || lastRasterDrawStp != drawStp ||
-			lastRasterCheckStp != maskCheck) {
-			if (!FlushRasterVertices()) return false;
-			uniform4f(rasterMaskUniform, drawStp ? 1.0f : 0.0f,
-				maskCheck ? 1.0f : 0.0f, 0.0f, 0.0f);
-			lastRasterDrawStp = drawStp;
-			lastRasterCheckStp = maskCheck;
-			rasterMaskUniformValid = true;
-		}
 		if (rasterPendingCount + 6 > NAMCOS_GL_RASTER_BATCH_VERTICES &&
 			!FlushRasterVertices()) return false;
 		const UINT32 count = textured ? NamcosGlRasterBuildTexturedTriangles(
 			primitive, rasterPendingVertices + rasterPendingCount, 6) :
 			NamcosGlRasterBuildColorTriangles(primitive,
 				rasterPendingVertices + rasterPendingCount, 6);
-		if (count == 0) return false;
-		rasterPendingCount += count;
-		// A later overlapping draw triggers sample synchronization before use.
-		// Non-overlapping semi-transparent primitives can remain in this batch.
-		if (vramCopy && !FlushRasterVertices()) return false;
-		if (vramCopy) {
-			rasterFlagsUniformValid = false;
-			rasterTextureUniformValid = false;
+		if (count == 0) {
+			return primitive->type == NAMCOS_GL_RASTER_FLAT_POLYGON ||
+				primitive->type == NAMCOS_GL_RASTER_GOURAUD_POLYGON ||
+				primitive->type == NAMCOS_GL_RASTER_TEXTURED_POLYGON;
 		}
+		const UINT8 vertexState = (textured ? 0x01 : 0) |
+			(vramCopy ? 0x02 : 0) | (rawTexture ? 0x04 : 0) |
+			(primitive->semiTransparent ? 0x08 : 0) | ((abr & 3) << 4) |
+			(drawStp ? 0x40 : 0) | (maskCheck ? 0x80 : 0);
+		NamcosGlRasterSetVertexStates(
+			rasterPendingVertices + rasterPendingCount, count,
+			vertexState, textureState, textured, vramCopy);
+		rasterPendingCount += count;
+		// A VRAM copy can feed a later transfer through wrapped coordinates that
+		// are not represented by one dirty rectangle.  Preserve command order.
+		if (vramCopy && !FlushRasterVertices()) return false;
 		rasterDirty.Include(x1, y1, x2, y2);
 		if (rasterSampleValid) rasterSampleDirty.Include(x1, y1, x2, y2);
 		outputFrameValid = false;
@@ -2748,13 +3745,20 @@ private:
 			INT32 rows;
 			spanCount = NamcosGlRasterBuildUploadSpans(
 				&rasterUploadTracker, rowGeneration, spans,
-				NAMCOS_GL_RASTER_UPLOAD_SPANS, &first, &rows);
+				NAMCOS_GL_RASTER_UPLOAD_SPANS, &first, &rows, 32);
 			if (spanCount < 0) {
 				spanCount = 1;
 				spans[0].firstRow = first;
 				spans[0].rowCount = rows;
 			}
 		}
+		if (spanCount == 0) {
+			rasterVramSynchronized = true;
+			return true;
+		}
+		const bool validateUpload =
+			(rasterUploadValidationCounter++ & 0x3f) == 0;
+		if (validateUpload) glGetError();
 		if (spanCount > 0) {
 			glBindTexture(GL_TEXTURE_2D, rasterTexture);
 			for (INT32 span = 0; span < spanCount; span++) {
@@ -2778,8 +3782,17 @@ private:
 			}
 			rasterSampleTextureBound = false;
 		}
-		const bool uploaded = glGetError() == GL_NO_ERROR;
-		if (uploaded) rasterUploadTracker.RememberAll(rowGeneration);
+		const bool uploaded = !validateUpload || glGetError() == GL_NO_ERROR;
+		if (uploaded) {
+			if (rowGeneration == NULL) {
+				rasterUploadTracker.Reset();
+			} else {
+				for (INT32 span = 0; span < spanCount; span++) {
+					rasterUploadTracker.RememberRange(rowGeneration,
+						spans[span].firstRow, spans[span].rowCount);
+				}
+			}
+		}
 		glBindTexture(GL_TEXTURE_2D, texture);
 		rasterVramSynchronized = uploaded;
 		if (uploaded) {
@@ -2798,23 +3811,23 @@ private:
 		if (!rasterDirty.valid) return true;
 		NamcosGlRasterRect rects[NAMCOS_GL_RASTER_DIRTY_RECTS];
 		const INT32 rectCount = rasterDirty.GetReadbackRects(rects,
-			NAMCOS_GL_RASTER_DIRTY_RECTS);
+			NAMCOS_GL_RASTER_DIRTY_RECTS, 65536);
 		bool read = rectCount > 0;
 		bindFramebuffer(GL_FRAMEBUFFER, rasterFramebuffer);
 		SetPackAlignment(2);
 		SetPackRowLength(0);
-		glGetError();
+		const bool validateReadback =
+			(rasterReadbackValidationCounter++ & 0x3f) == 0;
+		if (validateReadback) glGetError();
 		for (INT32 i = 0; i < rectCount; i++) {
 			const INT32 width = rects[i].x2 - rects[i].x1 + 1;
 			const INT32 height = rects[i].y2 - rects[i].y1 + 1;
 			glReadPixels(rects[i].x1, 1024 - rects[i].y2 - 1,
-				width, height, GL_RGBA,
-				GL_UNSIGNED_SHORT_1_5_5_5_REV,
-				rasterTransferPixels);
-			NamcosGlReadVram16RectParallel((UINT16 *)rasterTransferPixels, vram,
+				width, height, GL_RGBA, GL_UNSIGNED_BYTE, rasterTransferPixels);
+			NamcosGlUnpackVramRectParallel(rasterTransferPixels, vram,
 				rects[i].x1, rects[i].y1, width, height, rasterThreadPool);
 		}
-		read = glGetError() == GL_NO_ERROR;
+		read = !validateReadback || glGetError() == GL_NO_ERROR;
 		EndRasterState(true);
 		if (read) rasterDirty.Reset();
 		return read;
@@ -2845,9 +3858,7 @@ private:
 
 		if (!rgbCacheValid || rgbCacheWidth != width || rgbCacheHeight != rows ||
 			rgbCacheDisplayX != frame->displayX || rgbCacheDisplayY != frame->displayY) {
-			NamcosPackRgb24(frame, rgbUploadPixels);
-			NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-				rows, NULL, rows, frame->threadPool);
+			NamcosPackRgb24(frame, rgbUploadCache);
 			rgbCacheWidth = width;
 			rgbCacheHeight = rows;
 			rgbCacheDisplayX = frame->displayX;
@@ -2861,7 +3872,7 @@ private:
 			rgbCacheValid = true;
 			rgbDenseFrames = 0;
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, rows,
-				GL_RGB, GL_UNSIGNED_BYTE, rgbUploadPixels);
+				GL_RGB, GL_UNSIGNED_BYTE, rgbUploadCache);
 			return;
 		}
 		if (frame->vramRowGeneration != NULL &&
@@ -2891,11 +3902,8 @@ private:
 				denseChangedRows = observedRows;
 			}
 			if (rgbDenseFrames != 0) {
-				NamcosPackRgb24Selected(frame, rgbUploadPixels, denseRows,
+				NamcosPackRgb24Selected(frame, rgbUploadCache, denseRows,
 					denseChangedRows, observedFirst, observedRows);
-				NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-					rows, denseRows, denseChangedRows, frame->threadPool,
-					observedFirst, observedRows);
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, observedFirst, width,
 					observedRows, GL_RGB, GL_UNSIGNED_BYTE,
 					rgbUploadCache + (size_t)observedFirst * rowBytes);
@@ -2940,6 +3948,8 @@ private:
 			if (candidate) rgbRowGeneration[y] = generation;
 			dirtyRows[y] = changed ? 1 : 0;
 			if (changed) {
+				memcpy(rgbUploadCache + (size_t)y * rowBytes,
+					rgbUploadPixels + (size_t)y * rowBytes, rowBytes);
 				changedRows++;
 				if (!inRun) runCount++;
 			}
@@ -2949,27 +3959,11 @@ private:
 
 		if (changedRows * 3 >= observedRows) {
 			rgbDenseFrames = 7;
-			NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-				rows, dirtyRows, changedRows, frame->threadPool,
-				observedFirst, observedRows);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, observedFirst, width, observedRows,
 				GL_RGB, GL_UNSIGNED_BYTE,
 				rgbUploadCache + (size_t)observedFirst * rowBytes);
 			return;
 		}
-		if (runCount > 8) {
-			NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-				rows, dirtyRows, changedRows, frame->threadPool,
-				observedFirst, observedRows);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, observedFirst, width, observedRows,
-				GL_RGB, GL_UNSIGNED_BYTE,
-				rgbUploadCache + (size_t)observedFirst * rowBytes);
-			return;
-		}
-
-		NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-			rows, dirtyRows, changedRows, frame->threadPool,
-			observedFirst, observedRows);
 		INT32 mergedStart;
 		INT32 mergedRows;
 		if (NamcosFrameGetMergedDirtySpan(dirtyRows, rows, changedRows, runCount,
@@ -2979,15 +3973,13 @@ private:
 				rgbUploadCache + (size_t)mergedStart * rowBytes);
 			return;
 		}
-		for (INT32 y = 0; y < rows;) {
-			while (y < rows && !dirtyRows[y]) y++;
-			const INT32 start = y;
-			while (y < rows && dirtyRows[y]) y++;
-			if (start < y) {
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, start, width, y - start,
-					GL_RGB, GL_UNSIGNED_BYTE,
-					rgbUploadPixels + (size_t)start * rowBytes);
-			}
+		NamcosFrameRowSpan spans[8];
+		const INT32 spanCount = NamcosFrameBuildUploadSpans(dirtyRows, rows,
+			rowBytes, spans, 8);
+		for (INT32 i = 0; i < spanCount; i++) {
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, spans[i].start, width,
+				spans[i].count, GL_RGB, GL_UNSIGNED_BYTE,
+				rgbUploadCache + (size_t)spans[i].start * rowBytes);
 		}
 	}
 
@@ -3001,7 +3993,72 @@ private:
 		const bool sameGeometry = slot != NULL && slot->valid &&
 			slot->destinationX == destinationX &&
 			slot->destinationY == destinationY &&
-			slot->width == width && slot->rows == rows;
+			slot->width == width && slot->rows == rows &&
+			(rowGeneration != NULL || slot->pixelCacheValid);
+
+		// Row generations are authoritative for the normal PSX VRAM path.  Avoid
+		// duplicating the source into a CPU cache just to compare it again.
+		if (slot != NULL && rowGeneration != NULL) {
+			if (!sameGeometry) {
+				NamcosFrameRememberUploadRows(slot->rowGeneration, rowGeneration,
+					destinationY, rows);
+				slot->destinationX = destinationX;
+				slot->destinationY = destinationY;
+				slot->width = width;
+				slot->rows = rows;
+				slot->denseFrames = 0;
+				slot->pixelCacheValid = false;
+				slot->valid = true;
+				glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX, destinationY,
+					width, rows, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, source);
+				return;
+			}
+			if (NamcosFrameRowsMatch(slot->rowGeneration, rowGeneration,
+				destinationY, 0, rows)) return;
+			UINT8 dirtyRows[1024];
+			INT32 changedRows = 0;
+			INT32 runCount = 0;
+			bool inRun = false;
+			for (INT32 y = 0; y < rows; y++) {
+				const UINT64 generation =
+					rowGeneration[(destinationY + y) & 0x3ff];
+				const bool changed = slot->rowGeneration[y] != generation;
+				slot->rowGeneration[y] = generation;
+				dirtyRows[y] = changed ? 1 : 0;
+				if (changed) {
+					changedRows++;
+					if (!inRun) runCount++;
+				}
+				inRun = changed;
+			}
+			slot->pixelCacheValid = false;
+			if (changedRows == 0) return;
+			if (changedRows * 3 >= rows) {
+				glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX, destinationY,
+					width, rows, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, source);
+				return;
+			}
+
+			INT32 mergedStart;
+			INT32 mergedRows;
+			if (NamcosFrameGetMergedDirtySpan(dirtyRows, rows, changedRows,
+				runCount, &mergedStart, &mergedRows)) {
+				glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX,
+					destinationY + mergedStart, width, mergedRows, GL_RGBA,
+					GL_UNSIGNED_SHORT_1_5_5_5_REV, source + mergedStart * 1024);
+				return;
+			}
+			NamcosFrameRowSpan spans[8];
+			const INT32 spanCount = NamcosFrameBuildUploadSpans(dirtyRows, rows,
+				(size_t)width * sizeof(UINT16), spans, 8);
+			for (INT32 i = 0; i < spanCount; i++) {
+				glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX,
+					destinationY + spans[i].start, width, spans[i].count, GL_RGBA,
+					GL_UNSIGNED_SHORT_1_5_5_5_REV,
+					source + spans[i].start * 1024);
+			}
+			return;
+		}
 
 		if (slot != NULL && slot->pixelCapacity < pixelCount) {
 			UINT16 *newPixels = (UINT16 *)realloc(slot->pixels,
@@ -3017,15 +4074,14 @@ private:
 		if (slot == NULL || !sameGeometry) {
 			if (slot != NULL) {
 				NamcosCopy16Rows(source, slot->pixels, width, rows, threadPool);
-				for (INT32 y = 0; y < rows; y++) {
-					slot->rowGeneration[y] = rowGeneration != NULL ?
-						rowGeneration[(destinationY + y) & 0x3ff] : 0;
-				}
+				NamcosFrameRememberUploadRows(slot->rowGeneration, rowGeneration,
+					destinationY, rows);
 				slot->destinationX = destinationX;
 				slot->destinationY = destinationY;
 				slot->width = width;
 				slot->rows = rows;
 				slot->denseFrames = 0;
+				slot->pixelCacheValid = true;
 				slot->valid = true;
 			}
 			glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX, destinationY,
@@ -3064,10 +4120,8 @@ private:
 					NamcosCopy16RowsSelected(source, slot->pixels, width, rows,
 						denseRows, denseChangedRows, threadPool, denseFirstRow,
 						denseLastRow - denseFirstRow + 1);
-					for (INT32 y = 0; y < rows; y++) {
-						slot->rowGeneration[y] =
-							rowGeneration[(destinationY + y) & 0x3ff];
-					}
+					NamcosFrameRememberUploadRows(slot->rowGeneration,
+						rowGeneration, destinationY, rows);
 				}
 				if (--slot->denseFrames == 0 && rowGeneration == NULL) {
 					NamcosCopy16Rows(source, slot->pixels, width, rows, threadPool);
@@ -3111,17 +4165,6 @@ private:
 				width, rows, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, source);
 			return;
 		}
-		if (runCount > 8) {
-			NamcosCopy16Rows(source, slot->pixels, width, rows, threadPool);
-			for (INT32 y = 0; y < rows; y++) {
-				slot->rowGeneration[y] = rowGeneration != NULL ?
-					rowGeneration[(destinationY + y) & 0x3ff] : 0;
-			}
-			glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX, destinationY,
-				width, rows, GL_RGBA, GL_UNSIGNED_SHORT_1_5_5_5_REV, source);
-			return;
-		}
-
 		NamcosCopy16RowsSelected(source, slot->pixels, width, rows,
 			dirtyRows, changedRows, threadPool, firstChangedRow,
 			lastChangedRow - firstChangedRow + 1);
@@ -3134,15 +4177,14 @@ private:
 				GL_UNSIGNED_SHORT_1_5_5_5_REV, source + mergedStart * 1024);
 			return;
 		}
-		for (INT32 y = 0; y < rows;) {
-			while (y < rows && !dirtyRows[y]) y++;
-			const INT32 start = y;
-			while (y < rows && dirtyRows[y]) y++;
-			if (start < y) {
-				glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX,
-					destinationY + start, width, y - start, GL_RGBA,
-					GL_UNSIGNED_SHORT_1_5_5_5_REV, source + start * 1024);
-			}
+		NamcosFrameRowSpan spans[8];
+		const INT32 spanCount = NamcosFrameBuildUploadSpans(dirtyRows, rows,
+			(size_t)width * sizeof(UINT16), spans, 8);
+		for (INT32 i = 0; i < spanCount; i++) {
+			glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX,
+				destinationY + spans[i].start, width, spans[i].count, GL_RGBA,
+				GL_UNSIGNED_SHORT_1_5_5_5_REV,
+				source + spans[i].start * 1024);
 		}
 	}
 
@@ -3327,26 +4369,22 @@ private:
 	UINT32 rasterPendingCount;
 	UINT32 rasterValidationCounter;
 	UINT32 rasterSampleValidationCounter;
+	UINT32 rasterUploadValidationCounter;
+	UINT32 rasterReadbackValidationCounter;
+	UINT32 readbackValidationCounter;
+	GLenum validatedReadFormat;
+	GLenum validatedReadType;
+	INT32 validatedReadPackAlignment;
+	INT32 validatedReadPackRowLength;
 	UINT32 lastRasterClearColor;
 	bool rasterClearColorValid;
 	GLint rasterPositionAttribute;
 	GLint rasterColorAttribute;
 	GLint rasterTextureAttribute;
+	GLint rasterStateAttribute;
+	GLint rasterTextureState0Attribute;
+	GLint rasterTextureState1Attribute;
 	GLint rasterSampleUniform;
-	GLint rasterTextureState0Uniform;
-	GLint rasterTextureState1Uniform;
-	GLint rasterFlagsUniform;
-	GLint rasterMaskUniform;
-	bool rasterTextureUniformValid;
-	UINT32 lastRasterTextureState[8];
-	bool rasterFlagsUniformValid;
-	bool lastRasterTextured;
-	bool lastRasterRawTexture;
-	bool lastRasterSemiTransparent;
-	UINT32 lastRasterAbr;
-	bool rasterMaskUniformValid;
-	bool lastRasterDrawStp;
-	bool lastRasterCheckStp;
 	bool rasterSampleTextureBound;
 	bool rasterScissorValid;
 	INT32 lastRasterScissorX;
@@ -3496,25 +4534,22 @@ public:
 		  rasterPendingCount(0),
 		  rasterValidationCounter(0),
 		  rasterSampleValidationCounter(0),
+		  rasterUploadValidationCounter(0),
+		  rasterReadbackValidationCounter(0),
+		  readbackValidationCounter(0),
+		  validatedReadFormat(0),
+		  validatedReadType(0),
+		  validatedReadPackAlignment(-1),
+		  validatedReadPackRowLength(-1),
 		  lastRasterClearColor(0),
 		  rasterClearColorValid(false),
 		  rasterPositionAttribute(-1),
 		  rasterColorAttribute(-1),
 		  rasterTextureAttribute(-1),
+		  rasterStateAttribute(-1),
+		  rasterTextureState0Attribute(-1),
+		  rasterTextureState1Attribute(-1),
 		  rasterSampleUniform(-1),
-		  rasterTextureState0Uniform(-1),
-		  rasterTextureState1Uniform(-1),
-		  rasterFlagsUniform(-1),
-		  rasterMaskUniform(-1),
-		  rasterTextureUniformValid(false),
-		  rasterFlagsUniformValid(false),
-		  lastRasterTextured(false),
-		  lastRasterRawTexture(false),
-		  lastRasterSemiTransparent(false),
-		  lastRasterAbr(0),
-		  rasterMaskUniformValid(false),
-		  lastRasterDrawStp(false),
-		  lastRasterCheckStp(false),
 		  rasterSampleTextureBound(false),
 		  rasterScissorValid(false),
 		  lastRasterScissorX(0),
@@ -3571,7 +4606,6 @@ public:
 		  available(false),
 		  failed(false)
 	{
-		memset(lastRasterTextureState, 0, sizeof(lastRasterTextureState));
 		for (INT32 i = 0; i < 2; i++) {
 			programs[i] = 0;
 			positionRectUniforms[i] = -1;
@@ -3651,9 +4685,9 @@ public:
 		const INT32 firstHeight = height < 1024 - startY ? height : 1024 - startY;
 
 		bool uploaded = false;
-		if ((eglGetCurrentContext() == context ||
-			eglMakeCurrent(display, surface, surface, context) == EGL_TRUE) &&
-			rasterTransferPixels != NULL &&
+		if (rasterTransferPixels != NULL &&
+			(rasterStateActive || eglGetCurrentContext() == context ||
+				eglMakeCurrent(display, surface, surface, context) == EGL_TRUE) &&
 			(!rasterStateActive || FlushEsRasterVertices())) {
 			SetUnpackAlignment(2);
 			SetUnpackRowLength(0);
@@ -3662,7 +4696,9 @@ public:
 			const INT32 xs[2] = { startX, 0 };
 			const INT32 ys[2] = { startY, 0 };
 
-			glGetError();
+			const bool validateUpload =
+				(rasterUploadValidationCounter++ & 0x3f) == 0;
+			if (validateUpload) glGetError();
 			glBindTexture(GL_TEXTURE_2D, rasterTexture);
 			uploaded = true;
 			for (INT32 yPart = 0; yPart < 2; yPart++) {
@@ -3680,7 +4716,7 @@ public:
 						rasterTransferPixels);
 				}
 			}
-			uploaded = glGetError() == GL_NO_ERROR;
+			uploaded = !validateUpload || glGetError() == GL_NO_ERROR;
 			if (uploaded) {
 				for (INT32 yPart = 0; yPart < 2; yPart++) {
 					for (INT32 xPart = 0; xPart < 2; xPart++) {
@@ -3739,9 +4775,10 @@ public:
 		if (!NamcosGlRasterDirtyIntersectsWrapped(&rasterDirty,
 			x, y, width, height)) return true;
 		const bool preserveRasterState = rasterStateActive;
-		if ((eglGetCurrentContext() != context &&
-			eglMakeCurrent(display, surface, surface, context) != EGL_TRUE) ||
-			rasterTransferPixels == NULL || !FlushEsRasterVertices()) {
+		if (rasterTransferPixels == NULL ||
+			(!rasterStateActive && eglGetCurrentContext() != context &&
+				eglMakeCurrent(display, surface, surface, context) != EGL_TRUE) ||
+			!FlushEsRasterVertices()) {
 			return SynchronizeVram(vram, generation, rowGeneration);
 		}
 
@@ -3753,7 +4790,10 @@ public:
 
 		glBindFramebuffer(GL_FRAMEBUFFER, rasterFramebuffer);
 		SetPackAlignment(rasterRead5551 ? 2 : 1);
-		glGetError();
+		SetPackRowLength(0);
+		const bool validateReadback =
+			(rasterReadbackValidationCounter++ & 0x3f) == 0;
+		if (validateReadback) glGetError();
 		for (INT32 i = 0; i < readCount; i++) {
 			const INT32 partWidth = readRects[i].x2 - readRects[i].x1 + 1;
 			const INT32 partHeight = readRects[i].y2 - readRects[i].y1 + 1;
@@ -3773,7 +4813,7 @@ public:
 					rasterThreadPool);
 			}
 		}
-		read = glGetError() == GL_NO_ERROR;
+		read = !validateReadback || glGetError() == GL_NO_ERROR;
 		if (!preserveRasterState) EndEsRasterState(true);
 		if (read) {
 			for (INT32 i = 0; i < readCount; i++) {
@@ -3809,18 +4849,16 @@ public:
 	{
 		if (!rasterVramSynchronized) return true;
 		const bool dirty = rasterDirty.valid;
-		const INT32 firstDirtyRow = dirty ? rasterDirty.y1 : 0;
-		const INT32 lastDirtyRow = dirty ? rasterDirty.y2 : -1;
 		// Read the completed framebuffer directly.  UploadEs3RasterVram()
 		// refreshes both raster textures if hardware rasterization resumes.
 		if (dirty && !FlushEsRasterVertices()) return false;
 		if (!ReadbackEs3RasterVram(vram)) return false;
-		if (rowGeneration != NULL && dirty) {
-			// GPU draws stay authoritative until this readback; commit rows once here.
-			rasterUploadTracker.SetAndRememberRange(rowGeneration, generation,
-				firstDirtyRow,
-				lastDirtyRow - firstDirtyRow + 1);
-		}
+		// CPU fallback commands may immediately modify the read-back rows.  Do
+		// not retain upload generations across this ownership transition or a
+		// following hardware packet can reuse stale texture rows.
+		(void)generation;
+		(void)rowGeneration;
+		rasterUploadTracker.Reset();
 		rasterVramSynchronized = false;
 		InvalidateUploadCaches();
 		return true;
@@ -3874,15 +4912,46 @@ public:
 			frame->sourceHeight <= 0 || frame->sourceHeight > 1024) {
 			return false;
 		}
+		void *outputDestination = directDestination != NULL ?
+			directDestination : (void *)frame->output;
+		const INT32 outputPitch = directDestination != NULL ?
+			directPitch : frame->outputWidth * 2;
+		const INT32 outputBytes = directDestination != NULL ? directBytes : 2;
+		const UINT32 *outputPalette = directDestination != NULL ? palette : NULL;
+		NamcosFrameObservedRows observedRows = { 0, 0, false };
+		if (outputFrameValid && NamcosFrameOutputMatches(&outputFrameKey, frame,
+			outputDestination, outputPitch, outputBytes, outputPalette,
+			outputRowGeneration, &observedRows)) {
+			return true;
+		}
+		INT32 readY = 0;
+		INT32 readHeight = frame->outputHeight;
+		UINT8 readDirtyRows[1024];
+		bool partialReadback = outputFrameValid &&
+			NamcosFrameGetPartialReadback(&outputFrameKey, frame,
+				outputDestination, outputPitch, outputBytes, outputPalette,
+				outputRowGeneration, &readY, &readHeight, readDirtyRows);
+		NamcosFrameRowSpan readSpans[4];
+		INT32 readSpanCount = partialReadback ?
+			NamcosFrameBuildUploadSpans(readDirtyRows, frame->outputHeight,
+				(size_t)frame->outputWidth * outputBytes, readSpans, 4, 65536) : 0;
+		if (partialReadback && !NamcosFrameReadbackSpansWorthwhile(readSpans,
+			readSpanCount, frame->outputHeight,
+			(size_t)frame->outputWidth * outputBytes, 65536)) {
+			partialReadback = false;
+			readY = 0;
+			readHeight = frame->outputHeight;
+			readSpanCount = 0;
+		}
 
 		if (!EnsureInitialized(frame->outputWidth, frame->outputHeight,
 			directBytes)) {
 			return false;
 		}
 
-		if ((eglGetCurrentContext() != context ||
-			eglGetCurrentSurface(EGL_DRAW) != surface ||
-			eglGetCurrentSurface(EGL_READ) != surface) &&
+		// The private ES context is only ever bound to this pbuffer surface.
+		// Avoid two eglGetCurrentSurface calls in the per-frame path.
+		if (eglGetCurrentContext() != context &&
 			!eglMakeCurrent(display, surface, surface, context)) {
 			Disable();
 			return false;
@@ -3909,22 +4978,10 @@ public:
 				return false;
 			}
 		}
-		void *outputDestination = directDestination != NULL ?
-			directDestination : (void *)frame->output;
-		const INT32 outputPitch = directDestination != NULL ?
-			directPitch : frame->outputWidth * 2;
-		const INT32 outputBytes = directDestination != NULL ? directBytes : 2;
-		const UINT32 *outputPalette = directDestination != NULL ? palette : NULL;
-		if (outputFrameValid && NamcosFrameOutputMatches(&outputFrameKey, frame,
-			outputDestination, outputPitch, outputBytes, outputPalette,
-			outputRowGeneration)) {
-			return true;
-		}
-
 		const bool rasterSource = rasterVramSynchronized && !rgb24;
 		if (!rasterSource && (!uploadFrameValid ||
 			!NamcosFrameUploadMatches(&uploadFrameKey, frame,
-				uploadRowGeneration))) {
+				uploadRowGeneration, &observedRows))) {
 			if (rgb24) {
 				SetUnpackAlignment(1);
 				SetUnpackRowLength(0);
@@ -3934,7 +4991,8 @@ public:
 				uploadSlotIndex = 0;
 				INT32 uploadFirstRow;
 				INT32 uploadRows;
-				NamcosFrameGetObservedRows(frame, &uploadFirstRow, &uploadRows);
+				NamcosFrameGetObservedRowsCached(frame, &observedRows,
+					&uploadFirstRow, &uploadRows);
 				const INT32 uploadX = frame->displayX & 0x3ff;
 				const INT32 uploadY = (frame->displayY + uploadFirstRow) & 0x3ff;
 				const INT32 firstColumns = frame->sourceWidth < 1024 - uploadX ?
@@ -3960,13 +5018,14 @@ public:
 				}
 			}
 			NamcosFrameRememberUpload(&uploadFrameKey, frame,
-				uploadRowGeneration);
+				uploadRowGeneration, &observedRows);
 			uploadFrameValid = true;
 		}
 
 		if (frame->outputShiftX != 0) {
 			glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
 			glClear(GL_COLOR_BUFFER_BIT);
+			rasterClearColorValid = false;
 		}
 
 		const GLfloat textureX = frame->rgb24 ? 0.0f : (GLfloat)frame->displayX;
@@ -4059,23 +5118,51 @@ public:
 		}
 		drawUniformsValid[sourceShaderIndex] = true;
 		if (rasterSource) glBindTexture(GL_TEXTURE_2D, rasterTexture);
-		glDrawArrays(GL_TRIANGLES, 0, 3);
+		if (partialReadback && readSpanCount > 0) {
+			glEnable(GL_SCISSOR_TEST);
+			for (INT32 span = 0; span < readSpanCount; span++) {
+				glScissor(0, readSpans[span].start, frame->outputWidth,
+					readSpans[span].count);
+				glDrawArrays(GL_TRIANGLES, 0, 3);
+			}
+			glDisable(GL_SCISSOR_TEST);
+		} else {
+			glDrawArrays(GL_TRIANGLES, 0, 3);
+		}
 		if (rasterSource) {
 			glBindTexture(GL_TEXTURE_2D, rgb24 ? rgbTexture : texture);
 		}
 		if (sourceShaderIndex != activeShaderIndex) glUseProgram(programs[activeShaderIndex]);
+		auto readDirectRows = [&](GLenum format, GLenum type,
+			UINT8 *destination, INT32 destinationPitch) {
+			if (partialReadback && readSpanCount > 1) {
+				for (INT32 span = 0; span < readSpanCount; span++) {
+					glReadPixels(0, readSpans[span].start, frame->outputWidth,
+						readSpans[span].count, format, type, destination +
+						(size_t)readSpans[span].start * destinationPitch);
+				}
+			} else {
+				glReadPixels(0, partialReadback ? readY : 0, frame->outputWidth,
+					partialReadback ? readHeight : frame->outputHeight,
+					format, type, destination +
+					(partialReadback ? (size_t)readY * destinationPitch : 0));
+			}
+		};
 
+		// Each readback path below consumes the accumulated GL error after
+		// glReadPixels.  Avoid an additional synchronous query on every frame.
 		if (readRgb565Supported && directPitch2 &&
 			NamcosPaletteIsRgb565(palette)) {
 			SetPackAlignment(2);
 			SetPackRowLength(directPitch / 2);
-			glReadPixels(0, 0, frame->outputWidth, frame->outputHeight,
-				GL_RGB, GL_UNSIGNED_SHORT_5_6_5, directDestination);
-			const GLenum readError = glGetError();
-			SetPackRowLength(0);
+			readDirectRows(GL_RGB, GL_UNSIGNED_SHORT_5_6_5,
+				directDestination, directPitch);
+			const GLenum readError = ValidateReadback(GL_RGB,
+				GL_UNSIGNED_SHORT_5_6_5) ? GL_NO_ERROR : GL_INVALID_OPERATION;
 			if (readError == GL_NO_ERROR) {
 				NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-					directPitch, directBytes, palette, outputRowGeneration);
+					directPitch, directBytes, palette, outputRowGeneration,
+					&observedRows);
 				outputFrameValid = true;
 				return true;
 			}
@@ -4085,13 +5172,14 @@ public:
 		if (directReadRgb) {
 			SetPackAlignment(1);
 			SetPackRowLength(directPitch / 3);
-			glReadPixels(0, 0, frame->outputWidth, frame->outputHeight,
-				GL_RGB, GL_UNSIGNED_BYTE, directDestination);
-			const GLenum readError = glGetError();
-			SetPackRowLength(0);
+			readDirectRows(GL_RGB, GL_UNSIGNED_BYTE,
+				directDestination, directPitch);
+			const GLenum readError = ValidateReadback(GL_RGB,
+				GL_UNSIGNED_BYTE) ? GL_NO_ERROR : GL_INVALID_OPERATION;
 			if (readError == GL_NO_ERROR) {
 				NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-					directPitch, directBytes, palette, outputRowGeneration);
+					directPitch, directBytes, palette, outputRowGeneration,
+					&observedRows);
 				outputFrameValid = true;
 				return true;
 			}
@@ -4104,15 +5192,16 @@ public:
 		if (directReadBgra) {
 			SetPackAlignment(4);
 			SetPackRowLength(directPitch / 4);
-			glReadPixels(0, 0, frame->outputWidth, frame->outputHeight,
-				GL_BGRA_EXT, GL_UNSIGNED_BYTE, directDestination);
-			const GLenum readError = glGetError();
-			SetPackRowLength(0);
+			readDirectRows(GL_BGRA_EXT, GL_UNSIGNED_BYTE,
+				directDestination, directPitch);
+			const GLenum readError = ValidateReadback(GL_BGRA_EXT,
+				GL_UNSIGNED_BYTE) ? GL_NO_ERROR : GL_INVALID_OPERATION;
 			if (readError != GL_NO_ERROR) {
 				readBgraSupported = false;
 			} else {
 				NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-					directPitch, directBytes, palette, outputRowGeneration);
+					directPitch, directBytes, palette, outputRowGeneration,
+					&observedRows);
 				outputFrameValid = true;
 				return true;
 			}
@@ -4121,16 +5210,17 @@ public:
 		if (directReadRgba) {
 			SetPackAlignment(4);
 			SetPackRowLength(directPitch / 4);
-			glReadPixels(0, 0, frame->outputWidth, frame->outputHeight,
-				GL_RGBA, GL_UNSIGNED_BYTE, directDestination);
-			const GLenum readError = glGetError();
-			SetPackRowLength(0);
+			readDirectRows(GL_RGBA, GL_UNSIGNED_BYTE,
+				directDestination, directPitch);
+			const GLenum readError = ValidateReadback(GL_RGBA,
+				GL_UNSIGNED_BYTE) ? GL_NO_ERROR : GL_INVALID_OPERATION;
 			if (readError != GL_NO_ERROR) {
 				Disable();
 				return false;
 			}
 			NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-				directPitch, directBytes, palette, outputRowGeneration);
+				directPitch, directBytes, palette, outputRowGeneration,
+				&observedRows);
 			outputFrameValid = true;
 			return true;
 		}
@@ -4140,22 +5230,26 @@ public:
 		if (nativeReadBgra && directPitch4) {
 			SetPackAlignment(4);
 			SetPackRowLength(directPitch / 4);
-			glReadPixels(0, 0, frame->outputWidth, frame->outputHeight,
-				GL_BGRA_EXT, GL_UNSIGNED_BYTE, directDestination);
-			const GLenum readError = glGetError();
-			SetPackRowLength(0);
+			readDirectRows(GL_BGRA_EXT, GL_UNSIGNED_BYTE,
+				directDestination, directPitch);
+			const GLenum readError = ValidateReadback(GL_BGRA_EXT,
+				GL_UNSIGNED_BYTE) ? GL_NO_ERROR : GL_INVALID_OPERATION;
 			if (readError != GL_NO_ERROR) {
 				Disable();
 				return false;
 			}
 			NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-				directPitch, directBytes, palette, outputRowGeneration);
+				directPitch, directBytes, palette, outputRowGeneration,
+				&observedRows);
 			outputFrameValid = true;
 			return true;
 		}
 
 		const bool nativeRead16 = nativeReadType == GL_UNSIGNED_SHORT_5_5_5_1 ||
 			nativeReadType == GL_UNSIGNED_SHORT_5_6_5;
+		const INT32 fallbackReadY = partialReadback ? readY : 0;
+		const INT32 fallbackReadRows = partialReadback ? readHeight :
+			frame->outputHeight;
 		const size_t bytes = (size_t)frame->outputWidth * frame->outputHeight *
 			(nativeRead16 ? 2 : 4);
 		UINT8 *readDestination = NULL;
@@ -4172,13 +5266,25 @@ public:
 			readDestination = readPixels;
 		}
 
+		const INT32 readBytesPerPixel = nativeRead16 ? 2 : 4;
+		const INT32 readPitch = readDestination == directDestination &&
+			directBytes > 0 ? directPitch : frame->outputWidth * readBytesPerPixel;
 		SetPackAlignment(nativeRead16 ? 2 : 1);
 		SetPackRowLength(readDestination == directDestination && directBytes > 0 ?
 			directPitch / directBytes : 0);
-		glReadPixels(0, 0, frame->outputWidth, frame->outputHeight,
-			nativeReadFormat, nativeReadType, readDestination);
-		const GLenum nativeReadError = glGetError();
-		SetPackRowLength(0);
+		if (partialReadback && readSpanCount > 1) {
+			for (INT32 span = 0; span < readSpanCount; span++) {
+				glReadPixels(0, readSpans[span].start, frame->outputWidth,
+					readSpans[span].count, nativeReadFormat, nativeReadType,
+					readDestination + (size_t)readSpans[span].start * readPitch);
+			}
+		} else {
+			glReadPixels(0, fallbackReadY, frame->outputWidth, fallbackReadRows,
+				nativeReadFormat, nativeReadType, readDestination +
+				(size_t)fallbackReadY * readPitch);
+		}
+		const GLenum nativeReadError = ValidateReadback(nativeReadFormat,
+			nativeReadType) ? GL_NO_ERROR : GL_INVALID_OPERATION;
 		if (nativeReadError != GL_NO_ERROR) {
 			Disable();
 			return false;
@@ -4188,65 +5294,110 @@ public:
 			if (nativeReadType == GL_UNSIGNED_SHORT_5_6_5 && directPitch2 &&
 				NamcosPaletteIsRgb565(palette)) {
 				NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-					directPitch, directBytes, palette, outputRowGeneration);
+					directPitch, directBytes, palette, outputRowGeneration,
+					&observedRows);
 				outputFrameValid = true;
 				return true;
 			}
-			if (directDestination != NULL && directPalette != palette) {
+			const bool directNativeRgb565 = directBytes == 2 &&
+				NamcosPaletteIsRgb565(palette);
+			const bool directNativeXrgb8888 = (directBytes == 3 || directBytes == 4) &&
+				NamcosPaletteIsXrgb8888(palette);
+			if (directDestination != NULL && !directNativeRgb565 &&
+				!directNativeXrgb8888 && directPalette != palette) {
 				PrepareDirectReadTable(palette);
 			}
-			NamcosGlReadConvertContext convertContext;
-			convertContext.source = readDestination;
-			convertContext.destination = directDestination;
-			convertContext.indexedDestination = frame->output;
-			convertContext.readTable = readTable;
-			convertContext.directReadTable = directReadTable;
-			convertContext.palette = palette;
-			convertContext.width = frame->outputWidth;
-			convertContext.sourcePitch = readDestination == directDestination ?
-				directPitch : frame->outputWidth * 2;
-			convertContext.destinationPitch = directPitch;
-			convertContext.destinationBytes = directBytes;
-			convertContext.redOffset = 0;
-			convertContext.blueOffset = 2;
-			NamcosGlConvertReadRows(frame, NamcosGlConvertNative16Rows,
-				&convertContext);
+			const INT32 convertSpanCount = partialReadback && readSpanCount > 1 ?
+				readSpanCount : 1;
+			for (INT32 span = 0; span < convertSpanCount; span++) {
+				const INT32 spanY = convertSpanCount > 1 ? readSpans[span].start :
+					fallbackReadY;
+				const INT32 spanRows = convertSpanCount > 1 ? readSpans[span].count :
+					fallbackReadRows;
+				NamcosGlReadConvertContext convertContext;
+				convertContext.source = readDestination + (size_t)spanY * readPitch;
+				convertContext.destination = directDestination != NULL ?
+					directDestination + (size_t)spanY * directPitch : NULL;
+				convertContext.indexedDestination = frame->output +
+					(size_t)spanY * frame->outputWidth;
+				convertContext.readTable = readTable;
+				convertContext.directReadTable = directReadTable;
+				convertContext.palette = palette;
+				convertContext.width = frame->outputWidth;
+				convertContext.sourcePitch = readPitch;
+				convertContext.destinationPitch = directPitch;
+				convertContext.destinationBytes = directBytes;
+				convertContext.redOffset = 0;
+				convertContext.blueOffset = 2;
+				convertContext.native5551 =
+					nativeReadType == GL_UNSIGNED_SHORT_5_5_5_1;
+				convertContext.directRgb565 = directNativeRgb565;
+				convertContext.directXrgb8888 = directNativeXrgb8888;
+				NamcosGlConvertReadRows(frame, NamcosGlConvertNative16Rows,
+					&convertContext, spanRows);
+			}
 			NamcosFrameRememberOutput(&outputFrameKey, frame, outputDestination,
-				outputPitch, outputBytes, outputPalette, outputRowGeneration);
+				outputPitch, outputBytes, outputPalette, outputRowGeneration,
+				&observedRows);
 			outputFrameValid = true;
 			return true;
 		}
 		if (nativeReadBgra && directBytes == 4) {
 			const size_t rowBytes = (size_t)frame->outputWidth * 4;
-			for (INT32 y = 0; y < frame->outputHeight; y++) {
-				memcpy(directDestination + y * directPitch,
-					readPixels + y * rowBytes, rowBytes);
+			const INT32 copySpanCount = partialReadback && readSpanCount > 1 ?
+				readSpanCount : 1;
+			for (INT32 span = 0; span < copySpanCount; span++) {
+				const INT32 spanY = copySpanCount > 1 ? readSpans[span].start :
+					fallbackReadY;
+				const INT32 spanRows = copySpanCount > 1 ? readSpans[span].count :
+					fallbackReadRows;
+				NamcosCopyPitchedRows(readDestination + (size_t)spanY * readPitch,
+					directDestination + (size_t)spanY * directPitch, rowBytes,
+					readPitch, directPitch, spanRows, frame->threadPool);
 			}
 			NamcosFrameRememberOutput(&outputFrameKey, frame, directDestination,
-				directPitch, directBytes, palette, outputRowGeneration);
+				directPitch, directBytes, palette, outputRowGeneration,
+				&observedRows);
 			outputFrameValid = true;
 			return true;
 		}
 
 		const INT32 redOffset = nativeReadBgra ? 2 : 0;
 		const INT32 blueOffset = nativeReadBgra ? 0 : 2;
-		NamcosGlReadConvertContext convertContext;
-		convertContext.source = readPixels;
-		convertContext.destination = directDestination;
-		convertContext.indexedDestination = frame->output;
-		convertContext.readTable = readTable;
-		convertContext.directReadTable = directReadTable;
-		convertContext.palette = palette;
-		convertContext.width = frame->outputWidth;
-		convertContext.sourcePitch = frame->outputWidth * 4;
-		convertContext.destinationPitch = directPitch;
-		convertContext.destinationBytes = directBytes;
-		convertContext.redOffset = redOffset;
-		convertContext.blueOffset = blueOffset;
-		NamcosGlConvertReadRows(frame, NamcosGlConvertRgbaRows, &convertContext);
+		const INT32 convertSpanCount = partialReadback && readSpanCount > 1 ?
+			readSpanCount : 1;
+		for (INT32 span = 0; span < convertSpanCount; span++) {
+			const INT32 spanY = convertSpanCount > 1 ? readSpans[span].start :
+				fallbackReadY;
+			const INT32 spanRows = convertSpanCount > 1 ? readSpans[span].count :
+				fallbackReadRows;
+			NamcosGlReadConvertContext convertContext;
+			convertContext.source = readDestination + (size_t)spanY * readPitch;
+			convertContext.destination = directDestination != NULL ?
+				directDestination + (size_t)spanY * directPitch : NULL;
+			convertContext.indexedDestination = frame->output +
+				(size_t)spanY * frame->outputWidth;
+			convertContext.readTable = readTable;
+			convertContext.directReadTable = directReadTable;
+			convertContext.palette = palette;
+			convertContext.width = frame->outputWidth;
+			convertContext.sourcePitch = readPitch;
+			convertContext.destinationPitch = directPitch;
+			convertContext.destinationBytes = directBytes;
+			convertContext.redOffset = redOffset;
+			convertContext.blueOffset = blueOffset;
+			convertContext.native5551 = 0;
+			convertContext.directRgb565 = directBytes == 2 &&
+				NamcosPaletteIsRgb565(palette);
+			convertContext.directXrgb8888 = (directBytes == 3 || directBytes == 4) &&
+				NamcosPaletteIsXrgb8888(palette);
+			NamcosGlConvertReadRows(frame, NamcosGlConvertRgbaRows,
+				&convertContext, spanRows);
+		}
 
 		NamcosFrameRememberOutput(&outputFrameKey, frame, outputDestination,
-			outputPitch, outputBytes, outputPalette, outputRowGeneration);
+			outputPitch, outputBytes, outputPalette, outputRowGeneration,
+			&observedRows);
 		outputFrameValid = true;
 		return true;
 	}
@@ -4320,6 +5471,11 @@ public:
 		viewportHeight = 0;
 		lastPackAlignment = -1;
 		lastPackRowLength = -1;
+		readbackValidationCounter = 0;
+		validatedReadFormat = 0;
+		validatedReadType = 0;
+		validatedReadPackAlignment = -1;
+		validatedReadPackRowLength = -1;
 		lastUnpackAlignment = -1;
 		lastUnpackRowLength = -1;
 		surfacePixelBytes = 0;
@@ -4345,6 +5501,22 @@ private:
 		if (lastPackAlignment == alignment) return;
 		glPixelStorei(GL_PACK_ALIGNMENT, alignment);
 		lastPackAlignment = alignment;
+	}
+
+	bool ValidateReadback(GLenum format, GLenum type)
+	{
+		const bool stateChanged = validatedReadFormat != format ||
+			validatedReadType != type ||
+			validatedReadPackAlignment != lastPackAlignment ||
+			validatedReadPackRowLength != lastPackRowLength;
+		if (stateChanged || (++readbackValidationCounter & 0x3f) == 0) {
+			if (glGetError() != GL_NO_ERROR) return false;
+			validatedReadFormat = format;
+			validatedReadType = type;
+			validatedReadPackAlignment = lastPackAlignment;
+			validatedReadPackRowLength = lastPackRowLength;
+		}
+		return true;
 	}
 
 	void SetPackRowLength(INT32 length)
@@ -4386,6 +5558,7 @@ private:
 		INT32 width;
 		INT32 rows;
 		UINT8 denseFrames;
+		bool pixelCacheValid;
 		bool valid;
 	};
 
@@ -4393,6 +5566,7 @@ private:
 	{
 		for (INT32 i = 0; i < 4; i++) {
 			uploadSlots[i].denseFrames = 0;
+			uploadSlots[i].pixelCacheValid = false;
 			uploadSlots[i].valid = false;
 		}
 		rgbCacheValid = false;
@@ -4555,6 +5729,8 @@ private:
 		rasterPendingCount = 0;
 		rasterValidationCounter = 0;
 		rasterSampleValidationCounter = 0;
+		rasterUploadValidationCounter = 0;
+		rasterReadbackValidationCounter = 0;
 		rasterClearColorValid = false;
 		rasterProgram = 0;
 		rasterFramebuffer = 0;
@@ -4563,14 +5739,10 @@ private:
 		rasterPositionAttribute = -1;
 		rasterColorAttribute = -1;
 		rasterTextureAttribute = -1;
+		rasterStateAttribute = -1;
+		rasterTextureState0Attribute = -1;
+		rasterTextureState1Attribute = -1;
 		rasterSampleUniform = -1;
-		rasterTextureState0Uniform = -1;
-		rasterTextureState1Uniform = -1;
-		rasterFlagsUniform = -1;
-		rasterMaskUniform = -1;
-		rasterTextureUniformValid = false;
-		rasterFlagsUniformValid = false;
-		rasterMaskUniformValid = false;
 		rasterSampleTextureBound = false;
 		rasterScissorValid = false;
 		rasterVramSynchronized = false;
@@ -4589,14 +5761,21 @@ private:
 			"in vec2 aPosition;\n"
 			"in vec3 aColor;\n"
 			"in vec2 aTexture;\n"
+			"in float aState;\n"
+			"in vec4 aTextureState0;\n"
+			"in vec4 aTextureState1;\n"
 			"out vec3 vColor;\n"
 			"out vec2 vTexture;\n"
+			"out float vState;\n"
+			"out vec4 vTextureAddress;\n"
+			"out vec4 vTextureControl;\n"
 			"void main() {\n"
 			" vec2 clip = vec2(aPosition.x / 512.0 - 1.0,"
 			" 1.0 - aPosition.y / 512.0);\n"
 			" gl_Position = vec4(clip, 0.0, 1.0);\n"
 			" vColor = aColor;\n"
-			" vTexture = aTexture;\n"
+			" vTexture = aTexture; vState = aState;\n"
+			" vTextureAddress = aTextureState0; vTextureControl = aTextureState1;\n"
 			"}\n";
 		static const GLchar fragmentSource[] =
 			"#version 300 es\n"
@@ -4604,15 +5783,16 @@ private:
 			"precision highp int;\n"
 			"in vec3 vColor;\n"
 			"in vec2 vTexture;\n"
+			"in float vState;\n"
+			"in vec4 vTextureAddress;\n"
+			"in vec4 vTextureControl;\n"
 			"uniform sampler2D uVram;\n"
-			"uniform vec4 uTextureState0;\n"
-			"uniform vec4 uTextureState1;\n"
-			"uniform vec4 uFlags;\n"
-			"uniform vec4 uMask;\n"
+			"#define uTextureState0 vec4(vTextureAddress.xy, vTextureControl.xy)\n"
+			"#define uTextureState1 vec4(vTextureControl.zw, vTextureAddress.zw)\n"
 			"out vec4 outputColor;\n"
 			"int wordAt(int x, int y) {\n"
 			" vec4 c = texelFetch(uVram, ivec2(x & 1023, 1023 - (y & 1023)), 0);\n"
-			" ivec3 q = ivec3(floor(c.rgb * 31.0 + 0.5));\n"
+			" ivec3 q = ivec3(c.rgb * 31.0 + 0.5);\n"
 			" return q.r | (q.g << 5) | (q.b << 10) | (c.a >= 0.5 ? 32768 : 0);\n"
 			"}\n"
 			"vec4 unpackWord(int word) {\n"
@@ -4620,8 +5800,8 @@ private:
 			"  float((word >> 10) & 31), (word & 32768) != 0 ? 1.0 : 0.0);\n"
 			"}\n"
 			"int textureWord() {\n"
-			" int u = int(floor(vTexture.x)) & int(uTextureState1.x);\n"
-			" int v = int(floor(vTexture.y)) & int(uTextureState1.y);\n"
+			" int u = int(vTexture.x) & ((int(uTextureState1.x) << 3) | 7);\n"
+			" int v = int(vTexture.y) & ((int(uTextureState1.y) << 3) | 7);\n"
 			" int tx = int(uTextureState0.x); int ty = int(uTextureState0.y);\n"
 			" int mode = int(uTextureState0.z); bool interleaved = uTextureState0.w != 0.0;\n"
 			" int x = tx; int y = (ty + (v & 255)) & 1023; int data;\n"
@@ -4641,48 +5821,63 @@ private:
 			" return 0;\n"
 			"}\n"
 			"void main() {\n"
-			" bool vramCopy = uFlags.x > 1.5; bool textured = uFlags.x > 0.5 && !vramCopy;\n"
-			" int texel = vramCopy ? wordAt(int(uTextureState0.x) + int(gl_FragCoord.x) - int(uTextureState0.z), int(uTextureState0.y) + 1023 - int(gl_FragCoord.y) - int(uTextureState0.w)) : (textured ? textureWord() : 0);\n"
+			" int state = int(vState + 0.5); bool textured = (state & 1) != 0; bool vramCopy = (state & 2) != 0;\n"
+			" if (state == 0 || state == 64) { outputColor = vec4(floor(clamp(vColor, 0.0, 1.0) * 31.0 + 0.5) / 31.0, state == 64 ? 1.0 : 0.0); return; }\n"
+			" int texel = vramCopy ? wordAt(int(vTextureAddress.x) + int(gl_FragCoord.x) - int(vTextureAddress.z), int(vTextureAddress.y) + 1023 - int(gl_FragCoord.y) - int(vTextureAddress.w)) : (textured ? textureWord() : 0);\n"
 			" if (textured && texel == 0) discard;\n"
 			" vec4 color = (textured || vramCopy) ? unpackWord(texel) : vec4(floor(clamp(vColor, 0.0, 1.0) * 31.0 + 0.5), 0.0);\n"
-			" if (textured && uFlags.y == 0.0) color.rgb = min(vec3(31.0), floor(color.rgb * floor(vColor * 255.0 + 0.5) / 128.0));\n"
-			" bool blend = uFlags.z != 0.0 && (!textured || (texel & 32768) != 0);\n"
+			" if (textured && (state & 4) == 0) color.rgb = min(vec3(31.0), floor(color.rgb * floor(vColor * 255.0 + 0.5) / 128.0));\n"
+			" bool blend = (state & 8) != 0 && (!textured || (texel & 32768) != 0);\n"
 			" int backgroundWord = 0;\n"
-			" if (uMask.y != 0.0 || blend) backgroundWord = wordAt(int(gl_FragCoord.x), 1023 - int(gl_FragCoord.y));\n"
-			" if (uMask.y != 0.0 && (backgroundWord & 32768) != 0) discard;\n"
+			" if ((state & 128) != 0 || blend) backgroundWord = wordAt(int(gl_FragCoord.x), 1023 - int(gl_FragCoord.y));\n"
+			" if ((state & 128) != 0 && (backgroundWord & 32768) != 0) discard;\n"
 			" if (blend) {\n"
-			"  vec3 bg = unpackWord(backgroundWord).rgb; int abr = int(uFlags.w);\n"
+			"  vec3 bg = unpackWord(backgroundWord).rgb; int abr = (state >> 4) & 3;\n"
 			"  if (abr == 0) color.rgb = floor(color.rgb * 0.5) + floor(bg * 0.5);\n"
 			"  else if (abr == 1) color.rgb = min(vec3(31.0), color.rgb + bg);\n"
 			"  else if (abr == 2) color.rgb = max(vec3(0.0), bg - color.rgb);\n"
 			"  else color.rgb = min(vec3(31.0), floor(color.rgb * 0.25) + bg);\n"
 			"  if (textured) color.a = 1.0; else color.a = 0.0;\n"
 			" }\n"
-			" if (uMask.x != 0.0) color.a = 1.0;\n"
+			" if ((state & 64) != 0) color.a = 1.0;\n"
 			" outputColor = vec4(color.rgb / 31.0, color.a);\n"
 			"}\n";
 		static const GLchar es2VertexSource[] =
 			"attribute vec2 aPosition;\n"
 			"attribute vec3 aColor;\n"
 			"attribute vec2 aTexture;\n"
+			"attribute float aState;\n"
+			"attribute vec4 aTextureState0;\n"
+			"attribute vec4 aTextureState1;\n"
 			"varying vec3 vColor;\n"
 			"varying vec2 vTexture;\n"
+			"varying vec4 vStateBits;\n"
+			"varying vec3 vStateControl;\n"
+			"varying vec4 vTextureAddress;\n"
+			"varying vec4 vTextureControl;\n"
 			"void main() {\n"
 			" vec2 clip = vec2(aPosition.x / 512.0 - 1.0, 1.0 - aPosition.y / 512.0);\n"
 			" gl_Position = vec4(clip, 0.0, 1.0);\n"
 			" vColor = aColor; vTexture = aTexture;\n"
+			" vStateBits = vec4(mod(aState, 2.0), mod(floor(aState * 0.5), 2.0),"
+			" mod(floor(aState * 0.25), 2.0), mod(floor(aState * 0.125), 2.0));\n"
+			" vStateControl = vec3(mod(floor(aState * 0.0625), 4.0),"
+			" mod(floor(aState * 0.015625), 2.0), step(127.5, aState));\n"
+			" vTextureAddress = aTextureState0; vTextureControl = aTextureState1;\n"
 			"}\n";
 		static const GLchar es2FragmentSource[] =
 			"precision highp float;\n"
 			"varying vec3 vColor;\n"
 			"varying vec2 vTexture;\n"
+			"varying vec4 vStateBits;\n"
+			"varying vec3 vStateControl;\n"
+			"varying vec4 vTextureAddress;\n"
+			"varying vec4 vTextureControl;\n"
 			"uniform sampler2D uVram;\n"
-			"uniform vec4 uTextureState0;\n"
-			"uniform vec4 uTextureState1;\n"
-			"uniform vec4 uFlags;\n"
-			"uniform vec4 uMask;\n"
-			"float window8(float a, float b) {\n"
-			" float ah = floor(a / 8.0); float bh = floor(b / 8.0);\n"
+			"#define uTextureState0 vec4(vTextureAddress.xy, vTextureControl.xy)\n"
+			"#define uTextureState1 vec4(vTextureControl.zw, vTextureAddress.zw)\n"
+			"float window8(float a, float bh) {\n"
+			" float ah = floor(a / 8.0);\n"
 			" vec4 weight = vec4(1.0, 2.0, 4.0, 8.0);\n"
 			" vec4 bits = mod(floor(ah / weight), 2.0) * mod(floor(bh / weight), 2.0);\n"
 			" float bit16 = mod(floor(ah / 16.0), 2.0) * mod(floor(bh / 16.0), 2.0);\n"
@@ -4703,8 +5898,8 @@ private:
 			"void textureWord(out vec4 textureColor) {\n"
 			" float sourceU = floor(vTexture.x); float sourceV = floor(vTexture.y);\n"
 			" float u = sourceU; float v = sourceV;\n"
-			" if (uTextureState1.x < 254.5) u = window8(sourceU, uTextureState1.x);\n"
-			" if (uTextureState1.y < 254.5) v = window8(sourceV, uTextureState1.y);\n"
+			" if (uTextureState1.x < 30.5) u = window8(sourceU, uTextureState1.x);\n"
+			" if (uTextureState1.y < 30.5) v = window8(sourceV, uTextureState1.y);\n"
 			" float tx = uTextureState0.x; float ty = uTextureState0.y;\n"
 			" float mode = uTextureState0.z; bool interleaved = uTextureState0.w != 0.0;\n"
 			" float x = tx; float y = mod(ty + v, 1024.0); float data;\n"
@@ -4726,25 +5921,26 @@ private:
 			" textureColor = vec4(0.0);\n"
 			"}\n"
 			"void main() {\n"
-			" bool vramCopy = uFlags.x > 1.5; bool textured = uFlags.x > 0.5 && !vramCopy; vec4 textureColor = vec4(0.0);\n"
-			" if (vramCopy) textureColor = colorAt(uTextureState0.x + floor(gl_FragCoord.x) - uTextureState0.z, uTextureState0.y + 1023.0 - floor(gl_FragCoord.y) - uTextureState0.w);\n"
+			" bool textured = vStateBits.x >= 0.5; bool vramCopy = vStateBits.y >= 0.5; vec4 textureColor = vec4(0.0);\n"
+			" if (dot(vStateBits, vec4(1.0)) < 0.5 && vStateControl.x < 0.5 && vStateControl.z < 0.5) { gl_FragColor = vec4(floor(clamp(vColor, 0.0, 1.0) * 31.0 + 0.5) / 31.0, vStateControl.y); return; }\n"
+			" if (vramCopy) textureColor = colorAt(vTextureAddress.x + floor(gl_FragCoord.x) - vTextureAddress.z, vTextureAddress.y + 1023.0 - floor(gl_FragCoord.y) - vTextureAddress.w);\n"
 			" if (textured) textureWord(textureColor);\n"
 			" if (textured && dot(textureColor, vec4(1.0)) < 0.5) discard;\n"
 			" vec4 color = (textured || vramCopy) ? textureColor : vec4(floor(clamp(vColor, 0.0, 1.0) * 31.0 + 0.5), 0.0);\n"
-			" if (textured && uFlags.y == 0.0) color.rgb = min(vec3(31.0), floor(color.rgb * floor(vColor * 255.0 + 0.5) / 128.0));\n"
-			" bool blend = uFlags.z != 0.0 && (!textured || textureColor.a >= 0.5);\n"
+			" if (textured && vStateBits.z < 0.5) color.rgb = min(vec3(31.0), floor(color.rgb * floor(vColor * 255.0 + 0.5) / 128.0));\n"
+			" bool blend = vStateBits.w >= 0.5 && (!textured || textureColor.a >= 0.5);\n"
 			" vec4 backgroundColor = vec4(0.0);\n"
-			" if (uMask.y != 0.0 || blend) backgroundColor = colorAt(floor(gl_FragCoord.x), 1023.0 - floor(gl_FragCoord.y));\n"
-			" if (uMask.y != 0.0 && backgroundColor.a >= 0.5) discard;\n"
+			" if (vStateControl.z >= 0.5 || blend) backgroundColor = colorAt(floor(gl_FragCoord.x), 1023.0 - floor(gl_FragCoord.y));\n"
+			" if (vStateControl.z >= 0.5 && backgroundColor.a >= 0.5) discard;\n"
 			" if (blend) {\n"
-			"  vec3 bg = backgroundColor.rgb; float abr = uFlags.w;\n"
+			"  vec3 bg = backgroundColor.rgb; float abr = vStateControl.x;\n"
 			"  if (abr < 0.5) color.rgb = floor(color.rgb * 0.5) + floor(bg * 0.5);\n"
 			"  else if (abr < 1.5) color.rgb = min(vec3(31.0), color.rgb + bg);\n"
 			"  else if (abr < 2.5) color.rgb = max(vec3(0.0), bg - color.rgb);\n"
 			"  else color.rgb = min(vec3(31.0), floor(color.rgb * 0.25) + bg);\n"
 			"  color.a = textured ? 1.0 : 0.0;\n"
 			" }\n"
-			" if (uMask.x != 0.0) color.a = 1.0;\n"
+			" if (vStateControl.y >= 0.5) color.a = 1.0;\n"
 			" gl_FragColor = vec4(color.rgb / 31.0, color.a);\n"
 			"}\n";
 		const GLuint vertex = CompileShader(GL_VERTEX_SHADER,
@@ -4775,25 +5971,21 @@ private:
 			"aPosition");
 		rasterColorAttribute = glGetAttribLocation(rasterProgram, "aColor");
 		rasterTextureAttribute = glGetAttribLocation(rasterProgram, "aTexture");
+		rasterStateAttribute = glGetAttribLocation(rasterProgram, "aState");
+		rasterTextureState0Attribute = glGetAttribLocation(rasterProgram,
+			"aTextureState0");
+		rasterTextureState1Attribute = glGetAttribLocation(rasterProgram,
+			"aTextureState1");
 		rasterSampleUniform = glGetUniformLocation(rasterProgram, "uVram");
-		rasterTextureState0Uniform = glGetUniformLocation(rasterProgram,
-			"uTextureState0");
-		rasterTextureState1Uniform = glGetUniformLocation(rasterProgram,
-			"uTextureState1");
-		rasterFlagsUniform = glGetUniformLocation(rasterProgram, "uFlags");
-		rasterMaskUniform = glGetUniformLocation(rasterProgram, "uMask");
 		if (rasterPositionAttribute < 0 || rasterColorAttribute < 0 ||
-			rasterTextureAttribute < 0 || rasterSampleUniform < 0 ||
-			rasterTextureState0Uniform < 0 || rasterTextureState1Uniform < 0 ||
-			rasterFlagsUniform < 0 || rasterMaskUniform < 0) {
+			rasterTextureAttribute < 0 || rasterStateAttribute < 0 ||
+			rasterTextureState0Attribute < 0 ||
+			rasterTextureState1Attribute < 0 || rasterSampleUniform < 0) {
 			DestroyEs3RasterizerResources();
 			return false;
 		}
 		glUseProgram(rasterProgram);
 		glUniform1i(rasterSampleUniform, 0);
-		glUniform4f(rasterTextureState0Uniform, 0.0f, 0.0f, 0.0f, 0.0f);
-		glUniform4f(rasterTextureState1Uniform, 0.0f, 0.0f, 0.0f, 0.0f);
-		glUniform4f(rasterFlagsUniform, 0.0f, 0.0f, 0.0f, 0.0f);
 		glUseProgram(programs[activeShaderIndex]);
 
 		glGenTextures(1, &rasterTexture);
@@ -4844,6 +6036,12 @@ private:
 			return false;
 		}
 		glBindBuffer(GL_ARRAY_BUFFER, rasterVertexBuffer);
+		glEnableVertexAttribArray(rasterPositionAttribute);
+		glEnableVertexAttribArray(rasterColorAttribute);
+		glEnableVertexAttribArray(rasterTextureAttribute);
+		glEnableVertexAttribArray(rasterStateAttribute);
+		glEnableVertexAttribArray(rasterTextureState0Attribute);
+		glEnableVertexAttribArray(rasterTextureState1Attribute);
 		glBufferData(GL_ARRAY_BUFFER,
 			sizeof(NamcosGlRasterDrawVertex) *
 				NAMCOS_GL_RASTER_STREAM_VERTICES, NULL,
@@ -4865,9 +6063,6 @@ private:
 		glEnable(GL_SCISSOR_TEST);
 		glUseProgram(rasterProgram);
 		glBindBuffer(GL_ARRAY_BUFFER, rasterVertexBuffer);
-		glEnableVertexAttribArray(rasterPositionAttribute);
-		glEnableVertexAttribArray(rasterColorAttribute);
-		glEnableVertexAttribArray(rasterTextureAttribute);
 		glVertexAttribPointer(rasterPositionAttribute, 2, GL_SHORT, GL_FALSE,
 			sizeof(NamcosGlRasterDrawVertex),
 			(const void *)offsetof(NamcosGlRasterDrawVertex, x));
@@ -4877,12 +6072,18 @@ private:
 		glVertexAttribPointer(rasterTextureAttribute, 2, GL_UNSIGNED_BYTE, GL_FALSE,
 			sizeof(NamcosGlRasterDrawVertex),
 			(const void *)offsetof(NamcosGlRasterDrawVertex, u));
+		glVertexAttribPointer(rasterStateAttribute, 1, GL_UNSIGNED_BYTE, GL_FALSE,
+			sizeof(NamcosGlRasterDrawVertex),
+			(const void *)offsetof(NamcosGlRasterDrawVertex, padding));
+		glVertexAttribPointer(rasterTextureState0Attribute, 4, GL_SHORT,
+			GL_FALSE, sizeof(NamcosGlRasterDrawVertex),
+			(const void *)offsetof(NamcosGlRasterDrawVertex, textureState0));
+		glVertexAttribPointer(rasterTextureState1Attribute, 4, GL_UNSIGNED_BYTE,
+			GL_FALSE, sizeof(NamcosGlRasterDrawVertex),
+			(const void *)offsetof(NamcosGlRasterDrawVertex, textureControl0));
 		rasterSampleTextureBound = false;
-		rasterScissorValid = false;
-		rasterClearColorValid = false;
-		rasterStateActive = glGetError() == GL_NO_ERROR;
-		if (!rasterStateActive) EndEsRasterState(true);
-		return rasterStateActive;
+		rasterStateActive = true;
+		return true;
 	}
 
 	bool FlushEsRasterVertices()
@@ -4919,36 +6120,50 @@ private:
 		glUseProgram(programs[activeShaderIndex]);
 		glBindTexture(GL_TEXTURE_2D, texture);
 		rasterSampleTextureBound = false;
-		rasterScissorValid = false;
 		rasterStateActive = false;
 	}
 
-	bool SynchronizeEsRasterSample()
+	bool SynchronizeEsRasterSample(const NamcosGlRasterRect *selectedRects = NULL,
+		INT32 selectedCount = 0, bool selectedCoversAllDirty = false)
 	{
 		if (!FlushEsRasterVertices()) return false;
 		if (!rasterSampleTextureBound) {
 			glBindTexture(GL_TEXTURE_2D, rasterSampleTexture);
 			rasterSampleTextureBound = true;
 		}
-		if (!rasterSampleValid) {
+		const bool completeSync = !rasterSampleValid;
+		if (completeSync) {
 			glCopyTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, 0, 0,
 				1024, 1024);
+			rasterSampleDirty.Reset();
 		} else if (rasterSampleDirty.valid) {
 			NamcosGlRasterRect rects[NAMCOS_GL_RASTER_DIRTY_RECTS];
-			const INT32 count = rasterSampleDirty.GetCopyRects(rects,
-				NAMCOS_GL_RASTER_DIRTY_RECTS, 16384);
+			const bool selective = selectedRects != NULL && selectedCount > 0;
+			const INT32 count = selective ? selectedCount :
+				rasterSampleDirty.GetCopyRects(rects,
+					NAMCOS_GL_RASTER_DIRTY_RECTS, 65536);
 			for (INT32 i = 0; i < count; i++) {
-				const INT32 width = rects[i].x2 - rects[i].x1 + 1;
-				const INT32 height = rects[i].y2 - rects[i].y1 + 1;
-				const INT32 glY = 1024 - rects[i].y2 - 1;
+				const NamcosGlRasterRect &rect = selective ? selectedRects[i] :
+					rects[i];
+				const INT32 width = rect.x2 - rect.x1 + 1;
+				const INT32 height = rect.y2 - rect.y1 + 1;
+				const INT32 glY = 1024 - rect.y2 - 1;
 				glCopyTexSubImage2D(GL_TEXTURE_2D, 0,
-					rects[i].x1, glY, rects[i].x1, glY, width, height);
+					rect.x1, glY, rect.x1, glY, width, height);
+			}
+			if (selective && !selectedCoversAllDirty) {
+				for (INT32 i = 0; i < count; i++) {
+					rasterSampleDirty.Exclude(selectedRects[i].x1,
+						selectedRects[i].y1, selectedRects[i].x2,
+						selectedRects[i].y2);
+				}
+			} else {
+				rasterSampleDirty.Reset();
 			}
 		}
 		if ((++rasterSampleValidationCounter & 0xff) == 0 &&
 			glGetError() != GL_NO_ERROR) return false;
 		rasterSampleValid = true;
-		rasterSampleDirty.Reset();
 		return true;
 	}
 
@@ -5050,8 +6265,41 @@ private:
 		}
 		const bool checkStp = !fill && packet->state.checkStp != 0;
 		if (textured || vramCopy || primitive->semiTransparent || checkStp) {
+			NamcosGlRasterRect selected[NAMCOS_GL_RASTER_DIRTY_RECTS];
+			const bool selectiveDestination = !textured && !vramCopy &&
+				(primitive->semiTransparent || checkStp);
+			const bool selectiveVramCopy = vramCopy &&
+				!primitive->semiTransparent && !checkStp;
+			const bool selectiveTexture = textured &&
+				!primitive->semiTransparent && !checkStp;
+			INT32 selectedCount = 0;
+			bool selectedCoversAllDirty = false;
 			bool synchronizeSample = !rasterSampleValid;
-			if (!synchronizeSample &&
+			if (!synchronizeSample && selectiveTexture) {
+				bool dependencyKnown = false;
+				selectedCount = NamcosGlRasterBuildTextureSelectiveCopyRects(
+					textureState, primitive, &rasterSampleDirty, selected,
+					NAMCOS_GL_RASTER_DIRTY_RECTS, &selectedCoversAllDirty,
+					&dependencyKnown);
+				synchronizeSample = dependencyKnown ? selectedCount > 0 :
+					NamcosGlRasterTextureStateReadsDirty(textureState,
+						&rasterSampleDirty);
+			} else if (!synchronizeSample &&
+				(selectiveDestination || selectiveVramCopy)) {
+				const INT32 selectedX = selectiveVramCopy ?
+					primitive->sourceX : x1;
+				const INT32 selectedY = selectiveVramCopy ?
+					primitive->sourceY : y1;
+				const INT32 selectedWidth = selectiveVramCopy ?
+					primitive->width : x2 - x1 + 1;
+				const INT32 selectedHeight = selectiveVramCopy ?
+					primitive->height : y2 - y1 + 1;
+				selectedCount = NamcosGlRasterBuildSelectiveCopyRects(
+					&rasterSampleDirty, selectedX, selectedY, selectedWidth,
+					selectedHeight, selected, NAMCOS_GL_RASTER_DIRTY_RECTS,
+					&selectedCoversAllDirty);
+				synchronizeSample = selectedCount > 0;
+			} else if (!synchronizeSample &&
 				(primitive->semiTransparent || checkStp)) {
 				synchronizeSample = rasterSampleDirty.Intersects(x1, y1, x2, y2);
 			}
@@ -5061,76 +6309,46 @@ private:
 					primitive->sourceX + primitive->width - 1,
 					primitive->sourceY + primitive->height - 1);
 			}
-			if (!synchronizeSample && textured) {
+			if (!synchronizeSample && textured && !selectiveTexture) {
 				synchronizeSample = NamcosGlRasterTexturePrimitiveReadsDirty(
 					textureState, primitive, &rasterSampleDirty);
 			}
 			if (synchronizeSample) {
-				if (!SynchronizeEsRasterSample()) return false;
+				if (!SynchronizeEsRasterSample(selectedCount > 0 ? selected : NULL,
+					selectedCount, selectedCoversAllDirty)) return false;
 			} else if (!rasterSampleTextureBound) {
 				glBindTexture(GL_TEXTURE_2D, rasterSampleTexture);
 				rasterSampleTextureBound = true;
-			}
-			if (textured || vramCopy) {
-				if (vramCopy || !rasterTextureUniformValid || memcmp(textureState,
-					lastRasterTextureState, sizeof(textureState)) != 0) {
-					if (!FlushEsRasterVertices()) return false;
-					glUniform4f(rasterTextureState0Uniform,
-						(GLfloat)textureState[0], (GLfloat)textureState[1],
-						(GLfloat)textureState[2], (GLfloat)textureState[3]);
-					glUniform4f(rasterTextureState1Uniform,
-						(GLfloat)textureState[4], (GLfloat)textureState[5],
-						(GLfloat)textureState[6], (GLfloat)textureState[7]);
-					memcpy(lastRasterTextureState, textureState,
-						sizeof(textureState));
-					rasterTextureUniformValid = true;
-				}
 			}
 		}
 		const bool rawTexture = textured && primitive->rawTexture;
 		const UINT32 blendTpage = textured ? primitive->tpage : packet->state.tpage;
 		const UINT32 abr = primitive->semiTransparent ? (blendTpage >>
 			(packet->state.gpuType == 2 ? 5 : 7)) & 3 : 0;
-		if (vramCopy || !rasterFlagsUniformValid || lastRasterTextured != textured ||
-			lastRasterRawTexture != rawTexture ||
-			lastRasterSemiTransparent != primitive->semiTransparent ||
-			lastRasterAbr != abr) {
-			if (!FlushEsRasterVertices()) return false;
-			glUniform4f(rasterFlagsUniform, vramCopy ? 2.0f : (textured ? 1.0f : 0.0f),
-				rawTexture ? 1.0f : 0.0f,
-				primitive->semiTransparent ? 1.0f : 0.0f, (GLfloat)abr);
-			lastRasterTextured = textured;
-			lastRasterRawTexture = rawTexture;
-			lastRasterSemiTransparent = primitive->semiTransparent;
-			lastRasterAbr = abr;
-			rasterFlagsUniformValid = true;
-		}
 		const bool drawStp = !fill && packet->state.drawStp != 0;
 		const bool maskCheck = checkStp;
-		if (!rasterMaskUniformValid || lastRasterDrawStp != drawStp ||
-			lastRasterCheckStp != maskCheck) {
-			if (!FlushEsRasterVertices()) return false;
-			glUniform4f(rasterMaskUniform, drawStp ? 1.0f : 0.0f,
-				maskCheck ? 1.0f : 0.0f, 0.0f, 0.0f);
-			lastRasterDrawStp = drawStp;
-			lastRasterCheckStp = maskCheck;
-			rasterMaskUniformValid = true;
-		}
 		if (rasterPendingCount + 6 > NAMCOS_GL_RASTER_BATCH_VERTICES &&
 			!FlushEsRasterVertices()) return false;
 		const UINT32 count = textured ? NamcosGlRasterBuildTexturedTriangles(
 			primitive, rasterPendingVertices + rasterPendingCount, 6) :
 			NamcosGlRasterBuildColorTriangles(primitive,
 				rasterPendingVertices + rasterPendingCount, 6);
-		if (count == 0) return false;
-		rasterPendingCount += count;
-		// A later overlapping draw triggers sample synchronization before use.
-		// Non-overlapping semi-transparent primitives can remain in this batch.
-		if (vramCopy && !FlushEsRasterVertices()) return false;
-		if (vramCopy) {
-			rasterFlagsUniformValid = false;
-			rasterTextureUniformValid = false;
+		if (count == 0) {
+			return primitive->type == NAMCOS_GL_RASTER_FLAT_POLYGON ||
+				primitive->type == NAMCOS_GL_RASTER_GOURAUD_POLYGON ||
+				primitive->type == NAMCOS_GL_RASTER_TEXTURED_POLYGON;
 		}
+		const UINT8 vertexState = (textured ? 0x01 : 0) |
+			(vramCopy ? 0x02 : 0) | (rawTexture ? 0x04 : 0) |
+			(primitive->semiTransparent ? 0x08 : 0) | ((abr & 3) << 4) |
+			(drawStp ? 0x40 : 0) | (maskCheck ? 0x80 : 0);
+		NamcosGlRasterSetVertexStates(
+			rasterPendingVertices + rasterPendingCount, count,
+			vertexState, textureState, textured, vramCopy);
+		rasterPendingCount += count;
+		// A VRAM copy can feed a later transfer through wrapped coordinates that
+		// are not represented by one dirty rectangle.  Preserve command order.
+		if (vramCopy && !FlushEsRasterVertices()) return false;
 		rasterDirty.Include(x1, y1, x2, y2);
 		if (rasterSampleValid) rasterSampleDirty.Include(x1, y1, x2, y2);
 		outputFrameValid = false;
@@ -5160,13 +6378,20 @@ private:
 			INT32 rows;
 			spanCount = NamcosGlRasterBuildUploadSpans(
 				&rasterUploadTracker, rowGeneration, spans,
-				NAMCOS_GL_RASTER_UPLOAD_SPANS, &first, &rows, 16);
+				NAMCOS_GL_RASTER_UPLOAD_SPANS, &first, &rows, 32);
 			if (spanCount < 0) {
 				spanCount = 1;
 				spans[0].firstRow = first;
 				spans[0].rowCount = rows;
 			}
 		}
+		if (spanCount == 0) {
+			rasterVramSynchronized = true;
+			return true;
+		}
+		const bool validateUpload =
+			(rasterUploadValidationCounter++ & 0x3f) == 0;
+		if (validateUpload) glGetError();
 		if (spanCount > 0) {
 			glBindTexture(GL_TEXTURE_2D, rasterTexture);
 			for (INT32 span = 0; span < spanCount; span++) {
@@ -5191,8 +6416,17 @@ private:
 			}
 			rasterSampleTextureBound = false;
 		}
-		const bool uploaded = glGetError() == GL_NO_ERROR;
-		if (uploaded) rasterUploadTracker.RememberAll(rowGeneration);
+		const bool uploaded = !validateUpload || glGetError() == GL_NO_ERROR;
+		if (uploaded) {
+			if (rowGeneration == NULL) {
+				rasterUploadTracker.Reset();
+			} else {
+				for (INT32 span = 0; span < spanCount; span++) {
+					rasterUploadTracker.RememberRange(rowGeneration,
+						spans[span].firstRow, spans[span].rowCount);
+				}
+			}
+		}
 		glBindTexture(GL_TEXTURE_2D, texture);
 		rasterVramSynchronized = uploaded;
 		if (uploaded) {
@@ -5216,7 +6450,10 @@ private:
 		bool read = rectCount > 0;
 		glBindFramebuffer(GL_FRAMEBUFFER, rasterFramebuffer);
 		SetPackAlignment(rasterRead5551 ? 2 : 1);
-		glGetError();
+		SetPackRowLength(0);
+		const bool validateReadback =
+			(rasterReadbackValidationCounter++ & 0x3f) == 0;
+		if (validateReadback) glGetError();
 		for (INT32 i = 0; i < rectCount; i++) {
 			const INT32 width = rects[i].x2 - rects[i].x1 + 1;
 			const INT32 height = rects[i].y2 - rects[i].y1 + 1;
@@ -5233,7 +6470,7 @@ private:
 					rects[i].x1, rects[i].y1, width, height, rasterThreadPool);
 			}
 		}
-		read = glGetError() == GL_NO_ERROR;
+		read = !validateReadback || glGetError() == GL_NO_ERROR;
 		EndEsRasterState(true);
 		if (read) rasterDirty.Reset();
 		return read;
@@ -5266,9 +6503,7 @@ private:
 
 		if (!rgbCacheValid || rgbCacheWidth != width || rgbCacheHeight != rows ||
 			rgbCacheDisplayX != frame->displayX || rgbCacheDisplayY != frame->displayY) {
-			NamcosPackRgb24(frame, rgbUploadPixels);
-			NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-				rows, NULL, rows, frame->threadPool);
+			NamcosPackRgb24(frame, rgbUploadCache);
 			rgbCacheWidth = width;
 			rgbCacheHeight = rows;
 			rgbCacheDisplayX = frame->displayX;
@@ -5282,7 +6517,7 @@ private:
 			rgbCacheValid = true;
 			rgbDenseFrames = 0;
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, rows,
-				GL_RGB, GL_UNSIGNED_BYTE, rgbUploadPixels);
+				GL_RGB, GL_UNSIGNED_BYTE, rgbUploadCache);
 			return;
 		}
 		if (frame->vramRowGeneration != NULL &&
@@ -5312,11 +6547,8 @@ private:
 				denseChangedRows = observedRows;
 			}
 			if (rgbDenseFrames != 0) {
-				NamcosPackRgb24Selected(frame, rgbUploadPixels, denseRows,
+				NamcosPackRgb24Selected(frame, rgbUploadCache, denseRows,
 					denseChangedRows, observedFirst, observedRows);
-				NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-					rows, denseRows, denseChangedRows, frame->threadPool,
-					observedFirst, observedRows);
 				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, observedFirst, width,
 					observedRows, GL_RGB, GL_UNSIGNED_BYTE,
 					rgbUploadCache + (size_t)observedFirst * rowBytes);
@@ -5361,6 +6593,8 @@ private:
 			if (candidate) rgbRowGeneration[y] = generation;
 			dirtyRows[y] = changed ? 1 : 0;
 			if (changed) {
+				memcpy(rgbUploadCache + (size_t)y * rowBytes,
+					rgbUploadPixels + (size_t)y * rowBytes, rowBytes);
 				changedRows++;
 				if (!inRun) runCount++;
 			}
@@ -5370,27 +6604,11 @@ private:
 
 		if (changedRows * 3 >= observedRows) {
 			rgbDenseFrames = 7;
-			NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-				rows, dirtyRows, changedRows, frame->threadPool,
-				observedFirst, observedRows);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, observedFirst, width, observedRows,
 				GL_RGB, GL_UNSIGNED_BYTE,
 				rgbUploadCache + (size_t)observedFirst * rowBytes);
 			return;
 		}
-		if (runCount > 8) {
-			NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-				rows, dirtyRows, changedRows, frame->threadPool,
-				observedFirst, observedRows);
-			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, observedFirst, width, observedRows,
-				GL_RGB, GL_UNSIGNED_BYTE,
-				rgbUploadCache + (size_t)observedFirst * rowBytes);
-			return;
-		}
-
-		NamcosCopyPackedRows(rgbUploadPixels, rgbUploadCache, rowBytes,
-			rows, dirtyRows, changedRows, frame->threadPool,
-			observedFirst, observedRows);
 		INT32 mergedStart;
 		INT32 mergedRows;
 		if (NamcosFrameGetMergedDirtySpan(dirtyRows, rows, changedRows, runCount,
@@ -5400,15 +6618,13 @@ private:
 				rgbUploadCache + (size_t)mergedStart * rowBytes);
 			return;
 		}
-		for (INT32 y = 0; y < rows;) {
-			while (y < rows && !dirtyRows[y]) y++;
-			const INT32 start = y;
-			while (y < rows && dirtyRows[y]) y++;
-			if (start < y) {
-				glTexSubImage2D(GL_TEXTURE_2D, 0, 0, start, width, y - start,
-					GL_RGB, GL_UNSIGNED_BYTE,
-					rgbUploadPixels + (size_t)start * rowBytes);
-			}
+		NamcosFrameRowSpan spans[8];
+		const INT32 spanCount = NamcosFrameBuildUploadSpans(dirtyRows, rows,
+			rowBytes, spans, 8);
+		for (INT32 i = 0; i < spanCount; i++) {
+			glTexSubImage2D(GL_TEXTURE_2D, 0, 0, spans[i].start, width,
+				spans[i].count, GL_RGB, GL_UNSIGNED_BYTE,
+				rgbUploadCache + (size_t)spans[i].start * rowBytes);
 		}
 	}
 
@@ -5654,8 +6870,10 @@ private:
 	void UploadRows(const UINT16 *source, INT32 destinationX, INT32 destinationY,
 		INT32 width, INT32 rows, NamcosPolyThreadPool *threadPool)
 	{
-		if (width == 1024 || unpackSubimage) {
-			SetUnpackRowLength(width == 1024 ? 0 : 1024);
+		// A single source row is already contiguous even without
+		// GL_EXT_unpack_subimage, so it does not need a staging copy.
+		if (rows == 1 || width == 1024 || unpackSubimage) {
+			SetUnpackRowLength(rows == 1 || width == 1024 ? 0 : 1024);
 			glTexSubImage2D(GL_TEXTURE_2D, 0, destinationX, destinationY, width, rows,
 				GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, source);
 			return;
@@ -5684,7 +6902,69 @@ private:
 		const bool sameGeometry = slot != NULL && slot->valid &&
 			slot->destinationX == destinationX &&
 			slot->destinationY == destinationY &&
-			slot->width == width && slot->rows == rows;
+			slot->width == width && slot->rows == rows &&
+			(rowGeneration != NULL || slot->pixelCacheValid);
+		const bool directRows = width == 1024 || unpackSubimage;
+
+		// Row generations already identify every changed source row.  When the
+		// driver accepts a source stride, upload those rows directly from VRAM
+		// instead of maintaining and filling a second tightly packed CPU cache.
+		if (slot != NULL && rowGeneration != NULL && directRows) {
+			if (!sameGeometry) {
+				NamcosFrameRememberUploadRows(slot->rowGeneration, rowGeneration,
+					destinationY, rows);
+				slot->destinationX = destinationX;
+				slot->destinationY = destinationY;
+				slot->width = width;
+				slot->rows = rows;
+				slot->denseFrames = 0;
+				slot->pixelCacheValid = false;
+				slot->valid = true;
+				UploadRows(source, destinationX, destinationY, width, rows, threadPool);
+				return;
+			}
+			if (NamcosFrameRowsMatch(slot->rowGeneration, rowGeneration,
+				destinationY, 0, rows)) return;
+			UINT8 dirtyRows[1024];
+			INT32 changedRows = 0;
+			INT32 runCount = 0;
+			bool inRun = false;
+			for (INT32 y = 0; y < rows; y++) {
+				const UINT64 generation =
+					rowGeneration[(destinationY + y) & 0x3ff];
+				const bool changed = slot->rowGeneration[y] != generation;
+				slot->rowGeneration[y] = generation;
+				dirtyRows[y] = changed ? 1 : 0;
+				if (changed) {
+					changedRows++;
+					if (!inRun) runCount++;
+				}
+				inRun = changed;
+			}
+			slot->pixelCacheValid = false;
+			if (changedRows == 0) return;
+			if (changedRows * 3 >= rows) {
+				UploadRows(source, destinationX, destinationY, width, rows, threadPool);
+				return;
+			}
+
+			INT32 mergedStart;
+			INT32 mergedRows;
+			if (NamcosFrameGetMergedDirtySpan(dirtyRows, rows, changedRows,
+				runCount, &mergedStart, &mergedRows)) {
+				UploadRows(source + mergedStart * 1024, destinationX,
+					destinationY + mergedStart, width, mergedRows, threadPool);
+				return;
+			}
+			NamcosFrameRowSpan spans[8];
+			const INT32 spanCount = NamcosFrameBuildUploadSpans(dirtyRows, rows,
+				(size_t)width * sizeof(UINT16), spans, 8);
+			for (INT32 i = 0; i < spanCount; i++) {
+				UploadRows(source + spans[i].start * 1024, destinationX,
+					destinationY + spans[i].start, width, spans[i].count, threadPool);
+			}
+			return;
+		}
 
 		if (slot != NULL && slot->pixelCapacity < pixelCount) {
 			UINT16 *newPixels = (UINT16 *)realloc(slot->pixels,
@@ -5700,17 +6980,16 @@ private:
 		if (slot == NULL || !sameGeometry) {
 			if (slot != NULL) {
 				NamcosCopy16Rows(source, slot->pixels, width, rows, threadPool);
-				for (INT32 y = 0; y < rows; y++) {
-					slot->rowGeneration[y] = rowGeneration != NULL ?
-						rowGeneration[(destinationY + y) & 0x3ff] : 0;
-				}
+				NamcosFrameRememberUploadRows(slot->rowGeneration, rowGeneration,
+					destinationY, rows);
 				slot->destinationX = destinationX;
 				slot->destinationY = destinationY;
 				slot->width = width;
 				slot->rows = rows;
-					slot->denseFrames = 0;
-					slot->valid = true;
-				}
+				slot->denseFrames = 0;
+				slot->pixelCacheValid = true;
+				slot->valid = true;
+			}
 			if (slot != NULL) {
 				UploadTightRows(slot->pixels, destinationX, destinationY, width, rows);
 				return;
@@ -5748,10 +7027,8 @@ private:
 					NamcosCopy16RowsSelected(source, slot->pixels, width, rows,
 						denseRows, denseChangedRows, threadPool, denseFirstRow,
 						denseLastRow - denseFirstRow + 1);
-					for (INT32 y = 0; y < rows; y++) {
-						slot->rowGeneration[y] =
-							rowGeneration[(destinationY + y) & 0x3ff];
-					}
+					NamcosFrameRememberUploadRows(slot->rowGeneration,
+						rowGeneration, destinationY, rows);
 					UploadTightRows(slot->pixels, destinationX, destinationY, width, rows);
 				} else {
 					UploadRows(source, destinationX, destinationY, width, rows, threadPool);
@@ -5772,8 +7049,8 @@ private:
 		for (INT32 y = 0; y < rows; y++) {
 			const UINT64 generation = rowGeneration != NULL ?
 				rowGeneration[(destinationY + y) & 0x3ff] : 0;
-			const bool changed = (rowGeneration == NULL ||
-				slot->rowGeneration[y] != generation) &&
+			const bool changed = rowGeneration != NULL ?
+				slot->rowGeneration[y] != generation :
 				memcmp(slot->pixels + (size_t)y * width,
 					source + (size_t)y * 1024,
 					(size_t)width * sizeof(UINT16)) != 0;
@@ -5797,16 +7074,6 @@ private:
 			UploadTightRows(slot->pixels, destinationX, destinationY, width, rows);
 			return;
 		}
-		if (runCount > 8) {
-			NamcosCopy16Rows(source, slot->pixels, width, rows, threadPool);
-			for (INT32 y = 0; y < rows; y++) {
-				slot->rowGeneration[y] = rowGeneration != NULL ?
-					rowGeneration[(destinationY + y) & 0x3ff] : 0;
-			}
-			UploadTightRows(slot->pixels, destinationX, destinationY, width, rows);
-			return;
-		}
-
 		NamcosCopy16RowsSelected(source, slot->pixels, width, rows,
 			dirtyRows, changedRows, threadPool, firstChangedRow,
 			lastChangedRow - firstChangedRow + 1);
@@ -5818,14 +7085,12 @@ private:
 				destinationY + mergedStart, width, mergedRows);
 			return;
 		}
-		for (INT32 y = 0; y < rows;) {
-			while (y < rows && !dirtyRows[y]) y++;
-			const INT32 start = y;
-			while (y < rows && dirtyRows[y]) y++;
-			if (start < y) {
-				UploadTightRows(slot->pixels + (size_t)start * width, destinationX,
-					destinationY + start, width, y - start);
-			}
+		NamcosFrameRowSpan spans[8];
+		const INT32 spanCount = NamcosFrameBuildUploadSpans(dirtyRows, rows,
+			(size_t)width * sizeof(UINT16), spans, 8);
+		for (INT32 i = 0; i < spanCount; i++) {
+			UploadTightRows(slot->pixels + (size_t)spans[i].start * width,
+				destinationX, destinationY + spans[i].start, width, spans[i].count);
 		}
 	}
 
@@ -5862,26 +7127,22 @@ private:
 	UINT32 rasterPendingCount;
 	UINT32 rasterValidationCounter;
 	UINT32 rasterSampleValidationCounter;
+	UINT32 rasterUploadValidationCounter;
+	UINT32 rasterReadbackValidationCounter;
+	UINT32 readbackValidationCounter;
+	GLenum validatedReadFormat;
+	GLenum validatedReadType;
+	INT32 validatedReadPackAlignment;
+	INT32 validatedReadPackRowLength;
 	UINT32 lastRasterClearColor;
 	bool rasterClearColorValid;
 	GLint rasterPositionAttribute;
 	GLint rasterColorAttribute;
 	GLint rasterTextureAttribute;
+	GLint rasterStateAttribute;
+	GLint rasterTextureState0Attribute;
+	GLint rasterTextureState1Attribute;
 	GLint rasterSampleUniform;
-	GLint rasterTextureState0Uniform;
-	GLint rasterTextureState1Uniform;
-	GLint rasterFlagsUniform;
-	GLint rasterMaskUniform;
-	bool rasterTextureUniformValid;
-	UINT32 lastRasterTextureState[8];
-	bool rasterFlagsUniformValid;
-	bool lastRasterTextured;
-	bool lastRasterRawTexture;
-	bool lastRasterSemiTransparent;
-	UINT32 lastRasterAbr;
-	bool rasterMaskUniformValid;
-	bool lastRasterDrawStp;
-	bool lastRasterCheckStp;
 	bool rasterSampleTextureBound;
 	bool rasterScissorValid;
 	INT32 lastRasterScissorX;

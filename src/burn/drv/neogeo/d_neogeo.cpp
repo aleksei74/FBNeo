@@ -31829,15 +31829,15 @@ struct BurnDriver BurnDrvRbffspecuh = {
 // Real Bout Fatal Fury Special / Real Bout Garou Densetsu Special (Korean Translation)
 
 static struct BurnRomInfo rbffspeckrRomDesc[] = {
-	{ "223-p1k.p1",   0x100000, 0x93038d8f, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
-	{ "223-p2k.sp2",  0x400000, 0xa224e8f3, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "223-p1kr.p1",  0x100000, 0x2b9835f4, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "223-p2kr.sp2", 0x400000, 0xa224e8f3, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "223-s1k.s1",   0x020000, 0x5b0dbae8, 2 | BRF_GRA },           //  2 Text layer tiles
+	{ "223-s1kr.s1",  0x020000, 0x5b0dbae8, 2 | BRF_GRA },           //  2 Text layer tiles
 
-	{ "223-c1k.c1",   0x400000, 0xf9da1b5f, 3 | BRF_GRA },           //  3 Sprite data
-	{ "223-c2k.c2",   0x400000, 0xe9f1cdda, 3 | BRF_GRA },           //  4
-	{ "223-c3k.c3",   0x400000, 0xb83231be, 3 | BRF_GRA },           //  5
-	{ "223-c4k.c4",   0x400000, 0x0b9c11dd, 3 | BRF_GRA },           //  6
+	{ "223-c1kr.c1",  0x400000, 0xf9da1b5f, 3 | BRF_GRA },           //  3 Sprite data
+	{ "223-c2kr.c2",  0x400000, 0xe9f1cdda, 3 | BRF_GRA },           //  4
+	{ "223-c3kr.c3",  0x400000, 0xb83231be, 3 | BRF_GRA },           //  5
+	{ "223-c4kr.c4",  0x400000, 0x0b9c11dd, 3 | BRF_GRA },           //  6
 	{ "223-c5.c5",    0x400000, 0x321e362c, 3 | BRF_GRA },           //  7
 	{ "223-c6.c6",    0x400000, 0xd8fcef90, 3 | BRF_GRA },           //  8
 	{ "223-c7.c7",    0x400000, 0xbc80dd2d, 3 | BRF_GRA },           //  9
@@ -32135,6 +32135,42 @@ struct BurnDriver BurnDrvRbff2uh = {
 	L"Real Bout Fatal Fury 2 - The Newcomers\0Real Bout \u9913\u72FC\u4F1D\u8AAC\uFF12 (AES Uncensored Hack)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_FATFURY,
 	NULL, rbff2uhRomInfo, rbff2uhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
+// Real Bout Fatal Fury 2 - The Newcomers / Real Bout Garou Densetsu 2 - The Newcomers (Korean Translation)
+
+static struct BurnRomInfo rbff2krRomDesc[] = {
+	{ "240-p1kr.p1",  0x100000, 0xf2da23a1, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "240-p2kr.sp2", 0x400000, 0xc8679199, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "240-s1kr.s1",  0x020000, 0xc526a073, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "240-c1kr.c1",  0x800000, 0xdeecb39d, 3 | BRF_GRA },           //  3 Sprite data
+	{ "240-c2kr.c2",  0x800000, 0xcee4d315, 3 | BRF_GRA },           //  4
+	{ "240-c3kr.c3",  0x800000, 0x4fcc1d7e, 3 | BRF_GRA },           //  5
+	{ "240-c4kr.c4",  0x800000, 0x6123a546, 3 | BRF_GRA },           //  6
+	{ "240-c5kr.c5",  0x800000, 0xa0992c05, 3 | BRF_GRA },           //  7
+	{ "240-c6kr.c6",  0x800000, 0x6b4c4216, 3 | BRF_GRA },           //  8
+
+	{ "240-m1.m1",    0x040000, 0xed482791, 4 | BRF_ESS | BRF_PRG }, //  9 Z80 code
+
+	{ "240-v1.v1",    0x400000, 0xf796265a, 5 | BRF_SND },           // 10 Sound data
+	{ "240-v2.v2",    0x400000, 0x2cb3f3bb, 5 | BRF_SND },           // 11
+	{ "240-v3.v3",    0x400000, 0x8fe1367a, 5 | BRF_SND },           // 12
+	{ "240-v4.v4",    0x200000, 0x996704d8, 5 | BRF_SND },           // 13
+};
+
+STDROMPICKEXT(rbff2kr, rbff2kr, neogeo)
+STD_ROM_FN(rbff2kr)
+
+struct BurnDriver BurnDrvRbff2kr = {
+	"rbff2kr", "rbff2", "neogeo", NULL, "2026",
+	"Real Bout Fatal Fury 2 - The Newcomers / Real Bout Garou Densetsu 2 - The Newcomers (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Real Bout Fatal Fury 2 - The Newcomers / Real Bout Garou Densetsu 2 - The Newcomers (Korean Translation)\0uB9AC\uC5BC \uBC14\uC6C3 \uD398\uC774\uD138 \uD4E8\uB9AC 2 - \uB354 \uB274\uCEE4\uBA38\uC2A4 / \uB9AC\uC5BC \uBC14\uC6C3 \uC544\uB791\uC804\uC124 2 - \uB354 \uB274\uCEE4\uBA38\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_FATFURY,
+	NULL, rbff2krRomInfo, rbff2krRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
 };

@@ -2780,7 +2780,6 @@ static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 	packet.state.drawStp = DrvGpuDrawStp;
 	packet.state.checkStp = DrvGpuCheckStp;
 	packet.state.gpuType = DrvGpuType;
-
 	const bool submitted = DrvOpenGLFrame.RasterizePacket(&packet);
 	if (!submitted) {
 		DrvHardwareRasterStreak = 0;
@@ -2792,8 +2791,10 @@ static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 static void Namcos11GpuExecutePacket()
 {
 	UINT8 command = DrvGpuPacket[0] >> 24;
-	if (command == 0x02 || (command >= 0x20 && command <= 0x7f) ||
-		command == 0x80) {
+	const bool writesVram = command == 0x02 ||
+		(command >= 0x20 && command <= 0x7f) || command == 0x80;
+	const bool hadHardwareVram = DrvOpenGLFrame.HasHardwareVram();
+	if (writesVram) {
 		DrvGpuVramGeneration++;
 	}
 	if (Namcos11GpuTryHardwarePacket(command)) {
@@ -2801,6 +2802,7 @@ static void Namcos11GpuExecutePacket()
 		DrvGpuPacketLen = 0;
 		return;
 	}
+	if (writesVram && hadHardwareVram) DrvGpuVramGeneration++;
 
 	switch (command)
 	{
@@ -4331,7 +4333,8 @@ static INT32 DrvInit()
 	DrvDisableHardwareRaster = driverName != NULL &&
 		(strncmp(driverName, "tekken", 6) == 0 ||
 		 soulEdgeDriver || strncmp(driverName, "dunkmnia", 8) == 0 ||
-		 xevi3dgDriver || danceyesDriver || primglexDriver);
+		 xevi3dgDriver || danceyesDriver || primglexDriver ||
+		 strncmp(driverName, "myangel3", 8) == 0);
 	DrvOpenGLCropBottom = soulEdgeDriver || xevi3dgDriver ? 1 : 0;
 	DrvTestSwitch = 0;
 	DrvTestSwitchLast = 0;
