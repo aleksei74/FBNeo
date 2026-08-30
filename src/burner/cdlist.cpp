@@ -357,9 +357,10 @@ INT32 CDListIdentifyEx(const TCHAR* pszPath, CDListResult* pResult, UINT32 nFlag
 
 	INT32 bCancelled = 0;
 
-	UINT8 sha1s[40] = { 0, };
+	UINT8 sha1s[41] = { 0, };
 	if (!CDImageGetTOCSha1(pImage, sha1s)) {
-		_tcscpy(pResult->szTOCSha1, _AtoT((char *)sha1s));
+		CopyText(pResult->szTOCSha1, sizeof(pResult->szTOCSha1) / sizeof(pResult->szTOCSha1[0]),
+			ANSIToTCHAR((char*)sha1s, NULL, 0));
 		//bprintf(0, _T("CDImageGetTOCSha1() res %x  sha1s[%s]  %s\n"), res, pResult->szTOCSha1, pszPath);
 	}
 
@@ -624,4 +625,3 @@ TCHAR *CDInfo_GamePrefix()
 
 	return buffer;
 }
-
