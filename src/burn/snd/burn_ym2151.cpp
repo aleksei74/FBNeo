@@ -200,24 +200,24 @@ void BurnYM2151Render(INT16* pSoundBuf, INT32 nSegmentEnd)
 				pSoundBuf[i + 1] = nTotalRightSample[0] + nTotalRightSample[1];
 			}
 		}
+	}
 
-		if (!bBurnYM2151IsBuffered || (bBurnYM2151IsBuffered && nSegmentEnd >= nBurnSoundLen)) {
-			INT32 nExtraSamples = nSamplesNeeded - (nFractionalPosition >> 16);
-			//if (nExtraSamples !=0 && nExtraSamples !=1)
-			//	bprintf(0, _T("nSegmentEnd   %d    nExtraSamples   %d\n"),nSegmentEnd,nExtraSamples);
-			for (INT32 i = -4; i < nExtraSamples; i++) {
-				pYM2151Buffer[0][i] = pYM2151Buffer[0][(nFractionalPosition >> 16) + i];
-				pYM2151Buffer[1][i] = pYM2151Buffer[1][(nFractionalPosition >> 16) + i];
-				if (bYM2151_MultiChip) {
-					pYM2151Buffer[2][i] = pYM2151Buffer[2][(nFractionalPosition >> 16) + i];
-					pYM2151Buffer[3][i] = pYM2151Buffer[3][(nFractionalPosition >> 16) + i];
-				}
+	if (!bBurnYM2151IsBuffered || (bBurnYM2151IsBuffered && nSegmentEnd >= nBurnSoundLen)) {
+		INT32 nExtraSamples = nSamplesNeeded - (nFractionalPosition >> 16);
+		//if (nExtraSamples !=0 && nExtraSamples !=1)
+		//	bprintf(0, _T("nSegmentEnd   %d    nExtraSamples   %d\n"),nSegmentEnd,nExtraSamples);
+		for (INT32 i = -4; i < nExtraSamples; i++) {
+			pYM2151Buffer[0][i] = pYM2151Buffer[0][(nFractionalPosition >> 16) + i];
+			pYM2151Buffer[1][i] = pYM2151Buffer[1][(nFractionalPosition >> 16) + i];
+			if (bYM2151_MultiChip) {
+				pYM2151Buffer[2][i] = pYM2151Buffer[2][(nFractionalPosition >> 16) + i];
+				pYM2151Buffer[3][i] = pYM2151Buffer[3][(nFractionalPosition >> 16) + i];
 			}
-
-			nFractionalPosition &= 0xFFFF;
-
-			nYM2151Position = nExtraSamples;
 		}
+
+		nFractionalPosition &= 0xFFFF;
+
+		nYM2151Position = nExtraSamples;
 	}
 }
 
