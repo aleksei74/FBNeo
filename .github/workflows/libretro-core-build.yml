@@ -56,9 +56,19 @@ jobs:
       - name: Install build dependencies and Android NDK
         run: |
           sudo apt-get update
-          sudo apt-get install -y build-essential perl
-          yes | sdkmanager --licenses >/dev/null 2>&1 || true
-          sdkmanager "ndk;${ANDROID_NDK_VERSION}"
+          sudo apt-get install -y build-essential perl file binutils
+
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "${SDKMANAGER}" ]; then
+            SDKMANAGER="$(find "${SDK_ROOT}/cmdline-tools" -type f -name sdkmanager -perm -u+x | head -n 1)"
+          fi
+
+          test -n "${SDKMANAGER}"
+          test -x "${SDKMANAGER}"
+          echo "ANDROID_SDK_ROOT=${SDK_ROOT}" >> "${GITHUB_ENV}"
+          yes | "${SDKMANAGER}" --licenses >/dev/null 2>&1 || true
+          "${SDKMANAGER}" "ndk;${ANDROID_NDK_VERSION}"
 
       - name: Build Android ARMv7 libretro core
         run: |
