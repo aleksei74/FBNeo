@@ -1,0 +1,76 @@
+name: Libretro Core Builds
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: Core build target
+        required: true
+        default: all
+        type: choice
+        options:
+          - all
+          - linux-arm64
+          - windows-x64
+
+permissions:
+  contents: read
+
+jobs:
+  linux-arm64:
+    if: ${{ inputs.target == 'all' || inputs.target == 'linux-arm64' }}
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential perl libegl1-mesa-dev libgles2-mesa-dev
+
+      - name: Build Linux ARM64 libretro core
+        run: |
+          make -C src/burner/libretro platform=unix REGEN_HEADERS=1 -j"$(nproc)"
+          test -f src/burner/libretro/fbneo_libretro.so
+
+      - name: Upload Linux ARM64 core
+        uses: actions/upload-artifact@v4
+        with:
+          name: fbneo-libretro-linux-arm64
+          path: src/burner/libretro/fbneo_libretro.so
+          if-no-files-found: error
+          compression-level: 9
+
+  windows-x64:
+    if: ${{ inputs.target == 'all' || inputs.target == 'windows-x64' }}
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up MSYS2 MinGW64
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            base-devel
+            git
+            make
+            perl
+            mingw-w64-x86_64-gcc
+
+      - name: Build Windows x64 libretro core
+        shell: msys2 {0}
+        run: |
+          make -C src/burner/libretro platform=win REGEN_HEADERS=1 -j"$(nproc)"
+          test -f src/burner/libretro/fbneo_libretro.dll
+
+      - name: Upload Windows x64 core
+        uses: actions/upload-artifact@v4
+        with:
+          name: fbneo-libretro-windows-x64
+          path: src/burner/libretro/fbneo_libretro.dll
+          if-no-files-found: error
+          compression-level: 9
