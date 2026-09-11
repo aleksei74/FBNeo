@@ -11,6 +11,7 @@ on:
         options:
           - all
           - linux-arm64
+          - android-armv7
           - windows-x64
 
 permissions:
@@ -38,6 +39,52 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: fbneo-libretro-linux-arm64
+          path: src/burner/libretro/fbneo_libretro.so
+          if-no-files-found: error
+          compression-level: 9
+
+  android-armv7:
+    if: ${{ inputs.target == 'all' || inputs.target == 'android-armv7' }}
+    runs-on: ubuntu-22.04
+    env:
+      ANDROID_NDK_VERSION: 27.2.12479018
+      ANDROID_API: 21
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install build dependencies and Android NDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential perl
+          yes | sdkmanager --licenses >/dev/null 2>&1 || true
+          sdkmanager "ndk;${ANDROID_NDK_VERSION}"
+
+      - name: Build Android ARMv7 libretro core
+        run: |
+          NDK="${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
+          TOOLCHAIN="${NDK}/toolchains/llvm/prebuilt/linux-x86_64"
+          CC="${TOOLCHAIN}/bin/armv7a-linux-androideabi${ANDROID_API}-clang"
+          CXX="${TOOLCHAIN}/bin/armv7a-linux-androideabi${ANDROID_API}-clang++"
+          AR="${TOOLCHAIN}/bin/llvm-ar"
+          STRIP="${TOOLCHAIN}/bin/llvm-strip"
+
+          test -x "${CC}"
+          test -x "${CXX}"
+          make -C src/burner/libretro \
+            platform=android-armv7 \
+            CC="${CC}" CXX="${CXX}" AR="${AR}" \
+            REGEN_HEADERS=1 -j"$(nproc)"
+
+          test -f src/burner/libretro/fbneo_libretro.so
+          "${STRIP}" --strip-unneeded src/burner/libretro/fbneo_libretro.so
+          file src/burner/libretro/fbneo_libretro.so
+          readelf -h src/burner/libretro/fbneo_libretro.so | grep -E 'Class:.*ELF32|Machine:.*ARM'
+
+      - name: Upload Android ARMv7 core
+        uses: actions/upload-artifact@v7
+        with:
+          name: fbneo-libretro-android-armeabi-v7a
           path: src/burner/libretro/fbneo_libretro.so
           if-no-files-found: error
           compression-level: 9
