@@ -21374,6 +21374,7 @@ DRV		BurnDrvSonicfgt;
 DRV		BurnDrvSonicp;
 DRV		BurnDrvSonic;
 DRV		BurnDrvAmatelas;
+DRV		BurnDrvCupsoc;
 DRV		BurnDrvSeicross;
 DRV		BurnDrvSeicrossa;
 DRV		BurnDrvnes_seicross;
@@ -50823,6 +50824,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSonicp,				// SegaSonic The Hedgehog (Japan, prototype)
 	&BurnDrvSonic,				// SegaSonic The Hedgehog (Japan, rev. C)
 	&BurnDrvAmatelas,			// Sei Senshi Amatelass
+	&BurnDrvCupsoc,				// Seibu Cup Soccer (set 1)
 	&BurnDrvSeicross,			// Seicross (set 1)
 	&BurnDrvSeicrossa,			// Seicross (set 2)
 	&BurnDrvnes_seicross,		// Seicross (USA)
@@ -80140,6 +80142,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sonicp", "sega/d_segas32.cpp"},
 	{ "sonic", "sega/d_segas32.cpp"},
 	{ "amatelas", "pre90s/d_terracre.cpp"},
+	{ "cupsoc", "pst90s/d_legionna.cpp"},
 	{ "seicross", "pre90s/d_seicross.cpp"},
 	{ "seicrossa", "pre90s/d_seicross.cpp"},
 	{ "nes_seicross", "nes/d_nes.cpp"},

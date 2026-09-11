@@ -135,6 +135,7 @@ static UINT8 (*cpu_read_byte)(UINT32);
 static INT32 host_endian = 0;
 static INT32 byte_endian_val = 0;
 static INT32 word_endian_val = 0;
+static INT32 is_cupsoc = 0;
 
 // variables!!
 static UINT32 cop_sprite_dma_param;
@@ -249,6 +250,7 @@ static void LEGACY_execute_130e_cupsoc(INT32 , UINT16 data)
 {
 	INT32 dy = cpu_read_long(cop_regs[1] + 4) - cpu_read_long(cop_regs[0] + 4);
 	INT32 dx = cpu_read_long(cop_regs[1] + 8) - cpu_read_long(cop_regs[0] + 8);
+	bool angle_valid = (dx != 0);
 
 	cop_status = 7;
 
@@ -268,7 +270,12 @@ static void LEGACY_execute_130e_cupsoc(INT32 , UINT16 data)
 	LEGACY_r0 = dy;
 	LEGACY_r1 = dx;
 
-	if (data & 0x80)
+	// Seibu Cup chooses the RAM write from the trigger length: only len=8 writes.
+	// This keeps 118e (len=4) and 130e (len=7) from clobbering obj+0x37.
+	bool write_angle = (data & 0x80) != 0;
+	if (is_cupsoc) write_angle = (((data >> 7) & 7) == 7);
+
+	if (write_angle && (!is_cupsoc || angle_valid))
 		cop_write_byte(cop_regs[0] + (0x34), cop_angle);
 }
 
@@ -335,15 +342,22 @@ static void execute_130e(INT32 offset, UINT16 data, bool is_yflip)
 
 static void execute_3b30(INT32 , UINT16 data)
 {
-	/* TODO: these are actually internally loaded via 0x130e command */
 	INT32 dx, dy;
 
-	dx = cpu_read_long(cop_regs[1] + 4) - cpu_read_long(cop_regs[0] + 4);
-	dy = cpu_read_long(cop_regs[1] + 8) - cpu_read_long(cop_regs[0] + 8);
+	if (is_cupsoc) {
+		// The SEI300 keeps the deltas loaded by the preceding atan command.
+		// This matters after e30e/e38e, where the second object is the ball in reg2.
+		dx = LEGACY_r0;
+		dy = LEGACY_r1;
+	} else {
+		dx = cpu_read_long(cop_regs[1] + 4) - cpu_read_long(cop_regs[0] + 4);
+		dy = cpu_read_long(cop_regs[1] + 8) - cpu_read_long(cop_regs[0] + 8);
+	}
 
 	dx = dx >> 16;
 	dy = dy >> 16;
-	cop_dist = (UINT16)sqrt((double)(dx*dx + dy*dy));
+	INT64 dist2 = (INT64)dx * dx + (INT64)dy * dy;
+	cop_dist = (UINT16)sqrt((double)dist2);
 
 	if (data & 0x0080)
 		cop_write_word(cop_regs[0] + (data & 0x200 ? 0x3a : 0x38), cop_dist);
@@ -387,6 +401,50 @@ static void execute_5205(INT32 , UINT16 )
 static void execute_5a05(INT32 , UINT16 )
 {
 	cpu_write_long(cop_regs[1], cpu_read_long(cop_regs[0]));
+}
+
+static INT32 cupsoc_mul_16_16(INT32 value)
+{
+	INT32 factor = (INT32)(((UINT32)cop_rom_addr_hi << 16) | cop_rom_addr_lo);
+	INT64 product = (INT64)value * (INT64)factor;
+
+	// Hardware uses an arithmetic >>16. Keep floor semantics for negatives.
+	if (product < 0) {
+		return (INT32)-(((-product) + 0xffff) >> 16);
+	}
+
+	return (INT32)(product >> 16);
+}
+
+static void cupsoc_execute_5105(INT32 offset)
+{
+	UINT32 offs = (offset & 3) * 4;
+	INT32 src = (INT32)cpu_read_long(cop_regs[0] + offs);
+	cpu_write_long(cop_regs[0] + 0x04 + offs, (UINT32)cupsoc_mul_16_16(src));
+}
+
+static void cupsoc_execute_5905(INT32 offset)
+{
+	UINT32 offs = (offset & 3) * 4;
+	INT32 src = (INT32)cpu_read_long(cop_regs[2] + 0x10 + offs);
+	cpu_write_long(cop_regs[1] + 0x04 + offs, (UINT32)cupsoc_mul_16_16(src));
+}
+
+static void cupsoc_execute_f105(INT32 offset)
+{
+	UINT32 offs = (offset & 3) * 4;
+	INT32 src = (INT32)cpu_read_long(cop_regs[0] + 0x10 + offs);
+	cpu_write_long(cop_regs[0] + 0x10 + offs, (UINT32)cupsoc_mul_16_16(src));
+}
+
+static void cupsoc_execute_d104(INT32 offset)
+{
+	UINT32 offs = (offset & 3) * 4;
+	INT32 src = (INT32)cpu_read_long(cop_regs[2] + 0x04 + offs);
+	INT32 origin = (INT32)cpu_read_long(cop_regs[3] + offs);
+	INT32 delta = (INT32)((UINT32)src - (UINT32)origin);
+
+	cpu_write_long(cop_regs[1] + 0x04 + offs, (UINT32)cupsoc_mul_16_16(delta));
 }
 
 static void execute_6200(INT32 , UINT16 )
@@ -464,7 +522,9 @@ static void LEGACY_execute_6200(INT32 , UINT16 ) // this is for cupsoc, differen
 
 	cop_write_word(cop_regs[primary_reg], flags);
 
-	if (!host_endian)
+	if (is_cupsoc)
+		cop_write_byte(cop_regs[primary_reg] + primary_offset, angle);
+	else if (!host_endian)
 		cop_write_byte(cop_regs[primary_reg] + primary_offset, angle);
 	else // angle is a byte, but grainbow (cave mid-boss) is only happy with write-word, could be more endian weirdness, or it always writes a word?
 		cop_write_word(cop_regs[primary_reg] + primary_offset, angle);
@@ -670,6 +730,7 @@ static void LEGACY_execute_e30e(INT32 , UINT16 data)
 {
 	INT32 dy = cpu_read_long(cop_regs[2] + 4) - cpu_read_long(cop_regs[0] + 4);
 	INT32 dx = cpu_read_long(cop_regs[2] + 8) - cpu_read_long(cop_regs[0] + 8);
+	bool angle_valid = (dx != 0);
 
 	cop_status = 7;
 	if (!dx)
@@ -685,8 +746,13 @@ static void LEGACY_execute_e30e(INT32 , UINT16 data)
 		cop_angle &= 0xff;
 	}
 
-	// TODO: byte or word?
-	if (data & 0x0080)
+	LEGACY_r0 = dy;
+	LEGACY_r1 = dx;
+
+	bool write_angle = (data & 0x0080) != 0;
+	if (is_cupsoc) write_angle = (((data >> 7) & 7) == 7);
+
+	if (write_angle && (!is_cupsoc || angle_valid))
 		cop_write_byte(cop_regs[0] + 0x34, cop_angle);
 }
 
@@ -872,23 +938,25 @@ static void LEGACY_cop_cmd_write(INT32 offset, UINT16 data)
 
 	if (check_command_matches(command, 0xac2, 0x9e0, 0x0a2, 0x000, 0x000, 0x000, 0x000, 0x000, 5, 0xfffb))
 	{
-	//	LEGACY_execute_d104(offset, data);
+		if (is_cupsoc) cupsoc_execute_d104(offset);
 		return;
 	}
 
 	if (check_command_matches(command, 0xa80, 0x984, 0x082, 0x000, 0x000, 0x000, 0x000, 0x000, 5, 0xfefb))
 	{
+		if (is_cupsoc) cupsoc_execute_5105(offset);
 		return;
 	}
 
 	if (check_command_matches(command, 0x9c8, 0xa84, 0x0a2, 0x000, 0x000, 0x000, 0x000, 0x000, 5, 0xfffb))
 	{
+		if (is_cupsoc) cupsoc_execute_5905(offset);
 		return;
 	}
 
 	if (check_command_matches(command, 0xa88, 0x994, 0x088, 0x000, 0x000, 0x000, 0x000, 0x000, 5, 0xfefb))
 	{
-	//	execute_f105(offset,data);
+		if (is_cupsoc) cupsoc_execute_f105(offset);
 		return;
 	}
 }
@@ -1214,6 +1282,54 @@ static void cop_dma_trigger()
 
 static void dma_zsorting(UINT16 sort_size)
 {
+	if (is_cupsoc)
+	{
+		struct cupsoc_sort_entry {
+			INT16 key;
+			UINT16 val;
+		};
+
+		cupsoc_sort_entry entries[0x100];
+		INT32 count = (INT32)sort_size + 1; // Cupsoc passes entry_count - 1.
+		if (count > 0x100) count = 0x100;
+
+		for (INT32 i = 0; i < count; i++)
+		{
+			entries[i].val = cpu_read_word(cop_sort_lookup + i * 2);
+			// The key is a signed word at the longword-aligned object field.
+			// Do not apply cop_read_word's 68K word xor here.
+			entries[i].key = (INT16)cpu_read_word((cop_sort_ram_addr + entries[i].val) & ~3U);
+		}
+
+		// Stable insertion sort: equal keys keep the game's original order.
+		if (cop_sort_param == 1 || cop_sort_param == 2)
+		{
+			for (INT32 i = 1; i < count; i++)
+			{
+				cupsoc_sort_entry cur = entries[i];
+				INT32 j = i;
+
+				while (j > 0)
+				{
+					bool move = (cop_sort_param == 1)
+						? (entries[j - 1].key > cur.key)
+						: (entries[j - 1].key < cur.key);
+
+					if (!move) break;
+					entries[j] = entries[j - 1];
+					j--;
+				}
+
+				entries[j] = cur;
+			}
+		}
+
+		for (INT32 i = 0; i < count; i++)
+			cpu_write_word(cop_sort_lookup + i * 2, entries[i].val);
+
+		return;
+	}
+
 	UINT8 xchg_flag;
 
 	for(INT32 i = 2;i < sort_size;i+=2)
@@ -1607,9 +1723,10 @@ static UINT16 _68k_read_word(UINT32 a) { return SekReadWord(a); }
 static UINT8 _68k_read_byte(UINT32 a) { return SekReadByte(a); }
 #endif
 
-void seibu_cop_config(INT32 is_68k, void (*vidram_write)(INT32,UINT16,UINT16), void (*pal_write)(INT32,UINT16))
+void seibu_cop_config(INT32 is_68k, void (*vidram_write)(INT32,UINT16,UINT16), void (*pal_write)(INT32,UINT16), INT32 cupsoc)
 {
 	host_endian = is_68k;
+	is_cupsoc = cupsoc;
 #ifdef HARDSEK
 	if (is_68k == 0) bprintf (0, _T("seibu_cop_config - cannot use any cpu type but 68k! HARDSEK defined!\n"));
 #endif

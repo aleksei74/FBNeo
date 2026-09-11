@@ -50,7 +50,7 @@ static UINT8 DrvJoy2[16];
 static UINT8 DrvJoy3[16];
 static UINT8 DrvJoy4[16];
 static UINT16 DrvInputs[4];
-static UINT8 DrvDips[2];
+static UINT8 DrvDips[3];
 static UINT8 DrvReset;
 
 static INT32 denjinmk_hack = 0;
@@ -126,6 +126,53 @@ static struct BurnInputInfo HeatbrlInputList[] = {
 };
 
 STDINPUTINFO(Heatbrl)
+
+static struct BurnInputInfo CupsocInputList[] = {
+	{"P1 Coin",        BIT_DIGITAL, DrvJoy4 + 0,  "p1 coin"   },
+	{"P1 Start",       BIT_DIGITAL, DrvJoy3 + 0,  "p1 start"  },
+	{"P1 Up",          BIT_DIGITAL, DrvJoy1 + 0,  "p1 up"     },
+	{"P1 Down",        BIT_DIGITAL, DrvJoy1 + 1,  "p1 down"   },
+	{"P1 Left",        BIT_DIGITAL, DrvJoy1 + 2,  "p1 left"   },
+	{"P1 Right",       BIT_DIGITAL, DrvJoy1 + 3,  "p1 right"  },
+	{"P1 Shoot",       BIT_DIGITAL, DrvJoy1 + 4,  "p1 fire 1" },
+	{"P1 Pass",        BIT_DIGITAL, DrvJoy1 + 5,  "p1 fire 2" },
+
+	{"P2 Coin",        BIT_DIGITAL, DrvJoy4 + 1,  "p2 coin"   },
+	{"P2 Start",       BIT_DIGITAL, DrvJoy3 + 1,  "p2 start"  },
+	{"P2 Up",          BIT_DIGITAL, DrvJoy1 + 8,  "p2 up"     },
+	{"P2 Down",        BIT_DIGITAL, DrvJoy1 + 9,  "p2 down"   },
+	{"P2 Left",        BIT_DIGITAL, DrvJoy1 + 10, "p2 left"   },
+	{"P2 Right",       BIT_DIGITAL, DrvJoy1 + 11, "p2 right"  },
+	{"P2 Shoot",       BIT_DIGITAL, DrvJoy1 + 12, "p2 fire 1" },
+	{"P2 Pass",        BIT_DIGITAL, DrvJoy1 + 13, "p2 fire 2" },
+
+	// P3/P4 coins are wired directly into PLAYERS34 on this PCB.
+	{"P3 Coin",        BIT_DIGITAL, DrvJoy2 + 7,  "p3 coin"   },
+	{"P3 Start",       BIT_DIGITAL, DrvJoy3 + 8,  "p3 start"  },
+	{"P3 Up",          BIT_DIGITAL, DrvJoy2 + 0,  "p3 up"     },
+	{"P3 Down",        BIT_DIGITAL, DrvJoy2 + 1,  "p3 down"   },
+	{"P3 Left",        BIT_DIGITAL, DrvJoy2 + 2,  "p3 left"   },
+	{"P3 Right",       BIT_DIGITAL, DrvJoy2 + 3,  "p3 right"  },
+	{"P3 Shoot",       BIT_DIGITAL, DrvJoy2 + 4,  "p3 fire 1" },
+	{"P3 Pass",        BIT_DIGITAL, DrvJoy2 + 5,  "p3 fire 2" },
+
+	{"P4 Coin",        BIT_DIGITAL, DrvJoy2 + 15, "p4 coin"   },
+	{"P4 Start",       BIT_DIGITAL, DrvJoy3 + 9,  "p4 start"  },
+	{"P4 Up",          BIT_DIGITAL, DrvJoy2 + 8,  "p4 up"     },
+	{"P4 Down",        BIT_DIGITAL, DrvJoy2 + 9,  "p4 down"   },
+	{"P4 Left",        BIT_DIGITAL, DrvJoy2 + 10, "p4 left"   },
+	{"P4 Right",       BIT_DIGITAL, DrvJoy2 + 11, "p4 right"  },
+	{"P4 Shoot",       BIT_DIGITAL, DrvJoy2 + 12, "p4 fire 1" },
+	{"P4 Pass",        BIT_DIGITAL, DrvJoy2 + 13, "p4 fire 2" },
+
+	{"Reset",          BIT_DIGITAL, &DrvReset,     "reset"     },
+	{"Service",        BIT_DIGITAL, DrvJoy3 + 3,   "service"   },
+	{"Dip A",          BIT_DIPSWITCH, DrvDips + 0, "dip"       },
+	{"Dip B",          BIT_DIPSWITCH, DrvDips + 1, "dip"       },
+	{"Dip C",          BIT_DIPSWITCH, DrvDips + 2, "dip"       },
+};
+
+STDINPUTINFO(Cupsoc)
 
 static struct BurnInputInfo GodzillaInputList[] = {
 	{"P1 Coin",			BIT_DIGITAL,	DrvJoy4 + 0,	"p1 coin"	},
@@ -408,6 +455,88 @@ static struct BurnDIPInfo HeatbrlDIPList[]=
 };
 
 STDDIPINFO(Heatbrl)
+
+static struct BurnDIPInfo CupsocDIPList[]=
+{
+	DIP_OFFSET(0x22)
+	{0x00, 0xff, 0xff, 0xff, NULL},
+	{0x01, 0xff, 0xff, 0xff, NULL},
+	{0x02, 0xff, 0xff, 0xff, NULL},
+
+	{0,    0xfe, 0,    8, "Coin 1"},
+	{0x00, 0x01, 0x07, 0x00, "4 Coins 1 Credit"},
+	{0x00, 0x01, 0x07, 0x01, "3 Coins 1 Credit"},
+	{0x00, 0x01, 0x07, 0x02, "2 Coins 1 Credit"},
+	{0x00, 0x01, 0x07, 0x07, "1 Coin 1 Credit"},
+	{0x00, 0x01, 0x07, 0x06, "1 Coin 2 Credits"},
+	{0x00, 0x01, 0x07, 0x05, "1 Coin 3 Credits"},
+	{0x00, 0x01, 0x07, 0x04, "1 Coin 4 Credits"},
+	{0x00, 0x01, 0x07, 0x03, "1 Coin 6 Credits"},
+
+	{0,    0xfe, 0,    8, "Coin 2"},
+	{0x00, 0x01, 0x38, 0x00, "4 Coins 1 Credit"},
+	{0x00, 0x01, 0x38, 0x08, "3 Coins 1 Credit"},
+	{0x00, 0x01, 0x38, 0x10, "2 Coins 1 Credit"},
+	{0x00, 0x01, 0x38, 0x38, "1 Coin 1 Credit"},
+	{0x00, 0x01, 0x38, 0x30, "1 Coin 2 Credits"},
+	{0x00, 0x01, 0x38, 0x28, "1 Coin 3 Credits"},
+	{0x00, 0x01, 0x38, 0x20, "1 Coin 4 Credits"},
+	{0x00, 0x01, 0x38, 0x18, "1 Coin 6 Credits"},
+
+	{0,    0xfe, 0,    2, "Starting Coin"},
+	{0x00, 0x01, 0x40, 0x40, "Normal"},
+	{0x00, 0x01, 0x40, 0x00, "x2"},
+
+	{0,    0xfe, 0,    2, "Flip Screen"},
+	{0x00, 0x01, 0x80, 0x80, "Off"},
+	{0x00, 0x01, 0x80, 0x00, "On"},
+
+	{0,    0xfe, 0,    4, "Time vs Computer (1P)"},
+	{0x01, 0x01, 0x03, 0x02, "1:30"},
+	{0x01, 0x01, 0x03, 0x03, "2:00"},
+	{0x01, 0x01, 0x03, 0x01, "2:30"},
+	{0x01, 0x01, 0x03, 0x00, "3:00"},
+
+	{0,    0xfe, 0,    4, "Time Player vs Player (2P)"},
+	{0x01, 0x01, 0x0c, 0x08, "2:00"},
+	{0x01, 0x01, 0x0c, 0x0c, "2:30"},
+	{0x01, 0x01, 0x0c, 0x04, "3:00"},
+	{0x01, 0x01, 0x0c, 0x00, "2:00 (duplicate)"},
+
+	{0,    0xfe, 0,    4, "Time Player vs Player (3P)"},
+	{0x01, 0x01, 0x30, 0x20, "2:30"},
+	{0x01, 0x01, 0x30, 0x30, "3:00"},
+	{0x01, 0x01, 0x30, 0x10, "3:30"},
+	{0x01, 0x01, 0x30, 0x00, "2:30 (duplicate)"},
+
+	{0,    0xfe, 0,    4, "Time Player vs Player (4P)"},
+	{0x01, 0x01, 0xc0, 0x80, "3:00"},
+	{0x01, 0x01, 0xc0, 0xc0, "3:30"},
+	{0x01, 0x01, 0xc0, 0x40, "4:00"},
+	{0x01, 0x01, 0xc0, 0x00, "3:00 (duplicate)"},
+
+	{0,    0xfe, 0,    4, "Difficulty"},
+	{0x02, 0x01, 0x03, 0x03, "Normal"},
+	{0x02, 0x01, 0x03, 0x02, "Easy"},
+	{0x02, 0x01, 0x03, 0x01, "Hard"},
+	{0x02, 0x01, 0x03, 0x00, "Very Hard"},
+
+	{0,    0xfe, 0,    4, "Cabinet Setting"},
+	{0x02, 0x01, 0x0c, 0x0c, "2 Players"},
+	{0x02, 0x01, 0x0c, 0x08, "4 Players & 4 Coin Slots"},
+	{0x02, 0x01, 0x0c, 0x04, "4 Players (2x 2P Linked) & 1-4 Coin Slots"},
+	{0x02, 0x01, 0x0c, 0x00, "4 Players & 1 Coin Slot"},
+
+	{0,    0xfe, 0,    2, "Demo Sounds"},
+	{0x02, 0x01, 0x10, 0x00, "No"},
+	{0x02, 0x01, 0x10, 0x10, "Yes"},
+
+	{0,    0xfe, 0,    2, "Service Mode"},
+	{0x02, 0x01, 0x20, 0x20, "Off"},
+	{0x02, 0x01, 0x20, 0x00, "On"},
+};
+
+STDDIPINFO(Cupsoc)
 
 static struct BurnDIPInfo GodzillaDIPList[]=
 {
@@ -703,6 +832,15 @@ static UINT16 __fastcall legionna_main_read_word(UINT32 address)
 	}
 
 	return legionna_common_read_word(address);
+}
+
+static UINT16 __fastcall cupsoc_main_read_word(UINT32 address)
+{
+	if (address == 0x10075c) {
+		return 0xff00 | DrvDips[2];
+	}
+
+	return legionna_main_read_word(address);
 }
 
 static UINT8 __fastcall legionna_main_read_byte(UINT32 address)
@@ -1412,6 +1550,79 @@ static INT32 GrainbowInit()
 	return 0;
 }
 
+static INT32 CupsocInit()
+{
+	sprite_size = 0x100000;
+
+	BurnSetRefreshRate(60.03);
+	BurnAllocMemIndex();
+
+	{
+		INT32 k = 0;
+		if (BurnLoadRom(Drv68KROM  + 0x0000001, k++, 4)) return 1;
+		if (BurnLoadRom(Drv68KROM  + 0x0000000, k++, 4)) return 1;
+		if (BurnLoadRom(Drv68KROM  + 0x0000003, k++, 4)) return 1;
+		if (BurnLoadRom(Drv68KROM  + 0x0000002, k++, 4)) return 1;
+
+		if (BurnLoadRom(DrvZ80ROM  + 0x0000000, k++, 1)) return 1;
+		memcpy (DrvZ80ROM + 0x10000, DrvZ80ROM + 0x08000, 0x08000);
+		memcpy (DrvZ80ROM + 0x18000, DrvZ80ROM + 0x00000, 0x08000);
+
+		if (BurnLoadRom(DrvGfxROM0 + 0x0000000, k++, 2)) return 1;
+		if (BurnLoadRom(DrvGfxROM0 + 0x0000001, k++, 2)) return 1;
+
+		if (BurnLoadRom(DrvGfxROM2 + 0x0000000, k++, 1)) return 1;
+		BurnByteswap(DrvGfxROM2, 0x100000);
+
+		if (BurnLoadRom(DrvGfxROM3 + 0x0000000, k++, 1)) return 1;
+		BurnByteswap(DrvGfxROM3, 0x100000);
+		memcpy (DrvGfxROM4, DrvGfxROM3, 0x100000); // MG uses the second half of the shared BG ROM.
+
+		if (BurnLoadRom(DrvGfxROM1 + 0x0000000, k++, 1)) return 1;
+		BurnByteswap(DrvGfxROM1, 0x080000);
+
+		if (BurnLoadRom(DrvSndROM  + 0x0000000, k++, 1)) return 1;
+
+		DrvGfxDecode();
+	}
+
+	SekInit(0, 0x68000);
+	SekOpen(0);
+	SekMapMemory(Drv68KROM,      0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(Drv1KRAM,      0x100000, 0x1003ff, MAP_RAM);
+	SekMapMemory(DrvAllRAM,     0x100800, 0x11ffff, MAP_RAM);
+	SekSetWriteWordHandler(0, legionna_main_write_word);
+	SekSetWriteByteHandler(0, legionna_main_write_byte);
+	SekSetReadWordHandler(0, cupsoc_main_read_word);
+	SekSetReadByteHandler(0, legionna_main_read_byte);
+	SekClose();
+
+	seibu_cop_config(1, videowrite_cb_w, palette_write_xbgr555, 1);
+	seibu_sound_init(0, 0x20000, 3579545, 3579545, 1000000 / 132);
+
+	GenericTilesInit();
+	GenericTilemapInit(0, TILEMAP_SCAN_ROWS, bg_map_callback, 16, 16, 32, 32);
+	GenericTilemapInit(1, TILEMAP_SCAN_ROWS, mg_map_callback, 16, 16, 32, 32);
+	GenericTilemapInit(2, TILEMAP_SCAN_ROWS, fg_map_callback, 16, 16, 32, 32);
+	GenericTilemapInit(3, TILEMAP_SCAN_ROWS, tx_map_callback,  8,  8, 64, 32);
+	GenericTilemapSetGfx(0, DrvGfxROM0, 4,  8,  8, 0x040000, 0x300, 0xf);
+	GenericTilemapSetGfx(1, DrvGfxROM1, 4, 16, 16, 0x200000, 0x200, 0xf);
+	GenericTilemapSetGfx(2, DrvGfxROM2, 4, 16, 16, sprite_size * 2, 0x400, 0xf);
+	GenericTilemapSetGfx(3, DrvGfxROM3, 4, 16, 16, 0x200000, 0x000, 0xf);
+	GenericTilemapSetGfx(4, DrvGfxROM4, 4, 16, 16, 0x200000, 0x100, 0xf);
+	GenericTilemapSetTransparent(0, 0xf);
+	GenericTilemapSetTransparent(1, 0xf);
+	GenericTilemapSetTransparent(2, 0xf);
+	GenericTilemapSetTransparent(3, 0xf);
+
+	// MAME exposes y=8..247 as the 320x240 active window.
+	GenericTilemapSetOffsets(TMAP_GLOBAL, 0, -8);
+
+	DrvDoReset();
+
+	return 0;
+}
+
 static INT32 DrvExit()
 {
 	GenericTilesExit();
@@ -1643,6 +1854,40 @@ static INT32 GrainbowDraw()
 	if ((layer_disable & 0x0008) == 0 && (nBurnLayer & 8)) GenericTilemapDraw(3, pTransDraw, 8, 0xff);
 
 	if ((layer_disable & 0x0010) == 0 && (nSpriteEnable & 1)) draw_sprites(0x7000-0x800, NULL, 0, 0, 0);
+
+	BurnTransferCopy(DrvPalette);
+
+	return 0;
+}
+
+static INT32 CupsocDraw()
+{
+	if (DrvRecalc) {
+		for (INT32 i = 0; i < 0x800; i++) {
+			palette_write_xbgr555(i, DrvPalBuf16[i]);
+		}
+		DrvPalette[0x800] = 0;
+		DrvRecalc = 0;
+	}
+
+	static UINT16 pri_masks[4] = { 0xfff0, 0xfffc, 0xfffe, 0x0000 };
+
+	GenericTilemapSetScrollX(0, scroll[0]);
+	GenericTilemapSetScrollY(0, scroll[1]);
+	GenericTilemapSetScrollX(1, scroll[2]);
+	GenericTilemapSetScrollY(1, scroll[3]);
+	GenericTilemapSetScrollX(2, scroll[4]);
+	GenericTilemapSetScrollY(2, scroll[5]);
+
+	BurnTransferClear(0x800);
+
+	if ((layer_disable & 0x0001) == 0 && (nBurnLayer & 1)) GenericTilemapDraw(0, pTransDraw, 0);
+	if ((layer_disable & 0x0002) == 0 && (nBurnLayer & 2)) GenericTilemapDraw(1, pTransDraw, 1);
+	if ((layer_disable & 0x0004) == 0 && (nBurnLayer & 4)) GenericTilemapDraw(2, pTransDraw, 2);
+	if ((layer_disable & 0x0008) == 0 && (nBurnLayer & 8)) GenericTilemapDraw(3, pTransDraw, 4);
+
+	// cupsoc has 0x800 bytes of sprite RAM at 0x107000, i.e. +0x6800 from DrvAllRAM.
+	if ((layer_disable & 0x0010) == 0 && (nSpriteEnable & 1)) draw_sprites(0x6800, pri_masks, 0, 0, -8);
 
 	BurnTransferCopy(DrvPalette);
 
@@ -2251,6 +2496,42 @@ struct BurnDriver BurnDrvDenjinmka = {
 	NULL, denjinmkaRomInfo, denjinmkaRomName, NULL, NULL, NULL, NULL, DenjinmkInputInfo, DenjinmkDIPInfo,
 	DenjinmkInit, DrvExit, DrvFrame, DenjinmkDraw, DrvScan, &DrvRecalc, 0x801,
 	320, 256, 4, 3
+};
+
+
+// Seibu Cup Soccer (set 1)
+
+static struct BurnRomInfo cupsocRomDesc[] = {
+	{ "scc_01.bin",  0x040000, 0xc122203c, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "scc_02.bin",  0x040000, 0x105511b4, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "scc_03.bin",  0x040000, 0x2d23d78f, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "scc_04.bin",  0x040000, 0xe8877461, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "scc_06.bin",  0x010000, 0xf1a18ec6, 3 | BRF_GRA },           //  5 Characters
+	{ "scc_05.bin",  0x010000, 0xc0358503, 3 | BRF_GRA },           //  6
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },           //  7 Sprites
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },           //  8 Background / Midground Tiles
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },           //  9 Foreground Tiles
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },           // 10 Samples
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS }, // 11 COP ROM
+};
+
+STD_ROM_PICK(cupsoc)
+STD_ROM_FN(cupsoc)
+
+// WIP: registered for local testing while the remaining COP3 semantics are ported.
+struct BurnDriver BurnDrvCupsoc = {
+	"cupsoc", NULL, NULL, NULL, "1992",
+	"Seibu Cup Soccer (set 1)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocRomInfo, cupsocRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
 };
 
 
