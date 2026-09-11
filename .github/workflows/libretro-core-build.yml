@@ -22,7 +22,7 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Install build dependencies
         run: |
@@ -35,7 +35,7 @@ jobs:
           test -f src/burner/libretro/fbneo_libretro.so
 
       - name: Upload Linux ARM64 core
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fbneo-libretro-linux-arm64
           path: src/burner/libretro/fbneo_libretro.so
@@ -47,7 +47,7 @@ jobs:
     runs-on: windows-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Set up MSYS2 MinGW64
         uses: msys2/setup-msys2@v2
@@ -68,7 +68,7 @@ jobs:
           test -f src/burner/libretro/fbneo_libretro.dll
 
       - name: Upload Windows x64 core
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: fbneo-libretro-windows-x64
           path: src/burner/libretro/fbneo_libretro.dll
