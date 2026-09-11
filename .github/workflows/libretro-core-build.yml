@@ -84,6 +84,7 @@ jobs:
           make -C src/burner/libretro \
             platform=android-armv7 \
             CC="${CC}" CXX="${CXX}" AR="${AR}" \
+            SUPPORT_LARGE_FILES=0 \
             REGEN_HEADERS=1 -j"$(nproc)"
 
           test -f src/burner/libretro/fbneo_libretro.so
