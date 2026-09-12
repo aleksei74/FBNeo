@@ -145,17 +145,23 @@ jobs:
       - name: Build Android ARM64 libretro core
         run: |
           NDK="${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
-          "${NDK}/ndk-build" \
-            -C src/burner/libretro \
-            NDK_PROJECT_PATH=. \
-            APP_BUILD_SCRIPT=jni/Android.mk \
-            NDK_APPLICATION_MK=jni/Application.mk \
-            APP_ABI=arm64-v8a \
-            APP_PLATFORM=android-${ANDROID_API} \
-            -j"$(nproc)"
+          TOOLCHAIN="${NDK}/toolchains/llvm/prebuilt/linux-x86_64"
+          CC="${TOOLCHAIN}/bin/aarch64-linux-android${ANDROID_API}-clang"
+          CXX="${TOOLCHAIN}/bin/aarch64-linux-android${ANDROID_API}-clang++"
+          AR="${TOOLCHAIN}/bin/llvm-ar"
+          STRIP="${TOOLCHAIN}/bin/llvm-strip"
 
-          test -f src/burner/libretro/libs/arm64-v8a/libretro.so
-          cp src/burner/libretro/libs/arm64-v8a/libretro.so src/burner/libretro/fbneo_libretro.so
+          test -x "${CC}"
+          test -x "${CXX}"
+          make -C src/burner/libretro \
+            platform=android-armv8-neon \
+            USE_CYCLONE=0 \
+            CC="${CC}" CXX="${CXX}" AR="${AR}" \
+            PLATFORM_DEFINES="-DANDROID" \
+            REGEN_HEADERS=1 -j"$(nproc)"
+
+          test -f src/burner/libretro/fbneo_libretro.so
+          "${STRIP}" --strip-unneeded src/burner/libretro/fbneo_libretro.so
           file src/burner/libretro/fbneo_libretro.so
           readelf -h src/burner/libretro/fbneo_libretro.so | grep -E 'Class:.*ELF64|Machine:.*AArch64'
 
@@ -248,12 +254,10 @@ jobs:
 
       - name: Install ARM hard-float cross toolchain
         run: |
-          sudo dpkg --add-architecture armhf
           sudo apt-get update
           sudo apt-get install -y \
             build-essential perl file \
-            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
-            libegl1-mesa-dev:armhf libgles2-mesa-dev:armhf
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf
 
       - name: Select device platform
         id: device
@@ -288,6 +292,7 @@ jobs:
         run: |
           make -C src/burner/libretro \
             platform="${{ steps.device.outputs.platform }}" \
+            NAMCOS_OPENGL=0 NAMCOS_OPENGL_ES2=0 NAMCOS_OPENGL_LIBS= \
             REGEN_HEADERS=1 -j"$(nproc)"
 
           test -f src/burner/libretro/fbneo_libretro.so
