@@ -407,3 +407,89 @@ jobs:
           path: src/burner/libretro/fbneo_libretro.dll
           if-no-files-found: error
           compression-level: 9
+
+  release:
+    if: >-
+      ${{ always() &&
+          !cancelled() &&
+          !contains(needs.*.result, 'failure') &&
+          github.event_name == 'workflow_dispatch' }}
+    name: Create FBNeo Release
+    needs:
+      - linux-arm64
+      - android-armv7
+      - android-arm64
+      - linux-arm64-devices
+      - linux-arm32-devices
+      - linux-x64-devices
+      - nintendo-switch
+      - windows-x64
+    runs-on: ubuntu-22.04
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - name: Download built cores
+        uses: actions/download-artifact@v8
+        with:
+          pattern: fbneo-libretro-*
+          path: release-downloads
+          merge-multiple: false
+
+      - name: Prepare release assets
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release-assets
+
+          found=0
+          for dir in release-downloads/fbneo-libretro-*; do
+            [ -d "$dir" ] || continue
+            artifact="$(basename "$dir")"
+            file="$(find "$dir" -maxdepth 1 -type f \( -name '*.so' -o -name '*.dll' -o -name '*.a' \) -print -quit)"
+            [ -n "$file" ] || continue
+
+            case "$file" in
+              *.so) ext=so ;;
+              *.dll) ext=dll ;;
+              *.a) ext=a ;;
+              *) continue ;;
+            esac
+
+            output="release-assets/${artifact}.${ext}"
+            cp "$file" "$output"
+            sha256sum "$output" > "${output}.sha256"
+            found=$((found + 1))
+          done
+
+          test "$found" -gt 0
+          ls -lh release-assets
+
+      - name: Set release metadata
+        shell: bash
+        run: |
+          DATE="$(TZ=Asia/Seoul date +'%Y%m%d')"
+          echo "RELEASE_TAG=libretro-${DATE}" >> "$GITHUB_ENV"
+          echo "RELEASE_NAME=FBNeo Libretro ${DATE}" >> "$GITHUB_ENV"
+
+          {
+            echo "## FBNeo Libretro builds"
+            echo
+            echo "- Source: ${GITHUB_SHA}"
+            echo "- Requested target: ${{ inputs.target }}"
+            echo "- Built with GitHub Actions"
+          } > release_notes.md
+
+      - name: Create Release
+        uses: ncipollo/release-action@v1
+        with:
+          tag: ${{ env.RELEASE_TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          artifacts: "release-assets/*"
+          artifactErrorsFailBuild: true
+          allowUpdates: true
+          replacesArtifacts: true
+          makeLatest: true
+          prerelease: false
+          bodyFile: release_notes.md
+          token: ${{ github.token }}
