@@ -364,7 +364,8 @@ jobs:
           test -f src/burner/libretro/fbneo_libretro_libnx.a
           mkdir -p dist/nintendo-switch
           cp src/burner/libretro/fbneo_libretro_libnx.a dist/nintendo-switch/fbneo_libretro_libnx.a
-          /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar t dist/nintendo-switch/fbneo_libretro_libnx.a | head
+          /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar t dist/nintendo-switch/fbneo_libretro_libnx.a > /tmp/fbneo-switch-archive.txt
+          head /tmp/fbneo-switch-archive.txt
 
       - name: Upload Nintendo Switch core
         uses: actions/upload-artifact@v7
