@@ -83,6 +83,7 @@ jobs:
           test -x "${CXX}"
           make -C src/burner/libretro \
             platform=android-armv7 \
+            USE_CYCLONE=0 \
             CC="${CC}" CXX="${CXX}" AR="${AR}" \
             PLATFORM_DEFINES="-DANDROID" \
             SUPPORT_LARGE_FILES=0 \
