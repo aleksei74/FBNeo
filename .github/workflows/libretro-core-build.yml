@@ -12,6 +12,19 @@ on:
           - all
           - linux-arm64
           - android-armv7
+          - android-arm64
+          - nintendo-switch
+          - odroid-n2
+          - odroid-go-advance
+          - playstation-classic
+          - powkiddy-a12-a13
+          - raspberry-pi2
+          - raspberry-pi3
+          - raspberry-pi4
+          - retroarch-linux-x64
+          - s905-arm64
+          - steam-deck
+          - super-famicom-mini
           - windows-x64
 
 permissions:
@@ -99,6 +112,260 @@ jobs:
         with:
           name: fbneo-libretro-android-armeabi-v7a
           path: src/burner/libretro/fbneo_libretro.so
+          if-no-files-found: error
+          compression-level: 9
+
+  android-arm64:
+    if: ${{ inputs.target == 'all' || inputs.target == 'android-arm64' }}
+    runs-on: ubuntu-22.04
+    env:
+      ANDROID_NDK_VERSION: 27.2.12479018
+      ANDROID_API: 21
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install Android NDK
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential perl file binutils
+
+          SDK_ROOT="${ANDROID_SDK_ROOT:-${ANDROID_HOME:-/usr/local/lib/android/sdk}}"
+          SDKMANAGER="${SDK_ROOT}/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "${SDKMANAGER}" ]; then
+            SDKMANAGER="$(find "${SDK_ROOT}/cmdline-tools" -type f -name sdkmanager -perm -u+x | head -n 1)"
+          fi
+
+          test -n "${SDKMANAGER}"
+          test -x "${SDKMANAGER}"
+          echo "ANDROID_SDK_ROOT=${SDK_ROOT}" >> "${GITHUB_ENV}"
+          yes | "${SDKMANAGER}" --licenses >/dev/null 2>&1 || true
+          "${SDKMANAGER}" "ndk;${ANDROID_NDK_VERSION}"
+
+      - name: Build Android ARM64 libretro core
+        run: |
+          NDK="${ANDROID_SDK_ROOT}/ndk/${ANDROID_NDK_VERSION}"
+          "${NDK}/ndk-build" \
+            -C src/burner/libretro \
+            NDK_PROJECT_PATH=. \
+            APP_BUILD_SCRIPT=jni/Android.mk \
+            NDK_APPLICATION_MK=jni/Application.mk \
+            APP_ABI=arm64-v8a \
+            APP_PLATFORM=android-${ANDROID_API} \
+            -j"$(nproc)"
+
+          test -f src/burner/libretro/libs/arm64-v8a/libretro.so
+          cp src/burner/libretro/libs/arm64-v8a/libretro.so src/burner/libretro/fbneo_libretro.so
+          file src/burner/libretro/fbneo_libretro.so
+          readelf -h src/burner/libretro/fbneo_libretro.so | grep -E 'Class:.*ELF64|Machine:.*AArch64'
+
+      - name: Upload Android ARM64 core
+        uses: actions/upload-artifact@v7
+        with:
+          name: fbneo-libretro-android-arm64-v8a
+          path: src/burner/libretro/fbneo_libretro.so
+          if-no-files-found: error
+          compression-level: 9
+
+  linux-arm64-devices:
+    if: >-
+      ${{ inputs.target == 'all' ||
+          inputs.target == 'odroid-n2' ||
+          inputs.target == 'odroid-go-advance' ||
+          inputs.target == 's905-arm64' }}
+    runs-on: ubuntu-22.04-arm
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.target == 'all' && '["odroid-n2","odroid-go-advance","s905-arm64"]' || format('["{0}"]', inputs.target)) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential perl file binutils libegl1-mesa-dev libgles2-mesa-dev
+
+      - name: Select device platform
+        id: device
+        shell: bash
+        run: |
+          case "${{ matrix.target }}" in
+            odroid-n2)
+              echo "platform=odroid-n2_x64" >> "${GITHUB_OUTPUT}"
+              ;;
+            odroid-go-advance)
+              echo "platform=classic_armv8_a35_x64" >> "${GITHUB_OUTPUT}"
+              ;;
+            s905-arm64)
+              echo "platform=ras3_x64" >> "${GITHUB_OUTPUT}"
+              ;;
+            *)
+              echo "Unknown ARM64 device target: ${{ matrix.target }}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Build ${{ matrix.target }} core
+        run: |
+          make -C src/burner/libretro \
+            platform="${{ steps.device.outputs.platform }}" \
+            CC=gcc CXX=g++ AR=gcc-ar \
+            REGEN_HEADERS=1 -j"$(nproc)"
+
+          test -f src/burner/libretro/fbneo_libretro.so
+          mkdir -p "dist/${{ matrix.target }}"
+          cp src/burner/libretro/fbneo_libretro.so "dist/${{ matrix.target }}/fbneo_libretro.so"
+          file "dist/${{ matrix.target }}/fbneo_libretro.so"
+          readelf -h "dist/${{ matrix.target }}/fbneo_libretro.so" | grep -E 'Class:.*ELF64|Machine:.*AArch64'
+
+      - name: Upload ${{ matrix.target }} core
+        uses: actions/upload-artifact@v7
+        with:
+          name: fbneo-libretro-${{ matrix.target }}
+          path: dist/${{ matrix.target }}/fbneo_libretro.so
+          if-no-files-found: error
+          compression-level: 9
+
+  linux-arm32-devices:
+    if: >-
+      ${{ inputs.target == 'all' ||
+          inputs.target == 'playstation-classic' ||
+          inputs.target == 'powkiddy-a12-a13' ||
+          inputs.target == 'raspberry-pi2' ||
+          inputs.target == 'raspberry-pi3' ||
+          inputs.target == 'raspberry-pi4' ||
+          inputs.target == 'super-famicom-mini' }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.target == 'all' && '["playstation-classic","powkiddy-a12-a13","raspberry-pi2","raspberry-pi3","raspberry-pi4","super-famicom-mini"]' || format('["{0}"]', inputs.target)) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install ARM hard-float cross toolchain
+        run: |
+          sudo dpkg --add-architecture armhf
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential perl file \
+            gcc-arm-linux-gnueabihf g++-arm-linux-gnueabihf binutils-arm-linux-gnueabihf \
+            libegl1-mesa-dev:armhf libgles2-mesa-dev:armhf
+
+      - name: Select device platform
+        id: device
+        shell: bash
+        run: |
+          case "${{ matrix.target }}" in
+            playstation-classic)
+              echo "platform=classic_armv8_a35" >> "${GITHUB_OUTPUT}"
+              ;;
+            powkiddy-a12-a13)
+              echo "platform=classic_armv7_a7" >> "${GITHUB_OUTPUT}"
+              ;;
+            raspberry-pi2)
+              echo "platform=rpi2" >> "${GITHUB_OUTPUT}"
+              ;;
+            raspberry-pi3)
+              echo "platform=rpi3" >> "${GITHUB_OUTPUT}"
+              ;;
+            raspberry-pi4)
+              echo "platform=rpi4" >> "${GITHUB_OUTPUT}"
+              ;;
+            super-famicom-mini)
+              echo "platform=classic_armv7_a7" >> "${GITHUB_OUTPUT}"
+              ;;
+            *)
+              echo "Unknown ARM32 device target: ${{ matrix.target }}" >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Build ${{ matrix.target }} core
+        run: |
+          make -C src/burner/libretro \
+            platform="${{ steps.device.outputs.platform }}" \
+            REGEN_HEADERS=1 -j"$(nproc)"
+
+          test -f src/burner/libretro/fbneo_libretro.so
+          mkdir -p "dist/${{ matrix.target }}"
+          cp src/burner/libretro/fbneo_libretro.so "dist/${{ matrix.target }}/fbneo_libretro.so"
+          file "dist/${{ matrix.target }}/fbneo_libretro.so"
+          arm-linux-gnueabihf-readelf -h "dist/${{ matrix.target }}/fbneo_libretro.so" | grep -E 'Class:.*ELF32|Machine:.*ARM'
+
+      - name: Upload ${{ matrix.target }} core
+        uses: actions/upload-artifact@v7
+        with:
+          name: fbneo-libretro-${{ matrix.target }}
+          path: dist/${{ matrix.target }}/fbneo_libretro.so
+          if-no-files-found: error
+          compression-level: 9
+
+  linux-x64-devices:
+    if: >-
+      ${{ inputs.target == 'all' ||
+          inputs.target == 'retroarch-linux-x64' ||
+          inputs.target == 'steam-deck' }}
+    runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        target: ${{ fromJSON(inputs.target == 'all' && '["retroarch-linux-x64","steam-deck"]' || format('["{0}"]', inputs.target)) }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential perl file binutils libegl1-mesa-dev libgles2-mesa-dev
+
+      - name: Build ${{ matrix.target }} core
+        run: |
+          make -C src/burner/libretro platform=unix REGEN_HEADERS=1 -j"$(nproc)"
+          test -f src/burner/libretro/fbneo_libretro.so
+          mkdir -p "dist/${{ matrix.target }}"
+          cp src/burner/libretro/fbneo_libretro.so "dist/${{ matrix.target }}/fbneo_libretro.so"
+          file "dist/${{ matrix.target }}/fbneo_libretro.so"
+          readelf -h "dist/${{ matrix.target }}/fbneo_libretro.so" | grep -E 'Class:.*ELF64|Machine:.*X86-64'
+
+      - name: Upload ${{ matrix.target }} core
+        uses: actions/upload-artifact@v7
+        with:
+          name: fbneo-libretro-${{ matrix.target }}
+          path: dist/${{ matrix.target }}/fbneo_libretro.so
+          if-no-files-found: error
+          compression-level: 9
+
+  nintendo-switch:
+    if: ${{ inputs.target == 'all' || inputs.target == 'nintendo-switch' }}
+    runs-on: ubuntu-latest
+    container:
+      image: devkitpro/devkita64:latest
+    env:
+      DEVKITPRO: /opt/devkitpro
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Build Nintendo Switch libnx core
+        shell: bash
+        run: |
+          git config --global --add safe.directory "${GITHUB_WORKSPACE}" || true
+          make -C src/burner/libretro platform=libnx -j"$(nproc)"
+          test -f src/burner/libretro/fbneo_libretro_libnx.a
+          mkdir -p dist/nintendo-switch
+          cp src/burner/libretro/fbneo_libretro_libnx.a dist/nintendo-switch/fbneo_libretro_libnx.a
+          /opt/devkitpro/devkitA64/bin/aarch64-none-elf-ar t dist/nintendo-switch/fbneo_libretro_libnx.a | head
+
+      - name: Upload Nintendo Switch core
+        uses: actions/upload-artifact@v7
+        with:
+          name: fbneo-libretro-nintendo-switch-libnx
+          path: dist/nintendo-switch/fbneo_libretro_libnx.a
           if-no-files-found: error
           compression-level: 9
 
