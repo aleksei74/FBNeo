@@ -429,24 +429,29 @@ jobs:
       actions: read
       contents: write
     steps:
-      - name: Download built cores
-        uses: actions/download-artifact@v8
-        with:
-          pattern: fbneo-libretro-*
-          path: release-downloads
-          merge-multiple: false
-
       - name: Prepare release assets
         shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
           mkdir -p release-assets
 
+          mapfile -t artifacts < <(
+            gh api --paginate \
+              "repos/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}/artifacts?per_page=100" \
+              --jq '.artifacts[].name | select(startswith("fbneo-libretro-"))'
+          )
+
           found=0
-          for dir in release-downloads/fbneo-libretro-*; do
-            [ -d "$dir" ] || continue
-            artifact="$(basename "$dir")"
-            file="$(find "$dir" -type f \( -name '*.so' -o -name '*.dll' -o -name '*.a' \) -print -quit)"
+          for artifact in "${artifacts[@]}"; do
+            download_dir="$(mktemp -d)"
+            gh run download "$GITHUB_RUN_ID" \
+              --repo "$GITHUB_REPOSITORY" \
+              --name "$artifact" \
+              --dir "$download_dir"
+
+            file="$(find "$download_dir" -type f \( -name '*.so' -o -name '*.dll' -o -name '*.a' \) -print -quit)"
             [ -n "$file" ] || continue
 
             case "$artifact" in
@@ -461,6 +466,7 @@ jobs:
             output="release-assets/${artifact}.zip"
             (cd "$staging" && zip -q "${GITHUB_WORKSPACE}/${output}" "$core_name")
             rm -rf "$staging"
+            rm -rf "$download_dir"
             sha256sum "$output" > "${output}.sha256"
             found=$((found + 1))
           done
