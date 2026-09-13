@@ -446,7 +446,7 @@ jobs:
           for dir in release-downloads/fbneo-libretro-*; do
             [ -d "$dir" ] || continue
             artifact="$(basename "$dir")"
-            file="$(find "$dir" -maxdepth 1 -type f \( -name '*.so' -o -name '*.dll' -o -name '*.a' \) -print -quit)"
+            file="$(find "$dir" -type f \( -name '*.so' -o -name '*.dll' -o -name '*.a' \) -print -quit)"
             [ -n "$file" ] || continue
 
             case "$artifact" in
