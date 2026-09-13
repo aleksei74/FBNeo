@@ -26,31 +26,75 @@
 static INT32 sprite_kludge_x, sprite_kludge_y;
 static UINT8 decodebuffer[0x2000];
 
-static INT32 skns_rle_decode ( INT32 romoffset, INT32 size, UINT8*gfx_source, INT32 gfx_length )
+static INT32 skns_rle_decode ( INT32 romoffset, INT32 size, UINT8*gfx_source, INT32 gfx_length, bool *hasPixels = NULL )
 {
-	UINT8 *src = gfx_source;
-	INT32 srcsize = gfx_length;
-	UINT8 *dst = decodebuffer;
-	INT32 decodeoffset = 0;
-
-	while(size>0) {
-		UINT8 code = src[(romoffset++)%srcsize];
-		size -= (code & 0x7f) + 1;
-		if(code & 0x80) { /* (code & 0x7f) normal values will follow */
-			code &= 0x7f;
-			do {
-				dst[(decodeoffset++)%SUPRNOVA_DECODE_BUFFER_SIZE] = src[(romoffset++)%srcsize];
-				code--;
-			} while(code != 0xff);
-		} else {  /* repeat next value (code & 0x7f) times */
-			UINT8 val = src[(romoffset++)%srcsize];
-			do {
-				dst[(decodeoffset++)%SUPRNOVA_DECODE_BUFFER_SIZE] = val;
-				code--;
-			} while(code != 0xff);
+	bool visible = false;
+	INT32 srcpos = romoffset % gfx_length;
+	INT32 dstpos = 0;
+	while (size > 0) {
+		const UINT8 code = gfx_source[srcpos];
+		if (++srcpos == gfx_length) srcpos = 0;
+		INT32 remaining = (code & 0x7f) + 1;
+		// Decode the complete final packet, even when it exceeds requested size.
+		size -= remaining;
+		if (remaining == 1) {
+			decodebuffer[dstpos] = gfx_source[srcpos];
+			visible = true; // Keep the single-byte fast path free of value tests.
+			if (++srcpos == gfx_length) srcpos = 0;
+			dstpos = (dstpos + 1) & (SUPRNOVA_DECODE_BUFFER_SIZE - 1);
+			continue;
+		}
+		if (code & 0x80) {
+			// Literal packets may contain visible pixels; avoid scanning them twice.
+			visible = true;
+			while (remaining > 0) {
+				INT32 count = remaining;
+				if (count > gfx_length - srcpos) count = gfx_length - srcpos;
+				if (count > SUPRNOVA_DECODE_BUFFER_SIZE - dstpos) count = SUPRNOVA_DECODE_BUFFER_SIZE - dstpos;
+				memcpy(decodebuffer + dstpos, gfx_source + srcpos, count);
+				srcpos += count;
+				if (srcpos == gfx_length) srcpos = 0;
+				dstpos = (dstpos + count) & (SUPRNOVA_DECODE_BUFFER_SIZE - 1);
+				remaining -= count;
+			}
+		} else {
+			const UINT8 value = gfx_source[srcpos];
+			visible |= value != 0;
+			if (++srcpos == gfx_length) srcpos = 0;
+			while (remaining > 0) {
+				INT32 count = remaining;
+				if (count > SUPRNOVA_DECODE_BUFFER_SIZE - dstpos) count = SUPRNOVA_DECODE_BUFFER_SIZE - dstpos;
+				memset(decodebuffer + dstpos, value, count);
+				dstpos = (dstpos + count) & (SUPRNOVA_DECODE_BUFFER_SIZE - 1);
+				remaining -= count;
+			}
 		}
 	}
-	return &src[romoffset%srcsize]-gfx_source;
+	if (hasPixels) *hasPixels = visible;
+	return srcpos;
+}
+
+static void skns_blit_unscaled(UINT16 *bitmap, INT32 sx, INT32 sy, INT32 xsize, INT32 ysize, INT32 xflip, INT32 yflip, INT32 colour)
+{
+	if (xflip) sx -= xsize;
+	if (yflip) sy -= ysize;
+	const INT32 left = sx < 0 ? 0 : sx;
+	const INT32 top = sy < 0 ? 0 : sy;
+	const INT32 right = sx + xsize < nScreenWidth ? sx + xsize : nScreenWidth;
+	const INT32 bottom = sy + ysize < nScreenHeight ? sy + ysize : nScreenHeight;
+	if (left >= right || top >= bottom) return;
+	const INT32 firstx = xflip ? xsize - 1 - (left - sx) : left - sx;
+	const INT32 step = xflip ? -1 : 1;
+	for (INT32 y = top; y < bottom; y++) {
+		const INT32 srcy = yflip ? ysize - 1 - (y - sy) : y - sy;
+		const UINT8 *src = decodebuffer + srcy * xsize;
+		UINT16 *dst = bitmap + y * nScreenWidth;
+		INT32 srcx = firstx;
+		for (INT32 x = left; x < right; x++, srcx += step) {
+			const UINT8 pixel = src[srcx];
+			if (pixel) dst[x] = pixel + colour;
+		}
+	}
 }
 
 void skns_sprite_kludge(INT32 x, INT32 y)
@@ -83,38 +127,34 @@ void skns_sprite_kludge(INT32 x, INT32 y)
 	x <<= 6;					\
 	y <<= 6;
 
-#define z_clamp_x_min()			\
-	if(x < clip_min_x) {					\
-		do {					\
-			bxs += zxs;				\
-			x += zxd;					\
-		} while(x < clip_min_x);				\
+#define z_clamp_x_min() \
+	if (x < clip_min_x) { \
+		const INT32 steps = (clip_min_x - x + zxd - 1) / zxd; \
+		bxs += steps * zxs; \
+		x += steps * zxd; \
 	}
 
-#define z_clamp_x_max()			\
-	if(x > clip_max_x) {				\
-		do {					\
-			bxs += zxs;				\
-			x -= zxd;					\
-		} while(x > clip_max_x);				\
+#define z_clamp_x_max() \
+	if (x > clip_max_x) { \
+		const INT32 steps = (x - clip_max_x + zxd - 1) / zxd; \
+		bxs += steps * zxs; \
+		x -= steps * zxd; \
 	}
 
-#define z_clamp_y_min()			\
-	if(y < clip_min_y) {					\
-		do {					\
-			bys += zys;				\
-			y += zyd;					\
-		} while(y < clip_min_y);				\
-		src += (bys>>6)*step_spr;			\
+#define z_clamp_y_min() \
+	if (y < clip_min_y) { \
+		const INT32 steps = (clip_min_y - y + zyd - 1) / zyd; \
+		bys += steps * zys; \
+		y += steps * zyd; \
+		src += (bys >> 6) * step_spr; \
 	}
 
-#define z_clamp_y_max()			\
-	if(y > clip_max_y) {				\
-		do {					\
-			bys += zys;				\
-			y -= zyd;					\
-		} while(y > clip_max_y);				\
-		src += (bys>>6)*step_spr;			\
+#define z_clamp_y_max() \
+	if (y > clip_max_y) { \
+		const INT32 steps = (y - clip_max_y + zyd - 1) / zyd; \
+		bys += steps * zys; \
+		y -= steps * zyd; \
+		src += (bys >> 6) * step_spr; \
 	}
 
 #define z_loop_x()			\
@@ -137,11 +177,14 @@ void skns_sprite_kludge(INT32 x, INT32 y)
 	yd = y;					\
 	while(ys < sy && yd >= clip_min_y)
 
+#define z_row() \
+	UINT16 *const dst_row = (yd >> 6) < nScreenHeight ? bitmap + (yd >> 6) * nScreenWidth : NULL;
+
 #define z_draw_pixel()				\
 	UINT8 val = src[xs >> 6];			\
 	if(val)					\
-		if ((yd>>6) < nScreenHeight && (xd>>6) < nScreenWidth)	\
-			bitmap[(yd>>6) * nScreenWidth + (xd>>6)] = val + colour;
+		if (dst_row && (xd>>6) < nScreenWidth)	\
+			dst_row[xd>>6] = val + colour;
 
 #define z_x_dst(op)			\
 	old = xd;					\
@@ -168,6 +211,7 @@ static void blit_nf_z(UINT16 *bitmap, const UINT8 *src, INT32 x, INT32 y, INT32 
 	z_clamp_x_min();
 	z_clamp_y_min();
 	z_loop_y() {
+		z_row();
 		z_loop_x() {
 			z_draw_pixel();
 			z_x_dst(+=);
@@ -182,6 +226,7 @@ static void blit_fy_z(UINT16 *bitmap, const UINT8 *src, INT32 x, INT32 y, INT32 
 	z_clamp_x_min();
 	z_clamp_y_max();
 	z_loop_y_flip() {
+		z_row();
 		z_loop_x() {
 			z_draw_pixel();
 			z_x_dst(+=);
@@ -196,6 +241,7 @@ static void blit_fx_z(UINT16 *bitmap, const UINT8 *src, INT32 x, INT32 y, INT32 
 	z_clamp_x_max();
 	z_clamp_y_min();
 	z_loop_y() {
+		z_row();
 		z_loop_x_flip() {
 			z_draw_pixel();
 			z_x_dst(-=);
@@ -210,6 +256,7 @@ static void blit_fxy_z(UINT16 *bitmap, const UINT8 *src, INT32 x, INT32 y, INT32
 	z_clamp_x_max();
 	z_clamp_y_max();
 	z_loop_y_flip() {
+		z_row();
 		z_loop_x_flip() {
 			z_draw_pixel();
 			z_x_dst(-=);
@@ -431,7 +478,8 @@ void skns_draw_sprites(UINT16 *bitmap, UINT32* spriteram_source, INT32 spriteram
 
 			romoffset &= gfxlen-1;
 
-			endromoffs = skns_rle_decode ( romoffset, size, gfx_source, gfx_length );
+			bool hasPixels;
+			endromoffs = skns_rle_decode ( romoffset, size, gfx_source, gfx_length, &hasPixels );
 
 			// in Cyvern
 
@@ -440,7 +488,8 @@ void skns_draw_sprites(UINT16 *bitmap, UINT32* spriteram_source, INT32 spriteram
 			//  players etc. pri = 0x02
 			//  pickups etc. pri = 0x03
 
-			{
+			// Decode/link state is already updated even for transparent repeat-only sprites.
+			if (hasPixels) {
 				INT32 NewColour = (colour<<8);
 				if (disable_priority) {
 					NewColour += disable_priority; // jchan hack
@@ -454,87 +503,7 @@ void skns_draw_sprites(UINT16 *bitmap, UINT32* spriteram_source, INT32 spriteram
 				}
 				else
 				{
-					if (!xflip && !yflip) {
-						INT32 xx,yy;
-
-						for (xx = 0; xx<xsize; xx++)
-						{
-							if ((sx+xx < (cliprect_max_x+1)) && (sx+xx >= cliprect_min_x))
-							{
-								for (yy = 0; yy<ysize; yy++)
-								{
-									if ((sy+yy < (cliprect_max_y+1)) && (sy+yy >= cliprect_min_y))
-									{
-										INT32 pix;
-										pix = decodebuffer[xsize*yy+xx];
-										if (pix)
-											bitmap[(sy+yy) * nScreenWidth + (sx+xx)] = pix+ NewColour; // change later
-									}
-								}
-							}
-						}
-					} else if (!xflip && yflip) {
-						INT32 xx,yy;
-						sy -= ysize;
-
-						for (xx = 0; xx<xsize; xx++)
-						{
-							if ((sx+xx < (cliprect_max_x+1)) && (sx+xx >= cliprect_min_x))
-							{
-								for (yy = 0; yy<ysize; yy++)
-								{
-									if ((sy+(ysize-1-yy) < (cliprect_max_y+1)) && (sy+(ysize-1-yy) >= cliprect_min_y))
-									{
-										INT32 pix;
-										pix = decodebuffer[xsize*yy+xx];
-										if (pix)
-											bitmap[(sy+(ysize-1-yy)) * nScreenWidth + (sx+xx)] = pix+ NewColour; // change later
-									}
-								}
-							}
-						}
-					} else if (xflip && !yflip) {
-						INT32 xx,yy;
-						sx -= xsize;
-
-						for (xx = 0; xx<xsize; xx++)
-						{
-							if ( (sx+(xsize-1-xx) < (cliprect_max_x+1)) && (sx+(xsize-1-xx) >= cliprect_min_x))
-							{
-								for (yy = 0; yy<ysize; yy++)
-								{
-									if ((sy+yy < (cliprect_max_y+1)) && (sy+yy >= cliprect_min_y))
-									{
-										INT32 pix;
-										pix = decodebuffer[xsize*yy+xx];
-										if (pix)
-											bitmap[(sy+yy) * nScreenWidth + (sx+(xsize-1-xx))] = pix+ NewColour; // change later
-									}
-								}
-							}
-						}
-					} else if (xflip && yflip) {
-						INT32 xx,yy;
-						sx -= xsize;
-						sy -= ysize;
-
-						for (xx = 0; xx<xsize; xx++)
-						{
-							if ((sx+(xsize-1-xx) < (cliprect_max_x+1)) && (sx+(xsize-1-xx) >= cliprect_min_x))
-							{
-								for (yy = 0; yy<ysize; yy++)
-								{
-									if ((sy+(ysize-1-yy) < (cliprect_max_y+1)) && (sy+(ysize-1-yy) >= cliprect_min_y))
-									{
-										INT32 pix;
-										pix = decodebuffer[xsize*yy+xx];
-										if (pix)
-											bitmap[(sy+(ysize-1-yy)) * nScreenWidth + (sx+(xsize-1-xx))] = pix+ NewColour; // change later
-									}
-								}
-							}
-						}
-					}
+					skns_blit_unscaled(bitmap, sx, sy, xsize, ysize, xflip, yflip, NewColour);
 				}
 			}
 

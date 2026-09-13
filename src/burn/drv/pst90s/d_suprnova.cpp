@@ -8,6 +8,7 @@
 #include "lowpass2.h"
 #include "burn_gun.h"
 #include "dtimer.h"
+#include "epic12_threads.h"
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -79,6 +80,7 @@ static UINT32 Vblokbrk = 0;
 static class LowPass2 *LP1 = NULL, *LP2 = NULL;
 
 static dtimer irqtimers[3];
+static Epic12ThreadPool SuprnovaThreads;
 
 static struct BurnRomInfo emptyRomDesc[] = {
 	{ "",                    0,          0, 0 },
@@ -1171,6 +1173,7 @@ static INT32 DrvInit(INT32 bios)
 	skns_sprite_kludge(sprite_kludge_x, sprite_kludge_y);
 
 	GenericTilesInit();
+	SuprnovaThreads.Configure();
 
 	BurnTrackballInit(1); // vblokbrk/sarukani/puzzloop paddle
 
@@ -1186,6 +1189,7 @@ static INT32 DrvInit(INT32 bios)
 
 static INT32 DrvExit()
 {
+	SuprnovaThreads.Shutdown();
 	GenericTilesExit();
 
 	skns_exit();
@@ -1214,34 +1218,24 @@ static INT32 DrvExit()
 	return 0;
 }
 
-static void draw_layer(UINT8 *source, UINT8 *previous, UINT16 *dest, UINT8 *prid, UINT8 *gfxbase, INT32 layer)
+struct SuprnovaTileContext
 {
-	UINT32 *prev = (UINT32*)previous;
-	UINT32 *vram = (UINT32*)source;
+	const UINT32 *vram;
+	UINT32 *prev;
+	UINT16 *dest;
+	UINT8 *prid, *gfxbase;
+};
 
-	UINT8 depthchanged[2] = { 0, 0 };
-	UINT32 depth = *((UINT32*)(DrvV3Regs + 0x0c));
-	if (layer) depth >>= 8;
-	depth &= 1;
-
-	if (depth != olddepths[layer]) {
-		depthchanged[layer] = 1;
-		olddepths[layer] = depth;
-	}
-
-	for (INT32 offs = 0; offs < 64 * 64; offs++)
-	{
-		// dirty tile speed hack. nRedrawTiles true if ram-based graphics changed.
-		if (layer == 1) {
-			if (!depthchanged[layer] && !nRedrawTiles && vram[offs] == prev[offs]) {
-				continue;
-			}
-		} else {
-			if (!depthchanged[layer] && vram[offs] == prev[offs]) {
-				continue;
-			}
-		}
-		prev[offs] = vram[offs];
+template<bool FourBpp, bool Redraw>
+static void SuprnovaTileRange(void *context, INT32 begin, INT32 end)
+{
+	const SuprnovaTileContext &c = *(const SuprnovaTileContext*)context;
+	const UINT32 *vram = c.vram;
+	UINT16 *dest = c.dest;
+	UINT8 *prid = c.prid, *gfxbase = c.gfxbase;
+	for (INT32 offs = begin; offs < end; offs++) {
+		if (!Redraw && vram[offs] == c.prev[offs]) continue;
+		c.prev[offs] = vram[offs];
 
 		INT32 sx = (offs & 0x3f) << 4;
 		INT32 sy = (offs >> 6) << 4;
@@ -1258,7 +1252,7 @@ static void draw_layer(UINT8 *source, UINT8 *previous, UINT16 *dest, UINT8 *prid
 		UINT8 *pri = prid + sy * 1024 + sx;
 		UINT16 *dst = dest + sy * 1024 + sx;
 
-		if (depth) {	// 4bpp
+		if (FourBpp) {	// 4bpp
 
 			code &= 0x0FFFF;
 
@@ -1268,13 +1262,41 @@ static void draw_layer(UINT8 *source, UINT8 *previous, UINT16 *dest, UINT8 *prid
 			UINT8 *gfx = gfxbase + (code << 7);
 
 			for (INT32 y = 0; y < 16; y++) {
-				for (INT32 x = 0; x < 16; x+=2) {
-					INT32 c = gfx[((y << 3) | (x >> 1)) ^ flipy];
-
-					dst[x+0] = (c & 0x0f) + color;
-					dst[x+1] = (c >> 4) + color;
-					pri[x+0] = pri[x+1] = prio;
+				if (Redraw) {
+					const UINT8 *rowgfx = gfx + ((y << 3) ^ (flipy & 0x78));
+					const UINT8 p0 = rowgfx[0 ^ (flipy & 7)];
+					dst[0] = (p0 & 15) + color;
+					dst[1] = (p0 >> 4) + color;
+					const UINT8 p1 = rowgfx[1 ^ (flipy & 7)];
+					dst[2] = (p1 & 15) + color;
+					dst[3] = (p1 >> 4) + color;
+					const UINT8 p2 = rowgfx[2 ^ (flipy & 7)];
+					dst[4] = (p2 & 15) + color;
+					dst[5] = (p2 >> 4) + color;
+					const UINT8 p3 = rowgfx[3 ^ (flipy & 7)];
+					dst[6] = (p3 & 15) + color;
+					dst[7] = (p3 >> 4) + color;
+					const UINT8 p4 = rowgfx[4 ^ (flipy & 7)];
+					dst[8] = (p4 & 15) + color;
+					dst[9] = (p4 >> 4) + color;
+					const UINT8 p5 = rowgfx[5 ^ (flipy & 7)];
+					dst[10] = (p5 & 15) + color;
+					dst[11] = (p5 >> 4) + color;
+					const UINT8 p6 = rowgfx[6 ^ (flipy & 7)];
+					dst[12] = (p6 & 15) + color;
+					dst[13] = (p6 >> 4) + color;
+					const UINT8 p7 = rowgfx[7 ^ (flipy & 7)];
+					dst[14] = (p7 & 15) + color;
+					dst[15] = (p7 >> 4) + color;
+				} else {
+					for (INT32 x = 0; x < 16; x+=2) {
+						INT32 pixels = gfx[((y << 3) | (x >> 1)) ^ flipy];
+	
+						dst[x+0] = (pixels & 0x0f) + color;
+						dst[x+1] = (pixels >> 4) + color;
+					}
 				}
+				memset(pri, prio, 16);
 
 				dst += 1024;
 				pri += 1024;
@@ -1348,81 +1370,126 @@ static void draw_layer(UINT8 *source, UINT8 *previous, UINT16 *dest, UINT8 *prid
 }
 
 
-static void suprnova_draw_roz(UINT16 *source, UINT8 *flags, UINT16 *ddest, UINT8 *dflags, UINT32 startx, UINT32 starty, INT32 incxx, INT32 incxy, INT32 incyx, INT32 incyy, INT32 wraparound, INT32 columnscroll, UINT32* scrollram)
+static void draw_layer(UINT8 *source, UINT8 *previous, UINT16 *dest, UINT8 *prid, UINT8 *gfxbase, INT32 layer)
 {
-	const INT32 xmask = 0x3ff;
-	const INT32 ymask = 0x3ff;
-	const UINT32 widthshifted = 1024 << 16;
-	const UINT32 heightshifted = 1024 << 16;
-	UINT32 cx;
-	UINT32 cy;
-	INT32 x;
-	INT32 sx;
-	INT32 sy;
-	INT32 ex;
-	INT32 ey;
-	UINT16 *dest;
-	UINT8* destflags;
-
-	/* pre-advance based on the cliprect */
-	startx += 0 * incxx + 0 * incyx;
-	starty += 0 * incxy + 0 * incyy;
-
-	/* extract start/end points */
-	sx = 0;
-	sy = 0;
-	ex = nScreenWidth-1;
-	ey = nScreenHeight-1;
-
-	{
-		/* loop over rows */
-		while (sy <= ey)
-		{
-
-			/* initialize X counters */
-			x = sx;
-			cx = startx;
-			cy = starty;
-
-			/* get dest and priority pointers */
-			dest = ddest + (sy * nScreenWidth) + sx;
-			destflags = dflags + (sy * nScreenWidth) + sx;
-
-			/* loop over columns */
-			while (x <= ex)
-			{
-				if ((wraparound) || (cx < widthshifted && cy < heightshifted)) // not sure how this will cope with no wraparound, but row/col scroll..
-				{
-					if (columnscroll)
-					{
-						INT32 offset = (((cy >> 16) - scrollram[(cx>>16)&0x3ff]) & ymask) * 1024 + ((cx >> 16) & xmask);
-						offset &= 0xfffff;
-						dest[0]     = source[offset];
-						destflags[0] = flags[offset];
-					}
-					else
-					{
-						INT32 offset = ((cy >> 16) & ymask) * 1024 + (((cx >> 16) - scrollram[(cy>>16)&0x3ff]) & xmask);
-						offset &= 0xfffff;
-;						dest[0] =     source[offset];
-						destflags[0] = flags[offset];
-					}
-				}
-
-				/* advance in X */
-				cx += incxx;
-				cy += incxy;
-				x++;
-				dest++;
-				destflags++;
-			}
-
-			/* advance in Y */
-			startx += incyx;
-			starty += incyy;
-			sy++;
+	const UINT32 *vram = (const UINT32*)source;
+	UINT32 *prev = (UINT32*)previous;
+	const UINT32 depth = (*(const UINT32*)(DrvV3Regs + 0x0c) >> (layer ? 8 : 0)) & 1;
+	const bool redraw = depth != olddepths[layer] || (layer == 1 && nRedrawTiles);
+	olddepths[layer] = depth;
+	SuprnovaTileContext context = { vram, prev, dest, prid, gfxbase };
+	Epic12ThreadCallback callback = redraw
+		? (depth ? SuprnovaTileRange<true, true> : SuprnovaTileRange<false, true>)
+		: (depth ? SuprnovaTileRange<true, false> : SuprnovaTileRange<false, false>);
+	// Each tile owns a disjoint cache rectangle; finish before ROZ reads it.
+	// Only forced full redraws justify waking workers; sparse updates stay serial.
+	if (redraw) SuprnovaThreads.ParallelFor(4096, 1024, callback, &context);
+	else {
+		// Skip unchanged blocks without a second full per-tile scan.
+		for (INT32 begin = 0; begin < 4096; begin += 256) {
+			if (memcmp(vram + begin, prev + begin, 256 * sizeof(UINT32)) != 0)
+				callback(&context, begin, begin + 256);
 		}
 	}
+}
+
+struct SuprnovaRozContext
+{
+	const UINT16 *source;
+	const UINT8 *flags;
+	UINT16 *dest;
+	UINT8 *destflags;
+	UINT32 startx, starty;
+	INT32 incxx, incxy, incyx, incyy;
+	const UINT32 *scrollram;
+	INT32 width;
+};
+
+template<bool Wrap, bool ColumnScroll, bool ConstantRow = false>
+static void SuprnovaRozRows(void *context, INT32 begin, INT32 end)
+{
+	const SuprnovaRozContext &c = *(const SuprnovaRozContext*)context;
+	// Unsigned arithmetic preserves the original 32-bit coordinate wrap.
+	UINT32 startx = c.startx + (UINT32)begin * (UINT32)c.incyx;
+	UINT32 starty = c.starty + (UINT32)begin * (UINT32)c.incyy;
+	for (INT32 y = begin; y < end; y++, startx += c.incyx, starty += c.incyy) {
+		// With constant Y, a vertically clipped row cannot contain visible pixels.
+		if (ConstantRow && !Wrap && starty >= (1024U << 16)) continue;
+		UINT32 cx = startx, cy = starty;
+		UINT16 *dest = c.dest + y * c.width;
+		UINT8 *flags = c.destflags + y * c.width;
+		// With no Y increment across a row, the row-scroll entry stays constant.
+		const UINT32 row = ConstantRow ? ((cy >> 16) & 0x3ff) : 0;
+		const UINT32 scroll = ConstantRow ? c.scrollram[row] : 0;
+		for (INT32 x = 0; x < c.width; x++, cx += c.incxx, cy += c.incxy) {
+			// Preserve the pre-scroll clipping test and leave clipped pixels untouched.
+			if (Wrap || (cx < (1024U << 16) && cy < (1024U << 16))) {
+				UINT32 offset;
+				if (ColumnScroll) {
+					offset = (((cy >> 16) - c.scrollram[(cx >> 16) & 0x3ff]) & 0x3ff) * 1024 + ((cx >> 16) & 0x3ff);
+				} else if (ConstantRow) {
+					offset = row * 1024 + (((cx >> 16) - scroll) & 0x3ff);
+				} else {
+					offset = ((cy >> 16) & 0x3ff) * 1024 + (((cx >> 16) - c.scrollram[(cy >> 16) & 0x3ff]) & 0x3ff);
+				}
+				dest[x] = c.source[offset];
+				flags[x] = c.flags[offset];
+			}
+		}
+	}
+}
+
+template<bool Wrap = true>
+static void SuprnovaRozCopyRows(void *context, INT32 begin, INT32 end)
+{
+	const SuprnovaRozContext &c = *(const SuprnovaRozContext*)context;
+	UINT32 startx = c.startx + (UINT32)begin * (UINT32)c.incyx;
+	UINT32 starty = c.starty + (UINT32)begin * (UINT32)c.incyy;
+	for (INT32 y = begin; y < end; y++, startx += c.incyx, starty += c.incyy) {
+		if (!Wrap && starty >= (1024U << 16)) continue;
+		const UINT32 row = (starty >> 16) & 0x3ff;
+		UINT32 rawx = startx >> 16;
+		for (INT32 x = 0; x < c.width; ) {
+			// Clip before scrolling, including re-entry after 32-bit X wrap.
+			if (!Wrap && rawx >= 1024) {
+				INT32 skip = c.width - x;
+				if (skip > (INT32)(65536 - rawx)) skip = 65536 - rawx;
+				x += skip;
+				rawx = (rawx + skip) & 0xffff;
+				continue;
+			}
+			const UINT32 sx = (rawx - c.scrollram[row]) & 0x3ff;
+			INT32 count = c.width - x;
+			if (count > (INT32)(1024 - sx)) count = 1024 - sx;
+			if (!Wrap && count > (INT32)(1024 - rawx)) count = 1024 - rawx;
+			const UINT32 offset = row * 1024 + sx;
+			memcpy(c.dest + y * c.width + x, c.source + offset, count * sizeof(UINT16));
+			memcpy(c.destflags + y * c.width + x, c.flags + offset, count);
+			x += count;
+			rawx = (rawx + count) & 0xffff;
+		}
+	}
+}
+
+static void suprnova_draw_roz(UINT16 *source, UINT8 *flags, UINT16 *ddest, UINT8 *dflags, UINT32 startx, UINT32 starty, INT32 incxx, INT32 incxy, INT32 incyx, INT32 incyy, INT32 wraparound, INT32 columnscroll, UINT32* scrollram)
+{
+	SuprnovaRozContext context = { source, flags, ddest, dflags, startx, starty,
+		incxx, incxy, incyx, incyy, scrollram, nScreenWidth };
+	Epic12ThreadCallback callback = wraparound
+		? (columnscroll ? SuprnovaRozRows<true, true> : SuprnovaRozRows<true, false>)
+		: (columnscroll ? SuprnovaRozRows<false, true> : SuprnovaRozRows<false, false>);
+	if (!columnscroll && incxy == 0) {
+		callback = wraparound ? SuprnovaRozRows<true, false, true> : SuprnovaRozRows<false, false, true>;
+		// Unit-step row spans are contiguous after clipping and scrolling.
+		if (incxx == 0x10000) {
+			// Contiguous copies cost less than a worker wakeup at native resolution.
+			if (wraparound) SuprnovaRozCopyRows<true>(&context, 0, nScreenHeight);
+			else SuprnovaRozCopyRows<false>(&context, 0, nScreenHeight);
+			return;
+		}
+	}
+	// ParallelFor waits before the stack context and tile-cache inputs can change.
+	SuprnovaThreads.ParallelFor(nScreenHeight, 60, callback, &context);
 }
 
 static void supernova_draw(INT32 *offs, UINT16 *bitmap, UINT8 *flags, UINT16 *dbitmap, UINT8 *dflags, INT32 layer)
@@ -1432,6 +1499,11 @@ static void supernova_draw(INT32 *offs, UINT16 *bitmap, UINT8 *flags, UINT16 *db
 
 	INT32 enable = (vreg[offs[0]] >> 0) & 0x0001;
 	INT32 nowrap = (vreg[offs[0]] >> 0) & 0x0004;
+
+	// Layers that will not render still need transparent output.
+	if (!enable || !suprnova_alt_enable_background || !(nBurnLayer & (layer + 1))) {
+		memset(dbitmap, 0, nScreenWidth * nScreenHeight * sizeof(UINT16));
+	}
 
 	UINT32 startx,starty;
 	INT32 incxx,incxy,incyx,incyy;
@@ -1470,201 +1542,207 @@ static void supernova_draw(INT32 *offs, UINT16 *bitmap, UINT8 *flags, UINT16 *db
 			incxx=1<<8;
 		}
 
-		if (nBurnLayer & (layer+1)) suprnova_draw_roz(bitmap,flags,dbitmap,dflags,startx << 8,starty << 8,	incxx << 8,incxy << 8,incyx << 8,incyy << 8, !nowrap, columnscroll, &line[offs[8]]);
+		if (nBurnLayer & (layer+1)) {
+			INT32 wrap = !nowrap;
+			if (!wrap) {
+				// Prove the entire affine rectangle is in bounds without 32-bit wrap.
+				// Clipping precedes row/column scroll, so scroll RAM is irrelevant here.
+				const INT64 dx = (INT64)(INT32)((UINT32)incxx << 8) * (nScreenWidth - 1);
+				const INT64 dy = (INT64)(INT32)((UINT32)incyx << 8) * (nScreenHeight - 1);
+				const INT64 ex = (INT64)(INT32)((UINT32)incxy << 8) * (nScreenWidth - 1);
+				const INT64 ey = (INT64)(INT32)((UINT32)incyy << 8) * (nScreenHeight - 1);
+				const INT64 x = startx << 8, y = starty << 8;
+				wrap = x + (dx < 0 ? dx : 0) + (dy < 0 ? dy : 0) >= 0
+					&& x + (dx > 0 ? dx : 0) + (dy > 0 ? dy : 0) < (1024LL << 16)
+					&& y + (ex < 0 ? ex : 0) + (ey < 0 ? ey : 0) >= 0
+					&& y + (ex > 0 ? ex : 0) + (ey > 0 ? ey : 0) < (1024LL << 16);
+				if (!wrap) memset(dbitmap, 0, nScreenWidth * nScreenHeight * sizeof(UINT16));
+			}
+			suprnova_draw_roz(bitmap,flags,dbitmap,dflags,startx << 8,starty << 8,
+				incxx << 8,incxy << 8,incyx << 8,incyy << 8, wrap, columnscroll, &line[offs[8]]);
+		}
 	}
 }
 
 static void DrvRecalcPalette()
 {
-	INT32 use_bright, brightness_r, brightness_g, brightness_b;
-	INT32 r,g,b;
-	UINT32 *p = (UINT32*)DrvPalRAM;
-	for (INT32 i = 0; i < 0x20000 / 4; i++) {
-		r = (p[i] >> 10) & 0x1f;
-		g = (p[i] >>  5) & 0x1f;
-		b = (p[i] >>  0) & 0x1f;
-
-		if (i < 0x4000) { // 1st half is for Sprites
-			use_bright = use_spc_bright;
-			brightness_b = bright_spc_b;
-			brightness_g = bright_spc_g;
-			brightness_r = bright_spc_r;
-		} else { // V3 bg's
-			use_bright = use_v3_bright;
-			brightness_b = bright_v3_b;
-			brightness_g = bright_v3_g;
-			brightness_r = bright_v3_r;
+	const UINT32 *p = (const UINT32*)DrvPalRAM;
+	if (!use_spc_bright && !use_v3_bright) {
+		// Unmodified RGB555 needs no per-channel lookup table.
+		for (INT32 bank = 0; bank < 2; bank++) {
+			for (INT32 i = bank * 0x4000; i < (bank + 1) * 0x4000; i++) {
+				const UINT32 color = p[i];
+				DrvPalette[i] = ((color & 0x7c00) << 9) | ((color & 0x03e0) << 6) | ((color & 0x001f) << 3);
+			}
 		}
+		return;
+	}
+	for (INT32 bank = 0; bank < 2; bank++) {
+		const INT32 enabled = bank ? use_v3_bright : use_spc_bright;
+		const INT32 red = bank ? bright_v3_r : bright_spc_r;
+		const INT32 green = bank ? bright_v3_g : bright_spc_g;
+		const INT32 blue = bank ? bright_v3_b : bright_spc_b;
+		UINT32 r[32], g[32], b[32];
 
-		if(use_bright) {
-			if(brightness_b) b = ((b<<3) * (brightness_b+1))>>8;
-			else b = 0;
-			if(brightness_g) g = ((g<<3) * (brightness_g+1))>>8;
-			else g = 0;
-			if(brightness_r) r = ((r<<3) * (brightness_r+1))>>8;
-			else r = 0;
-		} else {
-			r <<= 3;
-			g <<= 3;
-			b <<= 3;
+		// Rebuild each draw so palette-register and save-state changes apply immediately.
+		for (INT32 pen = 0; pen < 32; pen++) {
+			const INT32 value = pen << 3;
+			r[pen] = (enabled ? (red ? (value * (red + 1)) >> 8 : 0) : value) << 16;
+			g[pen] = (enabled ? (green ? (value * (green + 1)) >> 8 : 0) : value) << 8;
+			b[pen] = enabled ? (blue ? (value * (blue + 1)) >> 8 : 0) : value;
 		}
-
-		DrvPalette[i] = (r << 16) | (g << 8) | b;
+		for (INT32 i = bank * 0x4000; i < (bank + 1) * 0x4000; i++) {
+			const UINT32 color = p[i];
+			DrvPalette[i] = r[(color >> 10) & 31] | g[(color >> 5) & 31] | b[color & 31];
+		}
 	}
 }
 
 
+static void SuprnovaMixRows(void *, INT32 begin, INT32 end)
+{
+	const UINT32 *vreg = (const UINT32*)DrvV3Regs;
+	const INT32 supernova_pri_a = (vreg[0x10/4] & 2) >> 1;
+	const INT32 supernova_pri_b = (vreg[0x34/4] & 2) >> 1;
+	INT32 x,y;
+	UINT8* srcflags, *src2flags;
+	UINT16* src, *src2, *src3;
+	UINT32* dst;
+	UINT16 pri, pri2, pri3;
+	UINT16 bgpri;
+
+	UINT32 *clut = DrvPalette;
+
+	for (y=begin;y<end;y++)
+	{
+		src = DrvTmpScreenB2 + y * nScreenWidth;
+		srcflags = DrvTmpFlagB2 + y * nScreenWidth;
+
+		src2 = DrvTmpScreenA2 + y * nScreenWidth;
+		src2flags = DrvTmpFlagA2 + y * nScreenWidth;
+
+		src3 = DrvTmpScreenC + y * nScreenWidth;
+
+		dst = DrvTmpDraw + y * nScreenWidth;
+
+		for (x=0;x<320;x++)
+		{
+			UINT16 pendata  = src[x]&0x7fff;
+			UINT16 pendata2 = src2[x]&0x7fff;
+			UINT16 bgpendata;
+			UINT16 pendata3 = src3[x]&0x3fff;
+
+			pri = ((srcflags[x] & 0x07)<<1) | (supernova_pri_b);
+			pri2= ((src2flags[x] & 0x07)<<1) | (supernova_pri_a);
+			pri3 = ((src3[x]&0xc000)>>12)+3;
+
+			if (pri<=pri2) // <= is good for last level of cyvern.. < seem better for galpanis kaneko logo
+			{
+				if (pendata2&0xff)
+				{
+					bgpendata = pendata2&0x7fff;
+					bgpri = pri2;
+				}
+				else if (pendata&0xff)
+				{
+					bgpendata = pendata&0x7fff;
+					bgpri = pri;
+				}
+				else
+				{
+					bgpendata = pendata2&0x7fff;
+					bgpri = 0;
+				}
+			}
+			else
+			{
+				if (pendata&0xff)
+				{
+					bgpendata = pendata&0x7fff;
+					bgpri = pri;
+				}
+				else if (pendata2&0xff)
+				{
+					bgpendata = pendata2&0x7fff;
+					bgpri = pri2;
+				}
+				else
+				{
+					bgpendata = 0;
+					bgpri = 0;
+				}
+			}
+
+			// if the sprites are higher than the bg pixel
+			if (pri3 > bgpri)
+			{
+				if (pendata3&0xff)
+				{
+					UINT16 palvalue = *((UINT32*)(DrvPalRAM + (pendata3 * 4)));
+
+					if (palvalue&0x8000) // iq_132
+					{
+						UINT32 srccolour = clut[bgpendata&0x7fff];
+						UINT32 dstcolour = clut[pendata3&0x3fff];
+
+						INT32 r,g,b;
+						INT32 r2,g2,b2;
+
+						r = (srccolour & 0x000000ff)>> 0;
+						g = (srccolour & 0x0000ff00)>> 8;
+						b = (srccolour & 0x00ff0000)>> 16;
+
+						r2 = (dstcolour & 0x000000ff)>> 0;
+						g2 = (dstcolour & 0x0000ff00)>> 8;
+						b2 = (dstcolour & 0x00ff0000)>> 16;
+
+						r2 = (r2 * bright_spc_r_trans) >> 8;
+						g2 = (g2 * bright_spc_g_trans) >> 8;
+						b2 = (b2 * bright_spc_b_trans) >> 8;
+
+						r = (r+r2);
+						if (r>255) r = 255;
+
+						g = (g+g2);
+						if (g>255) g = 255;
+
+						b = (b+b2);
+						if (b>255) b = 255;
+
+						dst[x] = (r << 16) | (g << 8) | (b << 0);
+					}
+
+					else
+					{
+						dst[x] = clut[pendata3];
+					}
+				}
+				else
+				{
+					dst[x] = clut[bgpendata];
+				}
+			}
+			else
+			{
+				dst[x] = clut[bgpendata];
+			}
+
+		}
+	}
+}
+
 static void render_and_copy_layers()
 {
-	UINT32 *vreg = (UINT32*)DrvV3Regs;
-
 	INT32 offs[2][9] = {
 		{ 0x10 / 4, 0x1c / 4, 0x30 / 4, 0x2c / 4, 0x20 / 4, 0x28 / 4, 0x24 / 4, 1, 0x0000 },
 		{ 0x34 / 4, 0x40 / 4, 0x54 / 4, 0x50 / 4, 0x44 / 4, 0x4c / 4, 0x48 / 4, 9, 0x1000 / 4 }
 	};
 
-	{
-		INT32 supernova_pri_a = (vreg[0x10/4] & 0x0002)>>1;
-		INT32 supernova_pri_b = (vreg[0x34/4] & 0x0002)>>1;
+	supernova_draw(offs[1], DrvTmpScreenB, DrvTmpFlagB, DrvTmpScreenB2, DrvTmpFlagB2, 1);
+	supernova_draw(offs[0], DrvTmpScreenA, DrvTmpFlagA, DrvTmpScreenA2, DrvTmpFlagA2, 0);
 
-		supernova_draw(offs[1], DrvTmpScreenB, DrvTmpFlagB, DrvTmpScreenB2, DrvTmpFlagB2, 1);
-		supernova_draw(offs[0], DrvTmpScreenA, DrvTmpFlagA, DrvTmpScreenA2, DrvTmpFlagA2, 0);
-
-		{
-			INT32 x,y;
-			UINT8* srcflags, *src2flags;
-			UINT16* src, *src2, *src3;
-			UINT32* dst;
-			UINT16 pri, pri2, pri3;
-			UINT16 bgpri;
-
-			UINT32 *clut = DrvPalette;
-
-			for (y=0;y<240;y++)
-			{
-				src = DrvTmpScreenB2 + y * nScreenWidth; //BITMAP_ADDR16(tilemap_bitmap_lower, y, 0);
-				srcflags = DrvTmpFlagB2 + y * nScreenWidth; //BITMAP_ADDR8(tilemap_bitmapflags_lower, y, 0);
-
-				src2 = DrvTmpScreenA2 + y * nScreenWidth; //BITMAP_ADDR16(tilemap_bitmap_higher, y, 0);
-				src2flags = DrvTmpFlagA2 + y * nScreenWidth; //BITMAP_ADDR8(tilemap_bitmapflags_higher, y, 0);
-
-				src3 = DrvTmpScreenC + y * nScreenWidth; //BITMAP_ADDR16(sprite_bitmap, y, 0);
-
-				dst = DrvTmpDraw + y * nScreenWidth; //BITMAP_ADDR32(bitmap, y, 0);
-
-				for (x=0;x<320;x++)
-				{
-					UINT16 pendata  = src[x]&0x7fff;
-					UINT16 pendata2 = src2[x]&0x7fff;
-					UINT16 bgpendata;
-					UINT16 pendata3 = src3[x]&0x3fff;
-
-					UINT32 coldat;
-
-					pri = ((srcflags[x] & 0x07)<<1) | (supernova_pri_b);
-					pri2= ((src2flags[x] & 0x07)<<1) | (supernova_pri_a);
-					pri3 = ((src3[x]&0xc000)>>12)+3;
-
-					if (pri<=pri2) // <= is good for last level of cyvern.. < seem better for galpanis kaneko logo
-					{
-						if (pendata2&0xff)
-						{
-							bgpendata = pendata2&0x7fff;
-							bgpri = pri2;
-						}
-						else if (pendata&0xff)
-						{
-							bgpendata = pendata&0x7fff;
-							bgpri = pri;
-						}
-						else
-						{
-							bgpendata = pendata2&0x7fff;
-							bgpri = 0;
-						}
-					}
-					else
-					{
-						if (pendata&0xff)
-						{
-							bgpendata = pendata&0x7fff;
-							bgpri = pri;
-						}
-						else if (pendata2&0xff)
-						{
-							bgpendata = pendata2&0x7fff;
-							bgpri = pri2;
-						}
-						else
-						{
-							bgpendata = 0;
-							bgpri = 0;
-						}
-					}
-
-					// if the sprites are higher than the bg pixel
-					if (pri3 > bgpri)
-					{
-						if (pendata3&0xff)
-						{
-							UINT16 palvalue = *((UINT32*)(DrvPalRAM + (pendata3 * 4)));
-
-							coldat = clut[pendata3];
-
-							if (palvalue&0x8000) // iq_132
-							{
-								UINT32 srccolour = clut[bgpendata&0x7fff];
-								UINT32 dstcolour = clut[pendata3&0x3fff];
-
-								INT32 r,g,b;
-								INT32 r2,g2,b2;
-
-								r = (srccolour & 0x000000ff)>> 0;
-								g = (srccolour & 0x0000ff00)>> 8;
-								b = (srccolour & 0x00ff0000)>> 16;
-
-								r2 = (dstcolour & 0x000000ff)>> 0;
-								g2 = (dstcolour & 0x0000ff00)>> 8;
-								b2 = (dstcolour & 0x00ff0000)>> 16;
-
-								r2 = (r2 * bright_spc_r_trans) >> 8;
-								g2 = (g2 * bright_spc_g_trans) >> 8;
-								b2 = (b2 * bright_spc_b_trans) >> 8;
-
-								r = (r+r2);
-								if (r>255) r = 255;
-
-								g = (g+g2);
-								if (g>255) g = 255;
-
-								b = (b+b2);
-								if (b>255) b = 255;
-
-								dst[x] = (r << 16) | (g << 8) | (b << 0);
-							}
-
-							else
-							{
-								coldat = clut[pendata3];
-								dst[x] = coldat;
-							}
-						}
-						else
-						{
-							coldat = clut[bgpendata];
-							dst[x] = coldat;
-						}
-					}
-					else
-					{
-						coldat = clut[bgpendata];
-						dst[x] = coldat;
-					}
-
-				}
-			}
-		}
-	}
+	// Finish all rows before the next-frame sprite buffer is overwritten.
+	SuprnovaThreads.ParallelFor(240, 60, SuprnovaMixRows, NULL);
 }
 
 
@@ -1677,9 +1755,6 @@ static INT32 DrvDraw()
 	} else {
 		DrvTmpDraw = pDrvTmpDraw;
 	}
-
-	memset (DrvTmpScreenA2, 0, nScreenWidth * nScreenHeight * 2);
-	memset (DrvTmpScreenB2, 0, nScreenWidth * nScreenHeight * 2);
 
 	render_and_copy_layers();
 
@@ -2631,17 +2706,6 @@ static struct BurnRomInfo galpanidxRomDesc[] = {
 
 STDROMPICKEXT(galpanidx, galpanidx, skns)
 STD_ROM_FN(galpanidx)
-
-// Same as GalpaniexInit()
-#if 0
-static INT32 GalpanidxInit()
-{
-	sprite_kludge_x = -5;
-	sprite_kludge_y = -1;
-
-	return DrvInit(2 /*Asia*/);
-}
-#endif
 
 struct BurnDriver BurnDrvGalpanidx = {
 	"galpanidx", "galpani4", "skns", NULL, "2001",

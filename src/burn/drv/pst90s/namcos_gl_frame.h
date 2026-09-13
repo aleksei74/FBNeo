@@ -25,6 +25,27 @@ static const INT32 NAMCOS_GL_RASTER_FAST_CLEAR_PIXELS = 64 * 64;
 static void NamcosGlCopyWrappedVramToLinear(const UINT16 *source,
 	UINT16 *destination, INT32 x, INT32 y, INT32 width, INT32 height)
 {
+	// Whole aligned rows are contiguous except at the vertical VRAM wrap.
+	if ((x & 0x3ff) == 0 && width == 1024 && height > 0 && height <= 1024) {
+		const INT32 startY = y & 0x3ff;
+		const INT32 firstRows = height < 1024 - startY ? height : 1024 - startY;
+		memcpy(destination, source + (size_t)startY * 1024, (size_t)firstRows * 1024 * sizeof(UINT16));
+		if (firstRows < height) memcpy(destination + (size_t)firstRows * 1024, source,
+			(size_t)(height - firstRows) * 1024 * sizeof(UINT16));
+		return;
+	}
+	if (width > 0 && width <= 1024) {
+		const INT32 startX = x & 0x3ff;
+		const INT32 firstWidth = width < 1024 - startX ? width : 1024 - startX;
+		for (INT32 yy = 0; yy < height; yy++) {
+			const UINT16 *input = source + ((size_t)((y + yy) & 0x3ff) << 10);
+			UINT16 *output = destination + (size_t)yy * width;
+			memcpy(output, input + startX, (size_t)firstWidth * sizeof(UINT16));
+			if (firstWidth < width) memcpy(output + firstWidth, input,
+				(size_t)(width - firstWidth) * sizeof(UINT16));
+		}
+		return;
+	}
 	for (INT32 yy = 0; yy < height; yy++) {
 		const UINT16 *sourceRow = source +
 			((size_t)((y + yy) & 0x3ff) << 10);
@@ -47,6 +68,27 @@ static void NamcosGlCopyWrappedVramToLinear(const UINT16 *source,
 static void NamcosGlCopyLinearToWrappedVram(const UINT16 *source,
 	UINT16 *destination, INT32 x, INT32 y, INT32 width, INT32 height)
 {
+	// Whole aligned rows are contiguous except at the vertical VRAM wrap.
+	if ((x & 0x3ff) == 0 && width == 1024 && height > 0 && height <= 1024) {
+		const INT32 startY = y & 0x3ff;
+		const INT32 firstRows = height < 1024 - startY ? height : 1024 - startY;
+		memcpy(destination + (size_t)startY * 1024, source, (size_t)firstRows * 1024 * sizeof(UINT16));
+		if (firstRows < height) memcpy(destination, source + (size_t)firstRows * 1024,
+			(size_t)(height - firstRows) * 1024 * sizeof(UINT16));
+		return;
+	}
+	if (width > 0 && width <= 1024) {
+		const INT32 startX = x & 0x3ff;
+		const INT32 firstWidth = width < 1024 - startX ? width : 1024 - startX;
+		for (INT32 yy = 0; yy < height; yy++) {
+			const UINT16 *input = source + (size_t)yy * width;
+			UINT16 *output = destination + ((size_t)((y + yy) & 0x3ff) << 10);
+			memcpy(output + startX, input, (size_t)firstWidth * sizeof(UINT16));
+			if (firstWidth < width) memcpy(output, input + firstWidth,
+				(size_t)(width - firstWidth) * sizeof(UINT16));
+		}
+		return;
+	}
 	for (INT32 yy = 0; yy < height; yy++) {
 		const UINT16 *sourceRow = source + (size_t)yy * width;
 		UINT16 *destinationRow = destination +
@@ -2144,7 +2186,8 @@ public:
 
 	bool SupportsFullRasterizer() const
 	{
-		return available && fullRasterizerCapable;
+		// API capability does not imply correct PSX rasterization.
+		return false;
 	}
 
 	bool SupportsRasterizerApi() const
@@ -2324,11 +2367,15 @@ public:
 				packet->vramRowGeneration);
 			return false;
 		}
+		// A decoded primitive outside the draw area changes no VRAM pixels.
+		INT32 x1, y1, x2, y2;
+		if (!NamcosGlRasterGetDrawBounds(packet, &primitive, &x1, &y1, &x2, &y2))
+			return true;
 		if (!rasterVramSynchronized &&
 			!UploadRasterVram(packet->vram, packet->vramRowGeneration,
 				packet->threadPool)) return false;
 		rasterThreadPool = packet->threadPool;
-		if (SubmitRasterPrimitive(packet, &primitive)) return true;
+		if (SubmitRasterPrimitive(packet, &primitive, x1, y1, x2, y2)) return true;
 		SynchronizeVram(packet->vram,
 			packet->vramGeneration != NULL ? *packet->vramGeneration : 0,
 			packet->vramRowGeneration);
@@ -3536,16 +3583,18 @@ private:
 	}
 
 	bool SubmitRasterPrimitive(const NamcosGlRasterPacket *packet,
-		const NamcosGlRasterPrimitive *primitive)
+		const NamcosGlRasterPrimitive *primitive,
+		INT32 x1, INT32 y1, INT32 x2, INT32 y2)
 	{
 		if (packet == NULL || primitive == NULL) return false;
-		// Small solid rectangles batch better than flushing around glClear.
+		// Use clipped coverage so small visible rectangles stay in the batch.
+		const INT32 visiblePixels = (x2 - x1 + 1) * (y2 - y1 + 1);
 		const bool largeOpaqueRectangle = primitive->type ==
 			NAMCOS_GL_RASTER_FLAT_RECTANGLE && !primitive->semiTransparent &&
-			!packet->state.checkStp && (INT64)primitive->width *
-			primitive->height >= NAMCOS_GL_RASTER_FAST_CLEAR_PIXELS;
+			!packet->state.checkStp && visiblePixels >=
+				NAMCOS_GL_RASTER_FAST_CLEAR_PIXELS;
 		const bool fastClear = (primitive->type == NAMCOS_GL_RASTER_FILL &&
-			(INT64)primitive->width * primitive->height >=
+			visiblePixels >=
 				NAMCOS_GL_RASTER_FAST_CLEAR_PIXELS) || largeOpaqueRectangle;
 		const bool textured = primitive->type ==
 			NAMCOS_GL_RASTER_TEXTURED_POLYGON || primitive->type ==
@@ -3556,16 +3605,13 @@ private:
 			!wglMakeCurrent(dc, context))
 			return false;
 
-		INT32 x1, y1, x2, y2;
-		if (!NamcosGlRasterGetDrawBounds(packet, primitive,
-			&x1, &y1, &x2, &y2)) return false;
-
 		if (!BeginRasterState()) return false;
 		INT32 scissorX1 = x1;
 		INT32 scissorY1 = y1;
 		INT32 scissorX2 = x2;
 		INT32 scissorY2 = y2;
-		if (!fastClear && primitive->type == NAMCOS_GL_RASTER_FILL) {
+		// Copy/fill geometry already bounds writes; copies cannot wrap at the destination.
+		if (!fastClear && (fill || vramCopy)) {
 			scissorX1 = 0;
 			scissorY1 = 0;
 			scissorX2 = 1023;
@@ -3671,11 +3717,11 @@ private:
 				(primitive->semiTransparent || checkStp)) {
 				synchronizeSample = rasterSampleDirty.Intersects(x1, y1, x2, y2);
 			}
-			if (!synchronizeSample && vramCopy) {
-				synchronizeSample = rasterSampleDirty.Intersects(
-					primitive->sourceX, primitive->sourceY,
-					primitive->sourceX + primitive->width - 1,
-					primitive->sourceY + primitive->height - 1);
+			// Selective copies have already tested the complete wrapped source.
+			if (!synchronizeSample && vramCopy && !selectiveVramCopy) {
+				synchronizeSample = NamcosGlRasterDirtyIntersectsWrapped(
+					&rasterSampleDirty, primitive->sourceX, primitive->sourceY,
+					primitive->width, primitive->height);
 			}
 			if (!synchronizeSample && textured && !selectiveTexture) {
 				synchronizeSample = NamcosGlRasterTexturePrimitiveReadsDirty(
@@ -3733,8 +3779,6 @@ private:
 			rasterTransferPixels = (UINT8 *)malloc((size_t)1024 * 1024 * 2);
 			if (rasterTransferPixels == NULL) return false;
 		}
-		SetUnpackAlignment(2);
-		SetUnpackRowLength(0);
 		NamcosGlRasterUploadSpan spans[NAMCOS_GL_RASTER_UPLOAD_SPANS];
 		INT32 spanCount = 1;
 		if (!rasterUploadTracker.valid || rowGeneration == NULL) {
@@ -3756,6 +3800,8 @@ private:
 			rasterVramSynchronized = true;
 			return true;
 		}
+		SetUnpackAlignment(2);
+		SetUnpackRowLength(0);
 		const bool validateUpload =
 			(rasterUploadValidationCounter++ & 0x3f) == 0;
 		if (validateUpload) glGetError();
@@ -4646,7 +4692,8 @@ public:
 
 	bool SupportsFullRasterizer() const
 	{
-		return available && fullRasterizerCapable;
+		// API capability does not imply correct PSX rasterization.
+		return false;
 	}
 
 	bool SupportsRasterizerApi() const
@@ -4834,11 +4881,15 @@ public:
 				packet->vramRowGeneration);
 			return false;
 		}
+		// A decoded primitive outside the draw area changes no VRAM pixels.
+		INT32 x1, y1, x2, y2;
+		if (!NamcosGlRasterGetDrawBounds(packet, &primitive, &x1, &y1, &x2, &y2))
+			return true;
 		if (!rasterVramSynchronized &&
 			!UploadEs3RasterVram(packet->vram, packet->vramRowGeneration,
 				packet->threadPool)) return false;
 		rasterThreadPool = packet->threadPool;
-		if (SubmitEs3RasterPrimitive(packet, &primitive)) return true;
+		if (SubmitEs3RasterPrimitive(packet, &primitive, x1, y1, x2, y2)) return true;
 		SynchronizeVram(packet->vram,
 			packet->vramGeneration != NULL ? *packet->vramGeneration : 0,
 			packet->vramRowGeneration);
@@ -6168,16 +6219,18 @@ private:
 	}
 
 	bool SubmitEs3RasterPrimitive(const NamcosGlRasterPacket *packet,
-		const NamcosGlRasterPrimitive *primitive)
+		const NamcosGlRasterPrimitive *primitive,
+		INT32 x1, INT32 y1, INT32 x2, INT32 y2)
 	{
 		if (packet == NULL || primitive == NULL) return false;
-		// Small solid rectangles batch better than flushing around glClear.
+		// Use clipped coverage so small visible rectangles stay in the batch.
+		const INT32 visiblePixels = (x2 - x1 + 1) * (y2 - y1 + 1);
 		const bool largeOpaqueRectangle = primitive->type ==
 			NAMCOS_GL_RASTER_FLAT_RECTANGLE && !primitive->semiTransparent &&
-			!packet->state.checkStp && (INT64)primitive->width *
-			primitive->height >= NAMCOS_GL_RASTER_FAST_CLEAR_PIXELS;
+			!packet->state.checkStp && visiblePixels >=
+				NAMCOS_GL_RASTER_FAST_CLEAR_PIXELS;
 		const bool fastClear = (primitive->type == NAMCOS_GL_RASTER_FILL &&
-			(INT64)primitive->width * primitive->height >=
+			visiblePixels >=
 				NAMCOS_GL_RASTER_FAST_CLEAR_PIXELS) || largeOpaqueRectangle;
 		const bool textured = primitive->type ==
 			NAMCOS_GL_RASTER_TEXTURED_POLYGON || primitive->type ==
@@ -6188,16 +6241,13 @@ private:
 			eglMakeCurrent(display, surface, surface, context) != EGL_TRUE)
 			return false;
 
-		INT32 x1, y1, x2, y2;
-		if (!NamcosGlRasterGetDrawBounds(packet, primitive,
-			&x1, &y1, &x2, &y2)) return false;
-
 		if (!BeginEsRasterState()) return false;
 		INT32 scissorX1 = x1;
 		INT32 scissorY1 = y1;
 		INT32 scissorX2 = x2;
 		INT32 scissorY2 = y2;
-		if (!fastClear && primitive->type == NAMCOS_GL_RASTER_FILL) {
+		// Copy/fill geometry already bounds writes; copies cannot wrap at the destination.
+		if (!fastClear && (fill || vramCopy)) {
 			scissorX1 = 0;
 			scissorY1 = 0;
 			scissorX2 = 1023;
@@ -6303,11 +6353,11 @@ private:
 				(primitive->semiTransparent || checkStp)) {
 				synchronizeSample = rasterSampleDirty.Intersects(x1, y1, x2, y2);
 			}
-			if (!synchronizeSample && vramCopy) {
-				synchronizeSample = rasterSampleDirty.Intersects(
-					primitive->sourceX, primitive->sourceY,
-					primitive->sourceX + primitive->width - 1,
-					primitive->sourceY + primitive->height - 1);
+			// Selective copies have already tested the complete wrapped source.
+			if (!synchronizeSample && vramCopy && !selectiveVramCopy) {
+				synchronizeSample = NamcosGlRasterDirtyIntersectsWrapped(
+					&rasterSampleDirty, primitive->sourceX, primitive->sourceY,
+					primitive->width, primitive->height);
 			}
 			if (!synchronizeSample && textured && !selectiveTexture) {
 				synchronizeSample = NamcosGlRasterTexturePrimitiveReadsDirty(
@@ -6366,8 +6416,6 @@ private:
 			rasterTransferPixels = (UINT8 *)malloc((size_t)1024 * 1024 * 4);
 			if (rasterTransferPixels == NULL) return false;
 		}
-		SetUnpackAlignment(2);
-		SetUnpackRowLength(0);
 		NamcosGlRasterUploadSpan spans[NAMCOS_GL_RASTER_UPLOAD_SPANS];
 		INT32 spanCount = 1;
 		if (!rasterUploadTracker.valid || rowGeneration == NULL) {
@@ -6389,6 +6437,8 @@ private:
 			rasterVramSynchronized = true;
 			return true;
 		}
+		SetUnpackAlignment(2);
+		SetUnpackRowLength(0);
 		const bool validateUpload =
 			(rasterUploadValidationCounter++ & 0x3f) == 0;
 		if (validateUpload) glGetError();

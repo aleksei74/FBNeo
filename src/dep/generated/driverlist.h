@@ -17452,6 +17452,9 @@ DRV		BurnDrvgg_olympglda;
 DRV		BurnDrvsms_olympgldk;
 DRV		BurnDrvmd_olympgldu;
 DRV		BurnDrvmd_olympgldu1;
+DRV		BurnDrvOlysoc92;
+DRV		BurnDrvOlysoc92a;
+DRV		BurnDrvOlysoc92b;
 DRV		BurnDrvsnes_Olympicsge;
 DRV		BurnDrvmd_olympsum;
 DRV		BurnDrvsnes_Olympicsg;
@@ -21446,6 +21449,10 @@ DRV		BurnDrvSonicp;
 DRV		BurnDrvSonic;
 DRV		BurnDrvAmatelas;
 DRV		BurnDrvCupsoc;
+DRV		BurnDrvCupsoca;
+DRV		BurnDrvCupsocb;
+DRV		BurnDrvCupsocs;
+DRV		BurnDrvCupsocs2;
 DRV		BurnDrvSeicross;
 DRV		BurnDrvSeicrossa;
 DRV		BurnDrvnes_seicross;
@@ -46988,6 +46995,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsms_olympgldk,		// Olympic Gold (Korea)
 	&BurnDrvmd_olympgldu,		// Olympic Gold (USA)
 	&BurnDrvmd_olympgldu1,		// Olympic Gold (USA, Alt) [no comment, NOT WORKING]
+	&BurnDrvOlysoc92,			// Olympic Soccer '92 (set 1)
+	&BurnDrvOlysoc92a,			// Olympic Soccer '92 (set 2)
+	&BurnDrvOlysoc92b,			// Olympic Soccer '92 (set 3)
 	&BurnDrvsnes_Olympicsge,	// Olympic Summer Games (Euro)
 	&BurnDrvmd_olympsum,		// Olympic Summer Games (Euro, USA)
 	&BurnDrvsnes_Olympicsg,		// Olympic Summer Games (USA)
@@ -50982,6 +50992,10 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSonic,				// SegaSonic The Hedgehog (Japan, rev. C)
 	&BurnDrvAmatelas,			// Sei Senshi Amatelass
 	&BurnDrvCupsoc,				// Seibu Cup Soccer (set 1)
+	&BurnDrvCupsoca,			// Seibu Cup Soccer (set 2)
+	&BurnDrvCupsocb,			// Seibu Cup Soccer (set 3)
+	&BurnDrvCupsocs,			// Seibu Cup Soccer :Selection: (set 1)
+	&BurnDrvCupsocs2,			// Seibu Cup Soccer :Selection: (set 2)
 	&BurnDrvSeicross,			// Seicross (set 1)
 	&BurnDrvSeicrossa,			// Seicross (set 2)
 	&BurnDrvnes_seicross,		// Seicross (USA)
@@ -76416,6 +76430,9 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sms_olympgldk", "sms/d_sms.cpp"},
 	{ "md_olympgldu", "megadrive/d_megadrive.cpp"},
 	{ "md_olympgldu1", "megadrive/d_megadrive.cpp"},
+	{ "olysoc92", "pst90s/d_legionna.cpp"},
+	{ "olysoc92a", "pst90s/d_legionna.cpp"},
+	{ "olysoc92b", "pst90s/d_legionna.cpp"},
 	{ "snes_olympicsge", "snes/d_snes.cpp"},
 	{ "md_olympsum", "megadrive/d_megadrive.cpp"},
 	{ "snes_olympicsg", "snes/d_snes.cpp"},
@@ -80386,6 +80403,10 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "sonic", "sega/d_segas32.cpp"},
 	{ "amatelas", "pre90s/d_terracre.cpp"},
 	{ "cupsoc", "pst90s/d_legionna.cpp"},
+	{ "cupsoca", "pst90s/d_legionna.cpp"},
+	{ "cupsocb", "pst90s/d_legionna.cpp"},
+	{ "cupsocs", "pst90s/d_legionna.cpp"},
+	{ "cupsocs2", "pst90s/d_legionna.cpp"},
 	{ "seicross", "pre90s/d_seicross.cpp"},
 	{ "seicrossa", "pre90s/d_seicross.cpp"},
 	{ "nes_seicross", "nes/d_nes.cpp"},

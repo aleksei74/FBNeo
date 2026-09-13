@@ -848,6 +848,39 @@ static UINT8 __fastcall legionna_main_read_byte(UINT32 address)
 	return SekReadWord(address) >> ((~address & 1) * 8);
 }
 
+static UINT16 __fastcall cupsocs_main_read_word(UINT32 address)
+{
+	if (address >= 0x100700 && address <= 0x10071f)
+		return cupsoc_main_read_word(address + 0x40);
+	if (address >= 0x100740 && address <= 0x10075f)
+		return seibu_main_word_read((address & 0x1f) / 2);
+	if (address >= 0x100600 && address <= 0x10067f) return 0;
+	return legionna_common_read_word(address);
+}
+
+static void __fastcall cupsocs_main_write_word(UINT32 address, UINT16 data)
+{
+	if (address >= 0x100600 && address <= 0x10067f) {
+		legionna_ctc_write((address - 0x100600) ^ 0x40, data);
+		return;
+	}
+	if (address >= 0x100740 && address <= 0x10075f) {
+		seibu_main_word_write((address & 0x1f) / 2, data);
+		return;
+	}
+	legionna_common_write_word(address, data);
+}
+
+static void __fastcall cupsocs_main_write_byte(UINT32 address, UINT8 data)
+{
+	if (address >= 0x100600 && address <= 0x10067f) return;
+	if (address >= 0x100740 && address <= 0x10075f) {
+		seibu_main_word_write((address & 0x1f) / 2, data);
+		return;
+	}
+	legionna_common_write_byte(address, data);
+}
+
 static void __fastcall heatbrl_main_write_word(UINT32 address, UINT16 data)
 {
 	if (address >= 0x100640 && address <= 0x10068f) {
@@ -2534,6 +2567,273 @@ struct BurnDriver BurnDrvCupsoc = {
 	320, 240, 4, 3
 };
 
+
+static INT32 CupsocbInit()
+{
+	INT32 result = CupsocInit();
+	if (result) return result;
+	// Disable the Selection revision's debug text.
+	*((UINT16*)(Drv68KROM + 0xffffa)) = BURN_ENDIAN_SWAP_INT16(0x00ff);
+	return 0;
+}
+
+static INT32 CupsocsInit()
+{
+	INT32 result = CupsocbInit();
+	if (result) return result;
+	SekOpen(0);
+	SekSetReadWordHandler(0, cupsocs_main_read_word);
+	SekSetWriteWordHandler(0, cupsocs_main_write_word);
+	SekSetWriteByteHandler(0, cupsocs_main_write_byte);
+	SekClose();
+	return 0;
+}
+
+static INT32 Olysoc92Init()
+{
+	INT32 result = CupsocInit();
+	if (result) return result;
+	*((UINT16*)(Drv68KROM + 0xffffe)) ^= BURN_ENDIAN_SWAP_INT16(0x0003);
+	return 0;
+}
+
+// Seibu Cup Soccer (set 2)
+
+static struct BurnRomInfo cupsocaRomDesc[] = {
+	{ "soca_1.bin",  0x040000, 0xd5f76bd6, 1 | BRF_PRG | BRF_ESS },
+	{ "soca_2.bin",  0x040000, 0x34966aa1, 1 | BRF_PRG | BRF_ESS },
+	{ "soca_3.bin",  0x040000, 0x2b7934ec, 1 | BRF_PRG | BRF_ESS },
+	{ "soca_4.bin",  0x040000, 0xf4aa1d90, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "soca_6.bin",  0x010000, 0xa9e15910, 3 | BRF_GRA },
+	{ "soca_5.bin",  0x010000, 0x73a3e024, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(cupsoca)
+STD_ROM_FN(cupsoca)
+
+struct BurnDriver BurnDrvCupsoca = {
+	"cupsoca", "cupsoc", NULL, NULL, "1992",
+	"Seibu Cup Soccer (set 2)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocaRomInfo, cupsocaRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Seibu Cup Soccer (set 3)
+
+static struct BurnRomInfo cupsocbRomDesc[] = {
+	{ "1-10n.bin",   0x040000, 0xd4f37bf2, 1 | BRF_PRG | BRF_ESS },
+	{ "2-10q.bin",   0x040000, 0xf06e8743, 1 | BRF_PRG | BRF_ESS },
+	{ "3-10f.bin",   0x040000, 0x226f65f9, 1 | BRF_PRG | BRF_ESS },
+	{ "4-10k.bin",   0x040000, 0x8ff16a9e, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "soca_6.bin",  0x010000, 0xa9e15910, 3 | BRF_GRA },
+	{ "soca_5.bin",  0x010000, 0x73a3e024, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(cupsocb)
+STD_ROM_FN(cupsocb)
+
+struct BurnDriver BurnDrvCupsocb = {
+	"cupsocb", "cupsoc", NULL, NULL, "1992",
+	"Seibu Cup Soccer (set 3)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocbRomInfo, cupsocbRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocbInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Seibu Cup Soccer :Selection: (set 1)
+
+static struct BurnRomInfo cupsocsRomDesc[] = {
+	{ "1_10n.bin",   0x040000, 0xb67835c5, 1 | BRF_PRG | BRF_ESS },
+	{ "2_10q.bin",   0x040000, 0xde65509c, 1 | BRF_PRG | BRF_ESS },
+	{ "3_10f.bin",   0x040000, 0xc0333f0c, 1 | BRF_PRG | BRF_ESS },
+	{ "4_10k.bin",   0x040000, 0x288f11d4, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "6_7x.bin",    0x010000, 0x7981366e, 3 | BRF_GRA },
+	{ "5_7y.bin",    0x010000, 0x26cbfaf0, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "8_7a.bin",    0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(cupsocs)
+STD_ROM_FN(cupsocs)
+
+struct BurnDriver BurnDrvCupsocs = {
+	"cupsocs", "cupsoc", NULL, NULL, "1992",
+	"Seibu Cup Soccer :Selection: (set 1)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocsRomInfo, cupsocsRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocsInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Seibu Cup Soccer :Selection: (set 2)
+
+static struct BurnRomInfo cupsocs2RomDesc[] = {
+	{ "seibu1.10n",  0x040000, 0xe91fdc95, 1 | BRF_PRG | BRF_ESS },
+	{ "seibu2.10q",  0x040000, 0x7816df3c, 1 | BRF_PRG | BRF_ESS },
+	{ "seibu3.10f",  0x040000, 0x3be8a330, 1 | BRF_PRG | BRF_ESS },
+	{ "seibu4.10k",  0x040000, 0xf30167ea, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "seibu6.7x",   0x010000, 0x21c1e1b8, 3 | BRF_GRA },
+	{ "seibu5.7y",   0x010000, 0x955d9fd7, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(cupsocs2)
+STD_ROM_FN(cupsocs2)
+
+struct BurnDriver BurnDrvCupsocs2 = {
+	"cupsocs2", "cupsoc", NULL, NULL, "1992",
+	"Seibu Cup Soccer :Selection: (set 2)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocs2RomInfo, cupsocs2RomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocsInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Olympic Soccer '92 (set 1)
+
+static struct BurnRomInfo olysoc92RomDesc[] = {
+	{ "u025.1",      0x040000, 0xa94e7780, 1 | BRF_PRG | BRF_ESS },
+	{ "u024.2",      0x040000, 0xcb5f0748, 1 | BRF_PRG | BRF_ESS },
+	{ "u026.3",      0x040000, 0xf71cc626, 1 | BRF_PRG | BRF_ESS },
+	{ "u023.4",      0x040000, 0x2ba10e6c, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "seibu6.7x",   0x010000, 0x21c1e1b8, 3 | BRF_GRA },
+	{ "seibu5.7y",   0x010000, 0x955d9fd7, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(olysoc92)
+STD_ROM_FN(olysoc92)
+
+struct BurnDriver BurnDrvOlysoc92 = {
+	"olysoc92", "cupsoc", NULL, NULL, "1992",
+	"Olympic Soccer '92 (set 1)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, olysoc92RomInfo, olysoc92RomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	Olysoc92Init, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Olympic Soccer '92 (set 2)
+
+static struct BurnRomInfo olysoc92aRomDesc[] = {
+	{ "1.u025",      0x040000, 0x5191e895, 1 | BRF_PRG | BRF_ESS },
+	{ "2.u024",      0x040000, 0x6c566f43, 1 | BRF_PRG | BRF_ESS },
+	{ "3.u026",      0x040000, 0xe75bc773, 1 | BRF_PRG | BRF_ESS },
+	{ "4.u023",      0x040000, 0x6c2b037e, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "6_7x.bin",    0x010000, 0x7981366e, 3 | BRF_GRA },
+	{ "5_7y.bin",    0x010000, 0x26cbfaf0, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(olysoc92a)
+STD_ROM_FN(olysoc92a)
+
+struct BurnDriver BurnDrvOlysoc92a = {
+	"olysoc92a", "cupsoc", NULL, NULL, "1992",
+	"Olympic Soccer '92 (set 2)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, olysoc92aRomInfo, olysoc92aRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	Olysoc92Init, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Olympic Soccer '92 (set 3)
+
+static struct BurnRomInfo olysoc92bRomDesc[] = {
+	{ "1",           0x040000, 0xd4f37bf2, 1 | BRF_PRG | BRF_ESS },
+	{ "2",           0x040000, 0x6967d6f9, 1 | BRF_PRG | BRF_ESS },
+	{ "3",           0x040000, 0x226f65f9, 1 | BRF_PRG | BRF_ESS },
+	{ "4",           0x040000, 0x8ff16a9e, 1 | BRF_PRG | BRF_ESS },
+
+	{ "7",           0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "6",           0x010000, 0x7edb1700, 3 | BRF_GRA },
+	{ "5",           0x010000, 0xec21c8dc, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "8",           0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(olysoc92b)
+STD_ROM_FN(olysoc92b)
+
+struct BurnDriver BurnDrvOlysoc92b = {
+	"olysoc92b", "cupsoc", NULL, NULL, "1992",
+	"Olympic Soccer '92 (set 3)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, olysoc92bRomInfo, olysoc92bRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	Olysoc92Init, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
 
 // SD Gundam Sangokushi Rainbow Tairiku Senki (Japan)
 

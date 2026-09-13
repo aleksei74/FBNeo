@@ -3,6 +3,20 @@
 #include "tiles_generic.h"
 #include "taitof3_video.h"
 #include "taito.h"
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+#include "epic12_threads.h"
+#include <atomic>
+static Epic12ThreadPool f3_tile_threads;
+#endif
+
+static UINT8 f3_vram_map_cache[0x2000];
+static UINT8 f3_vram_gfx_cache[0x4000];
+static bool f3_vram_cache_valid = false;
+static INT32 f3_vram_cache_flip;
+static UINT8 f3_pixel_gfx_cache[2048 * 64];
+static UINT16 f3_pixel_attr_cache[2048];
+static bool f3_pixel_cache_valid = false;
+static INT32 f3_pixel_cache_flip;
 
 UINT32 sprite_lag;
 UINT32 extended_layers;
@@ -47,6 +61,8 @@ static const struct taitof3_tempsprite *m_sprite_end;
 
 void TaitoF3VideoReset()
 {
+	f3_pixel_cache_valid = false;
+	f3_vram_cache_valid = false;
 	flipscreen = 0;
 
 	sprite_pen_mask = 0;
@@ -215,38 +231,25 @@ static INT32 (**m_dpix_lp[5])(UINT32 s_pix);
 static INT32 (**m_dpix_sp[9])(UINT32 s_pix);
 
 
-static void draw_pf_layer(INT32 layer)
+static void draw_pf_tiles(void *context, INT32 begin, INT32 end)
 {
-	INT32 offset = (layer * (0x1000 << extended_layers));
-
-	UINT16 *ram = (UINT16*)(TaitoF3PfRAM + offset);
-
+	const UINT16 *jobs = (const UINT16 *)context;
+	const INT32 layer_shift = 10 + extended_layers;
 	INT32 width = extended_layers ? 1024 : 512;
 	INT32 wide = width / 16;
 
-	// was this layer written at all? skip!
-	if (extended_layers) {
-		if (dirty_tile_count[layer*2+0] == 0 && dirty_tile_count[layer*2+1] == 0) {
-			return;
-		}
-		dirty_tile_count[layer*2+0] = dirty_tile_count[layer*2+1] = 0;
-	} else {
-		if (dirty_tile_count[layer] == 0) {
-			return;
-		}
-		dirty_tile_count[layer] = 0;
-	}
-
-	for (INT32 offs = 0; offs < wide * 32; offs++)
+	for (INT32 job = begin; job < end; job++)
 	{
-		if (dirty_tiles[((offs * 4) + offset) / 4] == 0) continue;
-		dirty_tiles[((offs * 4) + offset) / 4] = 0;
+		const INT32 index = jobs[job];
+		const INT32 layer = index >> layer_shift;
+		const INT32 offs = index & ((1 << layer_shift) - 1);
+		UINT16 *ram = (UINT16*)TaitoF3PfRAM + index * 2;
 
 		INT32 sx = (offs % wide) * 16;
 		INT32 sy = (offs / wide) * 16;
 
-		UINT16 tile = BURN_ENDIAN_SWAP_INT16(ram[offs * 2 + 0]);
-		UINT16 code = (BURN_ENDIAN_SWAP_INT16(ram[offs * 2 + 1]) & 0xffff) % TaitoCharModulo;
+		UINT16 tile = BURN_ENDIAN_SWAP_INT16(ram[0]);
+		UINT16 code = (BURN_ENDIAN_SWAP_INT16(ram[1]) & 0xffff) % TaitoCharModulo;
 
 		UINT8 category = (tile >> 9) & 1;
 
@@ -273,9 +276,10 @@ static void draw_pf_layer(INT32 layer)
 
 			for (INT32 y = 0; y < 16; y++, sy++, dst += width, flagptr += width)
 			{
+				const UINT8 *row = gfx + ((y * 16) ^ (flip & 0xf0));
 				for (INT32 x = 0; x < 16; x++)
 				{
-					INT32 pxl = gfx[((y*16)+x)^flip] & penmask;
+					INT32 pxl = row[x ^ (flip & 0x0f)] & penmask;
 
 					dst[x] = pxl + color;
 
@@ -290,12 +294,85 @@ static void draw_pf_layer(INT32 layer)
 	}
 }
 
-static void draw_vram_layer()
+static void get_line_ram_info(INT32 which_map, INT32 sx, INT32 sy, INT32 pos, UINT16 *data);
+
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+struct F3PlayfieldWork {
+	UINT16 *jobs;
+	INT32 count;
+	UINT32 *sx, *sy;
+	std::atomic<INT32> next_tile;
+	F3PlayfieldWork(UINT16 *tile_jobs, INT32 tile_count, UINT32 *scroll_x, UINT32 *scroll_y)
+		: jobs(tile_jobs), count(tile_count), sx(scroll_x), sy(scroll_y), next_tile(0) {}
+};
+
+static void draw_pf_and_lines(void *opaque, INT32 begin, INT32 end)
 {
+	F3PlayfieldWork *work = (F3PlayfieldWork*)opaque;
+	// Twelve units divide evenly across both three- and four-part pools.
+	for (INT32 layer = 4 * begin / 12; layer < 4 * end / 12; layer++) {
+		get_line_ram_info(layer, work->sx[layer], work->sy[layer], layer,
+			(UINT16*)(TaitoF3PfRAM + layer * (extended_layers ? 0x2000 : 0x1000)));
+	}
+	// A disabled pool assigns the entire range to the caller; no queue is needed.
+	if (begin == 0 && end == 12) {
+		draw_pf_tiles(work->jobs, 0, work->count);
+		return;
+	}
+	// Workers with fewer line calculations can take more of the remaining tiles.
+	for (;;) {
+		const INT32 first = work->next_tile.fetch_add(64, std::memory_order_relaxed);
+		if (first >= work->count) break;
+		const INT32 last = first + 64 < work->count ? first + 64 : work->count;
+		draw_pf_tiles(work->jobs, first, last);
+	}
+}
+#endif
+
+static bool draw_pf_layers(UINT32 *sx = NULL, UINT32 *sy = NULL)
+{
+	static const UINT8 clean_block[32] = { 0 };
+	UINT16 jobs[0x2000];
+	INT32 count = 0;
+	// Collect only dirty tiles; workers never share destination pixels.
+	for (INT32 bank = 0; bank < 8; bank++) {
+		// Extended layers still have separate dirty flags for each RAM bank.
+		if (!dirty_tile_count[bank]) continue;
+		dirty_tile_count[bank] = 0;
+		const INT32 begin = bank * 0x400;
+		const INT32 end = begin + 0x400;
+		for (INT32 block = begin; block < end; block += 32) {
+			// Skip clean groups without inspecting every tile separately.
+			if (memcmp(dirty_tiles + block, clean_block, sizeof(clean_block)) == 0) continue;
+			for (INT32 index = block; index < block + 32; index++) {
+				if (!dirty_tiles[index]) continue;
+				dirty_tiles[index] = 0;
+				jobs[count++] = index;
+			}
+		}
+	}
+	if (!count) return false;
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+	if (count >= 1024 && sx && sy) {
+		F3PlayfieldWork work = { jobs, count, sx, sy };
+		f3_tile_threads.ParallelFor(12, 3, draw_pf_and_lines, &work);
+		return true;
+	}
+	f3_tile_threads.ParallelFor(count, 256, draw_pf_tiles, jobs);
+#else
+	draw_pf_tiles(jobs, 0, count);
+#endif
+	return false;
+}
+
+static void draw_vram_tiles(void *context, INT32 begin, INT32 end)
+{
+	const UINT16 *jobs = (const UINT16 *)context;
 	UINT16 *ram = (UINT16*)TaitoVideoRam;
 
-	for (INT32 offs = 0; offs < 64 * 64; offs++)
+	for (INT32 job = begin; job < end; job++)
 	{
+		const INT32 offs = jobs[job];
 		INT32 sx = (offs & 0x3f) * 8;
 		INT32 sy = (offs / 0x40) * 8;
 
@@ -326,9 +403,10 @@ static void draw_vram_layer()
 
 			for (INT32 y = 0; y < 8; y++)
 			{
+				const UINT8 *row = gfx + ((y * 8) ^ (flip & 0x38));
 				for (INT32 x = 0; x < 8; x++)
 				{
-					INT32 pxl = gfx[((y*8)+x)^flip];
+					INT32 pxl = row[x ^ (flip & 7)];
 
 					dst[x] = pxl + color;
 
@@ -346,31 +424,77 @@ static void draw_vram_layer()
 	}
 }
 
-static void draw_pixel_layer()
+static void draw_vram_layer()
 {
-	// was this written? skip!
-	if (dirty_tile_count[9] == 0) {
-	//	bprintf (0, _T("Skip pixel layer!\n"));
+	// Cache only the decoded layer; palette and scanline composition stay live.
+	const bool map_same = f3_vram_cache_valid &&
+		memcmp(f3_vram_map_cache, TaitoVideoRam, sizeof(f3_vram_map_cache)) == 0;
+	const bool gfx_same = f3_vram_cache_valid &&
+		memcmp(f3_vram_gfx_cache, TaitoCharsB, sizeof(f3_vram_gfx_cache)) == 0;
+	if (f3_vram_cache_valid && !dirty_tile_count[8] && f3_vram_cache_flip == flipscreen &&
+		map_same && gfx_same) {
 		return;
 	}
-	dirty_tile_count[9] = 0;
 
-	UINT16 *ram = (UINT16*)TaitoVideoRam;
+	UINT16 jobs[64 * 64];
+	INT32 count = 0;
+	const bool redraw_all = !f3_vram_cache_valid || dirty_tile_count[8] ||
+		f3_vram_cache_flip != flipscreen;
+	UINT8 changed_chars[256];
+	if (!redraw_all && !gfx_same) {
+		for (INT32 code = 0; code < 256; code++) {
+			changed_chars[code] = memcmp(f3_vram_gfx_cache + code * 64,
+				TaitoCharsB + code * 64, 64) != 0;
+		}
+	}
+	if (!redraw_all && gfx_same) {
+		// Attribute-only updates usually leave most map blocks untouched.
+		for (INT32 block = 0; block < 4096; block += 32) {
+			if (memcmp(f3_vram_map_cache + block * 2, TaitoVideoRam + block * 2, 64) == 0) continue;
+			for (INT32 offs = block; offs < block + 32; offs++) {
+				if (memcmp(f3_vram_map_cache + offs * 2, TaitoVideoRam + offs * 2, 2) != 0)
+					jobs[count++] = offs;
+			}
+		}
+	} else {
+		for (INT32 offs = 0; offs < 64 * 64; offs++) {
+			// Compare raw map bytes, but decode the character index in CPU order.
+			if (redraw_all || (!map_same && memcmp(f3_vram_map_cache + offs * 2,
+				TaitoVideoRam + offs * 2, 2) != 0) ||
+				(!gfx_same && changed_chars[BURN_ENDIAN_SWAP_INT16(((UINT16*)TaitoVideoRam)[offs]) & 0xff])) {
+				jobs[count++] = offs;
+			}
+		}
+	}
+	// Each tile owns a disjoint 8x8 region, including when flipped.
+	if (count) {
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+		// Avoid worker synchronization for medium-size character updates.
+		if (count < 3072) draw_vram_tiles(jobs, 0, count);
+		else f3_tile_threads.ParallelFor(count, 1024, draw_vram_tiles, jobs);
+#else
+		draw_vram_tiles(jobs, 0, count);
+#endif
+	}
+	if (!map_same) memcpy(f3_vram_map_cache, TaitoVideoRam, sizeof(f3_vram_map_cache));
+	if (!gfx_same) memcpy(f3_vram_gfx_cache, TaitoCharsB, sizeof(f3_vram_gfx_cache));
+	f3_vram_cache_flip = flipscreen;
+	f3_vram_cache_valid = true;
+	dirty_tile_count[8] = 0;
+}
 
-	UINT16 y_offs = BURN_ENDIAN_SWAP_INT16(*((UINT16*)(TaitoF3CtrlRAM + 0x1a))) & 0x1ff;
-	if (flipscreen) y_offs += 0x100;
-
-	for (INT32 offs = 0; offs < 64 * 32; offs++)
+static void draw_pixel_tiles(void *context, INT32 begin, INT32 end)
+{
+	const UINT16 *jobs = (const UINT16 *)context;
+	for (INT32 job = begin; job < end; job++)
 	{
+		const INT32 offs = jobs[job];
 		INT32 sx = (offs / 0x20) * 8;
 		INT32 sy = (offs & 0x1f) * 8;
-
-		INT32 col_off = ((offs & 0x1f) * 0x40) + ((offs & 0xfe0) >> 5);
-
-		if ((((offs & 0x1f) * 8 + y_offs) & 0x1ff) > 0xff)
-			col_off += 0x800;
-
-		INT32 tile = BURN_ENDIAN_SWAP_INT16(ram[col_off]);
+		const UINT16 tile = f3_pixel_attr_cache[offs];
+		UINT8 *cached = f3_pixel_gfx_cache + offs * 64;
+		const UINT8 *current = TaitoCharsPivot + offs * 64;
+		memcpy(cached, current, 64);
 
 		INT32 code = offs;
 
@@ -398,9 +522,10 @@ static void draw_pixel_layer()
 
 			for (INT32 y = 0; y < 8; y++)
 			{
+				const UINT8 *row = gfx + ((y * 8) ^ (flip & 0x38));
 				for (INT32 x = 0; x < 8; x++)
 				{
-					INT32 pxl = gfx[((y*8)+x)^flip];
+					INT32 pxl = row[x ^ (flip & 7)];
 
 					dst[x] = pxl + color;
 
@@ -443,6 +568,40 @@ static void draw_pixel_layer()
 	source += dx;				\
 	dest++;						\
 	pri++;
+
+static void draw_pixel_layer()
+{
+	if (!dirty_tile_count[9]) return;
+	dirty_tile_count[9] = 0;
+	UINT16 y_offs = BURN_ENDIAN_SWAP_INT16(*((UINT16*)(TaitoF3CtrlRAM + 0x1a))) & 0x1ff;
+	if (flipscreen) y_offs += 0x100;
+	UINT16 jobs[64 * 32];
+	INT32 count = 0;
+	const bool redraw_all = !f3_pixel_cache_valid || f3_pixel_cache_flip != flipscreen;
+	const UINT16 *ram = (const UINT16 *)TaitoVideoRam;
+	for (INT32 offs = 0; offs < 64 * 32; offs++) {
+		INT32 col_off = (offs & 0x1f) * 0x40 + (offs >> 5);
+		if ((((offs & 0x1f) * 8 + y_offs) & 0x1ff) > 0xff) col_off += 0x800;
+		// The low byte is not used by the pixel layer.
+		const UINT16 attr = BURN_ENDIAN_SWAP_INT16(ram[col_off]) & 0xff00;
+		if (!redraw_all && f3_pixel_attr_cache[offs] == attr &&
+			memcmp(f3_pixel_gfx_cache + offs * 64, TaitoCharsPivot + offs * 64, 64) == 0) continue;
+		f3_pixel_attr_cache[offs] = attr;
+		jobs[count++] = offs;
+	}
+	// Workers own disjoint tiles; wait before scanline composition uses layer 9.
+	if (count) {
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+		// Small pixel updates cost less than waking and joining the workers.
+		if (count < 1536) draw_pixel_tiles(jobs, 0, count);
+		else f3_tile_threads.ParallelFor(count, 512, draw_pixel_tiles, jobs);
+#else
+		draw_pixel_tiles(jobs, 0, count);
+#endif
+	}
+	f3_pixel_cache_flip = flipscreen;
+	f3_pixel_cache_valid = true;
+}
 
 static void f3_drawgfx(
 		INT32 code,
@@ -965,7 +1124,6 @@ static void get_sprite_info(UINT16 *spriteram16_ptr)
 		sprite_ptr->zoomy = y_addition;
 		sprite_ptr->pri = (color & 0xc0) >> 6;
 		sprite_ptr->rampos = current_offs & 0x1fff;
-		//bprintf(0, _T("%X, "), current_offs);
 		sprite_ptr++;
 		total_sprites++;
 	}
@@ -979,12 +1137,10 @@ static void get_sprite_info(UINT16 *spriteram16_ptr)
 				i -= 8;
 				sprite_ptr--;
 			}
-			//bprintf(0, _T("last good: %X."), sprite_ptr->rampos);
 			if (sprite_ptr != m_spritelist) sprite_ptr++; // always one empty sprite at the end.
 		}
 	}
 
-	//bprintf(0, _T("\n"));
 	if (jumpcnt>150) bprintf(0, _T("Sprite Jumps: %d. \n"), jumpcnt);
 	m_sprite_end = sprite_ptr;
 }
@@ -1517,7 +1673,7 @@ static void init_alpha_blend_func()
 }
 
 #define UPDATE_PIXMAP_SP(pf_num)	\
-if(cx>=clip_als && cx<clip_ars-1 && !(cx>=clip_bls && cx<clip_brs)) \
+if(sprite_visible) \
 	{ \
 		sprite_pri=sprite[pf_num]&m_pval; \
 		if(sprite_pri) \
@@ -1541,11 +1697,11 @@ if(cx>=clip_als && cx<clip_ars-1 && !(cx>=clip_bls && cx<clip_brs)) \
 	}
 
 
-static void draw_scanlines(INT32 xsize,INT16 *draw_line_num,
+template<INT32 skip_layer_num>
+static void draw_scanlines_fixed(INT32 xsize,INT16 *draw_line_num,
 							const struct f3_playfield_line_inf **line_t,
 							const INT32 *sprite,
-							UINT32 orient,
-							INT32 skip_layer_num)
+							UINT32 orient)
 {
 	UINT32 *clut = TaitoPalette;
 	UINT32 bgcolor=clut[0];
@@ -1612,6 +1768,7 @@ static void draw_scanlines(INT32 xsize,INT16 *draw_line_num,
 				m_pval=*dstp;
 				if (m_pval!=0xff)
 				{
+					const bool sprite_visible = cx>=clip_als && cx<clip_ars-1 && !(cx>=clip_bls && cx<clip_brs);
 					UINT8 sprite_pri;
 					switch(skip_layer_num)
 					{
@@ -1660,10 +1817,25 @@ static void draw_scanlines(INT32 xsize,INT16 *draw_line_num,
 		}
 	}
 }
+static void draw_scanlines(INT32 xsize, INT16 *draw_line_num,
+	const struct f3_playfield_line_inf **line_t, const INT32 *sprite,
+	UINT32 orient, INT32 skip_layer_num)
+{
+	// Select once per batch instead of testing the same count for each pixel.
+	switch (skip_layer_num) {
+		case 0: draw_scanlines_fixed<0>(xsize, draw_line_num, line_t, sprite, orient); break;
+		case 1: draw_scanlines_fixed<1>(xsize, draw_line_num, line_t, sprite, orient); break;
+		case 2: draw_scanlines_fixed<2>(xsize, draw_line_num, line_t, sprite, orient); break;
+		case 3: draw_scanlines_fixed<3>(xsize, draw_line_num, line_t, sprite, orient); break;
+		case 4: draw_scanlines_fixed<4>(xsize, draw_line_num, line_t, sprite, orient); break;
+		case 5: draw_scanlines_fixed<5>(xsize, draw_line_num, line_t, sprite, orient); break;
+		default: draw_scanlines_fixed<6>(xsize, draw_line_num, line_t, sprite, orient); break;
+	}
+}
 #undef GET_PIXMAP_POINTER
 #undef CULC_PIXMAP_POINTER
 
-static void visible_tile_check(
+static void visible_tile_check_uncached(
 						struct f3_playfield_line_inf *line_t,
 						INT32 line,
 						UINT32 x_index_fx,UINT32 y_index,
@@ -1696,14 +1868,15 @@ static void visible_tile_check(
 	alpha_type=0;
 	for(i=0;i<tile_num;i++)
 	{
-		UINT32 tile=(BURN_ENDIAN_SWAP_INT16(pf_base[(tile_index*2+0)&m_twidth_mask])<<16)|(BURN_ENDIAN_SWAP_INT16(pf_base[(tile_index*2+1)&m_twidth_mask]));
-		UINT8  extra_planes = (tile>>(16+10)) & 3;
-		if(tile&0xffff)
+		const UINT16 code = BURN_ENDIAN_SWAP_INT16(pf_base[(tile_index*2+1)&m_twidth_mask]);
+		if(code)
 		{
+			const UINT16 attr = BURN_ENDIAN_SWAP_INT16(pf_base[(tile_index*2)&m_twidth_mask]);
+			const UINT8 extra_planes = (attr >> 10) & 3;
 			trans_all=0;
 			if(opaque_all)
 			{
-				if(tile_opaque_pf[extra_planes][(tile&0xffff)%total_elements]!=1) opaque_all=0;
+				if(tile_opaque_pf[extra_planes][code%total_elements]!=1) opaque_all=0;
 			}
 
 			if(alpha_mode==1)
@@ -1714,10 +1887,11 @@ static void visible_tile_check(
 			{
 				if(alpha_type!=3)
 				{
-					if((tile>>(16+9))&1) alpha_type|=2;
+					if((attr>>9)&1) alpha_type|=2;
 					else                 alpha_type|=1;
 				}
-				else if(!opaque_all) break;
+				// No remaining tile can change either classification now.
+				if(alpha_type==3 && !opaque_all) break;
 			}
 		}
 		else if(opaque_all) opaque_all=0;
@@ -1734,6 +1908,39 @@ static void visible_tile_check(
 
 	if(opaque_all)
 		line_t->alpha_mode[line]|=0x80;
+}
+
+struct F3VisibleTileCache {
+	bool valid;
+	UINT32 y_row, first_tile, tile_count;
+	UINT16 *data;
+	INT32 alpha, result;
+};
+
+static void visible_tile_check(struct f3_playfield_line_inf *line_t, INT32 line,
+	UINT32 x_index, UINT32 y_index, UINT16 *data, F3VisibleTileCache *cache)
+{
+	const INT32 alpha = line_t->alpha_mode[line];
+	if (!alpha) return;
+	const UINT32 y_row = y_index / 16;
+	const UINT32 x_zoom = line_t->x_zoom[line];
+	// Fractional scrolling can leave the entire inspected tile range unchanged.
+	const UINT32 first_tile = x_index >> 20;
+	const UINT32 tile_count = (((x_zoom * 320 + (x_index & 0xffff) + 0xffff) >> 16) +
+		((x_index >> 16) % 16) + 15) / 16;
+	if (cache->valid && cache->first_tile == first_tile && cache->tile_count == tile_count &&
+		cache->y_row == y_row && cache->data == data && cache->alpha == alpha) {
+		line_t->alpha_mode[line] = cache->result;
+		return;
+	}
+	visible_tile_check_uncached(line_t, line, x_index, y_index, data);
+	cache->valid = true;
+	cache->y_row = y_row;
+	cache->first_tile = first_tile;
+	cache->tile_count = tile_count;
+	cache->data = data;
+	cache->alpha = alpha;
+	cache->result = line_t->alpha_mode[line];
 }
 
 #define min(a,b) (((a)<(b))?(a):(b))
@@ -1795,6 +2002,8 @@ static void calculate_clip(INT32 y, UINT16 pri, UINT32 *clip_in, UINT32 *clip_ex
 
 static void get_line_ram_info(INT32 which_map, INT32 sx, INT32 sy, INT32 pos, UINT16 *f3_pf_data_n)
 {
+	// RAM and global tile geometry are stable throughout this layer's preparation.
+	F3VisibleTileCache visible_cache = {};
 	UINT16 *m_f3_line_ram = (UINT16*)TaitoF3LineRAM;
 	struct f3_playfield_line_inf *line_t=&m_pf_line_inf[pos];
 
@@ -1897,9 +2106,10 @@ static void get_line_ram_info(INT32 which_map, INT32 sx, INT32 sy, INT32 pos, UI
 			line_enable=2;
 		else if(pri&0x8000) //alpha2
 			line_enable=3;
-		else if((pri&0x3000) && (BURN_ENDIAN_SWAP_INT16(m_f3_line_ram[0x6230/2]) != 0)  && (pos == 2) &&
+		else if((f3_game == EACTION2) && (pos == 2) && (pri&0x3000) &&
+				(BURN_ENDIAN_SWAP_INT16(m_f3_line_ram[0x6230/2]) != 0) &&
 				(((BURN_ENDIAN_SWAP_INT16(m_f3_line_ram[(0x6200/2) + (y)]) >> 4) & 0xf) != 0xb) &&
-				(BURN_ENDIAN_SWAP_INT16(m_f3_line_ram[(0x6200/2) + (y)]) != 0x7777) && (f3_game == EACTION2))
+				(BURN_ENDIAN_SWAP_INT16(m_f3_line_ram[(0x6200/2) + (y)]) != 0x7777))
 		{
 			line_enable=0x22;
 		}
@@ -2000,9 +2210,9 @@ static void get_line_ram_info(INT32 which_map, INT32 sx, INT32 sy, INT32 pos, UI
 			y_index = ((y_index_fx>>16)+_colscroll[y])&0x1ff;
 
 			/* check tile status */
-			visible_tile_check(line_t,y,x_index_fx,y_index,f3_pf_data_n);
+			visible_tile_check(line_t,y,x_index_fx,y_index,f3_pf_data_n,&visible_cache);
 
-			if ((pos == 1) && ((((BURN_ENDIAN_SWAP_INT16(m_f3_line_ram[(0x6200/2) + (y)])) >> 4) & 0xf) > 0xb)  && (f3_game==EACTION2)) line_t->alpha_mode[y] = 0x22;  //from shmupmame
+			if ((f3_game==EACTION2) && (pos == 1) && ((((BURN_ENDIAN_SWAP_INT16(m_f3_line_ram[(0x6200/2) + (y)])) >> 4) & 0xf) > 0xb)) line_t->alpha_mode[y] = 0x22;  //from shmupmame
 
 			/* If clipping enabled for this line have to disable 'all opaque' optimisation */
 			if (line_t->clip_in[y] != 0x7fff0000 || line_t->clip_ex[y] != 0)
@@ -2657,6 +2867,11 @@ static void get_spritealphaclip_info()
 
 void TaitoF3VideoInit()
 {
+	f3_pixel_cache_valid = false;
+	f3_vram_cache_valid = false;
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+	f3_tile_threads.Configure();
+#endif
 	clear_f3_stuff();
 	m_f3_alpha_level_2as=127;
 	m_f3_alpha_level_2ad=127;
@@ -2688,25 +2903,85 @@ void TaitoF3VideoInit()
 	init_alpha_blend_func();
 }
 
+struct F3PaletteBuildContext {
+	UINT16 *destination;
+	UINT32 (__cdecl *highcol)(INT32, INT32, INT32, INT32);
+};
+
+static void build_pal16_range(void *opaque, INT32 begin, INT32 end)
+{
+	const F3PaletteBuildContext *context = (const F3PaletteBuildContext *)opaque;
+	for (INT32 i = begin; i < end; i++) {
+		context->destination[i] = context->highcol(i >> 16, (i >> 8) & 0xff, i & 0xff, 0);
+	}
+}
+
 static void pal16_check_init()
 {
 	if (nBurnBpp < 3 && !pal16) {
 		pal16 = (UINT16 *)BurnMalloc((1 << 24) * sizeof (UINT16));
 
-		for (INT32 i = 0; i < (1 << 24); i++) {
-			pal16[i] = BurnHighCol(i / 0x10000, (i / 0x100) & 0xff, i & 0xff, 0);
-		}
+		F3PaletteBuildContext context = { pal16, BurnHighCol };
+		// Complete every range before the frame can read the palette.
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+		f3_tile_threads.ParallelFor(1 << 24, 1 << 18, build_pal16_range, &context);
+#else
+		build_pal16_range(&context, 0, 1 << 24);
+#endif
 	}
 }
 
 void TaitoF3VideoExit()
 {
+	f3_pixel_cache_valid = false;
+#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
+	f3_tile_threads.Shutdown();
+#endif
+	f3_vram_cache_valid = false;
 	BurnFree (m_spritelist);
 
 	if (pal16) {
 		BurnFree(pal16);
 		pal16 = NULL;
 	}
+}
+
+static void copy_output_frame(INT32 scanline_start)
+{
+	if (flipscreen) scanline_start = (scanline_start == 0x1234) ? 1 : 0;
+	const INT32 first_row = flipscreen ? nScreenHeight + scanline_start - 1 : scanline_start;
+	const INT32 row_step = flipscreen ? -1 : 1;
+	const INT32 row_bytes = nScreenWidth * nBurnBpp;
+	for (INT32 y = 0; y < nScreenHeight; y++) {
+		const UINT32 *src = output_bitmap + (first_row + y * row_step) * 512 + 46;
+		UINT8 *dst = pBurnDraw + y * row_bytes;
+		if (nBurnBpp == 4) {
+#if defined(LSB_FIRST)
+			memcpy(dst, src, row_bytes);
+#else
+			for (INT32 x = 0; x < nScreenWidth; x++)
+				((UINT32*)dst)[x] = BURN_ENDIAN_SWAP_INT32(src[x]);
+#endif
+		} else if (nBurnBpp == 2) {
+			for (INT32 x = 0; x < nScreenWidth; x++)
+				((UINT16*)dst)[x] = pal16[src[x] & 0xffffff];
+		} else {
+			for (INT32 x = 0; x < nScreenWidth; x++) PutPix(dst + x * nBurnBpp, src[x]);
+		}
+	}
+}
+
+static void clear_output_frame(INT32 scanline_start)
+{
+	if (flipscreen) scanline_start = (scanline_start == 0x1234) ? 1 : 0;
+	// Sprite clipping includes x=512, which can write into the following row.
+	INT32 rows = max_y + 2;
+	if (scanline_start < 0 || scanline_start > 512 || nScreenHeight > 512 - scanline_start) {
+		rows = 512;
+	} else if (rows < scanline_start + nScreenHeight) {
+		rows = scanline_start + nScreenHeight;
+	}
+	memset(output_bitmap, 0, rows * 512 * sizeof(UINT32));
 }
 
 void TaitoF3DrawCommon(INT32 scanline_start)
@@ -2758,8 +3033,9 @@ void TaitoF3DrawCommon(INT32 scanline_start)
 		sy_fix[4]=-sy_fix[4];
 	}
 
-	memset (TaitoPriorityMap, 0, 1024 * 512);
-	memset (output_bitmap, 0, 512 * 512 * sizeof(UINT32));
+	// Scanlines use rows 0..255; sprite clipping includes row max_y (256).
+	memset (TaitoPriorityMap, 0, 1024 * (max_y + 1));
+	clear_output_frame(scanline_start);
 
 	switch (sprite_lag) {
 		case 2: get_sprite_info((UINT16*)TaitoSpriteRamDelayed2); break;
@@ -2771,98 +3047,23 @@ void TaitoF3DrawCommon(INT32 scanline_start)
 
 	get_spritealphaclip_info();
 
-	for (INT32 i = 0; i < (8 >> extended_layers); i++) {
-		if (nBurnLayer & 1) draw_pf_layer(i);
-	}
+	const bool pf_lines_ready = (nBurnLayer & 1) && draw_pf_layers(sx_fix, sy_fix);
 
 	if (nBurnLayer & 2) draw_pixel_layer();
 	if (nBurnLayer & 4) draw_vram_layer();
 
 	{
-		get_line_ram_info(0,sx_fix[0],sy_fix[0],0,(UINT16*)(TaitoF3PfRAM + (extended_layers ? 0x0000 : 0x0000)));
-
-		get_line_ram_info(1,sx_fix[1],sy_fix[1],1,(UINT16*)(TaitoF3PfRAM + (extended_layers ? 0x2000 : 0x1000)));
-
-		get_line_ram_info(2,sx_fix[2],sy_fix[2],2,(UINT16*)(TaitoF3PfRAM + (extended_layers ? 0x4000 : 0x2000)));
-
-		get_line_ram_info(3,sx_fix[3],sy_fix[3],3,(UINT16*)(TaitoF3PfRAM + (extended_layers ? 0x6000 : 0x3000)));
+		if (!pf_lines_ready) {
+			for (INT32 layer = 0; layer < 4; layer++) {
+				get_line_ram_info(layer,sx_fix[layer],sy_fix[layer],layer,
+					(UINT16*)(TaitoF3PfRAM + layer * (extended_layers ? 0x2000 : 0x1000)));
+			}
+		}
 
 		get_vram_info(sx_fix[4],sy_fix[4]);
 
 		if (nBurnLayer & 8) scanline_draw();
 	}
 
-	// copy video to draw surface
-	{
-		if (flipscreen)
-		{
-			scanline_start = (scanline_start == 0x1234) ? 1 : 0; // super-kludge for gunlock. -dink
-
-			UINT32 *src = output_bitmap + ((nScreenHeight + scanline_start - 1) * 512) + 46;
-			UINT8 *dst = pBurnDraw;
-
-			for (INT32 y = 0, i = 0; y < nScreenHeight; y++)
-			{
-				if (nBurnBpp == 2) { // 16bpp
-					for (INT32 x = 0; x < nScreenWidth; x++, i++, dst += nBurnBpp)
-					{
-						PutPix(dst, pal16[src[x]&((1<<24)-1)]);
-					}
-
-					src -= 512;
-				} else if (nBurnBpp == 4) { // quad block-32bit (fast)
-					for (INT32 x = 0; x < nScreenWidth; x+=4, i++, dst += (nBurnBpp*4))
-					{
-						*((UINT32*)(dst + 0)) = BURN_ENDIAN_SWAP_INT32(src[x + 0]);
-						*((UINT32*)(dst + 4)) = BURN_ENDIAN_SWAP_INT32(src[x + 1]);
-						*((UINT32*)(dst + 8)) = BURN_ENDIAN_SWAP_INT32(src[x + 2]);
-						*((UINT32*)(dst + 12))= BURN_ENDIAN_SWAP_INT32(src[x + 3]);
-					}
-
-					src -= 512;
-				} else { // 24bit
-					for (INT32 x = 0; x < nScreenWidth; x++, i++, dst += nBurnBpp)
-					{
-						PutPix(dst, src[x]);
-					}
-
-					src -= 512;
-				}
-			}
-		}
-		else
-		{
-			UINT32 *src = output_bitmap + (scanline_start * 512) + 46;
-			UINT8 *dst = pBurnDraw;
-
-			for (INT32 y = 0, i = 0; y < nScreenHeight; y++)
-			{	
-				if (nBurnBpp == 2) { // 16bpp
-					for (INT32 x = 0; x < nScreenWidth; x++, i++, dst += nBurnBpp)
-					{
-						PutPix(dst, pal16[src[x]&((1<<24)-1)]);
-					}
-
-					src += 512;
-				} else if (nBurnBpp == 4) { // quad block-32bit (fast)
-					for (INT32 x = 0; x < nScreenWidth; x+=4, i++, dst += (nBurnBpp*4))
-					{
-						*((UINT32*)(dst + 0)) = BURN_ENDIAN_SWAP_INT32(src[x + 0]);
-						*((UINT32*)(dst + 4)) = BURN_ENDIAN_SWAP_INT32(src[x + 1]);
-						*((UINT32*)(dst + 8)) = BURN_ENDIAN_SWAP_INT32(src[x + 2]);
-						*((UINT32*)(dst + 12))= BURN_ENDIAN_SWAP_INT32(src[x + 3]);
-					}
-
-					src += 512;
-				} else { // 24bpp
-					for (INT32 x = 0; x < nScreenWidth; x++, i++, dst += nBurnBpp)
-					{
-						PutPix(dst, src[x]);
-					}
-
-					src += 512;
-				}
-			}
-		}
-	}
+	copy_output_frame(scanline_start);
 }

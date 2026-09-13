@@ -268,7 +268,6 @@ static void control_w(INT32 offset, UINT32 d, INT32 b)
 
 		case 0x04:
 		{
-	//		bprintf (0, _T("contrl %2.2x, %8.8x, %8.8x\n"), offset, d, b);
 			if ((offset & 3) == 0) DrvCoinWord[0] = d << 0; // or 8?
 		}
 		return;
@@ -285,7 +284,6 @@ static void control_w(INT32 offset, UINT32 d, INT32 b)
 
 		case 0x14:
 		{
-	//		bprintf (0, _T("contrl %2.2x, %8.8x, %8.8x\n"), offset, d, b);
 			if ((offset & 3) == 0) DrvCoinWord[1] = d << 0; // or 8?
 		}
 		return;
@@ -294,7 +292,6 @@ static void control_w(INT32 offset, UINT32 d, INT32 b)
 		{
 			if (DebugSnd_MSM6295Initted) {
 				if ((offset & 3) == 3) { MSM6295Write(0, d); return; }
-			//	bprintf (0, _T("Sound Command: %x, %x %d\n"), offset & 0x1f, d, b); 
 				if ((offset & 3) == 0) { } // banking
 			}
 		}
@@ -1079,7 +1076,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 
 		if (ri.nType == TAITO_68KROM1_BYTESWAP32)
 		{
-	//		if (bLoad) bprintf (0, _T("000000 68k1\n"));
 
 			if (bLoad) {
 				ret  = BurnLoadRom(Taito68KRom1 + 1, i + 0, 4);
@@ -1094,7 +1090,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 
 		if (ri.nType == TAITO_SPRITESA_BYTESWAP)
 		{
-	//		if (bLoad) bprintf (0, _T("%6.6x sprite 2x\n"), sprites - TaitoSpritesA);
 
 			if (f3_game == GSEEKER)
 			{
@@ -1127,7 +1122,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 				sprites = TaitoSpritesA + ((sprites - TaitoSpritesA) / 2) * 3;
 			}
 
-	//		if (bLoad) bprintf (0, _T("%6.6x sprite 1x \n"), sprites - TaitoSpritesA);
 
 			if (bLoad) {
 				BurnLoadRom(sprites + 0, i + 0, 1);
@@ -1138,7 +1132,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 
 		if (ri.nType == TAITO_CHARS_BYTESWAP32)
 		{
-	//		if (bLoad) bprintf (0, _T("%6.6x tiles x4\n"), tiles - TaitoChars);
 
 			if (bLoad) {
 				ret  = BurnLoadRom(tiles + 0, i + 0, 4);
@@ -1159,7 +1152,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 				tilecount = 1;
 			}
 
-	//		if (bLoad) bprintf (0, _T("%6.6x tiles x2\n"), tiles - TaitoChars);
 
 			if (pi.nType != TAITO_CHARS_BYTESWAP) {
 				if (bLoad) {
@@ -1183,20 +1175,17 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 				tiles = TaitoChars + ((tiles - TaitoChars) / 2) * 3;
 			}
 
-	//		if (bLoad) bprintf (0, _T("%6.6x tiles x1 \n"), tiles - TaitoChars);
 
 			if (bLoad) {
 				BurnLoadRom(tiles + 0, i + 0, 1);
 			}
 			tiles += ri.nLen;
-	//		if (bLoad) bprintf (0, _T("%6.6x tiles x1b \n"), tiles - TaitoChars);
 
 			continue;
 		}
 
 		if (ri.nType == TAITO_68KROM2_BYTESWAP)
 		{
-	//		if (bLoad) bprintf (0, _T("000000 68k2 x2\n"));
 
 			if (bLoad) {
 				ret  = BurnLoadRom(Taito68KRom2 + 1, i + 0, 2);
@@ -1209,7 +1198,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 
 		if (ri.nType == TAITO_68KROM2) // kirameki
 		{
-	//		if (bLoad) bprintf (0, _T("100000, 68k1 x1\n"));
 			if (bLoad) {
 				BurnLoadRom(Taito68KRom2 + 0x100000, i, 1);
 			}
@@ -1228,7 +1216,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 				samples += 0x200000;
 			}
 
-	//		if (bLoad) bprintf (0, _T("%6.6x, samples \n"), samples - TaitoES5505Rom);
 
 			if (bLoad) {
 				if (BurnLoadRom(samples + 1, i, 2)) return 1;
@@ -1268,7 +1255,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 		TaitoSpriteARomSize = spritesize;
 		TaitoCharRomSize = tilesize;
 		TaitoF3ES5506RomSize = samplesize;
-	//	bprintf (0, _T("Load: %x, %x, %x\n"), spritesize, tilesize, samplesize);
 	}
 
 	return 0;

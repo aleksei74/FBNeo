@@ -2721,6 +2721,11 @@ static bool Namcos11GpuSynchronizeHardwareVram()
 
 static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 {
+	if (!DrvOpenGLFrame.SupportsFullRasterizer()) {
+		DrvGpuImageHardwareUpload = 0;
+		DrvHardwareRasterStreak = 0;
+		return false;
+	}
 	if (command == 0xa0) {
 		DrvGpuImageHardwareUpload = 0;
 		const UINT32 width = DrvGpuPacket[2] & 0xffff;
@@ -2753,7 +2758,8 @@ static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 		}
 		return false;
 	}
-	if (++DrvHardwareRasterStreak < 8) {
+	// Saturate once hardware submission is eligible.
+	if (DrvHardwareRasterStreak < 8 && ++DrvHardwareRasterStreak < 8) {
 		Namcos11GpuSynchronizeHardwareVram();
 		return false;
 	}

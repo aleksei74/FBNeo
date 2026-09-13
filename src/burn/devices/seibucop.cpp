@@ -228,10 +228,12 @@ static UINT8 cop_read_byte(UINT32 offset)
 	return cpu_read_byte(offset ^ byte_endian_val);
 }
 
-static void execute_0205(INT32 offset, UINT16 )
+static void execute_0205(INT32 offset, UINT16 data)
 {
 	INT32 ppos =        cpu_read_long(cop_regs[0] + 0x04 + offset * 4);
-	INT32 npos = ppos + cpu_read_long(cop_regs[0] + 0x10 + offset * 4);
+	UINT32 step = cpu_read_long(cop_regs[0] + 0x10 + offset * 4);
+	// Seibu Cup's 0204 cancels the preceding movement (MiSTer COP3).
+	INT32 npos = (UINT32)ppos + ((is_cupsoc && !(data & 1)) ? 0U - step : step);
 	INT32 delta = (npos >> 16) - (ppos >> 16);
 
 	cpu_write_long(cop_regs[0] + 4 + offset * 4, npos);
@@ -269,6 +271,9 @@ static void LEGACY_execute_130e_cupsoc(INT32 , UINT16 data)
 
 	LEGACY_r0 = dy;
 	LEGACY_r1 = dx;
+
+	// Error status uses the integer part; suppress RAM writes only at exact zero.
+	if (is_cupsoc && ((UINT32)dx >> 16) == 0) cop_status |= 0x8000;
 
 	// Seibu Cup chooses the RAM write from the trigger length: only len=8 writes.
 	// This keeps 118e (len=4) and 130e (len=7) from clobbering obj+0x37.
@@ -358,6 +363,7 @@ static void execute_3b30(INT32 , UINT16 data)
 	dy = dy >> 16;
 	INT64 dist2 = (INT64)dx * dx + (INT64)dy * dy;
 	cop_dist = (UINT16)sqrt((double)dist2);
+	if (is_cupsoc) cop_status = (cop_status & 2) | 5;
 
 	if (data & 0x0080)
 		cop_write_word(cop_regs[0] + (data & 0x200 ? 0x3a : 0x38), cop_dist);
@@ -749,6 +755,8 @@ static void LEGACY_execute_e30e(INT32 , UINT16 data)
 	LEGACY_r0 = dy;
 	LEGACY_r1 = dx;
 
+	if (is_cupsoc && ((UINT32)dx >> 16) == 0) cop_status |= 0x8000;
+
 	bool write_angle = (data & 0x0080) != 0;
 	if (is_cupsoc) write_angle = (((data >> 7) & 7) == 7);
 
@@ -818,6 +826,7 @@ static INT32 check_command_matches(INT32 command, UINT16 seq0, UINT16 seq1, UINT
 
 static void LEGACY_cop_cmd_write(INT32 offset, UINT16 data)
 {
+	if (is_cupsoc) cop_status &= 0x7fff;
 	INT32 command = find_trigger_match(data, 0xf800);
 
 	if (command == -1)
@@ -827,6 +836,18 @@ static void LEGACY_cop_cmd_write(INT32 offset, UINT16 data)
 
 	UINT16 funcval = cop_func_value[command];
 	UINT16 funcmask = cop_func_mask[command];
+
+	if (is_cupsoc) {
+		// These uploaded slots use the same raw-angle and division datapaths.
+		if (data == 0x330e || data == 0x338e) {
+			LEGACY_execute_130e_cupsoc(offset, data);
+			return;
+		}
+		if (data == 0x4aa0) {
+			execute_4aa0(offset, data);
+			return;
+		}
+	}
 
 	if (check_command_matches(command, 0x188, 0x282, 0x082, 0xb8e, 0x98e, 0x000, 0x000, 0x000, 6, 0xffeb))
 	{

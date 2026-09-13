@@ -31244,7 +31244,7 @@ STD_ROM_FN(fatfury3k)
 struct BurnDriver BurnDrvFatfury3k = {
 	"fatfury3k", "fatfury3", "neogeo", NULL, "2026",
 	"Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 - Haruka-naru Tatakai (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 - Haruka-naru Tatakai (Korean Translation)\0uD398\uC774\uD138 \uD4E8\uB9AC 3 - \uB85C\uB4DC \uD22C \uB354 \uD30C\uC774\uB110 \uBE45\uD1A0\uB9AC / \uC544\uB791\uC804\uC124 3 - \uC544\uB4DD\uD55C \uC2F8\uC6C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	L"Fatal Fury 3 - Road to the Final Victory / Garou Densetsu 3 - Haruka-naru Tatakai (Korean Translation)\0\uD398\uC774\uD138 \uD4E8\uB9AC 3 - \uB85C\uB4DC \uD22C \uB354 \uD30C\uC774\uB110 \uBE45\uD1A0\uB9AC / \uC544\uB791\uC804\uC124 3 - \uC544\uB4DD\uD55C \uC2F8\uC6C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_FATFURY,
 	NULL, fatfury3kRomInfo, fatfury3kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,

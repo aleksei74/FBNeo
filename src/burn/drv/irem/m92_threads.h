@@ -68,7 +68,7 @@ public:
 			m_stop = true;
 			m_generation++;
 		}
-		m_work.notify_all();
+		for (INT32 i = 0; i < m_worker_count; i++) m_work[i].notify_one();
 
 		for (INT32 i = 0; i < m_worker_count; i++) {
 			if (m_workers[i].joinable()) m_workers[i].join();
@@ -83,6 +83,11 @@ public:
 
 	void ParallelFor(INT32 count, INT32 minimum, M92ThreadCallback callback, void *context)
 	{
+		// Avoid partition arithmetic when this dispatch cannot use workers.
+		if (m_worker_count == 0 || count <= 1 || (minimum > 0 && count <= minimum)) {
+			callback(context, 0, count);
+			return;
+		}
 		const INT32 cores = m_worker_count + 1;
 		INT32 parts = (minimum > 0) ? ((count + minimum - 1) / minimum) : cores;
 
@@ -102,7 +107,8 @@ public:
 			m_pending = parts - 1;
 			m_generation++;
 		}
-		m_work.notify_all();
+		// Inactive workers need not contend for the dispatch mutex.
+		for (INT32 i = 0; i < parts - 1; i++) m_work[i].notify_one();
 
 		callback(context, 0, count / parts);
 
@@ -123,7 +129,7 @@ private:
 
 			{
 				std::unique_lock<std::mutex> lock(m_mutex);
-				m_work.wait(lock, [this, generation]() { return m_stop || m_generation != generation; });
+				m_work[part - 1].wait(lock, [this, generation]() { return m_stop || m_generation != generation; });
 				if (m_stop) return;
 
 				generation = m_generation;
@@ -137,17 +143,19 @@ private:
 
 			callback(context, begin, end);
 
+			bool completed;
 			{
 				std::lock_guard<std::mutex> lock(m_mutex);
 				m_pending--;
-				if (m_pending == 0) m_done.notify_one();
+				completed = (m_pending == 0);
 			}
+			if (completed) m_done.notify_one();
 		}
 	}
 
 	std::thread m_workers[7];
 	std::mutex m_mutex;
-	std::condition_variable m_work;
+	std::condition_variable m_work[7];
 	std::condition_variable m_done;
 	INT32 m_worker_count;
 	UINT32 m_generation;

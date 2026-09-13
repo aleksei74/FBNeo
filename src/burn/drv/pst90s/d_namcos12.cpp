@@ -2645,7 +2645,13 @@ static bool Namcos11GpuSynchronizeHardwareVram()
 
 static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 {
-	if (DrvTektagt) {
+	if (!DrvOpenGLFrame.SupportsFullRasterizer()) {
+		DrvGpuImageHardwareUpload = 0;
+		DrvHardwareRasterStreak = 0;
+		return false;
+	}
+	// Keep incompatible games on CPU VRAM, including image transfers.
+	if (DrvTektagt || DrvLbgrande) {
 		if (command == 0xa0) DrvGpuImageHardwareUpload = 0;
 		return false;
 	}
@@ -2688,7 +2694,8 @@ static bool Namcos11GpuTryHardwarePacket(UINT8 command)
 		}
 		return false;
 	}
-	if (++DrvHardwareRasterStreak < 8) {
+	// Saturate once hardware submission is eligible.
+	if (DrvHardwareRasterStreak < 8 && ++DrvHardwareRasterStreak < 8) {
 		Namcos11GpuSynchronizeHardwareVram();
 		return false;
 	}
@@ -6672,18 +6679,27 @@ static INT32 DrvDraw()
 	const INT32 uncroppedHeight = context.cropHeight;
 	if (ehrgeizOpenGLCrop) {
 		const INT32 scale = context.sourceHeight >= 480 ? 2 : 1;
-		context.cropTop = 6 * scale;
-		context.cropHeight = context.sourceHeight - (11 * scale) - (scale - 1);
+		// Crop parameters use output rows, not the temporary movie height.
+		context.cropTop = (INT32)((INT64)(6 * scale) * context.outputHeight /
+			context.sourceHeight);
+		context.cropHeight = (INT32)((INT64)(context.sourceHeight -
+			(11 * scale) - (scale - 1)) * context.outputHeight / context.sourceHeight);
 	} else if (tekken3OpenGLCrop) {
 		const INT32 scale = context.sourceHeight >= 480 ? 2 : 1;
-		context.cropTop = 10 * scale;
-		context.cropHeight = context.sourceHeight - (12 * scale) - (scale - 1);
+		context.cropTop = (INT32)((INT64)(10 * scale) * context.outputHeight /
+			context.sourceHeight);
+		context.cropHeight = (INT32)((INT64)(context.sourceHeight -
+			(12 * scale) - (scale - 1)) * context.outputHeight / context.sourceHeight);
 	} else if (tektagtOpenGLCrop) {
 		const bool highResolution = context.sourceHeight >= 480;
 		const INT32 cropTop = highResolution ? 20 : 10;
 		const INT32 cropBottom = highResolution ? 15 : 8;
-		context.cropTop = cropTop;
-		context.cropHeight = context.sourceHeight - cropTop - cropBottom;
+		// The converter takes crop coordinates in output rows, including when
+		// a 240-line RGB24 movie is presented at the retained 480-line mode.
+		context.cropTop = (INT32)((INT64)cropTop * context.outputHeight /
+			context.sourceHeight);
+		context.cropHeight = (INT32)((INT64)(context.sourceHeight - cropTop -
+			cropBottom) * context.outputHeight / context.sourceHeight);
 	}
 	if (DrvSws99 && context.rgb24) {
 		const INT32 activeWidth = ((INT32)(DrvGpuHorizEnd - DrvGpuHorizStart) *
