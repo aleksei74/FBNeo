@@ -449,15 +449,18 @@ jobs:
             file="$(find "$dir" -maxdepth 1 -type f \( -name '*.so' -o -name '*.dll' -o -name '*.a' \) -print -quit)"
             [ -n "$file" ] || continue
 
-            case "$file" in
-              *.so) ext=so ;;
-              *.dll) ext=dll ;;
-              *.a) ext=a ;;
-              *) continue ;;
+            case "$artifact" in
+              fbneo-libretro-android-*) core_name="fbneo_libretro_android.so" ;;
+              fbneo-libretro-windows-x64) core_name="fbneo_libretro.dll" ;;
+              fbneo-libretro-nintendo-switch-libnx) core_name="fbneo_libretro_libnx.a" ;;
+              *) core_name="fbneo_libretro.so" ;;
             esac
 
-            output="release-assets/${artifact}.${ext}"
-            cp "$file" "$output"
+            staging="$(mktemp -d)"
+            cp "$file" "${staging}/${core_name}"
+            output="release-assets/${artifact}.zip"
+            (cd "$staging" && zip -q "${GITHUB_WORKSPACE}/${output}" "$core_name")
+            rm -rf "$staging"
             sha256sum "$output" > "${output}.sha256"
             found=$((found + 1))
           done
