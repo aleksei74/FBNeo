@@ -10526,6 +10526,24 @@ struct BurnDriver BurnDrvmd_bighurt = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Frog Dude (Prototype)
+static struct BurnRomInfo md_frogdudeRomDesc[] = {
+	{ "Frog Dude (Proto)(1993)(Twilight).bin", 99792, 0xc5e80ce2, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_frogdude)
+STD_ROM_FN(md_frogdude)
+
+struct BurnDriver BurnDrvmd_frogdude = {
+	"md_frogdude", NULL, NULL, NULL, "1993",
+	"Frog Dude (Prototype)\0", "No sound", "Twilight", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_PROTOTYPE, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_frogdudeRomInfo, md_frogdudeRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Frogger (USA)
 static struct BurnRomInfo md_froggerRomDesc[] = {
 	{ "Frogger (USA)(1998)(Majesco).bin", 0x080000, 0xea2e48c0, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -36292,6 +36310,24 @@ struct BurnDriver BurnDrvmd_dinho98 = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Rook Mann - RockHeaven (Japan) (Unl)
+static struct BurnRomInfo md_rookmannRomDesc[] = {
+	{ "Rook Mann - RockHeaven (Japan)(Unl)(199x).bin", 524288, 0x274c2a1c, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_rookmann)
+STD_ROM_FN(md_rookmann)
+
+struct BurnDriver BurnDrvmd_rookmann = {
+	"md_rookmann", "md_alexkidd", NULL, NULL, "199?",
+	"Rook Mann - RockHeaven (Japan) (Unl)\0", NULL, "<unknown>", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_rookmannRomInfo, md_rookmannRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Samurai Spirits II (China) (Unl)
 static struct BurnRomInfo md_Samsho2RomDesc[] = {
 	{ "Samurai Spirits II (China)(Unl)(1998).bin", 2097152, 0x2942f180, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000 },
@@ -37856,6 +37892,25 @@ struct BurnDriver BurnDrvmd_sks3 = {
 // --------------------------
 
 
+// 1-Bit Pong (HB)
+// https://mrbackware.itch.io/1-bit-pong-genesis
+static struct BurnRomInfo md_1bitpongRomDesc[] = {
+	{ "1-Bit Pong (2025)(Mr. Backware).bin", 393216, 0xac0f5b7b, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_1bitpong)
+STD_ROM_FN(md_1bitpong)
+
+struct BurnDriver BurnDrvmd_1bitpong = {
+	"md_1bitpong", NULL, NULL, NULL, "2025",
+	"1-Bit Pong (HB)\0", NULL, "Mr. Backware", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_BALLPADDLE, 0,
+	MegadriveGetZipName, md_1bitpongRomInfo, md_1bitpongRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // 2 Ciclopes e Amigos - New Challengers (HB, Portuguese)
 static struct BurnRomInfo md_2cnfncRomDesc[] = {
 	{ "2 Ciclopes e Amigos - New Challengers PT (2020)(Nemezes).bin", 1627296, 0x18fd5a36, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -38451,6 +38506,25 @@ struct BurnDriver BurnDrvmd_batmanrnmd = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_SCRFIGHT, 0,
 	MegadriveGetZipName, md_batmanrnmdRomInfo, md_batmanrnmdRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Battle Vader (HB)
+// https://warasibe1192.itch.io/battle-vader
+static struct BurnRomInfo md_battlevaderRomDesc[] = {
+	{ "Battle Vader (2026)(NK Soft).bin", 262144, 0x70bb6ca2, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_battlevader)
+STD_ROM_FN(md_battlevader)
+
+struct BurnDriver BurnDrvmd_battlevader = {
+	"md_battlevader", NULL, NULL, NULL, "2026",
+	"Battle Vader (HB)\0", NULL, "NK Soft", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_VERSHOOT, 0,
+	MegadriveGetZipName, md_battlevaderRomInfo, md_battlevaderRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
@@ -39326,6 +39400,25 @@ struct BurnDriver BurnDrvmd_dariusev = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Darkula (HB, Demo)
+// https://playonretro.itch.io/mega-darkula-demo-megadrive-genesis-16-bits
+static struct BurnRomInfo md_darkulaRomDesc[] = {
+	{ "Darkula Demo (2026)(PlayOnRetro).bin", 1048576, 0x0a88e710, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_darkula)
+STD_ROM_FN(md_darkula)
+
+struct BurnDriver BurnDrvmd_darkula = {
+	"md_darkula", NULL, NULL, NULL, "2026",
+	"Darkula (HB, Demo)\0", NULL, "PlayOnRetro", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM, 0,
+	MegadriveGetZipName, md_darkulaRomInfo, md_darkulaRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Death & Lead (HB)
 static struct BurnSampleInfo DeathnleadSampleDesc[] = {
 	{ "01 1_1 o 5_1 glory salicornia bona loop", SAMPLE_AUTOLOOP },
@@ -39383,8 +39476,26 @@ struct BurnDriver BurnDrvmd_debtor = {
 	"md_debtor", NULL, NULL, NULL, "2020",
 	"Debtor (HB)\0", NULL, "PSCD Games, SharkGame", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM | GBF_RUNGUN, 0,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM | GBF_PUZZLE, 0,
 	MegadriveGetZipName, md_debtorRomInfo, md_debtorRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Debtor (HB, Alt)
+static struct BurnRomInfo md_debtoraRomDesc[] = {
+	{ "Debtor (Alt) (2020)(PSCD Games).bin", 2228224, 0x7bb67106, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_debtora)
+STD_ROM_FN(md_debtora)
+
+struct BurnDriver BurnDrvmd_debtora = {
+	"md_debtora", "md_debtor", NULL, NULL, "2020",
+	"Debtor (HB, Alt)\0", NULL, "PSCD Games, SharkGame", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_PLATFORM | GBF_PUZZLE, 0,
+	MegadriveGetZipName, md_debtoraRomInfo, md_debtoraRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
@@ -39551,6 +39662,25 @@ struct BurnDriver BurnDrvmd_diathieves = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Dinosaur Game (HB, v3.52)
+// https://mrbackware.itch.io/dinosaur-game
+static struct BurnRomInfo md_dinogameRomDesc[] = {
+	{ "Dinosaur Game v3.52 (2025)(Mr. Backware).bin", 786432, 0xe9979232, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_dinogame)
+STD_ROM_FN(md_dinogame)
+
+struct BurnDriver BurnDrvmd_dinogame = {
+	"md_dinogame", NULL, NULL, NULL, "2025",
+	"Dinosaur Game (HB, v3.52)\0", NULL, "Mr. Backware", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ACTION, 0,
+	MegadriveGetZipName, md_dinogameRomInfo, md_dinogameRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Doroppu (HB)
 static struct BurnRomInfo md_doroppuRomDesc[] = {
 	{ "Doroppu (2015)(repixel8).bin", 127420, 0xbb1eaeda, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -39565,6 +39695,25 @@ struct BurnDriver BurnDrvmd_doroppu = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_PUZZLE, 0,
 	MegadriveGetZipName, md_doroppuRomInfo, md_doroppuRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Double Snake (HB, v1.32)
+// https://z4k4.itch.io/double-snake
+static struct BurnRomInfo md_dblsnakeRomDesc[] = {
+	{ "Double Snake v1.32 (2026)(Zaka).bin", 262144, 0x0e1c759e, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_dblsnake)
+STD_ROM_FN(md_dblsnake)
+
+struct BurnDriver BurnDrvmd_dblsnake = {
+	"md_dblsnake", NULL, NULL, NULL, "2026",
+	"Double Snake (HB, v1.32)\0", NULL, "Zaka", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_ACTION, 0,
+	MegadriveGetZipName, md_dblsnakeRomInfo, md_dblsnakeRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
@@ -40003,10 +40152,10 @@ struct BurnDriver BurnDrvmd_fightg3500 = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
-// Final Fight MD (HB, v0.94b+)
+// Final Fight MD (HB, v0.95b)
 // https://mxretrodev.itch.io/final-fight-md
 static struct BurnRomInfo md_ffightmdRomDesc[] = {
-	{ "Final Fight MD v0.94b+ (2026)(MXRetroDev - CFX).bin", 4194304, 0x16512148, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Final Fight MD v0.95b (2026)(MXRetroDev - CFX).bin", 4194304, 0xe39eaab0, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_ffightmd)
@@ -40014,7 +40163,7 @@ STD_ROM_FN(md_ffightmd)
 
 struct BurnDriver BurnDrvmd_ffightmd = {
 	"md_ffightmd", NULL, NULL, NULL, "2026",
-	"Final Fight MD (HB, v0.94b+)\0", NULL, "MXRetroDev - CFX", "Genesis / Mega Drive",
+	"Final Fight MD (HB, v0.95b)\0", NULL, "MXRetroDev - CFX", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 3, HARDWARE_SEGA_MEGADRIVE | HARDWARE_SEGA_MEGADRIVE_TEAMPLAYER, GBF_SCRFIGHT, 0,
 	MegadriveGetZipName, md_ffightmdRomInfo, md_ffightmdRomName, NULL, NULL, NULL, NULL, Megadrive3pInputInfo, Megadrive3pDIPInfo,
@@ -41009,6 +41158,25 @@ struct BurnDriver BurnDrvmd_masiaka = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Mazinger Z (HB)
+// https://warasibe1192.itch.io/mazinger-z
+static struct BurnRomInfo md_mazingerzRomDesc[] = {
+	{ "Mazinger Z (2026)(NK Soft).bin", 262144, 0x51edfae2, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_mazingerz)
+STD_ROM_FN(md_mazingerz)
+
+struct BurnDriver BurnDrvmd_mazingerz = {
+	"md_mazingerz", NULL, NULL, NULL, "2026",
+	"Mazinger Z (HB)\0", NULL, "NK Soft", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ACTION, 0,
+	MegadriveGetZipName, md_mazingerzRomInfo, md_mazingerzRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Mega 3D Noah's Ark (HB)
 static struct BurnRomInfo md_m3dnoahRomDesc[] = {
 	{ "Mega 3D Noah's Ark (2017)(Piko Interactive).bin", 2097152, 0x409165c2, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -41301,6 +41469,25 @@ struct BurnDriver BurnDrvmd_megasmole = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Mega Tetris (HB)
+// https://davidsgame.itch.io/megatetris
+static struct BurnRomInfo md_megatetrisRomDesc[] = {
+	{ "Mega Tetris (2026)(DavidGames).bin", 1441792, 0x8d647d1f, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_megatetris)
+STD_ROM_FN(md_megatetris)
+
+struct BurnDriver BurnDrvmd_megatetris = {
+	"md_megatetris", NULL, NULL, NULL, "2026",
+	"Mega Tetris (HB)\0", NULL, "DavidGames", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_PUZZLE, 0,
+	MegadriveGetZipName, md_megatetrisRomInfo, md_megatetrisRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Mega Turrican - Director's Cut (World)
 static struct BurnRomInfo md_megaturrdcRomDesc[] = {
 	{ "Mega Turrican - Director's Cut (2021)(Strictly Limited Games).bin", 5242880, 0x3226ec36, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -41557,6 +41744,25 @@ struct BurnDriver BurnDrvmd_misplacedr = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Mission Cyborg (HB, Demo)
+// https://greengh0st.itch.io/mission-cyborg-demo-v10
+static struct BurnRomInfo md_missioncybRomDesc[] = {
+	{ "Mission Cyborg Demo (2026)(PSCD Games).bin", 2621440, 0xc2dace4a, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_missioncyb)
+STD_ROM_FN(md_missioncyb)
+
+struct BurnDriver BurnDrvmd_missioncyb = {
+	"md_missioncyb", NULL, NULL, NULL, "2026",
+	"Mission Cyborg (HB, Demo)\0", NULL, "PSCD Games", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_VERSHOOT, 0,
+	MegadriveGetZipName, md_missioncybRomInfo, md_missioncybRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Ms. Pac-Man (Pocket Player Pro)
 static struct BurnRomInfo md_mspacmanppRomDesc[] = {
 	{ "Ms. Pac-Man (2023)(My Arcade).bin", 524288, 0x9638da23, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -41684,6 +41890,44 @@ struct BurnDriver BurnDrvmd_omeblast = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// Or Maybe This Is the Perfect Life (HB)
+// https://warasibe1192.itch.io/or-maybe-this-is-the-perfect-life
+static struct BurnRomInfo md_perfectlife1RomDesc[] = {
+	{ "Or Maybe This Is the Perfect Life (2025)(NK Soft).bin", 3276800, 0x1cded9bb, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_perfectlife1)
+STD_ROM_FN(md_perfectlife1)
+
+struct BurnDriver BurnDrvmd_perfectlife1 = {
+	"md_perfectlife1", NULL, NULL, NULL, "2025",
+	"Or Maybe This Is the Perfect Life (HB)\0", NULL, "NK Soft", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV, 0,
+	MegadriveGetZipName, md_perfectlife1RomInfo, md_perfectlife1RomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Or Maybe This Is the Perfect Life - The Harry Fox Story (HB)
+// https://warasibe1192.itch.io/or-maybe-this-is-the-perfect-life-the-harry-fox-story
+static struct BurnRomInfo md_perfectlife4RomDesc[] = {
+	{ "Or Maybe This Is the Perfect Life - The Harry Fox Story (2026)(NK Soft).bin", 2752512, 0x32e898c9, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_perfectlife4)
+STD_ROM_FN(md_perfectlife4)
+
+struct BurnDriver BurnDrvmd_perfectlife4 = {
+	"md_perfectlife4", NULL, NULL, NULL, "2026",
+	"Or Maybe This Is the Perfect Life - The Harry Fox Story (HB)\0", NULL, "NK Soft", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ADV, 0,
+	MegadriveGetZipName, md_perfectlife4RomInfo, md_perfectlife4RomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // P.O.D. Proof Of Destruction (GlobalHack)
 static struct BurnRomInfo md_podRomDesc[] = {
 	{ "P.O.D. Proof Of Destruction GlobalHack (2021)(FUTURA).bin", 2097152, 0xbd233cdf, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -41754,6 +41998,25 @@ struct BurnDriver BurnDrvmd_pacmanpp = {
 	MegadriveGetZipName, md_pacmanppRomInfo, md_pacmanppRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 224, 320, 3, 4
+};
+
+// Pak Pak Monster (HB, v101)
+// https://warasibe1192.itch.io/pak-pak-monster-mdmegadrivegenesis
+static struct BurnRomInfo md_pakpakmonRomDesc[] = {
+	{ "Pak Pak Monster v101 (2026)(NK Soft).bin", 655360, 0x675510b1, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_pakpakmon)
+STD_ROM_FN(md_pakpakmon)
+
+struct BurnDriver BurnDrvmd_pakpakmon = {
+	"md_pakpakmon", NULL, NULL, NULL, "2026",
+	"Pak Pak Monster (HB, v101)\0", NULL, "NK Soft", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_ACTION | GBF_MAZE, 0,
+	MegadriveGetZipName, md_pakpakmonRomInfo, md_pakpakmonRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
 // Panda Jump (HB)
@@ -42081,6 +42344,25 @@ struct BurnDriver BurnDrvmd_pitfall2600 = {
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
 
+// PIX (HB, v0.1)
+// https://z4k4.itch.io/pix
+static struct BurnRomInfo md_pixRomDesc[] = {
+	{ "PIX v0.1 (2026)(Zaka).bin", 1441792, 0x97988ccb, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_pix)
+STD_ROM_FN(md_pix)
+
+struct BurnDriver BurnDrvmd_pix = {
+	"md_pix", NULL, NULL, NULL, "2026",
+	"PIX (HB, v0.1)\0", NULL, "Zaka", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_ACTION, 0,
+	MegadriveGetZipName, md_pixRomInfo, md_pixRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
 // Pop'n Wizz (HB, v2)
 static struct BurnRomInfo md_popnwizzRomDesc[] = {
 	{ "Pop'n Wizz v2 (2026)(format_c).bin", 393216, 0x17654df8, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
@@ -42192,7 +42474,7 @@ struct BurnDriver BurnDrvmd_puzzulswap = {
 // Queen’s Reversi (HB, v1.01)
 // https://warasibe1192.itch.io/queens-reversimegadrivegenesis
 static struct BurnRomInfo md_queenreversiRomDesc[] = {
-	{ "Queen’s Reversi v1.01 (2026)(NK-Soft).bin", 1703936, 0x00c79e37, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+	{ "Queen’s Reversi v1.01 (2026)(NK Soft).bin", 1703936, 0x00c79e37, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
 };
 
 STD_ROM_PICK(md_queenreversi)
@@ -42200,7 +42482,7 @@ STD_ROM_FN(md_queenreversi)
 
 struct BurnDriver BurnDrvmd_queenreversi = {
 	"md_queenreversi", NULL, NULL, NULL, "2026",
-	"Queen’s Reversi (HB, v1.01)\0", NULL, "NK-Soft", "Genesis / Mega Drive",
+	"Queen’s Reversi (HB, v1.01)\0", NULL, "NK Soft", "Genesis / Mega Drive",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_BOARD, 0,
 	MegadriveGetZipName, md_queenreversiRomInfo, md_queenreversiRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
@@ -43233,6 +43515,25 @@ struct BurnDriver BurnDrvmd_telehugs = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 2, HARDWARE_SEGA_MEGADRIVE, GBF_RUNGUN, 0,
 	MegadriveGetZipName, md_telehugsRomInfo, md_telehugsRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
+	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
+	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
+};
+
+// Terminate (HB)
+// https://abadede919302.itch.io/terminate
+static struct BurnRomInfo md_terminateRomDesc[] = {
+	{ "Terminate (2026)(abadede919302).bin", 262144, 0x8ee59682, BRF_PRG | SEGA_MD_ROM_LOAD16_WORD_SWAP | SEGA_MD_ROM_OFFS_000000  },
+};
+
+STD_ROM_PICK(md_terminate)
+STD_ROM_FN(md_terminate)
+
+struct BurnDriver BurnDrvmd_terminate = {
+	"md_terminate", NULL, NULL, NULL, "2026",
+	"Terminate (HB)\0", NULL, "abadede919302", "Genesis / Mega Drive",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_HOMEBREW, 1, HARDWARE_SEGA_MEGADRIVE, GBF_VERSHOOT, 0,
+	MegadriveGetZipName, md_terminateRomInfo, md_terminateRomName, NULL, NULL, NULL, NULL, MegadriveInputInfo, MegadriveDIPInfo,
 	MegadriveInit, MegadriveExit, MegadriveFrame, MegadriveDraw, MegadriveScan,
 	&bMegadriveRecalcPalette, 0x100, 320, 224, 4, 3
 };
