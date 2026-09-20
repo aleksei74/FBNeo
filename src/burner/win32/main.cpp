@@ -1184,6 +1184,133 @@ int ProcessCmdLine()
 			return 1;
 		}
 
+// Add Codes (DsNo)
+		if (_tcscmp(szName, _T("-listinfocapcom")) == 0) {
+			write_datfile(DAT_CAPCOM_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfocps1")) == 0) {
+			write_datfile(DAT_CPS1_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfocps2")) == 0) {
+			write_datfile(DAT_CPS2_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfocps3")) == 0) {
+			write_datfile(DAT_CPS3_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfocave")) == 0) {
+			write_datfile(DAT_CAVE_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfodataeast")) == 0) {
+			write_datfile(DAT_DATAEAST_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfogalaxian")) == 0) {
+			write_datfile(DAT_GALAXIAN_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfoirem")) == 0) {
+			write_datfile(DAT_IREM_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfokaneko")) == 0) {
+			write_datfile(DAT_KANEKO_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfokonami")) == 0) {
+			write_datfile(DAT_KONAMI_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfomidway")) == 0) {
+			write_datfile(DAT_MIDWAY_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfopacman")) == 0) {
+			write_datfile(DAT_PACMAN_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfopgm")) == 0) {
+			write_datfile(DAT_PGM_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfopsikyo")) == 0) {
+			write_datfile(DAT_PSIKYO_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfosega")) == 0) {
+			write_datfile(DAT_SEGA_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfoseta")) == 0) {
+			write_datfile(DAT_SETA_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfotaito")) == 0) {
+			write_datfile(DAT_TAITO_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfotechnos")) == 0) {
+			write_datfile(DAT_TECHNOS_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfotoaplan")) == 0) {
+			write_datfile(DAT_TOAPLAN_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfopre90s")) == 0) {
+			write_datfile(DAT_PRE90S_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfopost90s")) == 0) {
+			write_datfile(DAT_POST90S_ONLY, stdout);
+			return 1;
+		}
+
+		if (_tcscmp(szName, _T("-listinfodefault")) == 0 ||
+			_tcscmp(szName, _T("-listxmldefault"))  == 0) {
+			TCHAR szDirPath[MAX_PATH] = { 0 };
+			INT32 nExport = ParseExportPath(szCmdLine, szDirPath, NULL);
+			switch (nExport) {
+				case 0:
+					CreateDefaultDatfilesWindows();
+					break;
+				case 1:
+					CreateDefaultDatfilesWindows(true);
+					break;
+				case 2:
+					CreateDefaultDatfilesWindows(true, szDirPath);
+					break;
+				default:
+					break;
+			}
+			return 1;
+		}
+// Add Codes (DsNo)
+
 		if (_tcscmp(szName, _T("-listinfoall")) == 0 ||
 			_tcscmp(szName, _T("-listxmlall"))  == 0) {
 			TCHAR szDirPath[MAX_PATH] = { 0 };

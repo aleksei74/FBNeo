@@ -71,7 +71,6 @@ void __fastcall cps3SndWriteWord(UINT32 addr, UINT16 data)
 	
 	if (addr < 0x200) {
 		chip->voice[addr >> 5].regs[(addr>>1) & 0xf] = data;
-		//bprintf(PRINT_NORMAL, _T("SND Attempt to write word value %4x to Chip[%02d][%02d] %s\n"), data, addr >> 5, (addr>>2) & 7, (addr & 0x02) ? "lo" : "hi" );
 	} else
 	if (addr == 0x200) {
 		UINT16 key = data;
@@ -110,7 +109,6 @@ INT32 cps3SndInit(UINT8 * sndrom)
 		if (nBurnSoundRate) {
 			//chip->delta = 37286.9 / nBurnSoundRate;
 			chip->delta = (CPS3_SND_BUFFER_SIZE << CPS3_SND_LINEAR_SHIFT) / nBurnSoundLen;
-			//bprintf(0, _T("BurnSnd %08x, %d, %d\n"), chip->delta, chip->burnlen, nBurnSoundLen);
 		}
 		
 		chip->gain[BURN_SND_CPS3SND_ROUTE_1] = 1.00;

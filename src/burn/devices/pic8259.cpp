@@ -113,6 +113,14 @@ void pic8259_scan(INT32 nAction)
 
 static void irq_timer_tick()
 {
+	// No priority can win without an enabled pending request.
+	const UINT8 pending = m_irr & ~m_imr;
+	if (m_state != READY || !pending) {
+		m_current_level = -1;
+		m_out_int_func(0);
+		return;
+	}
+
 	/* check the various IRQs */
 	for (int n = 0, irq = m_prio; n < 8; n++, irq = (irq + 1) & 7)
 	{
@@ -126,7 +134,7 @@ static void irq_timer_tick()
 		}
 
 		/* is this IRQ pending and enabled? */
-		if ((m_state == READY) && (m_irr & mask) && !(m_imr & mask))
+		if (pending & mask)
 		{
 			LOG("pic8259_timerproc(): PIC triggering IR%d\n", irq);
 			m_current_level = irq;

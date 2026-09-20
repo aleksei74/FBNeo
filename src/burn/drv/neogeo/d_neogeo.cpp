@@ -30536,13 +30536,45 @@ STDROMPICKEXT(kotmk, kotmk, neogeo)
 STD_ROM_FN(kotmk)
 
 struct BurnDriver BurnDrvKotmk = {
-	"kotmk", "kotm", "neogeo", NULL, "1991",
+	"kotmk", "kotm", "neogeo", NULL, "2026",
 	"King of the Monsters (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	NULL, NULL, NULL, NULL,
+	L"King of the Monsters (Korean Translation)\0\\uD0B9 \uC624\uBE0C \uB354 \uBAAC\uC2A4\uD130\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
 	NULL, kotmkRomInfo, kotmkRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// Sengoku / Sengoku Denshou (Korean Translation)
+
+static struct BurnRomInfo sengokukRomDesc[] = {
+	{ "017-hp1k.p1",  0x080000, 0x70c62750, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
+	{ "017-p2k.p2",   0x020000, 0xfa663910, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC531024
+
+	{ "017-s1k.s1",   0x020000, 0x37f05a2b, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "017-c1k.c1",   0x100000, 0xfe083184, 3 | BRF_GRA },           //  3 Sprite data 		/ TC538200
+	{ "017-c2k.c2",   0x100000, 0xc705c0d6, 3 | BRF_GRA },           //  4 					/ TC538200
+	{ "017-c3k.c3",   0x100000, 0x622fb460, 3 | BRF_GRA },           //  5 					/ TC538200
+	{ "017-c4k.c4",   0x100000, 0xb029e824, 3 | BRF_GRA },           //  6 					/ TC538200
+
+	{ "017-m1k.m1",   0x020000, 0xdba9b92c, 4 | BRF_ESS | BRF_PRG }, //  7 Z80 code 		/ TC531001
+
+	{ "017-v1.v1",    0x100000, 0x23663295, 5 | BRF_SND },           //  8 Sound data 		/ TC538200
+	{ "017-v2k.v2",   0x100000, 0x2a001d5a, 5 | BRF_SND },           //  9 					/ TC538200
+};
+
+STDROMPICKEXT(sengokuk, sengokuk, neogeo)
+STD_ROM_FN(sengokuk)
+
+struct BurnDriver BurnDrvSengokuk = {
+	"sengokuk", "sengoku", "neogeo", NULL, "2026",
+	"Sengoku / Sengoku Denshou (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Sengoku / Sengoku Denshou (Korean Translation)\0\uC13C\uACE0\uCFE0 / \uC804\uAD6D\uC804\uC2B9 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
+	NULL, sengokukRomInfo, sengokukRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
 };
 
 // Blue's Journey / Raguy (Korean Translation)

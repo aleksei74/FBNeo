@@ -7,6 +7,20 @@
 #include "z80_intf.h"
 #include "konamiic.h"
 #include "burn_ym2610.h"
+#include "epic12_threads.h"
+#include "suprslam_sprite.h"
+#include "suprslam_palette.h"
+#include "suprslam_video.h"
+
+static SuprslamPaletteChanges PaletteChanges;
+
+static Epic12ThreadPool SuprslamThreads;
+static SuprslamSpriteTile *SpriteTiles;
+static UINT8 *SpriteCoverage;
+static UINT8 *BgCacheRAM;
+static INT32 BgCacheBank;
+static INT32 BgCacheValid;
+static INT32 SpriteTileCount, SpritePixelCount;
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -254,7 +268,7 @@ static void __fastcall suprslam_main_write_word(UINT32 address, UINT16 data)
 {
 	if ((address & 0xfffff000) == 0xffa000) {
 		*((UINT16*)(DrvPalRAM + (address & 0xffe))) = BURN_ENDIAN_SWAP_INT16(data);
-		palette_write(address & 0xffe);
+		PaletteChanges.Mark((address & 0xffe) / 2);
 		return;
 	}
 
@@ -281,7 +295,7 @@ static void __fastcall suprslam_main_write_byte(UINT32 address, UINT8 data)
 {
 	if ((address & 0xfffff000) == 0xffa000) {
 		DrvPalRAM[(address & 0xfff) ^ 1] = data;
-		palette_write(address & 0xffe);
+		PaletteChanges.Mark((address & 0xffe) / 2);
 		return;
 	}
 
@@ -393,14 +407,6 @@ static tilemap_callback( bg )
 	TILE_SET_INFO(1, code, color, 0);
 }
 
-static void suprslam_roz_callback(INT32 offset, UINT16 *ram, INT32 *code, INT32 *color, INT32 *, INT32 *, INT32 *, INT32 *)
-{
-	UINT16 attr = BURN_ENDIAN_SWAP_INT16(ram[offset]);
-
-	*code = (attr & 0x0fff) + bg_bank;
-	*color = ((attr >> 12) + 0x10) << 4;
-}
-
 static tilemap_callback( screen )
 {
 	UINT16 attr = BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvScreenRAM + offs * 2)));
@@ -413,6 +419,9 @@ static tilemap_callback( screen )
 
 static INT32 DrvDoReset()
 {
+	BgCacheValid = 0;
+	DrvRecalc = 1;
+	PaletteChanges.Clear();
 	memset (AllRam, 0, RamEnd - AllRam);
 
 	SekOpen(0);
@@ -450,6 +459,8 @@ static INT32 MemIndex()
 	DrvGfxROM[0]	= Next; Next += 0x400000;
 	DrvGfxROM[1]	= Next; Next += 0x1000000;
 	DrvGfxROM[2]	= Next; Next += 0x800000;
+	SpriteCoverage = Next; Next += 0x10000;
+	BgCacheRAM = Next; Next += 0x2000;
 
 	DrvSndROM[0]	= Next; Next += 0x200000;
 	DrvSndROM[1]	= Next; Next += 0x100000;
@@ -499,6 +510,9 @@ static INT32 DrvGfxDecode(UINT8 *tmp)
 	if (BurnLoadRom(tmp + 0x600000,  9, 1)) return 1;
 
 	GfxDecode(0x10000, 4, 16, 16, Plane, XOffs16x16, YOffs16x16, 16*64, tmp, DrvGfxROM[1]);
+	for (INT32 code = 0; code < 0x10000; code++) {
+		SpriteCoverage[code] = SuprslamTileCoverage(DrvGfxROM[1] + code * 256);
+	}
 
 	if (BurnLoadRom(tmp + 0x000000, 10, 1)) return 1;
 	if (BurnLoadRom(tmp + 0x200000, 11, 1)) return 1;
@@ -573,23 +587,31 @@ static INT32 DrvInit()
 	GenericTilesInit();
 	GenericTilemapInit(0, TILEMAP_SCAN_ROWS, screen_map_callback, 8, 8, 64, 32);
 	GenericTilemapInit(1, TILEMAP_SCAN_ROWS, bg_map_callback, 16, 16, 64, 64);
+	GenericTilemapUseDirtyTiles(1);
 	GenericTilemapSetGfx(0, DrvGfxROM[0], 4,  8,  8, 0x400000, 0x000, 0x0f);
 	GenericTilemapSetGfx(1, DrvGfxROM[2], 4, 16, 16, 0x800000, 0x100, 0x0f);
 	GenericTilemapSetGfx(2, DrvGfxROM[1], 4, 16, 16, 0x1000000, 0x200, 0x0f);
 	GenericTilemapSetTransparent(0, 0x0f);
 	BurnBitmapAllocate(1, 64 * 16, 64 * 16, true);
 
-	K053936Init(0, DrvBgRAM, 0x2000, 64 * 16, 64 * 16, suprslam_roz_callback);
+	// GenericTilemapDraw supplies bitmap 1; no K053936PredrawTiles callback is used.
+	K053936Init(0, DrvBgRAM, 0x2000, 64 * 16, 64 * 16, NULL);
 	K053936EnableWrap(0, 1);
 	K053936SetOffset(0, -45, -21);
 
 	DrvDoReset();
+	SpriteTiles = (SuprslamSpriteTile*)BurnMalloc(0x8000 * sizeof(SuprslamSpriteTile));
+	if (SpriteTiles == NULL) return 1;
+	// 224 rows / minimum 64 uses at most three parts, including the caller.
+	SuprslamThreads.Configure(2);
 
 	return 0;
 }
 
 static INT32 DrvExit()
 {
+	SuprslamThreads.Shutdown();
+	BurnFree(SpriteTiles);
 	K053936Exit();
 	GenericTilesExit();
 	BurnYM2610Exit();
@@ -602,26 +624,58 @@ static INT32 DrvExit()
 	return 0;
 }
 
+static void draw_sprite_tile(INT32 code, INT32 color, INT32 x, INT32 y,
+	INT32 flipx, INT32 flipy, INT32 zoomx, INT32 zoomy)
+{
+	if (SpriteCoverage[code] == 0) return;
+	// Match RenderZoomedTile's rounded extent before rejecting wrapped copies.
+	const INT32 width = (zoomx + 1) / 2;
+	const INT32 height = (zoomy + 1) / 2;
+	if (x >= nScreenWidth || x + width <= 0 ||
+		y >= nScreenHeight || y + height <= 0) return;
+
+	// At most one wrapped copy is visible on the 320x224 screen.
+	SuprslamSpriteTile &tile = SpriteTiles[SpriteTileCount++];
+	tile.code = code;
+	tile.color = color;
+	tile.x = x;
+	tile.y = y;
+	tile.width = width;
+	tile.height = height;
+	tile.flipx = flipx;
+	tile.flipy = flipy;
+	tile.opaque = SpriteCoverage[code] == 2;
+	SpritePixelCount += width * height;
+}
+
+struct SuprslamSpriteClip { INT32 left, right, top, bottom; };
+
+static void draw_sprite_rows(void *context, INT32 begin, INT32 end)
+{
+	const SuprslamSpriteClip &clip = *(SuprslamSpriteClip*)context;
+	const INT32 top = begin > clip.top ? begin : clip.top;
+	const INT32 bottom = end < clip.bottom ? end : clip.bottom;
+	// Each worker owns disjoint rows and visits tiles in the original order.
+	for (INT32 i = 0; i < SpriteTileCount; i++) {
+		SuprslamRenderTile(pTransDraw, nScreenWidth, GenericGfxData[2].gfxbase,
+			SpriteTiles[i], clip.left, clip.right, top, bottom);
+	}
+}
+
 static void draw_sprites()
 {
+	SpriteTileCount = SpritePixelCount = 0;
 	UINT16 *spriteram = (UINT16*)DrvSprRAM;
 	UINT16 *spritetable = (UINT16*)DrvSprTableRAM;
 	GenericTilesGfx *gfx = &GenericGfxData[2];
 
-	INT32 offs;
-
-	for (offs = 0; offs < (0x2000 / 16); offs++) {
-		if (BURN_ENDIAN_SWAP_INT16(spriteram[offs]) & 0x4000) break;
-	}
-
-	INT32 end = offs;
-	offs = 0;
-
-	while (offs != end)
+	for (INT32 offs = 0; offs < (0x2000 / 16); offs++)
 	{
-		if ((BURN_ENDIAN_SWAP_INT16(spriteram[offs]) & 0x8000) == 0x0000)
+		const UINT16 entry = BURN_ENDIAN_SWAP_INT16(spriteram[offs]);
+		if (entry & 0x4000) break;
+		if ((entry & 0x8000) == 0x0000)
 		{
-			INT32 attr_start = (BURN_ENDIAN_SWAP_INT16(spriteram[offs]) & 0x03ff) * 4;
+			INT32 attr_start = (entry & 0x03ff) * 4;
 			UINT16 *ram = &spriteram[attr_start];
 
 			INT32 oy = (BURN_ENDIAN_SWAP_INT16(ram[0]) & 0x01ff);
@@ -638,24 +692,36 @@ static void draw_sprites()
 			INT32 ystart = flipy ? ysize : 0;
 			INT32 yend = flipy ? -1 : ysize + 1;
 			INT32 yinc = flipy ? -1 : 1;
+			const INT32 height = (zoomy + 1) / 2;
+			INT32 positions[8], offsets[8];
+			const INT32 columns = SuprslamBuildColumns(ox, xsize, zoomx, flipx,
+				nScreenWidth, positions, offsets);
+			if (columns == 0) continue;
 
 			for (INT32 ycnt = ystart; ycnt != yend; ycnt += yinc) {
-				INT32 xstart = flipx ? xsize : 0;
-				INT32 xend = flipx ? -1 : xsize + 1;
-				INT32 xinc = flipx ? -1 : 1;
-
-				for (INT32 xcnt = xstart; xcnt != xend; xcnt += xinc, map++) {
-					INT32 startno = BURN_ENDIAN_SWAP_INT16(spritetable[map & 0x7fff]) % gfx->code_mask;
-
-					RenderZoomedTile(pTransDraw, gfx->gfxbase, startno, color, 0x0f, ox + xcnt * zoomx / 2, oy + ycnt * zoomy / 2, flipx, flipy, 16, 16, zoomx << 11, zoomy << 11);
-					RenderZoomedTile(pTransDraw, gfx->gfxbase, startno, color, 0x0f, ox + xcnt * zoomx / 2 - 0x200, oy + ycnt * zoomy / 2, flipx, flipy, 16, 16, zoomx << 11, zoomy << 11);
-					RenderZoomedTile(pTransDraw, gfx->gfxbase, startno, color, 0x0f, ox + xcnt * zoomx / 2, oy + ycnt * zoomy / 2 - 0x200, flipx, flipy, 16, 16, zoomx << 11, zoomy << 11);
-					RenderZoomedTile(pTransDraw, gfx->gfxbase, startno, color, 0x0f, ox + xcnt * zoomx / 2 - 0x200, oy + ycnt * zoomy / 2 - 0x200, flipx, flipy, 16, 16, zoomx << 11, zoomy << 11);
+				const INT32 y = SuprslamWrapCoordinate(oy + ycnt * zoomy / 2, nScreenHeight);
+				if (y >= nScreenHeight || y + height <= 0) {
+					map += xsize + 1;
+					continue;
 				}
+				for (INT32 col = 0; col < columns; col++) {
+					// The decoded sprite ROM has 65536 tiles: every 16-bit code is valid.
+					INT32 startno = BURN_ENDIAN_SWAP_INT16(spritetable[(map + offsets[col]) & 0x7fff]);
+
+					draw_sprite_tile(startno, color, positions[col], y, flipx, flipy, zoomx, zoomy);
+				}
+				map += xsize + 1;
 			}
 		}
+	}
 
-		offs++;
+	SuprslamSpriteClip clip;
+	GenericTilesGetClip(&clip.left, &clip.right, &clip.top, &clip.bottom);
+	// Small sprite lists are faster without waking workers.
+	if (SpritePixelCount >= 524288) {
+		SuprslamThreads.ParallelFor(nScreenHeight, 64, draw_sprite_rows, &clip);
+	} else {
+		draw_sprite_rows(&clip, 0, nScreenHeight);
 	}
 }
 
@@ -667,7 +733,12 @@ static INT32 DrvDraw()
 		}
 
 		DrvRecalc = 0;
+	} else {
+		for (INT32 i = 0; i < PaletteChanges.count; i++) {
+			palette_write(PaletteChanges.entries[i] * 2);
+		}
 	}
+	PaletteChanges.Clear();
 
 	BurnTransferClear(0);
 
@@ -678,7 +749,22 @@ static INT32 DrvDraw()
 		UINT16 *ctrl = (UINT16*)DrvK053936CtrlRAM;
 		UINT16 *line = (UINT16*)DrvK053936LineRAM;
 
-		GenericTilemapDraw(1, 1, TMAP_FORCEOPAQUE);
+		// Bitmap 1 contains palette indices; palette and ROZ changes do not
+		// invalidate it. Compare RAM to cover direct CPU writes and cheats.
+		if (!BgCacheValid || BgCacheBank != bg_bank || memcmp(BgCacheRAM, DrvBgRAM, 0x2000)) {
+			if (!BgCacheValid || BgCacheBank != bg_bank) {
+				GenericTilemapAllTilesDirty(1);
+			} else {
+				// Each pair of RAM bytes describes one tile, including its palette.
+				SuprslamMarkBackgroundChanges(BgCacheRAM, DrvBgRAM, [](INT32 tile) {
+					GenericTilemapSetTileDirty(1, tile);
+				});
+			}
+			GenericTilemapDraw(1, 1, TMAP_FORCEOPAQUE);
+			memcpy(BgCacheRAM, DrvBgRAM, 0x2000);
+			BgCacheBank = bg_bank;
+			BgCacheValid = 1;
+		}
 		K053936Draw(0, ctrl, line, K053936_DRAW_16BIT | K053936_DRAW_CLIP);
 	}
 
@@ -689,6 +775,13 @@ static INT32 DrvDraw()
 	BurnTransferCopy(DrvPalette);
 
 	return 0;
+}
+
+static bool ranking_screen()
+{
+	return SuprslamRankingScreen(screen_bank, bg_bank, sprite_ctrl, [](int tile) {
+		return BURN_ENDIAN_SWAP_INT16(((UINT16*)DrvScreenRAM)[tile]);
+	});
 }
 
 static INT32 DrvFrame()
@@ -715,11 +808,19 @@ static INT32 DrvFrame()
 	INT32 nCyclesTotal[2] = { 16000000 / 60, 4000000 / 60 };
 	INT32 nCyclesDone[2] = { 0, 0 };
 	INT32 nVBlankStart = nInterleave - ((2300 * 60 * nInterleave + 999999) / 1000000);
+	bool ranking_drawn = false;
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
 		CPU_RUN(0, Sek);
-		if (i == nVBlankStart) SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
+		if (i == nVBlankStart) {
+			// Only ranking lists need the pre-IRQ snapshot. Other scenes update later.
+			if (pBurnDraw && ranking_screen()) {
+				BurnDrvRedraw();
+				ranking_drawn = true;
+			}
+			SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
+		}
 
 		BurnTimerUpdate((nCyclesTotal[1] * (i + 1)) / nInterleave);
 	}
@@ -733,9 +834,8 @@ static INT32 DrvFrame()
 	ZetClose();
 	SekClose();
 
-	if (pBurnDraw) {
-		BurnDrvRedraw();
-	}
+	// Also use the normal phase if this IRQ ended the ranking scene.
+	if (pBurnDraw && (!ranking_drawn || !ranking_screen())) BurnDrvRedraw();
 
 	return 0;
 }
@@ -774,6 +874,9 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 	}
 
 	if (nAction & ACB_WRITE) {
+		DrvRecalc = 1;
+		PaletteChanges.Clear();
+		BgCacheValid = 0;
 		ZetOpen(0);
 		bankswitch(sound_bank);
 		ZetClose();

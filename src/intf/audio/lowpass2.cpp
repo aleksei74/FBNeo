@@ -58,10 +58,11 @@ void LowPass2::Filter(INT16 *Buff, INT32 Tam)
 
   for (a = 0; a < Tam*2; a += 2)
     {
-      Tmp = (b0*Buff[a] + b1*i1 + b2*i2
+      // SetParam gives the first and third input taps identical coefficients.
+      Tmp = (b0*(Buff[a] + i2) + b1*i1
 			 - a1*o1 - a2*o2) / (1 << FixBits);
 
-      Tmp2 = (b0b*Buff[a] + b1b*i1 + b2b*i2
+      Tmp2 = (b0b*(Buff[a] + i2) + b1b*i1
 			  - a1b*o1b - a2b*o2b) / (1 << FixBits);
 
       i2 = i1;

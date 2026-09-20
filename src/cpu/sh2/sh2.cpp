@@ -26,6 +26,10 @@
  *
  *  Port to Finalburn Alpha by OopsWare
  *  http://oopsware.googlepages.com/
+ *  Modified 2026-09-20: share the suspended-state check in the run loop.
+ *  Modified 2026-09-20: use 64-bit products for DMULS/DMULU.
+ *  Modified 2026-09-20: simplify the MAC.L product, preserving accumulation.
+ *  Modified 2026-09-20: simplify MAC.W overflow, carry and saturation handling.
  *
  *****************************************************************************/
 
@@ -1368,49 +1372,9 @@ SH2_INLINE void DIV1(UINT32 m, UINT32 n)
 /*  DMULS.L Rm,Rn */
 SH2_INLINE void DMULS(UINT32 m, UINT32 n)
 {
-	UINT32 RnL, RnH, RmL, RmH, Res0, Res1, Res2;
-	UINT32 temp0, temp1, temp2, temp3;
-	INT32 tempm, tempn, fnLmL;
-
-	tempn = (INT32) sh2->r[n];
-	tempm = (INT32) sh2->r[m];
-	if (tempn < 0)
-		tempn = 0 - tempn;
-	if (tempm < 0)
-		tempm = 0 - tempm;
-	if ((INT32) (sh2->r[n] ^ sh2->r[m]) < 0)
-		fnLmL = -1;
-	else
-		fnLmL = 0;
-	temp1 = (UINT32) tempn;
-	temp2 = (UINT32) tempm;
-	RnL = temp1 & 0x0000ffff;
-	RnH = (temp1 >> 16) & 0x0000ffff;
-	RmL = temp2 & 0x0000ffff;
-	RmH = (temp2 >> 16) & 0x0000ffff;
-	temp0 = RmL * RnL;
-	temp1 = RmH * RnL;
-	temp2 = RmL * RnH;
-	temp3 = RmH * RnH;
-	Res2 = 0;
-	Res1 = temp1 + temp2;
-	if (Res1 < temp1)
-		Res2 += 0x00010000;
-	temp1 = (Res1 << 16) & 0xffff0000;
-	Res0 = temp0 + temp1;
-	if (Res0 < temp0)
-		Res2++;
-	Res2 = Res2 + ((Res1 >> 16) & 0x0000ffff) + temp3;
-	if (fnLmL < 0)
-	{
-		Res2 = ~Res2;
-		if (Res0 == 0)
-			Res2++;
-		else
-			Res0 = (~Res0) + 1;
-	}
-	sh2->mach = Res2;
-	sh2->macl = Res0;
+	const UINT64 result = (UINT64)((INT64)(INT32)sh2->r[n] * (INT64)(INT32)sh2->r[m]);
+	sh2->mach = (UINT32)(result >> 32);
+	sh2->macl = (UINT32)result;
 	sh2->sh2_icount--;
 	sh2->sh2_total_cycles += 1;
 }
@@ -1418,28 +1382,9 @@ SH2_INLINE void DMULS(UINT32 m, UINT32 n)
 /*  DMULU.L Rm,Rn */
 SH2_INLINE void DMULU(UINT32 m, UINT32 n)
 {
-	UINT32 RnL, RnH, RmL, RmH, Res0, Res1, Res2;
-	UINT32 temp0, temp1, temp2, temp3;
-
-	RnL = sh2->r[n] & 0x0000ffff;
-	RnH = (sh2->r[n] >> 16) & 0x0000ffff;
-	RmL = sh2->r[m] & 0x0000ffff;
-	RmH = (sh2->r[m] >> 16) & 0x0000ffff;
-	temp0 = RmL * RnL;
-	temp1 = RmH * RnL;
-	temp2 = RmL * RnH;
-	temp3 = RmH * RnH;
-	Res2 = 0;
-	Res1 = temp1 + temp2;
-	if (Res1 < temp1)
-		Res2 += 0x00010000;
-	temp1 = (Res1 << 16) & 0xffff0000;
-	Res0 = temp0 + temp1;
-	if (Res0 < temp0)
-		Res2++;
-	Res2 = Res2 + ((Res1 >> 16) & 0x0000ffff) + temp3;
-	sh2->mach = Res2;
-	sh2->macl = Res0;
+	const UINT64 result = (UINT64)sh2->r[n] * (UINT64)sh2->r[m];
+	sh2->mach = (UINT32)(result >> 32);
+	sh2->macl = (UINT32)result;
 	sh2->sh2_icount--;
 	sh2->sh2_total_cycles += 1;
 }
@@ -1609,49 +1554,13 @@ SH2_INLINE void LDSMPR(UINT32 m)
 /*  MAC.L   @Rm+,@Rn+ */
 SH2_INLINE void MAC_L(UINT32 m, UINT32 n)
 {
-	UINT32 RnL, RnH, RmL, RmH, Res0, Res1, Res2;
-	UINT32 temp0, temp1, temp2, temp3;
-	INT32 tempm, tempn, fnLmL;
-
-	tempn = (INT32) RL( sh2->r[n] );
+	const INT32 tempn = (INT32) RL( sh2->r[n] );
 	sh2->r[n] += 4;
-	tempm = (INT32) RL( sh2->r[m] );
+	const INT32 tempm = (INT32) RL( sh2->r[m] );
 	sh2->r[m] += 4;
-	if ((INT32) (tempn ^ tempm) < 0)
-		fnLmL = -1;
-	else
-		fnLmL = 0;
-	if (tempn < 0)
-		tempn = 0 - tempn;
-	if (tempm < 0)
-		tempm = 0 - tempm;
-	temp1 = (UINT32) tempn;
-	temp2 = (UINT32) tempm;
-	RnL = temp1 & 0x0000ffff;
-	RnH = (temp1 >> 16) & 0x0000ffff;
-	RmL = temp2 & 0x0000ffff;
-	RmH = (temp2 >> 16) & 0x0000ffff;
-	temp0 = RmL * RnL;
-	temp1 = RmH * RnL;
-	temp2 = RmL * RnH;
-	temp3 = RmH * RnH;
-	Res2 = 0;
-	Res1 = temp1 + temp2;
-	if (Res1 < temp1)
-		Res2 += 0x00010000;
-	temp1 = (Res1 << 16) & 0xffff0000;
-	Res0 = temp0 + temp1;
-	if (Res0 < temp0)
-		Res2++;
-	Res2 = Res2 + ((Res1 >> 16) & 0x0000ffff) + temp3;
-	if (fnLmL < 0)
-	{
-		Res2 = ~Res2;
-		if (Res0 == 0)
-			Res2++;
-		else
-			Res0 = (~Res0) + 1;
-	}
+	const UINT64 product = (UINT64)((INT64)tempn * (INT64)tempm);
+	UINT32 Res0 = (UINT32)product;
+	UINT32 Res2 = (UINT32)(product >> 32);
 	if (sh2->sr & S)
 	{
 		Res0 = sh2->macl + Res0;
@@ -1686,56 +1595,39 @@ SH2_INLINE void MAC_L(UINT32 m, UINT32 n)
 
 /*  MAC.W   @Rm+,@Rn+ */
 SH2_INLINE void MAC_W(UINT32 m, UINT32 n)
-{{
-	INT32 tempm, tempn, dest, src, ans;
-	UINT32 templ;
-
-	tempn = (INT32) RW( sh2->r[n] );
+{
+	const INT32 tempn = (INT16) RW( sh2->r[n] );
 	sh2->r[n] += 2;
-	tempm = (INT32) RW( sh2->r[m] );
+	const INT32 tempm = (INT16) RW( sh2->r[m] );
 	sh2->r[m] += 2;
-	templ = sh2->macl;
-	tempm = ((INT32) (short) tempn * (INT32) (short) tempm);
-	if ((INT32) sh2->macl >= 0)
-		dest = 0;
-	else
-		dest = 1;
-	if ((INT32) tempm >= 0)
-	{
-		src = 0;
-		tempn = 0;
-	}
-	else
-	{
-		src = 1;
-		tempn = 0xffffffff;
-	}
-	src += dest;
-	sh2->macl += tempm;
-	if ((INT32) sh2->macl >= 0)
-		ans = 0;
-	else
-		ans = 1;
-	ans += dest;
+	const UINT32 product = (UINT32)(tempn * tempm);
+	const UINT32 previous = sh2->macl;
+	const UINT32 result = previous + product;
+	sh2->macl = result;
 	if (sh2->sr & S)
 	{
-		if (ans == 1)
-			{
-				if (src == 0)
-					sh2->macl = 0x7fffffff;
-				if (src == 2)
-					sh2->macl = 0x80000000;
-			}
+#if defined(_M_X64) || defined(__x86_64__)
+		// Signed overflow means the sum differs in sign from both operands.
+		if ((previous ^ result) & (product ^ result) & 0x80000000u)
+			sh2->macl = 0x7fffffff + (previous >> 31);
+#else
+		// Keep the existing path on targets without a measured benefit.
+		const UINT32 dest = previous >> 31;
+		const UINT32 src = (product >> 31) + dest;
+		const UINT32 ans = (result >> 31) + dest;
+		if (ans == 1) {
+			if (src == 0) sh2->macl = 0x7fffffff;
+			if (src == 2) sh2->macl = 0x80000000;
+		}
+#endif
 	}
 	else
 	{
-		sh2->mach += tempn;
-		if (templ > sh2->macl)
-			sh2->mach += 1;
-		}
+		sh2->mach += (0u - (product >> 31)) + (result < previous);
+	}
 	sh2->sh2_icount -= 2;
 	sh2->sh2_total_cycles += 2;
-}}
+}
 
 /*  MOV     Rm,Rn */
 SH2_INLINE void MOV(UINT32 m, UINT32 n)
@@ -3313,12 +3205,6 @@ int Sh2Run(int cycles)
 
 	do
 	{
-		if ( pSh2Ext->suspend && cps3speedhack ) {
-			sh2->sh2_total_cycles += sh2->sh2_icount;
-			sh2->sh2_icount = 0;
-			break;
-		}
-
 		if (pSh2Ext->suspend == 0) {
 			UINT16 opcode;
 
@@ -3352,6 +3238,10 @@ int Sh2Run(int cycles)
 				case 14<<12: op1110(opcode); break;
 			default: op1111(opcode); break;
 			}
+		} else if (cps3speedhack) {
+			sh2->sh2_total_cycles += sh2->sh2_icount;
+			sh2->sh2_icount = 0;
+			break;
 		}
 
 		if(sh2->test_irq && !sh2->delay)

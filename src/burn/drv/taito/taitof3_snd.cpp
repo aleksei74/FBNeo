@@ -174,7 +174,6 @@ static void __fastcall TaitoF3Sound68KWriteByte(UINT32 a, UINT8 d)
 					}
 
 					case 0x03: {
-						//bprintf(PRINT_NORMAL, _T("counter is %04x (/16), so interrupt once in %f cycles\n"), TaitoF3Counter, (double)((double)16000000 / 2000000) * TaitoF3Counter * 16);
 						TaitoF3SoundTriggerIRQCyclesMode = IRQ_TRIGGER_ONCE;
 						TaitoF3SoundTriggerIRQCycleCounter = 0;
 						TaitoF3SoundTriggerIRQCycles = (double)((double)TaitoF3SoundIRQhz / 2000000) * TaitoF3Counter * 16;
@@ -192,7 +191,6 @@ static void __fastcall TaitoF3Sound68KWriteByte(UINT32 a, UINT8 d)
 					}
 
 					case 0x06: {
-						//bprintf(PRINT_NORMAL, _T("counter is %04x, so interrupt every %f cycles\n"), TaitoF3Counter, (double)((double)16000000 / 2000000) * TaitoF3Counter);
 						TaitoF3SoundTriggerIRQCyclesMode = IRQ_TRIGGER_PULSE;
 						TaitoF3SoundTriggerIRQPulseCycleCounter = 0;
 						TaitoF3SoundTriggerIRQPulseCycles = (double)((double)TaitoF3SoundIRQhz / 2000000) * TaitoF3Counter;
@@ -232,7 +230,6 @@ static void __fastcall TaitoF3Sound68KWriteByte(UINT32 a, UINT8 d)
 			}
 
 			default: {
-//				bprintf(PRINT_NORMAL,_T("f3_68681_w byte %x -> %x\n"), Offset, d);
 				return;
 			}
 		}
@@ -286,7 +283,6 @@ void TaitoF3VolumeCallback(INT32 offset, INT32 data)
 	if (offset > 1) {
 		offset = (offset & 1) ? BURN_SND_ES5506_ROUTE_RIGHT : BURN_SND_ES5506_ROUTE_LEFT;
 		ES5506SetRoute(0, (double)(data / 100.00) + TaitoF3VolumeOffset, offset);
-		//bprintf(0, _T("%f vol \n"),(double)(data / 100.00) + TaitoF3VolumeOffset);
 	}
 }
 
@@ -386,11 +382,19 @@ void TaitoF3CpuUpdate(INT32 nInterleave, INT32 nCurrentSlice)
 		nCyclesDone = nCyclesExtra;
 	}
 
-	const INT32 nTotalCycles = (double)(30476180 / 2) * 100 / nBurnFPS;
+	// Derived solely from FPS; do not repeat the division for every CPU slice.
+	static INT32 cachedFPS = -1;
+	static INT32 nTotalCycles = 0;
+	if (cachedFPS != nBurnFPS) {
+		nTotalCycles = (double)(30476180 / 2) * 100 / nBurnFPS;
+		cachedFPS = nBurnFPS;
+	}
 
 	SekOpen(TaitoF3CpuNum);
 
-	INT32 nNext = (nCurrentSlice + 1) * nTotalCycles / nInterleave;
+	// F3 uses 256 slices; preserve the generic schedule for other users.
+	const INT32 target = (nCurrentSlice + 1) * nTotalCycles;
+	INT32 nNext = (nInterleave == 256) ? target / 256 : target / nInterleave;
 	INT32 nSegment = nNext - nCyclesDone;
 
 	INT32 nRan = SekRun(nSegment);
@@ -435,7 +439,7 @@ void TaitoF3SoundUpdate(INT16 *pDest, INT32 nLen)
 INT32 TaitoF3SoundScan(INT32 nAction, INT32 *pnMin)
 {
 	if (nAction & ACB_DRIVER_DATA) {
-	//	SekScan(nAction);		// call in driver!
+		// CPU state is scanned by the owning driver.
 		ES5506ScanRoutes(nAction, pnMin); // F3 games change the volume levels in-game
 
 		mb87078_scan();

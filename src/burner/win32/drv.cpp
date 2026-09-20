@@ -302,6 +302,7 @@ int DrvInit(int nDrvNum, bool bRestore)
 	VidExit();
 	POST_INITIALISE_MESSAGE;
 	CallRegisteredLuaFunctions(LUACALL_ONSTART);
+	Ptblank2UpdateMouseClip(true);
 
 	return 0;
 }
@@ -313,6 +314,7 @@ int DrvInitCallback()
 
 int DrvExit()
 {
+	Ptblank2UpdateMouseClip(false);
 
 	if (bDrvOkay) {
 		NeoCDZRateChangeback();

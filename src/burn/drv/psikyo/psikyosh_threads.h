@@ -2,6 +2,8 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <new>
+#include <system_error>
 #include <thread>
 
 #if defined(_WIN32)
@@ -54,8 +56,14 @@ public:
 		m_generation = 0;
 		m_stop = false;
 
-		for (INT32 i = 0; i < m_worker_count; i++) {
-			m_workers[i] = std::thread(&PsikyoshThreadPool::Worker, this, i + 1);
+		try {
+			for (INT32 i = 0; i < m_worker_count; i++) {
+				m_workers[i] = std::thread(&PsikyoshThreadPool::Worker, this, i + 1);
+			}
+		} catch (const std::system_error&) {
+			Shutdown();
+		} catch (const std::bad_alloc&) {
+			Shutdown();
 		}
 	}
 

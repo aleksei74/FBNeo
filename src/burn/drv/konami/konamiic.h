@@ -493,5 +493,6 @@ void konamigx_scan(INT32 nAction);
 void konamigx_mixer_set_spriteram_bank(INT32 bank);
 void konamigx_mixer_set_spriteram_latch(UINT16 *ram);
 void konamigx_mixer_primode(int mode);
+void konamigx_prepare_frame();
 void konamigx_mixer(int sub1 /*extra tilemap 1*/, int sub1flags, int sub2 /*extra tilemap 2*/, int sub2flags, int mixerflags, int extra_bitmap /*extra tilemap 3*/, int rushingheroes_hack);
 extern INT32 konamigx_mystwarr_kludge;

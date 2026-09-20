@@ -185,9 +185,6 @@ static UINT8 m_pdest_3b;
 static INT32 m_tr_3a;
 static INT32 m_tr_3b;
 
-#define BYTE4_XOR_LE(x)	x
-
-
 struct f3_playfield_line_inf
 {
 	INT32 alpha_mode[256];
@@ -283,11 +280,15 @@ static void draw_pf_tiles(void *context, INT32 begin, INT32 end)
 
 					dst[x] = pxl + color;
 
+#if defined(__GNUC__) && defined(__i386__)
+					flagptr[x] = category | ((pxl != 0) << 4);
+#else
 					if (pxl == 0) {
 						flagptr[x] = category;
 					} else {
 						flagptr[x] = category | 0x10;
 					}
+#endif
 				}
 			}
 		}
@@ -346,9 +347,9 @@ static bool draw_pf_layers(UINT32 *sx = NULL, UINT32 *sy = NULL)
 			if (memcmp(dirty_tiles + block, clean_block, sizeof(clean_block)) == 0) continue;
 			for (INT32 index = block; index < block + 32; index++) {
 				if (!dirty_tiles[index]) continue;
-				dirty_tiles[index] = 0;
 				jobs[count++] = index;
 			}
+			memset(dirty_tiles + block, 0, sizeof(clean_block));
 		}
 	}
 	if (!count) return false;
@@ -613,8 +614,6 @@ static void f3_drawgfx(
 	pri_dst=1<<pri_dst;
 
 	/* KW 991012 -- Added code to force clip to bitmap boundary */
-//	myclip = clip;
-//	myclip &= dest_bmp.cliprect();
 
 	{
 		const UINT32 *pal = TaitoPalette + (0x1000 + ((color & 0xff) << 4));
@@ -760,8 +759,6 @@ static void f3_drawgfxzoom(
 	pri_dst=1<<pri_dst;
 
 	/* KW 991012 -- Added code to force clip to bitmap boundary */
-//	myclip = clip;
-//	myclip &= dest_bmp.cliprect();
 
 
 	{
@@ -836,11 +833,20 @@ static void f3_drawgfxzoom(
 						INT32 x, x_index = x_index_base;
 						for( x=sx; x<ex; x++ )
 						{
+#if defined(__GNUC__) && defined(__i386__)
+							// Reject occluded pixels before sampling on the 32-bit GCC path.
+							UINT8 p=pri[x];
+							if (p == 0 || p == 0xff)
+							{
+								INT32 c = source[x_index>>16] & sprite_pen_mask;
+								if(c)
+#else
 							INT32 c = source[x_index>>16] & sprite_pen_mask;
 							if(c)
 							{
 								UINT8 p=pri[x];
 								if (p == 0 || p == 0xff)
+#endif
 								{
 									dest[x] = pal[c];
 									pri[x] = pri_dst;
@@ -866,9 +872,7 @@ static void f3_drawgfxzoom(
 
 static void get_sprite_info(UINT16 *spriteram16_ptr)
 {
-#define DARIUSG_KLUDGE
-
-	INT32 offs,spritecont,flipx,flipy,/*old_x,*/color,x,y;
+	INT32 offs,spritecont,flipx,flipy,color,x,y;
 	INT32 sprite,global_x=0,global_y=0,subglobal_x=0,subglobal_y=0;
 	INT32 block_x=0, block_y=0;
 	INT32 last_color=0,last_x=0,last_y=0,block_zoom_x=0,block_zoom_y=0;
@@ -886,7 +890,6 @@ static void get_sprite_info(UINT16 *spriteram16_ptr)
 
 	color=0;
 	flipx=flipy=0;
-	//old_x=0;
 	y=x=0;
 
 	sprite_top=0x2000;
@@ -956,10 +959,8 @@ static void get_sprite_info(UINT16 *spriteram16_ptr)
 
 /* These games either don't set the XY control bits properly (68020 bug?), or
     have some different mode from the others */
-#ifdef DARIUSG_KLUDGE
 		if (f3_game==DARIUSG || f3_game==GEKIRIDO || f3_game==CLEOPATR || f3_game==RECALH)
 			multi=spritecont&0xf0;
-#endif
 
 		/* Check if this sprite is part of a continued block */
 		if (multi) {
@@ -967,7 +968,6 @@ static void get_sprite_info(UINT16 *spriteram16_ptr)
 			if (spritecont&0x4) color=last_color;
 			else color=(BURN_ENDIAN_SWAP_INT16(spriteram16_ptr[current_offs+4+0]))&0xff;
 
-#ifdef DARIUSG_KLUDGE
 			if (f3_game==DARIUSG || f3_game==GEKIRIDO || f3_game==CLEOPATR || f3_game==RECALH) {
 				/* Adjust X Position */
 				if ((spritecont & 0x40) == 0) {
@@ -1023,7 +1023,6 @@ static void get_sprite_info(UINT16 *spriteram16_ptr)
 					CALC_ZOOM(y)
 				}
 			} else
-#endif
 			{
 				/* Adjust X Position */
 				if ((spritecont & 0x40) == 0) {
@@ -1227,26 +1226,22 @@ static inline void f3_alpha_set_level()
 }
 #undef SET_ALPHA_LEVEL
 
-#define COLOR1 BYTE4_XOR_LE(0)
-#define COLOR2 BYTE4_XOR_LE(1)
-#define COLOR3 BYTE4_XOR_LE(2)
-
 static inline void f3_alpha_blend32_s(INT32 alphas, UINT32 s)
 {
 	UINT8 *sc = (UINT8 *)&s;
 	UINT8 *dc = (UINT8 *)&m_dval;
-	dc[COLOR1] = (alphas * sc[COLOR1]) >> 8;
-	dc[COLOR2] = (alphas * sc[COLOR2]) >> 8;
-	dc[COLOR3] = (alphas * sc[COLOR3]) >> 8;
+	dc[0] = (alphas * sc[0]) >> 8;
+	dc[1] = (alphas * sc[1]) >> 8;
+	dc[2] = (alphas * sc[2]) >> 8;
 }
 
 static inline void f3_alpha_blend32_d(INT32 alphas, UINT32 s)
 {
 	UINT8 *sc = (UINT8 *)&s;
 	UINT8 *dc = (UINT8 *)&m_dval;
-	dc[COLOR1] = m_add_sat[dc[COLOR1]][(alphas * sc[COLOR1]) >> 8];
-	dc[COLOR2] = m_add_sat[dc[COLOR2]][(alphas * sc[COLOR2]) >> 8];
-	dc[COLOR3] = m_add_sat[dc[COLOR3]][(alphas * sc[COLOR3]) >> 8];
+	dc[0] = m_add_sat[dc[0]][(alphas * sc[0]) >> 8];
+	dc[1] = m_add_sat[dc[1]][(alphas * sc[1]) >> 8];
+	dc[2] = m_add_sat[dc[2]][(alphas * sc[2]) >> 8];
 }
 
 /*============================================================================*/
@@ -1643,6 +1638,20 @@ static void init_alpha_blend_func()
 
 /******************************************************************************/
 
+#if defined(__GNUC__) && defined(__x86_64__) && !defined(__clang__)
+// Store clip widths once per line; unsigned subtraction rejects pixels left of the range.
+// Keep the original comparisons on targets where this form did not benchmark faster.
+#define F3_PREPARE_PLAYFIELD_CLIP(pf_num) \
+	m_clip_ar##pf_num = m_clip_ar##pf_num > m_clip_al##pf_num ? m_clip_ar##pf_num - m_clip_al##pf_num - 1 : 0; \
+	m_clip_br##pf_num = m_clip_br##pf_num > m_clip_bl##pf_num ? m_clip_br##pf_num - m_clip_bl##pf_num : 0;
+#define F3_PLAYFIELD_VISIBLE(pf_num) \
+	(UINT32(cx - m_clip_al##pf_num) < m_clip_ar##pf_num && UINT32(cx - m_clip_bl##pf_num) >= m_clip_br##pf_num)
+#else
+#define F3_PREPARE_PLAYFIELD_CLIP(pf_num)
+#define F3_PLAYFIELD_VISIBLE(pf_num) \
+	(cx>=m_clip_al##pf_num && cx<m_clip_ar##pf_num-1 && !(cx>=m_clip_bl##pf_num && cx<m_clip_br##pf_num))
+#endif
+
 #define GET_PIXMAP_POINTER(pf_num) \
 { \
 	const struct f3_playfield_line_inf *line_tmp=line_t[pf_num]; \
@@ -1657,6 +1666,7 @@ static void init_alpha_blend_func()
 	m_clip_ar##pf_num=line_tmp->clip_in[y]>>16; \
 	m_clip_bl##pf_num=line_tmp->clip_ex[y]&0xffff; \
 	m_clip_br##pf_num=line_tmp->clip_ex[y]>>16; \
+	F3_PREPARE_PLAYFIELD_CLIP(pf_num) \
 	m_pal_add[pf_num] = line_tmp->pal_add[y]; \
 }
 
@@ -1689,15 +1699,18 @@ if(sprite_visible) \
 	}
 
 #define UPDATE_PIXMAP_LP(pf_num) \
-	if (cx>=m_clip_al##pf_num && cx<m_clip_ar##pf_num-1 && !(cx>=m_clip_bl##pf_num && cx<m_clip_br##pf_num)) 	\
+	if (F3_PLAYFIELD_VISIBLE(pf_num)) \
 	{ \
 		m_tval=*m_tsrc##pf_num; \
-		if(m_tval&0xf0) \
+		if(m_tval&0xf0) { \
+			if(direct_layers) {m_dval=clut[(*m_src##pf_num + m_pal_add[pf_num]) & 0x1fff];*dsti=m_dval;break;} \
+			else \
 			if((*m_dpix_lp[pf_num][m_pval>>4])(clut[(*m_src##pf_num + m_pal_add[pf_num]) & 0x1fff])) {*dsti=m_dval;break;} \
+		} \
 	}
 
 
-template<INT32 skip_layer_num>
+template<INT32 skip_layer_num, bool direct_layers = false>
 static void draw_scanlines_fixed(INT32 xsize,INT16 *draw_line_num,
 							const struct f3_playfield_line_inf **line_t,
 							const INT32 *sprite,
@@ -1718,14 +1731,12 @@ static void draw_scanlines_fixed(INT32 xsize,INT16 *draw_line_num,
 	INT32 i=0,y=draw_line_num[0];
 	INT32 ty = y;
 
-#if 1
 	if (orient & ORIENTATION_FLIP_Y)
 	{
 		ty = 512 - 1 - ty;
 		yadv = -yadv;
 		yadvp = -yadvp;
 	}
-#endif
 
 	dstp0 = TaitoPriorityMap + (ty * 1024) + x;
 
@@ -1821,6 +1832,22 @@ static void draw_scanlines(INT32 xsize, INT16 *draw_line_num,
 	const struct f3_playfield_line_inf **line_t, const INT32 *sprite,
 	UINT32 orient, INT32 skip_layer_num)
 {
+#if defined(__GNUC__) && defined(__i386__)
+	// Only specialize batches whose active playfields never blend.
+	bool direct = skip_layer_num >= 0 && skip_layer_num < 5;
+	for (INT32 i = skip_layer_num; direct && i < 5; i++) {
+		direct = m_dpix_lp[i] == m_dpix_n[0];
+	}
+	if (direct) {
+		switch (skip_layer_num) {
+			case 0: draw_scanlines_fixed<0, true>(xsize, draw_line_num, line_t, sprite, orient); return;
+			case 1: draw_scanlines_fixed<1, true>(xsize, draw_line_num, line_t, sprite, orient); return;
+			case 2: draw_scanlines_fixed<2, true>(xsize, draw_line_num, line_t, sprite, orient); return;
+			case 3: draw_scanlines_fixed<3, true>(xsize, draw_line_num, line_t, sprite, orient); return;
+			case 4: draw_scanlines_fixed<4, true>(xsize, draw_line_num, line_t, sprite, orient); return;
+		}
+	}
+#endif
 	// Select once per batch instead of testing the same count for each pixel.
 	switch (skip_layer_num) {
 		case 0: draw_scanlines_fixed<0>(xsize, draw_line_num, line_t, sprite, orient); break;
@@ -2153,7 +2180,6 @@ static void get_line_ram_info(INT32 which_map, INT32 sx, INT32 sy, INT32 pos, UI
 	INT32 which_map_orig = which_map;
 
 	UINT8 *pmap = bitmap_flags[which_map];
-	//UINT16 * tm = bitmap_layer[which_map];
 	UINT16 * tmap = bitmap_layer[which_map];
 	INT32 map_width = bitmap_width[which_map];
 

@@ -5,6 +5,7 @@
 #include "tiles_generic.h"
 #include "konamiic.h"
 #include <algorithm>
+#include "gx_object_sort.h"
 
 INT32 konamigx_mystwarr_kludge = 0; // keep layer1 enabled, even if alpha has made it completely invisible
 
@@ -169,23 +170,11 @@ void konamigx_scan(INT32 nAction)
 
 static void gx_wipezbuf(INT32 noshadow)
 {
-#define GX_ZBUFW	512
-
-	INT32 w = GX_ZBUFW;
-	INT32 h = (nScreenHeight);
-
-	UINT8 *zptr = gx_objzbuf;
-	INT32 ecx = h;
-
-	do { memset(zptr, -1, w); zptr += GX_ZBUFW; } while (--ecx);
-
-	if (!noshadow)
-	{
-		zptr = gx_shdzbuf;
-		w = GX_ZBUFW << 1;
-		ecx = h;
-		do { memset(zptr, -1, w); zptr += (GX_ZBUFW<<1); } while (--ecx);
-	}
+	if (nScreenHeight <= 0) return;
+	// Both buffers have tightly packed rows with a fixed 512-pixel pitch.
+	const size_t bytes = (size_t)nScreenHeight * 512;
+	memset(gx_objzbuf, 0xff, bytes);
+	if (!noshadow) memset(gx_shdzbuf, 0xff, bytes * 2);
 }
 
 void konamigx_mixer_primode(INT32 mode)
@@ -411,6 +400,10 @@ static void konamigx_mixer_draw(INT32 sub1, INT32 sub1flags,INT32 sub2, INT32 su
 {
 	// traverse draw list
 	INT32 disp = K055555ReadRegister(K55_INPUT_ENABLES);
+	bool zbuf_pending = !(mixerflags & GXMIX_NOZBUF);
+	bool shadow_zbuf_pending = !(mixerflags & (GXMIX_NOZBUF | GXMIX_NOSHADOW));
+	// Blend registers are stable during this traversal; decode each used slot once.
+	INT32 sprite_alpha[4] = { 0, -1, -1, -1 };
 
 	for (INT32 count=0; count<nobj; count++)
 	{
@@ -434,7 +427,10 @@ static void konamigx_mixer_draw(INT32 sub1, INT32 sub1flags,INT32 sub2, INT32 su
 			if (drawmode & 2)
 			{
 				alpha = color>>K055555_MIXSHIFT & 3;
-				if (alpha) alpha = K054338_set_alpha_level(alpha);
+				if (alpha) {
+					if (sprite_alpha[alpha] < 0) sprite_alpha[alpha] = K054338_set_alpha_level(alpha);
+					alpha = sprite_alpha[alpha];
+				}
 				if (alpha <= 0) continue;
 			}
 			color &= K055555_COLORMASK;
@@ -450,8 +446,19 @@ static void konamigx_mixer_draw(INT32 sub1, INT32 sub1flags,INT32 sub2, INT32 su
 				pri = order>>24 & 0xff;
 			}
 
-			if (nSpriteEnable & 1)
+			if (nSpriteEnable & 1) {
+				// Shadow-only sprites do not consume object depth.
+				if (zbuf_pending && (drawmode & 0x0f) < 4) {
+					gx_wipezbuf(1);
+					zbuf_pending = false;
+				}
+				// Solid sprites do not read shadow depth; clear it only on first use.
+				if (shadow_zbuf_pending && (drawmode & 0x0f) >= 4) {
+					if (nScreenHeight > 0) memset(gx_shdzbuf, 0xff, (size_t)nScreenHeight * 512 * 2);
+					shadow_zbuf_pending = false;
+				}
 				k053247_draw_single_sprite_gxcore(gx_objzbuf, gx_shdzbuf,code,gx_spriteram,offs,color,alpha,drawmode,zcode,pri,0,0,NULL,NULL,0);
+			}
 		}
 		else
 		{
@@ -471,6 +478,16 @@ static void konamigx_mixer_draw(INT32 sub1, INT32 sub1flags,INT32 sub2, INT32 su
 			}
 			continue;
 		}
+	}
+}
+
+void konamigx_prepare_frame()
+{
+	// An initialized mixer fills every color pixel before any video-disable return.
+	if (gx_objpool && konami_bitmap32 && konami_priority_bitmap) {
+		memset(konami_priority_bitmap, 0, nScreenWidth * nScreenHeight);
+	} else {
+		KonamiClearBitmaps(0);
 	}
 }
 
@@ -505,11 +522,9 @@ void konamigx_mixer(INT32 sub1 /*extra tilemap 1*/, INT32 sub1flags, INT32 sub2 
 	// demote shadows by one layer when this bit is set??? (see p.73 8.6)
 	cltc_shdpri &= K338_CTL_SHDPRI;
 
-	// wipe z-buffer
+	// Depth buffers are cleared on first sprite use by the draw traversal.
 	if (mixerflags & GXMIX_NOZBUF)
 		mixerflags |= GXMIX_NOSHADOW;
-	else
-		gx_wipezbuf(mixerflags & GXMIX_NOSHADOW);
 
 	// cache global parameters
 	konamigx_precache_registers();
@@ -680,9 +695,7 @@ void konamigx_mixer(INT32 sub1 /*extra tilemap 1*/, INT32 sub1flags, INT32 sub2 
 			shadow = k>>10 & 3;
 			if (shadow) // object has shadow?
 			{
-				INT32 k053246_objset1 = K053246ReadRegs(5);
-
-				if (shadow != 1 || k053246_objset1 & 0x20)
+				if (shadow != 1 || (K053246ReadRegs(5) & 0x20))
 				{
 					shadow--;
 					temp1 = 1; // add solid
@@ -785,14 +798,7 @@ void konamigx_mixer(INT32 sub1 /*extra tilemap 1*/, INT32 sub1flags, INT32 sub2 
 		}
 	}
 
-	std::sort(objbuf, objbuf + nobj, [objpool](INT32 lhs, INT32 rhs) {
-		UINT32 lhs_order = (UINT32)objpool[lhs].order;
-		UINT32 rhs_order = (UINT32)objpool[rhs].order;
-
-		if (lhs_order != rhs_order) return lhs_order > rhs_order;
-
-		return lhs > rhs;
-	});
+	GxSortObjects<GX_MAX_OBJECTS>(objbuf, nobj, objpool);
 
 	konamigx_mixer_draw(sub1,sub1flags,sub2,sub2flags,mixerflags,extra_bitmap,rushingheroes_hack,objpool,objbuf,nobj);
 }

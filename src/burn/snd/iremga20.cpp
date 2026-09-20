@@ -237,10 +237,15 @@ void iremga20_write(INT32 device, INT32 offset, INT32 data)
 			chip->channel[channel].rate = 0x1000000 / (256 - data);
 			break;
 
-		case 5: //AT: gain control
-			chip->channel[channel].volume = (data * MAX_VOL) / (data + 10);
-			iremga20_rebuild_volume_table(chip, channel);
+		case 5: { //AT: gain control
+			const UINT32 volume = (data * MAX_VOL) / (data + 10);
+			// Reset and state restore also keep this derived table synchronized.
+			if (chip->channel[channel].volume != volume) {
+				chip->channel[channel].volume = volume;
+				iremga20_rebuild_volume_table(chip, channel);
+			}
 			break;
+		}
 
 		case 6: //AT: this is always written 2(enabling both channels?)
 			chip->channel[channel].play = data;

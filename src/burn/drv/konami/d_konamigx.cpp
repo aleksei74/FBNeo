@@ -10,17 +10,25 @@
 #include "m68000_intf.h"
 #include "konamiic.h"
 #include "k054539.h"
+#include "gx_dasp_clock.h"
+#include "gx_range_workers.h"
+#include "gx_palette.h"
+#include "gx_monitor_copy.h"
 #include "../../../cpu/tms57002/tms57002.h"
 #include "dtimer.h"
 #include "eeprom.h"
 #include <condition_variable>
+#include <atomic>
 #include <mutex>
 #include <thread>
+#include <new>
+#include <system_error>
 
 #if defined(_WIN32)
 #include <windows.h>
 #elif defined(__linux__) || defined(__ANDROID__)
 #include <unistd.h>
+#include <sched.h>
 #endif
 
 static UINT8 *AllMem;
@@ -65,6 +73,7 @@ static UINT16 gx_type4_line_dirty_list[0x800];
 static INT32 gx_type4_ctrl_dirty_count;
 static INT32 gx_type4_line_dirty_count;
 static UINT8 DrvRecalc;
+static GxPaletteUpdates gx_palette_updates;
 
 #define GX_TYPE4_MONITOR_WIDTH 384
 #define GX_TYPE4_FLIP_X_OFFSET 60
@@ -203,6 +212,7 @@ static UINT8 tms_cload_cval;
 static UINT8 tms_host_pending;
 static UINT8 tms_host_index;
 static UINT32 tms_cycle_frac;
+static GxDaspClock gx_dasp_clock;
 static tms57002_device DrvTms;
 static INT32 gx_posthack_frames;
 static INT32 gx_posthack_default;
@@ -223,25 +233,38 @@ static INT32 gx_speedhack_wake;
 
 static UINT32 gx_detect_logical_processors()
 {
-	static const UINT32 detected = []() -> UINT32 {
-		UINT32 cores = 0;
+	UINT32 cores = 0;
 
 #if defined(_WIN32)
+	DWORD_PTR allowed = 0, system = 0;
+	if (GetProcessAffinityMask(GetCurrentProcess(), &allowed, &system)) {
+		while (allowed) {
+			allowed &= allowed - 1;
+			cores++;
+		}
+	}
+	if (cores == 0) {
 		SYSTEM_INFO info;
 		GetSystemInfo(&info);
 		cores = (UINT32)info.dwNumberOfProcessors;
+	}
 #elif defined(__linux__) || defined(__ANDROID__)
+	cpu_set_t allowed;
+	CPU_ZERO(&allowed);
+	if (sched_getaffinity(0, sizeof(allowed), &allowed) == 0) {
+		for (INT32 cpu = 0; cpu < CPU_SETSIZE; cpu++) {
+			if (CPU_ISSET(cpu, &allowed)) cores++;
+		}
+	}
+	if (cores == 0) {
 		const long online = sysconf(_SC_NPROCESSORS_ONLN);
 		if (online > 0) cores = (UINT32)online;
+	}
 #endif
 
-		if (cores == 0) cores = std::thread::hardware_concurrency();
-		if (cores == 0) cores = 1;
-
-		return cores;
-	}();
-
-	return detected;
+	if (cores == 0) cores = std::thread::hardware_concurrency();
+	if (cores == 0) cores = 1;
+	return cores;
 }
 
 class GxSoundWorker
@@ -272,7 +295,14 @@ public:
 			generation = 0;
 		}
 
-		worker = std::thread(&GxSoundWorker::Run, this);
+		try {
+			worker = std::thread(&GxSoundWorker::Run, this);
+		} catch (const std::system_error&) {
+			// Dispatch() then selects the existing serial PCM path.
+			Shutdown();
+		} catch (const std::bad_alloc&) {
+			Shutdown();
+		}
 	}
 
 	void Shutdown()
@@ -298,12 +328,14 @@ public:
 	bool Dispatch(INT16 *output, INT32 samples)
 	{
 		if (!active || samples < 96) return false;
+		// Parallel PCM needs work on both chips; otherwise run the active chip locally.
+		if (!(K054539Read(1, 0x22f) & 1) || !(K054539Read(0, 0x22f) & 1)) return false;
 
 		{
 			std::lock_guard<std::mutex> lock(mutex);
 			buffer = output;
 			length = samples;
-			pending = true;
+			pending.store(true, std::memory_order_relaxed);
 			generation++;
 		}
 		work.notify_one();
@@ -313,8 +345,10 @@ public:
 
 	void Wait()
 	{
+		// Acquire publishes the PCM buffer when the worker has already finished.
+		if (!pending.load(std::memory_order_acquire)) return;
 		std::unique_lock<std::mutex> lock(mutex);
-		done.wait(lock, [this]() { return !pending; });
+		done.wait(lock, [this]() { return !pending.load(std::memory_order_acquire); });
 	}
 
 private:
@@ -338,11 +372,13 @@ private:
 				samples = length;
 			}
 
+			// This buffer belongs to the worker until Wait() completes.
+			memset(output, 0, samples * 2 * sizeof(INT16));
 			K054539Update(1, output, samples);
 
 			{
 				std::lock_guard<std::mutex> lock(mutex);
-				pending = false;
+				pending.store(false, std::memory_order_release);
 			}
 			done.notify_one();
 		}
@@ -354,144 +390,13 @@ private:
 	std::condition_variable done;
 	bool active;
 	bool stop;
-	bool pending;
+	std::atomic<bool> pending;
 	UINT32 generation;
 	INT16 *buffer;
 	INT32 length;
 };
 
 static GxSoundWorker gx_sound_worker;
-
-class GxRangeWorkerPool
-{
-public:
-	typedef void (*Task)(INT32 start, INT32 end);
-
-	GxRangeWorkerPool()
-		: active(false), stop(false), generation(0), completed(0), worker_count(0),
-		  task(NULL), items(0)
-	{
-	}
-
-	~GxRangeWorkerPool()
-	{
-		Shutdown();
-	}
-
-	void Configure()
-	{
-		Shutdown();
-
-		UINT32 cores = gx_detect_logical_processors();
-		if (cores < 4) return;
-
-		worker_count = (INT32)(cores - 1);
-		if (worker_count > MaxWorkers) worker_count = MaxWorkers;
-
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			active = true;
-			stop = false;
-			generation = 0;
-			completed = 0;
-		}
-
-		for (INT32 i = 0; i < worker_count; i++) {
-			workers[i] = std::thread(&GxRangeWorkerPool::Worker, this, i);
-		}
-	}
-
-	void Shutdown()
-	{
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			if (!active && !workers[0].joinable()) return;
-			stop = true;
-			generation++;
-		}
-		work.notify_all();
-
-		for (INT32 i = 0; i < MaxWorkers; i++) {
-			if (workers[i].joinable()) workers[i].join();
-		}
-
-		std::lock_guard<std::mutex> lock(mutex);
-		active = false;
-		stop = false;
-		completed = 0;
-		worker_count = 0;
-		task = NULL;
-		items = 0;
-	}
-
-	bool Run(Task next_task, INT32 next_items)
-	{
-		if (!active || next_task == NULL || next_items < worker_count + 1) return false;
-
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			task = next_task;
-			items = next_items;
-			completed = 0;
-			generation++;
-		}
-		work.notify_all();
-
-		next_task(0, next_items / (worker_count + 1));
-
-		std::unique_lock<std::mutex> lock(mutex);
-		done.wait(lock, [this]() { return completed == worker_count; });
-
-		return true;
-	}
-
-private:
-	enum { MaxWorkers = 7 };
-
-	void Worker(INT32 index)
-	{
-		UINT32 observed = 0;
-
-		for (;;) {
-			Task current_task;
-			INT32 current_items;
-
-			{
-				std::unique_lock<std::mutex> lock(mutex);
-				work.wait(lock, [this, observed]() {
-					return stop || generation != observed;
-				});
-				if (stop) return;
-
-				observed = generation;
-				current_task = task;
-				current_items = items;
-			}
-
-			INT32 start = (current_items * (index + 1)) / (worker_count + 1);
-			INT32 end = (current_items * (index + 2)) / (worker_count + 1);
-			current_task(start, end);
-
-			{
-				std::lock_guard<std::mutex> lock(mutex);
-				completed++;
-			}
-			done.notify_one();
-		}
-	}
-
-	std::thread workers[MaxWorkers];
-	std::mutex mutex;
-	std::condition_variable work;
-	std::condition_variable done;
-	bool active;
-	bool stop;
-	UINT32 generation;
-	INT32 completed;
-	INT32 worker_count;
-	Task task;
-	INT32 items;
-};
 
 static GxRangeWorkerPool gx_range_workers;
 
@@ -509,24 +414,30 @@ static void gx_render_sound_segment(INT32 nSegmentEnd)
 
 	INT32 nSegmentLength = nSegmentEnd - gx_sound_buffer_pos;
 	if (nSegmentLength <= 0) return;
+	const bool dasp_active = tms_reset && (gx_dasp_enable || gx_dsp_force > 0);
+	// Disabled PCM updates are no-ops; only DASP can still generate output.
+	if (!dasp_active && !(K054539Read(0, 0x22f) & 1) && !(K054539Read(1, 0x22f) & 1)) {
+		gx_sound_buffer_pos = nSegmentEnd;
+		return;
+	}
 
 	INT16 *pSoundBuf = pBurnSoundOut + (gx_sound_buffer_pos << 1);
-	memset(gx_soundbuf0, 0, nSegmentLength * 2 * sizeof(INT16));
-	memset(gx_soundbuf1, 0, nSegmentLength * 2 * sizeof(INT16));
 	const bool threaded = gx_sound_worker.Dispatch(gx_soundbuf1, nSegmentLength);
+	memset(gx_soundbuf0, 0, nSegmentLength * 2 * sizeof(INT16));
 	K054539Update(0, gx_soundbuf0, nSegmentLength);
 	if (threaded) {
 		gx_sound_worker.Wait();
 	} else {
+		memset(gx_soundbuf1, 0, nSegmentLength * 2 * sizeof(INT16));
 		K054539Update(1, gx_soundbuf1, nSegmentLength);
 	}
 
-	if (tms_reset && (gx_dasp_enable || gx_dsp_force > 0)) {
-		UINT32 tms_cycle_step = nBurnSoundRate ? (UINT32)(((UINT64)12000000 << 16) / nBurnSoundRate) : (250 << 16);
+	if (dasp_active) {
+		const UINT32 tms_cycle_step = gx_dasp_clock.Step(nBurnSoundRate);
 
 		for (INT32 i = 0; i < nSegmentLength; i++) {
 			INT16 dasp_in[4];
-			INT16 dasp_out[4] = { 0, 0, 0, 0 };
+			INT16 dasp_out[4]; // process_sample writes all four outputs, including idle/load states.
 			INT32 pos = i << 1;
 
 			dasp_in[0] = gx_clip_int32(gx_soundbuf0[pos + 0] / 2);
@@ -567,7 +478,10 @@ static void gx_sync_sound_stream()
 	if (cycles < 0) cycles = 0;
 	if (cycles > gx_sound_cycles_total) cycles = gx_sound_cycles_total;
 
-	gx_render_sound_segment((INT32)((INT64)nBurnSoundLen * cycles / gx_sound_cycles_total));
+	const INT64 scaled_cycles = (INT64)nBurnSoundLen * cycles;
+	// Register accesses within an already rendered sample need no division or mixing.
+	if (scaled_cycles < ((INT64)gx_sound_buffer_pos + 1) * gx_sound_cycles_total) return;
+	gx_render_sound_segment((INT32)(scaled_cycles / gx_sound_cycles_total));
 }
 static UINT8 fantjour_dma[0x20];
 static INT32 nExtraCycles[2];
@@ -634,10 +548,16 @@ static inline void gx_ram_write_word(UINT8 *ram, UINT32 address, UINT32 mask, UI
 	gx_ram_write_byte(ram, address + 1, mask, data);
 }
 
-static inline void gx_ram_write_long(UINT8 *ram, UINT32 address, UINT32 mask, UINT32 data)
+static inline void gx_palette_write_byte(UINT32 address, UINT8 data)
 {
-	gx_ram_write_word(ram, address + 0, mask, data >> 16);
-	gx_ram_write_word(ram, address + 2, mask, data);
+	const UINT32 offset = (address & 0x7fff) ^ 3;
+	if (DrvPalRAM[offset] == data) return;
+	DrvPalRAM[offset] = data;
+	// Ordinary GX palettes use only the low 24 bits; retain unused bytes in RAM.
+#ifdef LSB_FIRST
+	if (!(address & 3)) return;
+#endif
+	gx_palette_updates.Mark(address);
 }
 
 static void gx_type4_mark_all_palettes_dirty()
@@ -646,18 +566,18 @@ static void gx_type4_mark_all_palettes_dirty()
 	gx_type4_palette_dirty_count[0] = 0x2000;
 	gx_type4_palette_dirty_count[1] = 0x2000;
 
-	for (INT32 i = 0; i < 0x2000; i++) {
-		gx_type4_palette_dirty_list[0][i] = i;
-		gx_type4_palette_dirty_list[1][i] = i;
-	}
+	// Full-bank updates bypass the sparse lists.
 }
 
 static inline void gx_type4_mark_palette_dirty(INT32 use_sub_palette, UINT32 address, INT32 bytes)
 {
+	if (bytes <= 0) return;
 	INT32 palette = use_sub_palette ? 1 : 0;
+	const UINT32 first = (address & 0x7fff) >> 2;
+	const UINT32 count = ((address & 3) + (UINT32)bytes + 3) >> 2;
 
-	for (INT32 i = 0; i < bytes; i++) {
-		INT32 index = ((address + i) & 0x7fff) >> 2;
+	for (UINT32 i = 0; i < count; i++) {
+		INT32 index = (first + i) & 0x1fff;
 
 		if (!gx_type4_palette_dirty[palette][index]) {
 			gx_type4_palette_dirty[palette][index] = 1;
@@ -667,6 +587,35 @@ static inline void gx_type4_mark_palette_dirty(INT32 use_sub_palette, UINT32 add
 	}
 }
 
+static inline void gx_type4_write_palette(INT32 use_sub_palette, UINT32 address, UINT32 data, UINT32 bytes)
+{
+	UINT8 *ram = use_sub_palette ? DrvSubPalRAM : DrvPalRAM;
+#ifdef LSB_FIRST
+	if (bytes == 4 && !(address & 3)) {
+		UINT8 *dst = ram + (address & 0x7fff);
+		UINT32 old;
+		memcpy(&old, dst, sizeof(old));
+		const UINT32 changed = old ^ data;
+		if (!changed) return;
+		memcpy(dst, &data, sizeof(data));
+		// Preserve the unused high byte without scheduling an RGB conversion.
+		if (changed & 0x00ffffff) gx_type4_mark_palette_dirty(use_sub_palette, address, 4);
+		return;
+	}
+#endif
+	bool rgb_changed = false;
+	for (UINT32 i = 0; i < bytes; i++) {
+		const UINT32 offset = ((address + i) & 0x7fff) ^ 3;
+		const UINT8 value = (UINT8)(data >> ((bytes - i - 1) * 8));
+		if (ram[offset] != value) {
+			ram[offset] = value;
+			if ((address + i) & 3) rgb_changed = true;
+		}
+	}
+	// Preserve all RAM bytes, but only RGB changes require palette conversion.
+	if (rgb_changed) gx_type4_mark_palette_dirty(use_sub_palette, address, bytes);
+}
+
 static void gx_type4_mark_all_k053936_dirty()
 {
 	memset(gx_type4_ctrl_dirty, 1, sizeof(gx_type4_ctrl_dirty));
@@ -674,18 +623,19 @@ static void gx_type4_mark_all_k053936_dirty()
 	gx_type4_ctrl_dirty_count = 0x10;
 	gx_type4_line_dirty_count = 0x800;
 
-	for (INT32 i = 0; i < 0x800; i++) {
-		gx_type4_line_dirty_list[i] = i;
-	}
+	// A full refresh does not consume the sparse dirty list.
 }
 
 static inline void gx_type4_mark_k053936_dirty(UINT32 address, INT32 bytes, INT32 line_ram)
 {
+	if (bytes <= 0) return;
 	UINT8 *dirty = line_ram ? gx_type4_line_dirty : gx_type4_ctrl_dirty;
 	UINT32 mask = line_ram ? 0xfff : 0x1f;
+	const UINT32 first = (address & mask) >> 1;
+	const UINT32 count = ((address & 1) + (UINT32)bytes + 1) >> 1;
 
-	for (INT32 i = 0; i < bytes; i++) {
-		INT32 index = ((((address + i) & mask) >> 1) ^ 1);
+	for (UINT32 i = 0; i < count; i++) {
+		INT32 index = (((first + i) & (mask >> 1)) ^ 1);
 
 		if (!dirty[index]) {
 			dirty[index] = 1;
@@ -698,6 +648,44 @@ static inline void gx_type4_mark_k053936_dirty(UINT32 address, INT32 bytes, INT3
 	}
 }
 
+static inline void gx_type4_write_k053936(UINT32 address, UINT32 data, UINT32 bytes, INT32 line_ram)
+{
+	UINT8 *ram = line_ram ? DrvType4LineRAM : DrvType4CtrlRAM;
+	const UINT32 mask = line_ram ? 0xfff : 0x1f;
+#ifdef LSB_FIRST
+	if (bytes == 2 && !(address & 1)) {
+		UINT8 *dst = ram + ((address & mask) ^ 2);
+		UINT16 old;
+		const UINT16 value = (UINT16)data;
+		memcpy(&old, dst, sizeof(old));
+		if (old == value) return;
+		memcpy(dst, &value, sizeof(value));
+		gx_type4_mark_k053936_dirty(address, bytes, line_ram);
+		return;
+	}
+	if (bytes == 4 && !(address & 3)) {
+		UINT8 *dst = ram + (address & mask);
+		UINT32 old;
+		memcpy(&old, dst, sizeof(old));
+		if (old == data) return;
+		memcpy(dst, &data, sizeof(data));
+		// Retain the whole-write invalidation order for the two register words.
+		gx_type4_mark_k053936_dirty(address, bytes, line_ram);
+		return;
+	}
+#endif
+	bool changed = false;
+	for (UINT32 i = 0; i < bytes; i++) {
+		const UINT32 offset = ((address + i) & mask) ^ 3;
+		const UINT8 value = (UINT8)(data >> ((bytes - i - 1) * 8));
+		if (ram[offset] != value) {
+			ram[offset] = value;
+			changed = true;
+		}
+	}
+	if (changed) gx_type4_mark_k053936_dirty(address, bytes, line_ram);
+}
+
 static inline UINT8 gx_mainram_read_byte(UINT32 address)
 {
 	return DrvMainRAM[(address & 0x1ffff) ^ 1];
@@ -706,11 +694,6 @@ static inline UINT8 gx_mainram_read_byte(UINT32 address)
 static inline UINT16 gx_mainram_read_word(UINT32 address)
 {
 	return (DrvMainRAM[(address & 0x1ffff) ^ 1] << 8) | DrvMainRAM[((address + 1) & 0x1ffff) ^ 1];
-}
-
-static inline UINT16 gx_force_byteswap_word(UINT16 data)
-{
-	return (data << 8) | (data >> 8);
 }
 
 static inline UINT32 gx_mainram_read_long(UINT32 address)
@@ -741,29 +724,62 @@ static inline void gx_type4_mark_all_psac_dirty()
 	gx_type4_psac_dirty_count = 128 * 128;
 	memset(gx_type4_psac_tile_dirty, 1, sizeof(gx_type4_psac_tile_dirty));
 
-	for (INT32 i = 0; i < 128 * 128; i++) {
-		gx_type4_psac_dirty_list[i] = i;
-	}
+	// Full refresh workers derive tile indices directly in bitmap row order.
 }
 
-static inline void gx_type4_mark_psac_dirty(UINT32 address)
+static inline void gx_type4_mark_psac_dirty(UINT32 address, UINT32 bytes)
 {
-	INT32 tile_index = (((address - 0xf00000) & 0x7fff) >> 2) << 1;
-
-	if (tile_index >= 0 && tile_index < 128 * 128) {
+	// Each 16-bit descriptor owns one tile; include unaligned/wrapping writes.
+	const UINT32 first = (address & 0x7fff) >> 1;
+	const UINT32 count = ((address & 1) + bytes + 1) >> 1;
+	for (UINT32 i = 0; i < count; i++) {
+		const UINT32 tile_index = (first + i) & 0x3fff;
 		if (!gx_type4_psac_tile_dirty[tile_index]) {
 			gx_type4_psac_tile_dirty[tile_index] = 1;
 			gx_type4_psac_dirty_list[gx_type4_psac_dirty_count] = tile_index;
 			gx_type4_psac_dirty_count++;
 		}
-		if (!gx_type4_psac_tile_dirty[tile_index + 1]) {
-			gx_type4_psac_tile_dirty[tile_index + 1] = 1;
-			gx_type4_psac_dirty_list[gx_type4_psac_dirty_count] = tile_index + 1;
-			gx_type4_psac_dirty_count++;
-		}
 	}
 
 	gx_type4_psac_dirty = 1;
+}
+
+static inline void gx_type4_write_psac(UINT32 address, UINT32 data, UINT32 bytes)
+{
+#ifdef LSB_FIRST
+	if (bytes == 4 && !(address & 3)) {
+		UINT8 *dst = DrvType4PsacRAM + (address & 0x7fff);
+		UINT32 old;
+		memcpy(&old, dst, sizeof(old));
+		const UINT32 changed = old ^ data;
+		if (!changed) return;
+		memcpy(dst, &data, sizeof(data));
+		// The high halfword is the first emulated tile descriptor.
+		if (changed & 0xffff0000) gx_type4_mark_psac_dirty(address, 1);
+		if (changed & 0x0000ffff) gx_type4_mark_psac_dirty(address + 2, 1);
+		return;
+	}
+	if (bytes == 2 && !(address & 1)) {
+		UINT8 *dst = DrvType4PsacRAM + ((address & 0x7fff) ^ 2);
+		UINT16 old;
+		const UINT16 value = (UINT16)data;
+		memcpy(&old, dst, sizeof(old));
+		if (old == value) return;
+		memcpy(dst, &value, sizeof(value));
+		// Both bytes belong to one descriptor; queue that tile only once.
+		gx_type4_mark_psac_dirty(address, 1);
+		return;
+	}
+#endif
+	// PSAC descriptor RAM has no write side effects. Only changed bytes dirty tiles.
+	for (UINT32 i = 0; i < bytes; i++) {
+		const UINT8 value = (UINT8)(data >> ((bytes - i - 1) * 8));
+		const UINT32 offset = ((address + i) & 0x7fff) ^ 3;
+		if (DrvType4PsacRAM[offset] != value) {
+			DrvType4PsacRAM[offset] = value;
+			gx_type4_mark_psac_dirty(address + i, 1);
+		}
+	}
 }
 
 static inline void gx_type3_bank_write(UINT32 address, UINT8 data)
@@ -1782,6 +1798,7 @@ static UINT8 __fastcall gx_sound_read_byte(UINT32 address)
 	}
 
 	if (address == 0x300001) {
+		gx_sync_sound_stream();
 		gx_dsp_force = GX_DSP_FORCE_WINDOW;
 		if (tms_host_pending) {
 			tms_host_index++;
@@ -1800,6 +1817,8 @@ static UINT8 __fastcall gx_sound_read_byte(UINT32 address)
 
 	if ((address & 0xfffffe) == 0x500000) {
 		if (!(address & 1)) return 0x00;
+		// Host polling must observe DSP work up to the current sound CPU time.
+		gx_sync_sound_stream();
 		return tms57002_stub_status();
 	}
 
@@ -1808,6 +1827,12 @@ static UINT8 __fastcall gx_sound_read_byte(UINT32 address)
 
 static UINT16 __fastcall gx_sound_read_word(UINT32 address)
 {
+	if (address >= 0x200000 && address <= 0x2004fe && !(address & 1)) {
+		const INT32 offset = (address - 0x200000) >> 1;
+		// Read both chips, including data-port side effects, without re-decoding each lane.
+		const UINT16 high = K054539Read(0, offset);
+		return (high << 8) | K054539Read(1, offset);
+	}
 	return (gx_sound_read_byte(address) << 8) | gx_sound_read_byte(address + 1);
 }
 
@@ -1881,6 +1906,16 @@ static void __fastcall gx_sound_write_byte(UINT32 address, UINT8 data)
 
 static void __fastcall gx_sound_write_word(UINT32 address, UINT16 data)
 {
+	if (address >= 0x200000 && address <= 0x2004fe && !(address & 1) &&
+		address != 0x20044e && address != 0x20045e) {
+		// Timer/control registers with IRQ callbacks retain the byte-handler path.
+		// Both PCM byte lanes share one CPU timestamp; preserve chip write order.
+		const INT32 offset = (address - 0x200000) >> 1;
+		gx_sync_sound_stream();
+		K054539Write(0, offset, data >> 8);
+		K054539Write(1, offset, data & 0xff);
+		return;
+	}
 	gx_sound_write_byte(address + 0, data >> 8);
 	gx_sound_write_byte(address + 1, data);
 }
@@ -2211,8 +2246,7 @@ static void __fastcall gx_main_write_byte(UINT32 address, UINT8 data)
 			gx_ram_write_byte(DrvType4RAM, address, 0x7fff, data);
 			return;
 		}
-		DrvPalRAM[(address & 0x7fff) ^ 3] = data;
-		DrvRecalc = 1;
+		gx_palette_write_byte(address, data);
 		return;
 	}
 
@@ -2223,12 +2257,12 @@ static void __fastcall gx_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if (gx_type4_enable) {
-		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_byte(DrvType4CtrlRAM, address, 0x1f, data); gx_type4_mark_k053936_dirty(address, 1, 0); return; }
+		if ((address & 0xffffe0) == 0xe00000) { gx_type4_write_k053936(address, data, 1, 0); return; }
 		if ((address & 0xfffff0) == 0xe40000) { gx_type3_bank_write(address, data); return; }
-		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_byte(DrvType4LineRAM, address, 0xfff, data); gx_type4_mark_k053936_dirty(address, 1, 1); return; }
-		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_byte(DrvPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(0, address, 1); return; }
-		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_byte(DrvSubPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(1, address, 1); return; }
-		if ((address & 0xff8000) == 0xf00000) { gx_ram_write_byte(DrvType4PsacRAM, address, 0x7fff, data); gx_type4_mark_psac_dirty(address); return; }
+		if ((address & 0xfffff000) == 0xe60000) { gx_type4_write_k053936(address, data, 1, 1); return; }
+		if ((address & 0xff8000) == 0xe80000) { gx_type4_write_palette(0, address, data, 1); return; }
+		if ((address & 0xff8000) == 0xea0000) { gx_type4_write_palette(1, address, data, 1); return; }
+		if ((address & 0xff8000) == 0xf00000) { gx_type4_write_psac(address, data, 1); return; }
 	}
 }
 
@@ -2303,9 +2337,8 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 			gx_ram_write_word(DrvType4RAM, address, 0x7fff, data);
 			return;
 		}
-		DrvPalRAM[((address + 0) & 0x7fff) ^ 3] = data >> 8;
-		DrvPalRAM[((address + 1) & 0x7fff) ^ 3] = data;
-		DrvRecalc = 1;
+		gx_palette_write_byte(address + 0, data >> 8);
+		gx_palette_write_byte(address + 1, data);
 		return;
 	}
 
@@ -2325,12 +2358,12 @@ static void __fastcall gx_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (gx_type4_enable) {
-		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_word(DrvType4CtrlRAM, address, 0x1f, data); gx_type4_mark_k053936_dirty(address, 2, 0); return; }
+		if ((address & 0xffffe0) == 0xe00000) { gx_type4_write_k053936(address, data, 2, 0); return; }
 		if ((address & 0xfffff0) == 0xe40000) { gx_type3_bank_write(address + 0, data >> 8); gx_type3_bank_write(address + 1, data); return; }
-		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_word(DrvType4LineRAM, address, 0xfff, data); gx_type4_mark_k053936_dirty(address, 2, 1); return; }
-		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_word(DrvPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(0, address, 2); return; }
-		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_word(DrvSubPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(1, address, 2); return; }
-		if ((address & 0xff8000) == 0xf00000) { gx_ram_write_word(DrvType4PsacRAM, address, 0x7fff, data); gx_type4_mark_psac_dirty(address); return; }
+		if ((address & 0xfffff000) == 0xe60000) { gx_type4_write_k053936(address, data, 2, 1); return; }
+		if ((address & 0xff8000) == 0xe80000) { gx_type4_write_palette(0, address, data, 2); return; }
+		if ((address & 0xff8000) == 0xea0000) { gx_type4_write_palette(1, address, data, 2); return; }
+		if ((address & 0xff8000) == 0xf00000) { gx_type4_write_psac(address, data, 2); return; }
 	}
 
 	gx_main_write_byte(address + 0, data >> 8);
@@ -2421,12 +2454,12 @@ static void __fastcall gx_main_write_long(UINT32 address, UINT32 data)
 	}
 
 	if (gx_type4_enable) {
-		if ((address & 0xffffe0) == 0xe00000) { gx_ram_write_long(DrvType4CtrlRAM, address, 0x1f, data); gx_type4_mark_k053936_dirty(address, 4, 0); return; }
+		if ((address & 0xffffe0) == 0xe00000) { gx_type4_write_k053936(address, data, 4, 0); return; }
 		if ((address & 0xfffff0) == 0xe40000) { gx_type3_bank_write(address + 0, data >> 24); gx_type3_bank_write(address + 1, data >> 16); gx_type3_bank_write(address + 2, data >> 8); gx_type3_bank_write(address + 3, data); return; }
-		if ((address & 0xfffff000) == 0xe60000) { gx_ram_write_long(DrvType4LineRAM, address, 0xfff, data); gx_type4_mark_k053936_dirty(address, 4, 1); return; }
-		if ((address & 0xff8000) == 0xe80000) { gx_ram_write_long(DrvPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(0, address, 4); return; }
-		if ((address & 0xff8000) == 0xea0000) { gx_ram_write_long(DrvSubPalRAM, address, 0x7fff, data); gx_type4_mark_palette_dirty(1, address, 4); return; }
-		if ((address & 0xff8000) == 0xf00000) { gx_ram_write_long(DrvType4PsacRAM, address, 0x7fff, data); gx_type4_mark_psac_dirty(address); return; }
+		if ((address & 0xfffff000) == 0xe60000) { gx_type4_write_k053936(address, data, 4, 1); return; }
+		if ((address & 0xff8000) == 0xe80000) { gx_type4_write_palette(0, address, data, 4); return; }
+		if ((address & 0xff8000) == 0xea0000) { gx_type4_write_palette(1, address, data, 4); return; }
+		if ((address & 0xff8000) == 0xf00000) { gx_type4_write_psac(address, data, 4); return; }
 	}
 
 	gx_main_write_word(address + 0, data >> 16);
@@ -2574,20 +2607,33 @@ static INT32 DecodeGraphics()
 	INT32 tile_result = 0;
 	INT32 psac_result = 0;
 
-	std::thread tile_worker([&tile_result]() {
+	std::thread tile_worker;
+	try {
+		tile_worker = std::thread([&tile_result]() {
+			tile_result = DecodeTiles();
+		});
+	} catch (const std::system_error&) {
 		tile_result = DecodeTiles();
-	});
+	} catch (const std::bad_alloc&) {
+		tile_result = DecodeTiles();
+	}
 
 	std::thread psac_worker;
 	if (gx_type4_enable) {
-		psac_worker = std::thread([&psac_result]() {
+		try {
+			psac_worker = std::thread([&psac_result]() {
+				psac_result = DecodePsacTiles();
+			});
+		} catch (const std::system_error&) {
 			psac_result = DecodePsacTiles();
-		});
+		} catch (const std::bad_alloc&) {
+			psac_result = DecodePsacTiles();
+		}
 	}
 
 	INT32 sprite_result = DecodeSprites();
 
-	tile_worker.join();
+	if (tile_worker.joinable()) tile_worker.join();
 	if (psac_worker.joinable()) psac_worker.join();
 
 	return tile_result || sprite_result || psac_result;
@@ -2595,23 +2641,11 @@ static INT32 DecodeGraphics()
 
 static void gx_type4_draw_psac_tile(INT32 tile_index)
 {
-	UINT32 data = gx_ram_read_long(DrvType4PsacRAM, 0xf00000 + ((tile_index >> 1) << 2), 0x7fff);
-	INT32 code;
-	INT32 color;
-	INT32 flipx;
-	INT32 flipy;
-
-	if (tile_index & 1) {
-		code = data & 0x1fff;
-		color = (data >> 13) & 1;
-		flipx = data & 0x4000;
-		flipy = data & 0x8000;
-	} else {
-		code = (data >> 16) & 0x1fff;
-		color = (data >> 29) & 1;
-		flipx = data & 0x40000000;
-		flipy = data & 0x80000000;
-	}
+	const UINT16 data = gx_ram_read_word(DrvType4PsacRAM, tile_index << 1, 0x7fff);
+	const INT32 code = data & 0x1fff;
+	const INT32 color = (data >> 13) & 1;
+	const INT32 flipx = data & 0x4000;
+	const INT32 flipy = data & 0x8000;
 
 	UINT8 *gfx = DrvGfxROM2 + ((code & 0x1fff) << 8);
 	UINT16 pal = 0x1800 + (color << 8);
@@ -2619,26 +2653,34 @@ static void gx_type4_draw_psac_tile(INT32 tile_index)
 	INT32 tile_y = tile_index & 0x7f;
 	UINT16 *dst = pGxPsacBitmap + ((tile_y << 4) * 0x800) + (tile_x << 4);
 
-	for (INT32 y = 0; y < 16; y++) {
-		INT32 sy = flipy ? (15 - y) : y;
-		UINT8 *src = gfx + (sy << 4);
-
-		if (flipx) {
+	const INT32 row_step = flipy ? -16 : 16;
+	const INT32 first_row = flipy ? 240 : 0;
+	if (flipx) {
+		for (INT32 y = 0; y < 16; y++) {
+			UINT8 *src = gfx + first_row + y * row_step;
 			for (INT32 x = 0; x < 16; x++) {
 				dst[x] = src[15 - x] | pal;
 			}
-		} else {
+			dst += 0x800;
+		}
+	} else {
+		for (INT32 y = 0; y < 16; y++) {
+			UINT8 *src = gfx + first_row + y * row_step;
 			for (INT32 x = 0; x < 16; x++) {
 				dst[x] = src[x] | pal;
 			}
+			dst += 0x800;
 		}
-
-		dst += 0x800;
 	}
 }
 
 static void gx_type4_draw_psac_dirty_range(INT32 start, INT32 end)
 {
+	if (gx_type4_psac_dirty_count == 128 * 128) {
+		// Full queues cover every tile; partition in bitmap row order even after scattered writes.
+		for (INT32 i = start; i < end; i++) gx_type4_draw_psac_tile(((i & 0x7f) << 7) | (i >> 7));
+		return;
+	}
 	for (INT32 i = start; i < end; i++) {
 		INT32 tile_index = gx_type4_psac_dirty_list[i];
 		gx_type4_draw_psac_tile(tile_index);
@@ -2656,6 +2698,9 @@ static void gx_type4_predraw_psac()
 		gx_type4_draw_psac_dirty_range(0, gx_type4_psac_dirty_count);
 	}
 
+	if (gx_type4_psac_dirty_count == 128 * 128) {
+		memset(gx_type4_psac_tile_dirty, 0, sizeof(gx_type4_psac_tile_dirty));
+	}
 	gx_type4_psac_dirty = 0;
 	gx_type4_psac_dirty_count = 0;
 }
@@ -2671,10 +2716,22 @@ static void gx_type4_update_k053936_regs()
 		gx_type4_ctrl_dirty_count = 0;
 	}
 
-	for (INT32 i = 0; i < gx_type4_line_dirty_count; i++) {
-		INT32 index = gx_type4_line_dirty_list[i];
-		gx_type4_line_words[index] = gx_ram_read_word(DrvType4LineRAM, 0xe60000 + ((index ^ 1) << 1), 0xfff);
-		gx_type4_line_dirty[index] = 0;
+	if (gx_type4_line_dirty_count == 0x800) {
+#ifdef LSB_FIRST
+		// The register index XOR cancels the RAM word swap.
+		memcpy(gx_type4_line_words, DrvType4LineRAM, sizeof(gx_type4_line_words));
+#else
+		for (INT32 i = 0; i < 0x800; i++) {
+			gx_type4_line_words[i] = gx_ram_read_word(DrvType4LineRAM, 0xe60000 + ((i ^ 1) << 1), 0xfff);
+		}
+#endif
+		memset(gx_type4_line_dirty, 0, sizeof(gx_type4_line_dirty));
+	} else {
+		for (INT32 i = 0; i < gx_type4_line_dirty_count; i++) {
+			INT32 index = gx_type4_line_dirty_list[i];
+			gx_type4_line_words[index] = gx_ram_read_word(DrvType4LineRAM, 0xe60000 + ((index ^ 1) << 1), 0xfff);
+			gx_type4_line_dirty[index] = 0;
+		}
 	}
 	gx_type4_line_dirty_count = 0;
 }
@@ -2777,11 +2834,6 @@ static INT32 DrvDoReset()
 	HiscoreReset();
 
 	return 0;
-}
-
-static INT32 gx_driver_supported()
-{
-	return gx_get_game_config() != NULL;
 }
 
 static const GxGameConfig *gx_get_game_config()
@@ -3055,7 +3107,8 @@ static INT32 DrvInit()
 	K054539_set_gain(1, 7, 2.00);
 
 	gx_sound_worker.Configure();
-	gx_range_workers.Configure();
+	// Only Type 4 PSAC tile-cache updates use this pool.
+	if (gx_type4_enable) gx_range_workers.Configure(gx_detect_logical_processors());
 
 	DrvTms.init(DrvTmsRAM);
 
@@ -3107,7 +3160,15 @@ static void DrvPaletteUpdate(INT32 use_sub_palette = 0)
 			DrvRecalc = 0;
 		}
 
-		if (gx_type4_palette_dirty_count[palette] > 0) {
+		if (gx_type4_palette_dirty_count[palette] == 0x2000) {
+			// A deduplicated full queue covers every color, independent of write order.
+			for (INT32 i = 0; i < 0x2000; i++) {
+				UINT32 d = gx_ram_read_long(palram, 0xe80000 + (i << 2), 0x7fff);
+				gx_type4_palette_cache[palette][i] = BurnHighCol((d >> 16) & 0xff, (d >> 8) & 0xff, d & 0xff, 0);
+			}
+			memset(gx_type4_palette_dirty[palette], 0, sizeof(gx_type4_palette_dirty[palette]));
+			gx_type4_palette_dirty_count[palette] = 0;
+		} else if (gx_type4_palette_dirty_count[palette] > 0) {
 			for (INT32 dirty_index = 0; dirty_index < gx_type4_palette_dirty_count[palette]; dirty_index++) {
 				INT32 i = gx_type4_palette_dirty_list[palette][dirty_index];
 
@@ -3119,19 +3180,13 @@ static void DrvPaletteUpdate(INT32 use_sub_palette = 0)
 			gx_type4_palette_dirty_count[palette] = 0;
 		}
 
-		memcpy(DrvPalette, gx_type4_palette_cache[palette], sizeof(gx_type4_palette_cache[palette]));
+		// The mixer only reads this cache; keep both monitor palettes independent.
+		konami_palette32 = gx_type4_palette_cache[palette];
+		K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 		return;
 	}
 
-	if (!DrvRecalc) return;
-
-	UINT32 *pal = (UINT32 *)DrvPalRAM;
-
-	for (INT32 i = 0; i < 0x2000; i++) {
-		UINT32 d = pal[i];
-		DrvPalette[i] = d & 0x00ffffff;
-	}
-
+	gx_palette_updates.Update((const UINT32 *)DrvPalRAM, DrvPalette, DrvRecalc != 0);
 	DrvRecalc = 0;
 }
 
@@ -3228,7 +3283,7 @@ static void gx_type4_render_monitor(INT32 use_sub_palette, INT32 spriteram_bank,
 	nScreenHeight = render_height;
 	K056832SetGlobalOffsets(0, 16);
 	DrvPaletteUpdate(use_sub_palette);
-	KonamiClearBitmaps(0);
+	konamigx_prepare_frame();
 
 	for (INT32 i = 0; i < 4; i++) {
 		layer_colorbase[i] = K055555GetPaletteIndex(i) << 4;
@@ -3256,16 +3311,8 @@ static void gx_type4_render_monitor(INT32 use_sub_palette, INT32 spriteram_bank,
 
 	konamigx_mixer(1, GXSUB_8BPP, 0, 0, 0, 0, gx_rushingheroes_hack);
 
-	for (INT32 y = 0; y < screen_height; y++) {
-		UINT32 *src = konami_bitmap32 + ((y + flip_y_offset) * render_width);
-		UINT32 *dst = target + (y * GX_TYPE4_MONITOR_WIDTH);
-
-		if (flip_x_offset) {
-			memcpy(dst, src + flip_x_offset, GX_TYPE4_MONITOR_WIDTH * sizeof(UINT32));
-		} else {
-			memcpy(dst, src, GX_TYPE4_MONITOR_WIDTH * sizeof(UINT32));
-		}
-	}
+	GxCopyMonitor(target, konami_bitmap32, GX_TYPE4_MONITOR_WIDTH,
+		screen_height, render_width, flip_x_offset, flip_y_offset);
 
 	nScreenWidth = screen_width;
 	nScreenHeight = screen_height;
@@ -3280,7 +3327,18 @@ static void gx_type4_compose_output()
 {
 	INT32 dual_screen = gx_type4_output_dual_screen_enabled() && nScreenWidth > GX_TYPE4_MONITOR_WIDTH;
 
-	KonamiClearBitmaps(0);
+	const bool covered = pGxType4LeftBitmap &&
+		((dual_screen && pGxType4RightBitmap && nScreenWidth == 2 * GX_TYPE4_MONITOR_WIDTH) ||
+		 (!dual_screen && nScreenWidth == GX_TYPE4_MONITOR_WIDTH));
+	// Presentation only consumes color; each monitor clears priority before rendering.
+	if (!(covered && konami_bitmap32 && konami_priority_bitmap)) {
+		KonamiClearBitmaps(0);
+	}
+
+	if (!dual_screen && pGxType4LeftBitmap && nScreenWidth == GX_TYPE4_MONITOR_WIDTH) {
+		memcpy(konami_bitmap32, pGxType4LeftBitmap, nScreenWidth * nScreenHeight * sizeof(UINT32));
+		return;
+	}
 
 	for (INT32 y = 0; y < nScreenHeight; y++) {
 		UINT32 *dst = konami_bitmap32 + (y * nScreenWidth);
@@ -3303,6 +3361,7 @@ static void gx_type4_compose_output()
 	}
 }
 
+#ifndef __LIBRETRO__
 static INT32 gx_sexyparo_has_stage3_background()
 {
 	if (gx_special != GX_SPECIAL_SEXYPARO || konami_bitmap32 == NULL) return 0;
@@ -3452,6 +3511,8 @@ static void gx_sexyparo_draw_space_stars()
 	}
 }
 
+#endif
+
 // --- tbyahhoo Korean-logo tilemap fixup -------------------------------------
 // The title logo (K056832 page 0) reuses a few tile codes across cells that
 // the Japanese art drew identically, and leaves some cells blank (0x400).
@@ -3473,8 +3534,7 @@ static void gx_sexyparo_draw_space_stars()
 
 static void tby_logo_tilemap_fix()
 {
-	const GxGameConfig *cfg = gx_get_game_config();
-	if (cfg == NULL || cfg->special != GX_SPECIAL_TBYAHHOO) return;
+	if (gx_special != GX_SPECIAL_TBYAHHOO) return;
 
 	// row/col offsets from the anchor cell (title screen: row 6, col 16)
 	static const struct { INT32 dr, dc; UINT16 oldcode, newcode; } fix[] = {
@@ -3535,14 +3595,14 @@ static INT32 DrvDraw()
 		}
 
 		gx_type4_compose_output();
-		KonamiBlendCopy(DrvPalette);
+		KonamiBlendCopy(konami_palette32);
 		return 0;
 	}
 
 	tby_logo_tilemap_fix();
 
 	DrvPaletteUpdate();
-	KonamiClearBitmaps(0);
+	konamigx_prepare_frame();
 
 	for (INT32 i = 0; i < 4; i++) {
 		layer_colorbase[i] = K055555GetPaletteIndex(i) << 4;

@@ -9,7 +9,6 @@
 #include "msm6295.h" // ppan
 #include "irem_cpu.h"
 #include "iremga20.h"
-#include "stddef.h"
 #include "pic8259.h"
 #include "m92_threads.h"
 
@@ -66,7 +65,6 @@ static INT32 m92_main_bank;
 static INT32 graphics_mask[2] = { 0, 0 };
 
 static INT32 nInterleave = 256; // 256 scanlines
-static INT32 nCyclesDone[2] = { 0, 0 };
 static INT32 nCyclesTotal[2] = { 0, 0 };
 
 static INT32 m92_kludge = 0;
@@ -2546,6 +2544,7 @@ static void compile_inputs()
 
 static void scanline_interrupts(INT32 scanline)
 {
+	// Skipped video frames still advance DMA, raster position and IRQs below.
 	if (m92_sprite_buffer_timer) {
 		memcpy(DrvSprBuf, DrvSprRAM, 0x800);
 		m92_sprite_buffer_busy = 0x80;
@@ -2556,7 +2555,7 @@ static void scanline_interrupts(INT32 scanline)
 
 	if (scanline == m92_raster_irq_position) {
 		if (scanline>=8 && scanline < 248 && nPrevScreenPos != (scanline-8)+1) {
-			if (nPrevScreenPos >= 0 && nPrevScreenPos <= 239)
+			if (pBurnDraw && nPrevScreenPos >= 0 && nPrevScreenPos <= 239)
 				DrawLayers(nPrevScreenPos, (scanline-8)+1);
 			nPrevScreenPos = (scanline-8)+1;
 		}
@@ -2566,7 +2565,7 @@ static void scanline_interrupts(INT32 scanline)
 
 	if (scanline == 248) // vblank
 	{
-		if (nPrevScreenPos != 240) {
+		if (pBurnDraw && nPrevScreenPos != 240) {
 			DrawLayers(nPrevScreenPos, 240);
 		}
 		nPrevScreenPos = 0;
@@ -2594,20 +2593,20 @@ static INT32 DrvFrame()
 	compile_inputs();
 
 	const INT32 multiplier = 8;
-	nInterleave = 256 * multiplier;
+	const INT32 interleave = 256 * multiplier;
+	nInterleave = interleave;
 
 	// overclocking...
 	nCyclesTotal[0] = (INT32)((INT64)(9000000 / 60) * nBurnCPUSpeedAdjust / 0x0100);
 	nCyclesTotal[1] = (INT32)((INT64)(7159090 / 60) * nBurnCPUSpeedAdjust / 0x0100);
-	nCyclesDone[0] = nCyclesDone[1] = 0;
-	const INT32 mainSegment = nCyclesTotal[0] / nInterleave;
+	const INT32 mainSegment = nCyclesTotal[0] / interleave;
 	INT32 subscanline = 0;
 	INT32 scanline = 0;
 
-	for (INT32 i = 0; i < nInterleave; i++)
+	for (INT32 i = 0; i < interleave; i++)
 	{
 		VezOpen(0);
-		nCyclesDone[0] += VezRun(mainSegment);
+		VezRun(mainSegment);
 		if (++subscanline == multiplier) {
 			scanline_interrupts(scanline++); // update at hblank?
 			subscanline = 0;
@@ -2615,7 +2614,9 @@ static INT32 DrvFrame()
 		VezClose();
 
 		VezOpen(1);
-		CPU_RUN_TIMER(1);
+		// Same deadlines as CPU_RUN_TIMER, with a compile-time divisor.
+		BurnTimerUpdate((i + 1) * nCyclesTotal[1] / interleave);
+		if (i == interleave - 1) BurnTimerEndFrame(nCyclesTotal[1]);
 		VezClose();
 	}
 
@@ -2641,13 +2642,12 @@ static INT32 PpanFrame()
 
 	// overclocking...
 	nCyclesTotal[0] = (INT32)((INT64)(9000000 / 60) * nBurnCPUSpeedAdjust / 0x0100);
-	nCyclesDone[0] = 0;
 
 	VezOpen(0);
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		nCyclesDone[0] += VezRun(nCyclesTotal[0] / nInterleave);
+		VezRun(nCyclesTotal[0] / nInterleave);
 
 		scanline_interrupts(i);
 	}

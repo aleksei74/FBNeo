@@ -2,6 +2,8 @@
 
 #include <condition_variable>
 #include <mutex>
+#include <new>
+#include <system_error>
 #include <thread>
 
 #if defined(_WIN32)
@@ -45,7 +47,7 @@ public:
 		Shutdown();
 	}
 
-	void Configure()
+	void Configure(UINT32 max_workers = 3)
 	{
 		Shutdown();
 
@@ -55,12 +57,19 @@ public:
 		} else {
 			m_worker_count = (cores >= 4) ? 2 : 0;
 		}
+		if ((UINT32)m_worker_count > max_workers) m_worker_count = (INT32)max_workers;
 
 		m_generation = 0;
 		m_stop = false;
 
-		for (INT32 i = 0; i < m_worker_count; i++) {
-			m_workers[i] = std::thread(&Epic12ThreadPool::Worker, this, i + 1);
+		try {
+			for (INT32 i = 0; i < m_worker_count; i++) {
+				m_workers[i] = std::thread(&Epic12ThreadPool::Worker, this, i + 1);
+			}
+		} catch (const std::system_error&) {
+			Shutdown();
+		} catch (const std::bad_alloc&) {
+			Shutdown();
 		}
 	}
 
@@ -71,7 +80,7 @@ public:
 			m_stop = true;
 			m_generation++;
 		}
-		m_work.notify_all();
+		for (INT32 i = 0; i < m_worker_count; i++) m_work[i].notify_one();
 
 		for (INT32 i = 0; i < m_worker_count; i++) {
 			if (m_workers[i].joinable()) m_workers[i].join();
@@ -86,6 +95,10 @@ public:
 
 	void ParallelFor(INT32 count, INT32 minimum, Epic12ThreadCallback callback, void *context)
 	{
+		if (m_worker_count == 0 || count <= 1 || (minimum > 0 && count <= minimum)) {
+			callback(context, 0, count);
+			return;
+		}
 		const INT32 cores = m_worker_count + 1;
 		INT32 parts = (minimum > 0) ? (count / minimum) : cores;
 
@@ -105,7 +118,8 @@ public:
 			m_pending = parts - 1;
 			m_generation++;
 		}
-		m_work.notify_all();
+		// Workers outside this partition would only contend for the mutex.
+		for (INT32 i = 0; i < parts - 1; i++) m_work[i].notify_one();
 
 		callback(context, 0, count / parts);
 
@@ -126,7 +140,7 @@ private:
 
 			{
 				std::unique_lock<std::mutex> lock(m_mutex);
-				m_work.wait(lock, [this, generation]() { return m_stop || m_generation != generation; });
+				m_work[part - 1].wait(lock, [this, generation]() { return m_stop || m_generation != generation; });
 				if (m_stop) return;
 
 				generation = m_generation;
@@ -150,7 +164,7 @@ private:
 
 	std::thread m_workers[3];
 	std::mutex m_mutex;
-	std::condition_variable m_work;
+	std::condition_variable m_work[3];
 	std::condition_variable m_done;
 	INT32 m_worker_count;
 	UINT32 m_generation;

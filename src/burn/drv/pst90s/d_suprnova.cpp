@@ -60,6 +60,7 @@ static struct {
 
 	UINT8 disconnect;
 } hit;
+static bool hit_dirty = false;
 
 static INT32 sprite_kludge_x;
 static INT32 sprite_kludge_y;
@@ -73,7 +74,7 @@ static UINT8 DrvReset;
 static INT32 nGfxLen0 = 0;
 static INT32 nRedrawTiles = 0;
 static UINT32 speedhack_address = ~0;
-static UINT32 speedhack_pc[2] = { 0, 0 };
+static UINT32 speedhack_pc = 0;
 static UINT8 region = 0; /* 0 Japan, 1 Europe, 2 Asia, 3 USA, 4 Korea */
 static UINT32 Vblokbrk = 0;
 
@@ -379,6 +380,14 @@ static void hit_recalc()
 	hit.flag |= hit.x_in >= 0 && hit.y_in >= 0                  ? 1 : 0;
 }
 
+static void hit_sync()
+{
+	if (hit_dirty) {
+		hit_recalc();
+		hit_dirty = false;
+	}
+}
+
 static void skns_hit_w(UINT32 adr, UINT32 data)
 {
 	switch(adr & ~3) {
@@ -436,11 +445,13 @@ static void skns_hit_w(UINT32 adr, UINT32 data)
 	default:
 	break;
 	}
-	hit_recalc();
+	// Consecutive parameter writes only need one calculation before observation.
+	hit_dirty = true;
 }
 
 static UINT32 skns_hit_r(UINT32 adr)
 {
+	hit_sync();
 	if(hit.disconnect)
 		return 0x0000;
 
@@ -718,17 +729,14 @@ static void skns_pal_regs_w(UINT32 offset)
 
 		case (0x14/4): // RWRB1
 			bright_v3_g = data&0xff;
-		//	bright_v3_g_trans = (data>>8)&0xff;
 			break;
 
 		case (0x18/4): // RWRB2
 			bright_v3_r = data&0xff;
-		//	bright_v3_r_trans = (data>>8)&0xff;
 			break;
 
 		case (0x1C/4): // RWRB3
 			bright_v3_b = data&0xff;
-		//	bright_v3_b_trans = (data>>8)&0xff;
 			break;
 	}
 }
@@ -738,10 +746,11 @@ static inline void decode_graphics_ram(UINT32 offset)
 	offset &= 0x3fffc;
 	UINT32 p = *((UINT32*)(DrvGfxRAM + offset));
 
-	if ( (DrvGfxROM2[offset + 0] == p >> 24) &&
-		 (DrvGfxROM2[offset + 1] == p >> 16) &&
-		 (DrvGfxROM2[offset + 2] == p >>  8) &&
-		 (DrvGfxROM2[offset + 3] == p >>  0) ) return;
+	// Compare bytes, not shifted words with unrelated high bits still set.
+	if ( (DrvGfxROM2[offset + 0] == (UINT8)(p >> 24)) &&
+		 (DrvGfxROM2[offset + 1] == (UINT8)(p >> 16)) &&
+		 (DrvGfxROM2[offset + 2] == (UINT8)(p >>  8)) &&
+		 (DrvGfxROM2[offset + 3] == (UINT8)(p >>  0)) ) return;
 
 	nRedrawTiles = 1;
 
@@ -874,10 +883,9 @@ static void __fastcall suprnova_write_long(UINT32 address, UINT32 data)
 static inline void suprnova_speedhack(UINT32 a)
 {
 	UINT32 b  = a & ~3;
-	UINT32 pc = Sh2GetPC(0);
 
 	if (b == speedhack_address) {
-		if (pc == speedhack_pc[0]) {
+		if (Sh2GetPC(0) == speedhack_pc) {
 			Sh2BurnUntilInt(0);
 		}
 	}
@@ -992,6 +1000,7 @@ static INT32 DrvDoReset()
 	memset (AllRam, 0, RamEnd - AllRam);
 	memset (DrvTmpScreenBuf, 0xff, 0x8000);
 	memset (&hit, 0, sizeof(hit));
+	hit_dirty = false;
 
 	Sh2Open(0);
 	if (Vblokbrk) {
@@ -1209,7 +1218,7 @@ static INT32 DrvExit()
 	nGfxLen0 = 0;
 
 	speedhack_address = ~0;
-	memset (speedhack_pc, 0, 2 * sizeof(INT32));
+	speedhack_pc = 0;
 
 	// de-init cyvern filter
 	delete LP1; LP1 = NULL;
@@ -1234,7 +1243,9 @@ static void SuprnovaTileRange(void *context, INT32 begin, INT32 end)
 	UINT16 *dest = c.dest;
 	UINT8 *prid = c.prid, *gfxbase = c.gfxbase;
 	for (INT32 offs = begin; offs < end; offs++) {
-		if (!Redraw && vram[offs] == c.prev[offs]) continue;
+		const UINT32 previous = c.prev[offs];
+		const UINT32 changed = vram[offs] ^ previous;
+		if (!Redraw && changed == 0) continue;
 		c.prev[offs] = vram[offs];
 
 		INT32 sx = (offs & 0x3f) << 4;
@@ -1251,6 +1262,11 @@ static void SuprnovaTileRange(void *context, INT32 begin, INT32 end)
 		color <<= 8;
 		UINT8 *pri = prid + sy * 1024 + sx;
 		UINT16 *dst = dest + sy * 1024 + sx;
+		// The all-ones previous value also marks an invalidated cache entry.
+		if (!Redraw && previous != ~0U && (changed & ~0x00e00000U) == 0) {
+			for (INT32 y = 0; y < 16; y++, pri += 1024) memset(pri, prio, 16);
+			continue;
+		}
 
 		if (FourBpp) {	// 4bpp
 
@@ -1262,7 +1278,7 @@ static void SuprnovaTileRange(void *context, INT32 begin, INT32 end)
 			UINT8 *gfx = gfxbase + (code << 7);
 
 			for (INT32 y = 0; y < 16; y++) {
-				if (Redraw) {
+				{
 					const UINT8 *rowgfx = gfx + ((y << 3) ^ (flipy & 0x78));
 					const UINT8 p0 = rowgfx[0 ^ (flipy & 7)];
 					dst[0] = (p0 & 15) + color;
@@ -1288,13 +1304,6 @@ static void SuprnovaTileRange(void *context, INT32 begin, INT32 end)
 					const UINT8 p7 = rowgfx[7 ^ (flipy & 7)];
 					dst[14] = (p7 & 15) + color;
 					dst[15] = (p7 >> 4) + color;
-				} else {
-					for (INT32 x = 0; x < 16; x+=2) {
-						INT32 pixels = gfx[((y << 3) | (x >> 1)) ^ flipy];
-	
-						dst[x+0] = (pixels & 0x0f) + color;
-						dst[x+1] = (pixels >> 4) + color;
-					}
 				}
 				memset(pri, prio, 16);
 
@@ -1345,6 +1354,8 @@ static void SuprnovaTileRange(void *context, INT32 begin, INT32 end)
 					dst[15] = gfx[15] + color;
 				}
 
+				// Keep scalar stores on 32-bit GCC: sparse updates benchmark faster.
+#if defined(__GNUC__) && defined(__i386__)
 				pri[ 0] = prio;
 				pri[ 1] = prio;
 				pri[ 2] = prio;
@@ -1361,6 +1372,9 @@ static void SuprnovaTileRange(void *context, INT32 begin, INT32 end)
 				pri[13] = prio;
 				pri[14] = prio;
 				pri[15] = prio;
+#else
+				memset(pri, prio, 16);
+#endif
 
 				dst += 1024;
 				pri += 1024;
@@ -1382,13 +1396,24 @@ static void draw_layer(UINT8 *source, UINT8 *previous, UINT16 *dest, UINT8 *prid
 		? (depth ? SuprnovaTileRange<true, true> : SuprnovaTileRange<false, true>)
 		: (depth ? SuprnovaTileRange<true, false> : SuprnovaTileRange<false, false>);
 	// Each tile owns a disjoint cache rectangle; finish before ROZ reads it.
-	// Only forced full redraws justify waking workers; sparse updates stay serial.
+	// Sparse updates stay serial; dense updates can amortize worker wakeups.
 	if (redraw) SuprnovaThreads.ParallelFor(4096, 1024, callback, &context);
 	else {
-		// Skip unchanged blocks without a second full per-tile scan.
+		UINT32 dirty_blocks = 0;
+		INT32 changed = 0;
 		for (INT32 begin = 0; begin < 4096; begin += 256) {
-			if (memcmp(vram + begin, prev + begin, 256 * sizeof(UINT32)) != 0)
-				callback(&context, begin, begin + 256);
+			if (memcmp(vram + begin, prev + begin, 256 * sizeof(UINT32)) == 0) continue;
+			dirty_blocks |= 1U << (begin / 256);
+			if (changed < 2048) {
+				for (INT32 i = begin; i < begin + 256; i++) changed += vram[i] != prev[i];
+			}
+		}
+		if (changed >= 2048) {
+			SuprnovaThreads.ParallelFor(4096, 1024, callback, &context);
+		} else {
+			for (INT32 block = 0; block < 16; block++) {
+				if (dirty_blocks & (1U << block)) callback(&context, block * 256, (block + 1) * 256);
+			}
 		}
 	}
 }
@@ -1567,7 +1592,15 @@ static void supernova_draw(INT32 *offs, UINT16 *bitmap, UINT8 *flags, UINT16 *db
 static void DrvRecalcPalette()
 {
 	const UINT32 *p = (const UINT32*)DrvPalRAM;
-	if (!use_spc_bright && !use_v3_bright) {
+#if defined(_MSC_VER) && defined(_M_X64)
+	// MSVC vectorizes the direct RGB555 path; other builds retain lookup tables.
+	const bool spc_unmodified = !use_spc_bright || (bright_spc_r == 255 && bright_spc_g == 255 && bright_spc_b == 255);
+	const bool v3_unmodified = !use_v3_bright || (bright_v3_r == 255 && bright_v3_g == 255 && bright_v3_b == 255);
+#else
+	const bool spc_unmodified = !use_spc_bright;
+	const bool v3_unmodified = !use_v3_bright;
+#endif
+	if (spc_unmodified && v3_unmodified) {
 		// Unmodified RGB555 needs no per-channel lookup table.
 		for (INT32 bank = 0; bank < 2; bank++) {
 			for (INT32 i = bank * 0x4000; i < (bank + 1) * 0x4000; i++) {
@@ -1578,22 +1611,35 @@ static void DrvRecalcPalette()
 		return;
 	}
 	for (INT32 bank = 0; bank < 2; bank++) {
-		const INT32 enabled = bank ? use_v3_bright : use_spc_bright;
 		const INT32 red = bank ? bright_v3_r : bright_spc_r;
 		const INT32 green = bank ? bright_v3_g : bright_spc_g;
 		const INT32 blue = bank ? bright_v3_b : bright_spc_b;
+		if (bank ? v3_unmodified : spc_unmodified) {
+			for (INT32 i = bank * 0x4000; i < (bank + 1) * 0x4000; i++) {
+				const UINT32 color = p[i];
+				DrvPalette[i] = ((color & 0x7c00) << 9) | ((color & 0x03e0) << 6) | ((color & 0x001f) << 3);
+			}
+			continue;
+		}
+		if (!(red | green | blue)) {
+			memset(DrvPalette + bank * 0x4000, 0, 0x4000 * sizeof(UINT32));
+			continue;
+		}
 		UINT32 r[32], g[32], b[32];
 
 		// Rebuild each draw so palette-register and save-state changes apply immediately.
 		for (INT32 pen = 0; pen < 32; pen++) {
 			const INT32 value = pen << 3;
-			r[pen] = (enabled ? (red ? (value * (red + 1)) >> 8 : 0) : value) << 16;
-			g[pen] = (enabled ? (green ? (value * (green + 1)) >> 8 : 0) : value) << 8;
-			b[pen] = enabled ? (blue ? (value * (blue + 1)) >> 8 : 0) : value;
+			r[pen] = (red ? (value * (red + 1)) >> 8 : 0) << 16;
+			g[pen] = (green ? (value * (green + 1)) >> 8 : 0) << 8;
+			b[pen] = blue ? (value * (blue + 1)) >> 8 : 0;
 		}
-		for (INT32 i = bank * 0x4000; i < (bank + 1) * 0x4000; i++) {
-			const UINT32 color = p[i];
-			DrvPalette[i] = r[(color >> 10) & 31] | g[(color >> 5) & 31] | b[color & 31];
+		for (INT32 i = bank * 0x4000; i < (bank + 1) * 0x4000; i += 4) {
+			const UINT32 c0 = p[i], c1 = p[i + 1], c2 = p[i + 2], c3 = p[i + 3];
+			DrvPalette[i] = r[(c0 >> 10) & 31] | g[(c0 >> 5) & 31] | b[c0 & 31];
+			DrvPalette[i + 1] = r[(c1 >> 10) & 31] | g[(c1 >> 5) & 31] | b[c1 & 31];
+			DrvPalette[i + 2] = r[(c2 >> 10) & 31] | g[(c2 >> 5) & 31] | b[c2 & 31];
+			DrvPalette[i + 3] = r[(c3 >> 10) & 31] | g[(c3 >> 5) & 31] | b[c3 & 31];
 		}
 	}
 }
@@ -1831,12 +1877,10 @@ static INT32 DrvFrame()
 
 	if (pBurnSoundOut) {
 		// Make sure the buffer is entirely filled.
-		if (pBurnSoundOut) {
-			INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
-			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
-			if (nSegmentLength) {
-				YMZ280BRender(pSoundBuf, nSegmentLength);
-			}
+		INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
+		INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
+		if (nSegmentLength) {
+			YMZ280BRender(pSoundBuf, nSegmentLength);
 		}
 
 		if (LP1 && LP2 && (DrvDips[1] & 2)) { // Cyvern "Headache Filter" dip
@@ -1882,6 +1926,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		BurnTrackballScan(); // vblokbrk / sarukani paddle
 
+		// Serialize the same derived results as the eager implementation.
+		hit_sync();
 		SCAN_VAR(hit);
 		SCAN_VAR(suprnova_alt_enable_sprites);
 		SCAN_VAR(bright_spc_g_trans);
@@ -1973,7 +2019,7 @@ static INT32 CyvernInit()
 	sprite_kludge_x = 0;
 	sprite_kludge_y = 2;
 	speedhack_address = 0x604d3c8;
-	speedhack_pc[0] = 0x402ebd4;
+	speedhack_pc = 0x402ebd4;
 
 	return DrvInit(3 /* USA */);
 }
@@ -2014,7 +2060,7 @@ static INT32 CyvernJInit()
 	sprite_kludge_x = 0;
 	sprite_kludge_y = 2;
 	speedhack_address = 0x604d3c8;
-	speedhack_pc[0] = 0x402ebd4;
+	speedhack_pc = 0x402ebd4;
 
 	return DrvInit(0 /* Japan */);
 }
@@ -2050,7 +2096,7 @@ static INT32 GutsnInit()
 	sprite_kludge_x = -1;
 	sprite_kludge_y = 1;
 	speedhack_address = 0x600c780;
-	speedhack_pc[0] = 0x4022070; //number from mame + 0x02
+	speedhack_pc = 0x4022070; //number from mame + 0x02
 
 	return DrvInit(0 /*japan*/);
 }
@@ -2094,7 +2140,7 @@ static INT32 SengekisInit()
 	sprite_kludge_y = -272;
 
 	speedhack_address = 0x60b74bc;
-	speedhack_pc[0] = 0x60006ec + 2;
+	speedhack_pc = 0x60006ec + 2;
 
 	return DrvInit(2 /*asia*/);
 }
@@ -2137,7 +2183,7 @@ static INT32 SengekisjInit()
 	sprite_kludge_y = -272;
 
 	speedhack_address = 0x60b7380;
-	speedhack_pc[0] = 0x60006ec + 2;
+	speedhack_pc = 0x60006ec + 2;
 
 	return DrvInit(0 /*japan*/);
 }
@@ -2177,7 +2223,7 @@ static INT32 PuzzloopInit()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x6081d38;
-	speedhack_pc[0] = 0x401dab0 + 2;
+	speedhack_pc = 0x401dab0 + 2;
 
 	return DrvInit(1 /*europe*/);
 }
@@ -2246,7 +2292,7 @@ static INT32 PuzzloopjInit()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x6086714;
-	speedhack_pc[0] = 0x401dca0 + 2;
+	speedhack_pc = 0x401dca0 + 2;
 
 	return DrvInit(0 /*japan*/);
 }
@@ -2286,7 +2332,7 @@ static INT32 PuzzloopaInit()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x6085bcc;
-	speedhack_pc[0] = 0x401d9d4 + 2;
+	speedhack_pc = 0x401d9d4 + 2;
 
 	return DrvInit(2 /*asia*/);
 }
@@ -2325,8 +2371,6 @@ static INT32 PuzzloopkInit()
 	sprite_kludge_x = -9;
 	sprite_kludge_y = -1;
 
-//	speedhack_address = 0x6081d38;
-//	speedhack_pc[0] = 0x401dab0 + 2;
 
 	return DrvInit(4 /*korea*/);
 }
@@ -2366,7 +2410,7 @@ static INT32 PuzzloopuInit()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x6085cec;
-	speedhack_pc[0] = 0x401dab0 + 2;
+	speedhack_pc = 0x401dab0 + 2;
 
 	return DrvInit(3 /*usa*/);
 }
@@ -2406,7 +2450,7 @@ static INT32 TeljanInit()
 	sprite_kludge_y = 1;
 
 	speedhack_address = 0x6002fb4;
-	speedhack_pc[0] = 0x401ba32 + 2;
+	speedhack_pc = 0x401ba32 + 2;
 
 	return DrvInit(0 /*japan*/);
 }
@@ -2445,7 +2489,7 @@ static INT32 PanicstrInit()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x60f19e4;
-	speedhack_pc[0] = 0x404e68a + 2;
+	speedhack_pc = 0x404e68a + 2;
 
 	return DrvInit(0 /*japan*/);
 }
@@ -2959,7 +3003,7 @@ static INT32 Galpans2Init()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x60fb6bc;
-	speedhack_pc[0] = 0x4049ae2 + 2;
+	speedhack_pc = 0x4049ae2 + 2;
 
 	return DrvInit(1 /*Europe*/);
 }
@@ -3003,7 +3047,7 @@ static INT32 Galpans2jInit()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x60fb6bc;
-	speedhack_pc[0] = 0x4049ae2 + 2;
+	speedhack_pc = 0x4049ae2 + 2;
 
 	return DrvInit(0 /*Japan*/);
 }
@@ -3047,7 +3091,7 @@ static INT32 Galpans2aInit()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x60fb6bc;
-	speedhack_pc[0] = 0x4049ae2 + 2;
+	speedhack_pc = 0x4049ae2 + 2;
 
 	return DrvInit(2 /*Asia*/);
 }
@@ -3095,7 +3139,7 @@ static INT32 GalpansuInit()
 	sprite_kludge_y = -1;
 
 	speedhack_address = 0x60fb6bc;
-	speedhack_pc[0] = 0x4049ae2 + 2;
+	speedhack_pc = 0x4049ae2 + 2;
 
 	return DrvInit(4 /*Korea*/);
 }
@@ -3206,8 +3250,6 @@ static INT32 JjparadsInit()
 	sprite_kludge_x = 5;
 	sprite_kludge_y = 1;
 
-//	speedhack_address = 0x6000994;
-//	speedhack_pc[0] = 0x4015e84 + 2;
 
 	return DrvInit(0 /*Japan*/);
 }
@@ -3247,8 +3289,6 @@ static INT32 Jjparad2Init()
 	sprite_kludge_x = 5;
 	sprite_kludge_y = 1;
 
-//	speedhack_address = 0x6000994;
-//	speedhack_pc[0] = 0x401620a + 2;
 
 	return DrvInit(0 /*Japan*/);
 }
@@ -3290,7 +3330,7 @@ static INT32 SenknowInit()
 	sprite_kludge_y = 1;
 
 	speedhack_address = 0x60000dc;
-	speedhack_pc[0] = 0x4017dce + 2;
+	speedhack_pc = 0x4017dce + 2;
 
 	return DrvInit(0 /*Japan*/);
 }
@@ -3331,7 +3371,7 @@ static INT32 RyouranInit()
 	sprite_kludge_y = 1;
 
 	speedhack_address = 0x6000a14;
-	speedhack_pc[0] = 0x40182ce + 2;
+	speedhack_pc = 0x40182ce + 2;
 
 	return DrvInit(0 /*Japan*/);
 }

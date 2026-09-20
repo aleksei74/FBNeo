@@ -30,6 +30,17 @@ static INT32 K053247_wraparound;
 
 static INT32 nBpp = 4;
 
+// Derived only from the ten-bit zoom register, not emulated state.
+static INT32 gx_sprite_zoom[1024];
+static INT32 gx_texture_stride[2049];
+static void gx_init_sprite_zoom()
+{
+	gx_sprite_zoom[0] = 0x800000;
+	for (INT32 i = 1; i < 1024; i++) gx_sprite_zoom[i] = (0x400000 + (i >> 1)) / i;
+	// The largest tile is 0x800000 >> 12 = 2048 pixels (zoom register zero).
+	for (INT32 i = 1; i <= 2048; i++) gx_texture_stride[i] = (16 << 19) / i;
+}
+
 static INT32 K053247Flags;
 
 void (*K053247Callback)(INT32 *code, INT32 *color, INT32 *priority);
@@ -71,6 +82,7 @@ void K053247Scan(INT32 nAction)
 
 void K053247Init(UINT8 *gfxrom, UINT8 *gfxromexp, INT32 gfxlen, void (*Callback)(INT32 *code, INT32 *color, INT32 *priority), INT32 flags)
 {
+	gx_init_sprite_zoom();
 	K053247Ram = (UINT8*)BurnMalloc(0x4000);
 	K053247RamMask = 0x0fff;
 
@@ -662,19 +674,6 @@ void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32
 	INT32 shadow_bank_new = (drawmode >> 4) & 0x07;
 	drawmode &= 0x0f;
 
-	// SHDPRISEL (K055555 reg 0x29) selects, per shadow bank, how an object shadow's
-	// priority interacts with the tilemap layers. Field value 2 = compare against
-	// layer priority: suppress the shadow where a tilemap of higher-or-equal priority
-	// has already been drawn (Gokujou Parodius / Fantastic Journey opening curtain --
-	// without this the curtain is wrongly darkened to black each picture change).
-	// Other modes (e.g. 3 = always apply, used by tbyahhoo's dimmed demo background)
-	// ignore layer priority, matching the pre-existing behaviour.
-	INT32 shadow_cmp_pri = 0;
-	if (KonamiIC_K055555InUse) {
-		INT32 shd_field = (K055555ReadRegister(K55_SHD_PRI_SEL) >> ((shadow_bank_new & 3) * 2)) & 3;
-		shadow_cmp_pri = (shd_field == 2);
-	}
-
 	if (!scalex || !scaley) return;
 
 	if (zcode >= 0) {
@@ -702,8 +701,16 @@ void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32
 	if (dst_left > nScreenWidth - 1 || dst_right < 0) return;
 	if (dst_top > nScreenHeight - 1 || dst_bottom < 0) return;
 
-	const INT32 src_stride_x = (16 << 19) / dst_w;
-	const INT32 src_stride_y = (16 << 19) / dst_h;
+	// Only visible shadow tiles consume SHDPRISEL. Field 2 compares layer
+	// priority (e.g. the Gokujou Parodius curtain); other fields ignore it.
+	INT32 shadow_cmp_pri = 0;
+	if (drawmode >= 4 && KonamiIC_K055555InUse) {
+		INT32 shd_field = (K055555ReadRegister(K55_SHD_PRI_SEL) >> ((shadow_bank_new & 3) * 2)) & 3;
+		shadow_cmp_pri = (shd_field == 2);
+	}
+
+	const INT32 src_stride_x = gx_texture_stride[dst_w];
+	const INT32 src_stride_y = gx_texture_stride[dst_h];
 	const INT32 src_offset_x = (dst_left < 0) ? -dst_left : 0;
 	const INT32 src_offset_y = (dst_top < 0) ? -dst_top : 0;
 	const INT32 src_base_x = src_offset_x * src_stride_x;
@@ -719,7 +726,8 @@ void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32
 	if (flipy) flip_mask |= 0xf0;
 
 	const UINT8 *src_base_new = K053246GfxExp + ((code & K053246MaskExp) * 0x100);
-	const UINT32 *pal_base_new = konami_palette32 + ((color % (0x2000 / granularity_new)) * granularity_new);
+	// Wrap the power-of-two color bank within the 8192-entry palette.
+	const UINT32 *pal_base_new = konami_palette32 + ((color * granularity_new) & 0x1fff);
 	UINT32 *dst_ptr_new = konami_bitmap32 + dst_left + (dst_top * nScreenWidth);
 	UINT8 *ozbuf_ptr_new = gx_objzbuf + (dst_top * GX_ZBUFW) + dst_left;
 	UINT8 *szbuf_ptr_new = gx_shdzbuf + ((dst_top * GX_ZBUFW) + dst_left) * 2;
@@ -806,11 +814,16 @@ void k053247_draw_yxloop_gx(
 		{
 			sy = oy + ((zoomy * y + (1<<11)) >> 12);
 			zh = (oy + ((zoomy * (y+1) + (1<<11)) >> 12)) - sy;
+			if (nozoom) zh = 0x10;
+			// Reject a whole offscreen row before decoding its tiles.
+			if (zh <= 0 || sy >= nScreenHeight || sy + zh <= 0) continue;
 
 			for (INT32 x=0; x<width; x++)
 			{
 				sx = ox + ((zoomx * x + (1<<11)) >> 12);
 				zw = (ox + ((zoomx * (x+1) + (1<<11)) >> 12)) - sx;
+				if (nozoom) zw = 0x10;
+				if (zw <= 0 || sx >= nScreenWidth || sx + zw <= 0) continue;
 				tempcode = code;
 
 				if (mirrorx)
@@ -856,8 +869,6 @@ void k053247_draw_yxloop_gx(
 				}
 
 				{
-					if (nozoom) { zw = zh = 0x10; }
-
 					zdrawgfxzoom32GP(
 							tempcode,
 							color,
@@ -900,13 +911,11 @@ void k053247_draw_single_sprite_gxcore(UINT8 *gx_objzbuf, UINT8 *gx_shdzbuf, INT
 		ox = BURN_ENDIAN_SWAP_INT16(gx_spriteram[offs+3]) & 0x3ff;
 
 		scaley = zoomy = BURN_ENDIAN_SWAP_INT16(gx_spriteram[offs+4]) & 0x3ff;
-		if (zoomy) zoomy = (0x400000+(zoomy>>1)) / zoomy;
-		else zoomy = 0x800000;
+		zoomy = gx_sprite_zoom[scaley];
 		if (!(temp4 & 0x4000))
 		{
 			scalex = zoomx = BURN_ENDIAN_SWAP_INT16(gx_spriteram[offs+5]) & 0x3ff;
-			if (zoomx) zoomx = (0x400000+(zoomx>>1)) / zoomx;
-			else zoomx = 0x800000;
+			zoomx = gx_sprite_zoom[scalex];
 		}
 		else { zoomx = zoomy; scalex = scaley; }
 

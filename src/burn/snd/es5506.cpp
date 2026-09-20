@@ -312,8 +312,7 @@ static void compute_tables()
 ***********************************************************************************************/
 
 #define interpolate(sample1, sample2, accum)								\
-		(sample1 * (INT32)(0x800 - (accum & 0x7ff)) +						\
-		 sample2 * (INT32)(accum & 0x7ff)) >> 11;
+		(sample1 + (((sample2 - sample1) * (INT32)(accum & 0x7ff)) >> 11));
 
 
 
@@ -832,7 +831,14 @@ static void generate_samples(INT32 *left, INT32 *right, INT32 samples)
 			voice->control |= CONTROL_STOP0;
 
 		/* generate from the appropriate source */
-		if (!base)
+		if (voice->control & CONTROL_STOPMASK)
+		{
+			// Stopped generators only mask the accumulator and advance envelopes.
+			// Keep the common IRQ handling below, including queued voice IRQs.
+			voice->accum &= voice->accum_mask;
+			if (samples > 0) update_envelopes(voice, samples);
+		}
+		else if (!base)
 		{
 			//logerror("NULL region base %d\n",voice->control >> 14);
 			generate_dummy(voice, base, left, right, samples);
@@ -887,7 +893,9 @@ void ES5506Update(INT16 *outputs, INT32 samples_len)
 	}
 #endif
 
-	INT32 nSamplesNeeded = ((((((chip->sample_rate * 1000) / nBurnFPS) * samples_len) / nBurnSoundLen)) / 10) + 1;
+	// The full-frame check above guarantees samples_len == nBurnSoundLen.
+	// Cancel those factors without changing integer rounding, and widen the product.
+	INT32 nSamplesNeeded = ((INT64)chip->sample_rate * 1000 / nBurnFPS) / 10 + 1;
 	if (nBurnSoundRate < 44100) nSamplesNeeded += 2; // so we don't end up with negative nPosition below
 
 	/* determine left/right source data */
@@ -899,20 +907,19 @@ void ES5506Update(INT16 *outputs, INT32 samples_len)
 	INT32 *pBufL = chip->scratch + 0    + 5;
 	INT32 *pBufR = chip->scratch + 4096 + 5;
 
+	// Upsampling can reuse the same input window at several fractional phases.
+	INT32 cachedSample = -65536;
+	INT32 nLeftSample[4], nRightSample[4];
 	for (INT32 i = (nFractionalPosition & 0xFFFF0000) >> 15; i < (samples_len << 1); i += 2, nFractionalPosition += nSampleSize) {
-		INT32 nLeftSample[4] = {0, 0, 0, 0};
-		INT32 nRightSample[4] = {0, 0, 0, 0};
 		INT32 nTotalLeftSample, nTotalRightSample;
-
-		nLeftSample[0] += BURN_SND_CLIP((INT32)(pBufL[(nFractionalPosition >> 16) - 3]) >> 4);
-		nLeftSample[1] += BURN_SND_CLIP((INT32)(pBufL[(nFractionalPosition >> 16) - 2]) >> 4);
-		nLeftSample[2] += BURN_SND_CLIP((INT32)(pBufL[(nFractionalPosition >> 16) - 1]) >> 4);
-		nLeftSample[3] += BURN_SND_CLIP((INT32)(pBufL[(nFractionalPosition >> 16) - 0]) >> 4);
-
-		nRightSample[0] += BURN_SND_CLIP((INT32)(pBufR[(nFractionalPosition >> 16) - 3]) >> 4);
-		nRightSample[1] += BURN_SND_CLIP((INT32)(pBufR[(nFractionalPosition >> 16) - 2]) >> 4);
-		nRightSample[2] += BURN_SND_CLIP((INT32)(pBufR[(nFractionalPosition >> 16) - 1]) >> 4);
-		nRightSample[3] += BURN_SND_CLIP((INT32)(pBufR[(nFractionalPosition >> 16) - 0]) >> 4);
+		INT32 sourceSample = nFractionalPosition >> 16;
+		if (sourceSample != cachedSample) {
+			for (INT32 tap = 0; tap < 4; tap++) {
+				nLeftSample[tap] = BURN_SND_CLIP(pBufL[sourceSample - 3 + tap] >> 4);
+				nRightSample[tap] = BURN_SND_CLIP(pBufR[sourceSample - 3 + tap] >> 4);
+			}
+			cachedSample = sourceSample;
+		}
 
 		nTotalLeftSample  = INTERPOLATE4PS_16BIT((nFractionalPosition >> 4) & 0x0fff, nLeftSample[0], nLeftSample[1], nLeftSample[2], nLeftSample[3]);
 		nTotalRightSample = INTERPOLATE4PS_16BIT((nFractionalPosition >> 4) & 0x0fff, nRightSample[0], nRightSample[1], nRightSample[2], nRightSample[3]);

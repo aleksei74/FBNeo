@@ -52,17 +52,24 @@ INT32 BurnTimerUpdate(INT32 nCycles)
 //	bprintf(PRINT_NORMAL, _T(" -- Ticks: %08X, cycles %i\n"), nTicksTotal, nCycles);
 
 	while (nTicksDone < nTicksTotal) {
-		INT32 nTimer, nFirstTimer, nCyclesSegment, nTicksSegment;
+		INT32 nTimer, nCyclesSegment, nTicksSegment;
 
 		// Determine which timer fires first
-		nFirstTimer = 0;
-		for (INT32 i = 0; i < TIMER_MAX; i++) {
-			if (nTimerCount[i] < nTimerCount[nFirstTimer]) {
-				nFirstTimer = i;
+#if defined(_MSC_VER) && defined(_M_X64)
+		// Direct minimum wins on MSVC x64; retain other targets' measured path.
+		nTicksSegment = nTimerCount[0];
+		for (INT32 i = 1; i < TIMER_MAX; i++) {
+			if (nTimerCount[i] < nTicksSegment) {
+				nTicksSegment = nTimerCount[i];
 			}
 		}
-
+#else
+		INT32 nFirstTimer = 0;
+		for (INT32 i = 0; i < TIMER_MAX; i++) {
+			if (nTimerCount[i] < nTimerCount[nFirstTimer]) nFirstTimer = i;
+		}
 		nTicksSegment = nTimerCount[nFirstTimer];
+#endif
 
 		if (nTicksSegment > nTicksTotal) {
 			nTicksSegment = nTicksTotal;

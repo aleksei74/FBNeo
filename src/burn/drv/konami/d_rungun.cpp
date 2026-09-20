@@ -28,6 +28,7 @@ static UINT8 *DrvZ80ROM;
 static UINT8 *DrvGfxROM0;
 static UINT8 *DrvGfxROM1;
 static UINT8 *DrvGfxROM2;
+static UINT8 RungunTextCoverage[0x1000];
 static UINT8 *DrvGfxROMExp0;
 static UINT8 *DrvGfxROMExp1;
 static UINT8 *DrvSndROM;
@@ -188,6 +189,8 @@ public:
 	bool Dispatch(INT16 *output, INT32 samples)
 	{
 		if (!active || samples < 96 || samples > 4096) return false;
+		// Update returns immediately while the chip is disabled; avoid waking a worker.
+		if ((K054539Read(chip, 0x22f) & 1) == 0) return false;
 
 		{
 			std::lock_guard<std::mutex> lock(mutex);
@@ -228,6 +231,7 @@ private:
 				samples = length;
 			}
 
+			memset(output, 0, samples * 2 * sizeof(INT16));
 			K054539Update(chip, output, samples);
 
 			{
@@ -515,8 +519,17 @@ static void sound_nmi_callback(INT32 state)
 
 static void k054321_update_volume()
 {
-	float volume = powf(2.0f, (k054321_volume - 40) / 10.0f);
-	if (sound_mute) volume = 0.0f;
+	// Cache only the pure gain calculation, not device routing or mute state.
+	static INT32 cached_level = -1;
+	static float cached_gain = 0.0f;
+	float volume = 0.0f;
+	if (!sound_mute) {
+		if (cached_level != k054321_volume) {
+			cached_gain = powf(2.0f, (k054321_volume - 40) / 10.0f);
+			cached_level = k054321_volume;
+		}
+		volume = cached_gain;
+	}
 
 	float left = (k054321_active & 2) ? volume : 0.0f;
 	float right = (k054321_active & 1) ? volume : 0.0f;
@@ -656,11 +669,16 @@ static void rng_eeprom_write(INT32 di, INT32 cs, INT32 clk)
 	}
 }
 
-static void sound_ctrl_write(UINT8 data)
+static void sound_bank_map(UINT8 data)
 {
-	sound_ctrl = data;
 	ZetMapArea(0x8000, 0xbfff, 0, DrvZ80ROM + 0x10000 + ((data & 7) * 0x4000));
 	ZetMapArea(0x8000, 0xbfff, 2, DrvZ80ROM + 0x10000 + ((data & 7) * 0x4000));
+}
+
+static void sound_ctrl_write(UINT8 data)
+{
+	if ((sound_ctrl ^ data) & 7) sound_bank_map(data);
+	sound_ctrl = data;
 
 	if ((data & 0x10) == 0) {
 		ZetSetIRQLine(0x20, CPU_IRQSTATUS_NONE);
@@ -770,6 +788,33 @@ static UINT16 sysregs_read(INT32 offset)
 	return data;
 }
 
+static UINT16 __fastcall rungun_psac_read_word(UINT32 address)
+{
+	return BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvPsacRAM + video_mux_bank * 0x100000 + (address & 0xfffe))));
+}
+
+static UINT8 __fastcall rungun_psac_read_byte(UINT32 address)
+{
+	return rungun_psac_read_word(address & ~1) >> ((~address & 1) << 3);
+}
+
+static void __fastcall rungun_psac_write_word(UINT32 address, UINT16 data)
+{
+	*((UINT16*)(DrvPsacRAM + video_mux_bank * 0x100000 + (address & 0xfffe))) = BURN_ENDIAN_SWAP_INT16(data);
+}
+
+static void __fastcall rungun_psac_write_byte(UINT32 address, UINT8 data)
+{
+	// Preserve the existing byte-write layout; it differs from read-byte order.
+	DrvPsacRAM[video_mux_bank * 0x100000 + (address & 0xffff)] = data;
+}
+
+static void sprite_bank_map(INT32 bank)
+{
+	// Keep the last page handled: a long access may cross the RAM boundary.
+	SekMapMemory(DrvSprRAM + bank * 0x2000, 0x600000, 0x601bff, MAP_READ | MAP_WRITE);
+}
+
 static void sysregs_write(INT32 offset, UINT16 data, INT32 access_high, INT32 access_low)
 {
 	UINT16 *sys = (UINT16*)DrvSysRegs;
@@ -786,7 +831,9 @@ static void sysregs_write(INT32 offset, UINT16 data, INT32 access_high, INT32 ac
 		case 0x08:
 		if (access_low) {
 			rng_eeprom_write((combined >> 0) & 1, (combined >> 1) & 1, (combined >> 2) & 1);
-			spriteram_bank = (combined >> 7) & 1;
+			INT32 bank = (combined >> 7) & 1;
+			if (bank != spriteram_bank) sprite_bank_map(bank);
+			spriteram_bank = bank;
 			video_mux_bank = ((combined >> 7) & 1) ^ 1;
 		}
 
@@ -824,21 +871,18 @@ static UINT16 __fastcall rungun_main_read_word(UINT32 address)
 
 	if (address >= 0x4c0000 && address <= 0x4c001f) {
 		INT32 offset = (address & 0x1f) >> 1;
+		if (offset < 0x0e) return ccu_regs[offset];
+
 		INT32 scanline = (SekTotalCycles() * 264) / (16000000 / 60);
 		INT32 vct = (scanline - ccu_vc) & 0x1ff;
 
 		if (offset == 0x0e) return (vct >> 8) & 1;
-		if (offset == 0x0f) return vct & 0xff;
-
-		return ccu_regs[offset];
+		return vct & 0xff;
 	}
 
 	if (address >= 0x580000 && address <= 0x58001f) {
 		switch ((address & 0x1f) >> 1)
 		{
-			case 0x08:
-				return 0x0000;
-
 			case 0x0a:
 				return soundlatch[2] << 8;
 		}
@@ -871,6 +915,13 @@ static UINT16 __fastcall rungun_main_read_word(UINT32 address)
 
 static UINT8 __fastcall rungun_main_read_byte(UINT32 address)
 {
+	if (address >= 0x400000 && address <= 0x43ffff) {
+		// The graphics ROM is connected only to the low byte of the word bus.
+		if ((address & 1) == 0) return 0;
+		UINT32 addr = ((address & 0x3ffff) >> 1) + (roz_rombase * 0x20000);
+		return DrvGfxROM0[addr & 0x3fffff];
+	}
+
 	if (address >= 0x480000 && address <= 0x48001f) {
 		return sysregs_read((address & 0x1f) >> 1) >> ((~address & 1) << 3);
 	}
@@ -880,15 +931,11 @@ static UINT8 __fastcall rungun_main_read_byte(UINT32 address)
 
 		switch ((address & 0x1f) >> 1)
 		{
-			case 0x08:
-				return 0;
-
 			case 0x0a: {
 				UINT8 data = soundlatch[2];
-				UINT32 pc = SekGetPC(-1);
 
 				if ((DrvDips[2] & 0x01) && irq5_enable && (data & 0x80)) {
-					switch (pc)
+					switch (SekGetPC(-1))
 					{
 						case 0x025e40: // EAA 1993 10.8
 						case 0x025b80: // EAA 1993 10.4
@@ -1079,10 +1126,12 @@ static void DrvDoReset()
 
 	SekOpen(0);
 	SekReset();
+	sprite_bank_map(0);
 	SekClose();
 
 	ZetOpen(0);
 	ZetReset();
+	sound_bank_map(0);
 	sound_ctrl_write(0);
 	ZetClose();
 
@@ -1116,6 +1165,8 @@ static void DrvDoReset()
 	memset(DrvDualRightBitmap, 0, 384 * 224 * sizeof(UINT32));
 	DrvPrevDips[0] = DrvDips[0];
 	DrvPrevDips[1] = DrvDips[1];
+	// The Monitors DIP can enable dual output for the ordinary ROM sets too.
+	RungunPsacThread.Configure(RungunDualOutputEnabled() && RungunMulticoreEnabled());
 }
 
 static INT32 MemIndex()
@@ -1154,6 +1205,18 @@ static INT32 MemIndex()
 	return 0;
 }
 
+static void RungunBuildTextCoverage()
+{
+	// Decoded text ROM is immutable; pen zero never writes a destination pixel.
+	for (INT32 code = 0; code < 0x1000; code++) {
+		UINT8 coverage = 0;
+		for (INT32 pixel = 0; pixel < 64; pixel++) {
+			coverage |= DrvGfxROM2[code * 64 + pixel];
+		}
+		RungunTextCoverage[code] = coverage;
+	}
+}
+
 static INT32 DrvGfxDecode()
 {
 	static INT32 Plane[4] = { 0, 1, 2, 3 };
@@ -1180,6 +1243,7 @@ static INT32 DrvGfxDecode()
 	GfxDecode(0x4000, 4, 16, 16, Plane, XOffs, YOffs, 16*16*4, tmp, DrvGfxROMExp0);
 	memcpy(tmp, DrvGfxROM2, 0x020000);
 	GfxDecode(0x1000, 4, 8, 8, Plane, XOffs8, YOffs8, 8*8*4, tmp, DrvGfxROM2);
+	RungunBuildTextCoverage();
 
 	BurnFree(sprtmp);
 	BurnFree(tmp);
@@ -1277,6 +1341,12 @@ static INT32 DrvInitCommon(INT32 dual)
 	SekSetReadByteHandler(0, rungun_main_read_byte);
 	SekSetWriteWordHandler(0, rungun_main_write_word);
 	SekSetWriteByteHandler(0, rungun_main_write_byte);
+	// Keep boundary-crossing long accesses in the original handler.
+	SekMapHandler(1, 0x6c0000, 0x6cfbff, MAP_READ | MAP_WRITE);
+	SekSetReadWordHandler(1, rungun_psac_read_word);
+	SekSetReadByteHandler(1, rungun_psac_read_byte);
+	SekSetWriteWordHandler(1, rungun_psac_write_word);
+	SekSetWriteByteHandler(1, rungun_psac_write_byte);
 	SekClose();
 
 	ZetInit(0);
@@ -1288,6 +1358,9 @@ static INT32 DrvInitCommon(INT32 dual)
 	ZetMapArea(0xc000, 0xdfff, 0, DrvZ80RAM);
 	ZetMapArea(0xc000, 0xdfff, 1, DrvZ80RAM);
 	ZetMapArea(0xc000, 0xdfff, 2, DrvZ80RAM);
+	// Only full RAM pages: the preceding pages also contain sound registers.
+	ZetMapMemory(DrvZ80ExtRAM0 + 0xd0, 0xe300, 0xe3ff, MAP_READ | MAP_WRITE);
+	ZetMapMemory(DrvZ80ExtRAM1 + 0xd0, 0xe700, 0xe7ff, MAP_READ | MAP_WRITE);
 	ZetSetReadHandler(rungun_sound_read);
 	ZetSetWriteHandler(rungun_sound_write);
 	ZetClose();
@@ -1320,7 +1393,6 @@ static INT32 DrvInitCommon(INT32 dual)
 	K054539SetRoute(1, BURN_SND_K054539_ROUTE_2, 0.60, BURN_SND_ROUTE_LEFT);
 	RungunSoundThread0.Configure();
 	RungunSoundThread1.Configure();
-	RungunPsacThread.Configure(is_dual_screen && RungunMulticoreEnabled());
 
 	RungunCheckScreenSize();
 	DrvDoReset();
@@ -1371,20 +1443,25 @@ static void DrvRenderScreen(INT32 bank, INT32 xoffs)
 		K053936Draw(bank, (UINT16*)DrvK053936Ctrl, (UINT16*)DrvK053936Line, K053936_DRAW_CLIP | 1);
 	}
 
-	UINT16 *vram = (UINT16*)(DrvTtlRAM + (bank * 0x2000));
-	UINT8 *lvram = (UINT8*)vram;
+	UINT8 *lvram = DrvTtlRAM + (bank * 0x2000);
+	// Include partially visible tiles; compute horizontal clipping once per draw.
+	const INT64 column_origin = (INT64)RNG_VISIBLE_X - xoffs;
+	const INT64 first_visible = column_origin > 0 ? column_origin / 8 : 0;
+	const INT64 end_visible = (INT64)nScreenWidth + column_origin + 7;
+	const INT32 first_col = first_visible < 64 ? (INT32)first_visible : 64;
+	const INT32 end_col = end_visible <= 0 ? 0 : (end_visible / 8 < 64 ? (INT32)(end_visible / 8) : 64);
 
 	for (INT32 row = 0; row < 32; row++) {
 		INT32 sy = row * 8 - RNG_VISIBLE_Y;
 		if (sy < -7 || sy >= nScreenHeight) continue;
 
-		for (INT32 col = 0; col < 64; col++) {
+		for (INT32 col = first_col; col < end_col; col++) {
 			INT32 sx = col * 8 - RNG_VISIBLE_X + xoffs;
-			if (sx < -7 || sx >= nScreenWidth) continue;
 
 			INT32 offs = row * 64 + col;
 			INT32 attr = (lvram[(offs << 2) + 0] & 0xf0) >> 4;
 			INT32 code = ((lvram[(offs << 2) + 0] & 0x0f) << 8) | lvram[(offs << 2) + 2];
+			if (!RungunTextCoverage[code]) continue;
 			UINT8 *gfx = DrvGfxROM2 + (code * 0x40);
 
 			if (sx >= 0 && sx + 7 < nScreenWidth && sy >= 0 && sy + 7 < nScreenHeight) {
@@ -1419,6 +1496,16 @@ static void DrvRenderScreen(INT32 bank, INT32 xoffs)
 	}
 }
 
+static void RungunClearBitmaps(UINT32 color)
+{
+	if (color == 0 && konami_bitmap32 && konami_priority_bitmap) {
+		memset(konami_bitmap32, 0, nScreenWidth * nScreenHeight * sizeof(UINT32));
+		memset(konami_priority_bitmap, 0, nScreenWidth * nScreenHeight);
+	} else {
+		KonamiClearBitmaps(color);
+	}
+}
+
 static void DrvRenderDualScreen()
 {
 	INT32 screen_width = nScreenWidth;
@@ -1428,13 +1515,18 @@ static void DrvRenderDualScreen()
 	nScreenWidth = 384;
 	GenericTilesSetClipRaw(0, 384, 0, 224);
 
-	KonamiClearBitmaps(BurnHighCol(0, 0, 0, 0));
+	RungunClearBitmaps(BurnHighCol(0, 0, 0, 0));
 	DrvRenderScreen(bank, 0);
 	memcpy(bank ? DrvDualRightBitmap : DrvDualLeftBitmap, konami_bitmap32, 384 * 224 * sizeof(UINT32));
 
 	nScreenWidth = screen_width;
 	GenericTilesSetClipRaw(0, nScreenWidth, 0, nScreenHeight);
-	KonamiClearBitmaps(BurnHighCol(0, 0, 0, 0));
+	if (nScreenWidth == 768 && nScreenHeight == 224 && konami_priority_bitmap && konami_bitmap32) {
+		// Composition below overwrites every color pixel, but not priority data.
+		memset(konami_priority_bitmap, 0, nScreenWidth * nScreenHeight);
+	} else {
+		RungunClearBitmaps(BurnHighCol(0, 0, 0, 0));
+	}
 
 	for (INT32 y = 0; y < 224; y++) {
 		UINT32 *dst = konami_bitmap32 + (y * nScreenWidth);
@@ -1451,7 +1543,7 @@ static INT32 DrvDraw()
 	if (RungunDualOutputEnabled() && nScreenWidth >= 768) {
 		DrvRenderDualScreen();
 	} else {
-		KonamiClearBitmaps(BurnHighCol(0, 0, 0, 0));
+		RungunClearBitmaps(BurnHighCol(0, 0, 0, 0));
 		DrvRenderScreen(single_screen_mode ? 0 : (nCurrentFrame & 1), 0);
 	}
 
@@ -1523,13 +1615,17 @@ static INT32 DrvFrame()
 
 	if (pBurnSoundOut && nBurnSoundLen <= 4096) {
 		INT32 samples = nBurnSoundLen * 2;
-		memset(RungunSoundBuffer0, 0, samples * sizeof(INT16));
-		memset(RungunSoundBuffer1, 0, samples * sizeof(INT16));
 
 		threaded_sound0 = RungunSoundThread0.Dispatch(RungunSoundBuffer0, nBurnSoundLen);
 		threaded_sound1 = RungunSoundThread1.Dispatch(RungunSoundBuffer1, nBurnSoundLen);
-		if (!threaded_sound0) K054539Update(0, RungunSoundBuffer0, nBurnSoundLen);
-		if (!threaded_sound1) K054539Update(1, RungunSoundBuffer1, nBurnSoundLen);
+		if (!threaded_sound0) {
+			memset(RungunSoundBuffer0, 0, samples * sizeof(INT16));
+			K054539Update(0, RungunSoundBuffer0, nBurnSoundLen);
+		}
+		if (!threaded_sound1) {
+			memset(RungunSoundBuffer1, 0, samples * sizeof(INT16));
+			K054539Update(1, RungunSoundBuffer1, nBurnSoundLen);
+		}
 		buffered_sound = true;
 	}
 
@@ -1544,9 +1640,7 @@ static INT32 DrvFrame()
 
 			for (INT32 i = 0; i < nBurnSoundLen * 2; i++) {
 				INT32 mixed = RungunSoundBuffer0[i] + RungunSoundBuffer1[i];
-				if (mixed > 32767) mixed = 32767;
-				if (mixed < -32768) mixed = -32768;
-
+				// Gain is 8: the INT16 sum fits INT32 after scaling; clip once.
 				INT32 sample = mixed * RUNGUN_SOUND_GAIN;
 				if (sample > 32767) sample = 32767;
 				if (sample < -32768) sample = -32768;
@@ -1613,6 +1707,16 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(rng_eeprom_addr);
 		SCAN_VAR(rng_eeprom_shift);
 		SCAN_VAR(nExtraCycles);
+	}
+
+	if (nAction & ACB_WRITE) {
+		SekOpen(0);
+		sprite_bank_map(spriteram_bank);
+		SekClose();
+		// CPU memory maps are not part of the serialized Z80 state.
+		ZetOpen(0);
+		sound_bank_map(sound_ctrl);
+		ZetClose();
 	}
 
 	return 0;

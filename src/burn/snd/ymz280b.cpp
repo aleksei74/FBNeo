@@ -299,7 +299,8 @@ inline static void decode_adpcm()
 	}
 	channelInfo->nSample = nSample;
 
-	channelInfo->nStep = channelInfo->nStep * YMZ280BStepShift[nDelta & 7] / 256;
+	// Reset, key-on and loop restore keep the step in [0, 0x6000].
+	channelInfo->nStep = (UINT32)channelInfo->nStep * YMZ280BStepShift[nDelta & 7] / 256;
 	if (channelInfo->nStep > 0x6000) {
 		channelInfo->nStep = 0x6000;
 	} else {
@@ -332,7 +333,17 @@ inline static void decode_none()
 	channelInfo->nSample=0;
 }
 
-static void (*decode_table[4])() = { decode_none, decode_adpcm, decode_pcm8, decode_pcm16 };
+template<INT32 Mode>
+inline static void DecodeSample()
+{
+	// Specialize linear rendering; cubic keeps the shared decoder.
+	switch (Mode < 0 ? channelInfo->nMode : Mode) {
+		case 0: decode_none(); break;
+		case 1: decode_adpcm(); break;
+		case 2: decode_pcm8(); break;
+		case 3: decode_pcm16(); break;
+	}
+}
 
 inline static void ComputeOutput_Linear()
 {
@@ -362,6 +373,7 @@ inline static void ComputeOutput_Cubic()
 	*buf++ += nSample * channelInfo->nVolumeRight;
 }
 
+template<INT32 Mode>
 inline static void RenderADPCM_Linear()
 {
 	while (nCount--) {
@@ -382,7 +394,7 @@ inline static void RenderADPCM_Linear()
 					return;
 				} else {
 
-					decode_table[YMZ280BChannelInfo[nActiveChannel].nMode](); // decode one sample
+					DecodeSample<Mode>();
 
 					// Advance sample position
 					channelInfo->nFractionalPosition -= 0x01000000;
@@ -399,6 +411,7 @@ inline static void RenderADPCM_Linear()
 	}
 }
 
+template<INT32 Mode>
 inline static void RenderADPCMLoop_Linear()
 {
 	while (nCount--) {
@@ -420,7 +433,7 @@ inline static void RenderADPCMLoop_Linear()
 					}
 				}
 
-				decode_table[YMZ280BChannelInfo[nActiveChannel].nMode](); // decode one sample
+				DecodeSample<Mode>();
 
 				// Advance sample position
 				channelInfo->nFractionalPosition -= 0x01000000;
@@ -452,7 +465,7 @@ inline static void RenderADPCM_Cubic()
 				return;
 			} else {
 
-				decode_table[YMZ280BChannelInfo[nActiveChannel].nMode](); // decode one sample
+				DecodeSample<-1>();
 
 				// Advance sample position
 				channelInfo->nFractionalPosition -= 0x01000000;
@@ -486,7 +499,7 @@ inline static void RenderADPCMLoop_Cubic()
 				}
 			}
 
-			decode_table[YMZ280BChannelInfo[nActiveChannel].nMode](); // decode one sample
+			DecodeSample<-1>();
 
 			// Advance sample position
 			channelInfo->nFractionalPosition -= 0x01000000;
@@ -500,6 +513,24 @@ inline static void RenderADPCMLoop_Cubic()
 	}
 }
 
+template<INT32 Mode>
+inline static void RenderChannel()
+{
+	if (our_interpolation < 3) {
+		if (channelInfo->bEnabled && channelInfo->bLoop) {
+			RenderADPCMLoop_Linear<Mode>();
+		} else {
+			RenderADPCM_Linear<Mode>();
+		}
+	} else {
+		if (channelInfo->bEnabled && channelInfo->bLoop) {
+			RenderADPCMLoop_Cubic();
+		} else {
+			RenderADPCM_Cubic();
+		}
+	}
+}
+
 INT32 YMZ280BRender(INT16* pSoundBuf, INT32 nSegmentLength)
 {
 #if defined FBNEO_DEBUG
@@ -507,6 +538,7 @@ INT32 YMZ280BRender(INT16* pSoundBuf, INT32 nSegmentLength)
 #endif
 
 	memset(pBuffer, 0, nSegmentLength * 2 * sizeof(INT32));
+	bool silent = true;
 
 	for (nActiveChannel = 0; nActiveChannel < 8; nActiveChannel++) {
 		nCount = nSegmentLength;
@@ -514,22 +546,35 @@ INT32 YMZ280BRender(INT16* pSoundBuf, INT32 nSegmentLength)
 		channelInfo = &YMZ280BChannelInfo[nActiveChannel];
 
 		if (channelInfo->bPlaying) {
-			if (our_interpolation < 3) {
-				if (channelInfo->bEnabled && channelInfo->bLoop) {
-					RenderADPCMLoop_Linear();
-				} else {
-					RenderADPCM_Linear();
-				}
-			} else {
-				if (channelInfo->bEnabled && channelInfo->bLoop) {
-					RenderADPCMLoop_Cubic();
-				} else {
-					RenderADPCM_Cubic();
-				}
+			silent = false;
+			switch (channelInfo->nMode) {
+				case 0: RenderChannel<0>(); break;
+				case 1: RenderChannel<1>(); break;
+				case 2: RenderChannel<2>(); break;
+				case 3: RenderChannel<3>(); break;
+				default: RenderChannel<-1>(); break;
 			}
 		} else {
+			if (channelInfo->nSample != 0) silent = false;
 			RampChannel();
 		}
+	}
+
+	// Stopped, fully ramped-down channels leave the mixer buffer at zero.
+	if (silent) {
+		memset(pSoundBuf, 0, nSegmentLength * 2 * sizeof(INT16));
+		return 0;
+	}
+
+	// The usual stereo routing needs no per-sample route tests.
+	if (YMZ280BRouteDirs[0] == BURN_SND_ROUTE_LEFT && YMZ280BRouteDirs[1] == BURN_SND_ROUTE_RIGHT) {
+		for (INT32 i = 0; i < nSegmentLength; i++) {
+			INT32 nLeftSample = (INT32)((pBuffer[(i << 1) + 0] >> 8) * YMZ280BVolumes[0]);
+			INT32 nRightSample = (INT32)((pBuffer[(i << 1) + 1] >> 8) * YMZ280BVolumes[1]);
+			pSoundBuf[(i << 1) + 0] = BURN_SND_CLIP(nLeftSample);
+			pSoundBuf[(i << 1) + 1] = BURN_SND_CLIP(nRightSample);
+		}
+		return 0;
 	}
 
 	for (INT32 i = 0; i < nSegmentLength; i++) {

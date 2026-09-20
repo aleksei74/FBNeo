@@ -147,8 +147,10 @@ void K053936PredrawTiles2(INT32 chip, UINT8 *gfx)
 	UINT16 *buf = (UINT16*)rambuf[chip];
 	UINT32 *ram32 = (UINT32*)ram;
 	UINT32 *buf32 = (UINT32*)buf;
+	const INT32 tile_count = (nWidth[chip] / 16) * (nHeight[chip] / 16);
+	if (memcmp(ram32, buf32, tile_count * sizeof(UINT32)) == 0) return;
 
-	for (INT32 i = 0; i < (nWidth[chip] / 16) * (nHeight[chip] / 16); i++)
+	for (INT32 i = 0; i < tile_count; i++)
 	{
 		UINT32 tiledata = ram32[i];
 
@@ -349,6 +351,20 @@ static inline void copy_roz16(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 			UINT16 *src = BurnBitmapGetBitmap(1) + (((scrolly + sy) & hmask) * clip_maxx);
 			UINT16 *dst = pTransDraw + (sy * nScreenWidth);
 
+			// At most two contiguous spans for a wrapped, unscaled opaque row.
+			if (!transp_mask && clip_maxx > 0 && clip_maxx >= nScreenWidth && (clip_maxx & wmask) == 0) {
+				INT32 sx = 0;
+				INT32 source_x = scrollx & wmask;
+				while (sx < nScreenWidth) {
+					INT32 count = clip_maxx - source_x;
+					if (count > nScreenWidth - sx) count = nScreenWidth - sx;
+					memcpy(dst + sx, src + source_x, count * sizeof(UINT16));
+					sx += count;
+					source_x = 0;
+				}
+				memset(pri, priority, nScreenWidth);
+				continue;
+			}
 			for (INT32 sx = 0; sx < nScreenWidth; sx++) {
 				INT32 pxl = src[(scrollx + sx) & wmask];
 				if (transp_mask && ((pxl & transp_mask) == transp)) continue;
@@ -408,7 +424,43 @@ static inline void copy_roz16(INT32 chip, INT32 minx, INT32 maxx, INT32 miny, IN
 			}
 		} else {
 			if (wrap) {
-				for (INT32 x = minx; x < maxx; x++, cx+=incxx, cy+=incxy, dst++, pri++) {
+				if (incxy == 0) {
+					const UINT16 *row = src + (((cy >> 16) & hmask) * width);
+					INT32 x = minx;
+					for (; x + 2 <= maxx; x += 2, dst += 2, pri += 2) {
+						dst[0] = row[(cx >> 16) & wmask] & 0x7fff;
+						cx += incxx;
+						dst[1] = row[(cx >> 16) & wmask] & 0x7fff;
+						cx += incxx;
+						pri[0] = priority;
+						pri[1] = priority;
+					}
+					for (; x < maxx; x++, cx+=incxx, dst++, pri++) {
+						*dst = row[(cx >> 16) & wmask] & 0x7fff;
+						*pri = priority;
+					}
+					continue;
+				}
+				INT32 x = minx;
+				for (; x + 4 <= maxx; x += 4, dst += 4, pri += 4) {
+					dst[0] = src[(((cy >> 16) & hmask) * width) + ((cx >> 16) & wmask)] & 0x7fff;
+					cx += incxx;
+					cy += incxy;
+					dst[1] = src[(((cy >> 16) & hmask) * width) + ((cx >> 16) & wmask)] & 0x7fff;
+					cx += incxx;
+					cy += incxy;
+					dst[2] = src[(((cy >> 16) & hmask) * width) + ((cx >> 16) & wmask)] & 0x7fff;
+					cx += incxx;
+					cy += incxy;
+					dst[3] = src[(((cy >> 16) & hmask) * width) + ((cx >> 16) & wmask)] & 0x7fff;
+					cx += incxx;
+					cy += incxy;
+					pri[0] = priority;
+					pri[1] = priority;
+					pri[2] = priority;
+					pri[3] = priority;
+				}
+				for (; x < maxx; x++, cx+=incxx, cy+=incxy, dst++, pri++) {
 					*dst = src[(((cy >> 16) & hmask) * width) + ((cx >> 16) & wmask)] & 0x7fff;
 					*pri = priority;
 				}

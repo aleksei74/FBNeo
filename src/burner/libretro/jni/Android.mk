@@ -36,8 +36,7 @@ include $(LOCAL_PATH)/../Makefile.common
 include $(LOCAL_PATH)/../Makefile.all
 
 COMMON_FLAGS := -DUSE_SPEEDHACKS -D__LIBRETRO__ -DANDROID -Wno-write-strings -DLSB_FIRST \
-	-DFBNEO_NAMCOS_OPENGL -DFBNEO_NAMCOS_OPENGL_ES \
-	-DFBNEO_NAMCOS_OPENGL_ES2 $(FBNEO_DEFINES)
+	-DFBNEO_NAMCOS_OPENGL -DFBNEO_NAMCOS_OPENGL_ES2 $(FBNEO_DEFINES)
 
 # Build shared library including static C module
 include $(CLEAR_VARS)
@@ -50,7 +49,6 @@ LOCAL_LDFLAGS      := -Wl,-version-script=$(MAIN_FBNEO_DIR)/burner/libretro/link
 LOCAL_LDLIBS       := $(LDFLAGS) -lEGL -lGLESv2
 LOCAL_CPP_FEATURES := exceptions rtti
 LOCAL_DISABLE_FORMAT_STRING_CHECKS := true
-LOCAL_SHORT_COMMANDS := true
 LOCAL_ARM_MODE := arm
 
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)

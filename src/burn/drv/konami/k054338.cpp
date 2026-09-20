@@ -90,6 +90,12 @@ INT32 K054338_read_register(INT32 reg)
 
 void K054338_update_all_shadows(INT32 rushingheroes_hack)
 {
+	// Fixed shadows do not consume the programmable RGB values.
+	if (rushingheroes_hack) {
+		reset_shadows();
+		return;
+	}
+
 	INT32 i, d;
 
 	for (i = 0; i < 9; i++)
@@ -98,10 +104,6 @@ void K054338_update_all_shadows(INT32 rushingheroes_hack)
 		if (d >= 0x100)
 			d -= 0x200;
 		m_shd_rgb[i] = d;
-	}
-
-	if (rushingheroes_hack) {
-		reset_shadows();
 	}
 }
 
@@ -114,19 +116,16 @@ void K054338_export_config(INT32 **shd_rgb)
 void K054338_fill_solid_bg()
 {
 	UINT32 bgcolor;
-	UINT32 *pLine;
-	INT32 x, y;
 
 	bgcolor = (K054338_read_register(K338_REG_BGC_R)&0xff)<<16;
 	bgcolor |= K054338_read_register(K338_REG_BGC_GB);
 
-	/* and fill the screen with it */
-	for (y = 0; y < nScreenHeight; y++)
-	{
-		pLine = konami_bitmap32;
-		pLine += (nScreenWidth*y);
-		for (x = 0; x < nScreenWidth; x++)
-			*pLine++ = bgcolor;
+	if (nScreenWidth <= 0 || nScreenHeight <= 0) return;
+	const size_t pixels = (size_t)nScreenWidth * nScreenHeight;
+	if (bgcolor == 0) {
+		memset(konami_bitmap32, 0, pixels * sizeof(UINT32));
+	} else {
+		for (size_t i = 0; i < pixels; i++) konami_bitmap32[i] = bgcolor;
 	}
 }
 
@@ -168,6 +167,11 @@ void K054338_fill_backcolor(INT32 palette_offset, INT32 mode) // (see p.67)
 	if (!mode)
 	{
 		// single color fill
+		// Preserve the legacy padded-row path when the visible width is unaligned.
+		if (bgcolor == 0 && clipw == dst_pitch && dst_pitch > 0 && cliph > 0) {
+			memset(dst_ptr, 0, (size_t)dst_pitch * cliph * sizeof(UINT32));
+			return;
+		}
 		dst_ptr += clipw;
 		i = clipw = -clipw;
 		do
