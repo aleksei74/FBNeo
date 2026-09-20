@@ -6540,6 +6540,15 @@
 		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
 		<driver status="good"/>
 	</game>
+	<game name="drapuzzch" sourcefile="nes/d_nes.cpp">
+		<comment>Homebrew</comment>
+		<description>Dragon's Puzzle Challenge (HB)</description>
+		<year>2026</year>
+		<manufacturer>BMO Studios</manufacturer>
+		<rom name="Dragon's Puzzle Challenge (2026)(BMO Studios).nes" size="131088" crc="283ef285"/>
+		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
+		<driver status="good"/>
+	</game>
 	<game name="draiocht" sourcefile="nes/d_nes.cpp">
 		<comment>Homebrew</comment>
 		<description>Draiocht (HB)</description>
@@ -8758,6 +8767,15 @@
 		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
 		<driver status="good"/>
 	</game>
+	<game name="getittog" sourcefile="nes/d_nes.cpp">
+		<comment>Homebrew</comment>
+		<description>Get It Together! (HB)</description>
+		<year>2026</year>
+		<manufacturer>IMP Games</manufacturer>
+		<rom name="Get It Together! (2026)(IMP Games).nes" size="524304" crc="c05c17f1"/>
+		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
+		<driver status="good"/>
+	</game>
 	<game name="getemgary" sourcefile="nes/d_nes.cpp">
 		<comment>Homebrew</comment>
 		<description>Get'Em Gary (HB)</description>
@@ -10871,6 +10889,15 @@
 		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
 		<driver status="good"/>
 	</game>
+	<game name="jacobselev" sourcefile="nes/d_nes.cpp">
+		<comment>Homebrew</comment>
+		<description>Jacob's Elevator (HB)</description>
+		<year>2026</year>
+		<manufacturer>gamma_correction</manufacturer>
+		<rom name="Jacob's Elevator (2026)(gamma_correction).nes" size="40976" crc="d8bb43f6"/>
+		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
+		<driver status="good"/>
+	</game>
 	<game name="jajamgeke" cloneof="jajamgek" romof="jajamgek" sourcefile="nes/d_nes.cpp">
 		<comment>Hack</comment>
 		<description>Jajamaru Gekimaden: Maboroshi no Kinmajou (Hack, English)</description>
@@ -12190,6 +12217,15 @@
 		<year>1992</year>
 		<manufacturer>Acclaim Entertainment</manufacturer>
 		<rom name="Krusty's Fun House (USA)(1992)(Acclaim).nes" size="393232" crc="85c86151"/>
+		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
+		<driver status="good"/>
+	</game>
+	<game name="kubo3" sourcefile="nes/d_nes.cpp">
+		<comment>Homebrew</comment>
+		<description>KUBO 3 (HB, Rev. J)</description>
+		<year>2022</year>
+		<manufacturer>SJ Games</manufacturer>
+		<rom name="KUBO 3 Rev J (2022)(SJ Games).nes" size="524304" crc="0f1462fb"/>
 		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
 		<driver status="good"/>
 	</game>
@@ -13671,6 +13707,15 @@
 		<year>1989</year>
 		<manufacturer>Milton Bradley</manufacturer>
 		<rom name="Marble Madness (USA)(1989)(Milton Bradley).nes" size="131088" crc="f9282f28"/>
+		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
+		<driver status="good"/>
+	</game>
+	<game name="marianaseq" sourcefile="nes/d_nes.cpp">
+		<comment>Homebrew</comment>
+		<description>Mariana Sequence, The (HB, v1.1)</description>
+		<year>2026</year>
+		<manufacturer>CGT Games</manufacturer>
+		<rom name="Mariana Sequence, The v1.1(HB) (2026)(CGT Games).nes" size="524304" crc="63307f67"/>
 		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
 		<driver status="good"/>
 	</game>
@@ -16327,6 +16372,15 @@
 		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
 		<driver status="good"/>
 	</game>
+	<game name="owareabapa" sourcefile="nes/d_nes.cpp">
+		<comment>Homebrew</comment>
+		<description>OWARE: Abapa (HB)</description>
+		<year>2026</year>
+		<manufacturer>Jiucai Baobao</manufacturer>
+		<rom name="OWARE - Abapa (2026)(Jiucai Baobao).nes" size="40976" crc="89983b27"/>
+		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
+		<driver status="good"/>
+	</game>
 	<game name="powc" cloneof="pow" romof="pow" sourcefile="nes/d_nes.cpp">
 		<comment>Hack</comment>
 		<description>P.O.W. - Prisoners of War (Hack, Spanish v2.0)</description>
@@ -17496,6 +17550,15 @@
 		<year>2019</year>
 		<manufacturer>Piko Interactive</manufacturer>
 		<rom name="Pyramids of Ra (2019)(Piko Interactive).nes" size="393232" crc="0bcee664"/>
+		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
+		<driver status="good"/>
+	</game>
+	<game name="pyrga" sourcefile="nes/d_nes.cpp">
+		<comment>Homebrew</comment>
+		<description>Pyrga (HB, v1.46)</description>
+		<year>2026</year>
+		<manufacturer>Jiucai Baobao</manufacturer>
+		<rom name="Pyrga v1.46 (2026)(Jiucai Baobao).nes" size="32784" crc="917c1747"/>
 		<video type="raster" orientation="horizontal" width="256" height="224" aspectx="256" aspecty="224"/>
 		<driver status="good"/>
 	</game>
