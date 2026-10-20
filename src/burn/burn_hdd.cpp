@@ -1,10 +1,13 @@
 // Burn - hard disk image module (CHD via libchdr, or raw dumps)
 
+// Load standard headers before burnint.h installs the Libretro stdio macros.
+#include <cstdio>
+#include <map>
+#include <vector>
+
 #include "burnint.h"
 #include "burn_hdd.h"
 #include "chd.h"
-#include <map>
-#include <vector>
 
 #ifdef __LIBRETRO__
 #include <streams/file_stream_transforms.h>

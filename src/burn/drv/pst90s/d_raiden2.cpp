@@ -1,6 +1,11 @@
 // FB Neo Raiden II driver module
 // Based on MAME driver Olivier Galibert, Angelo Salese, David Haywood, Tomasz Slanina
 
+// Load standard headers before tiles_generic.h installs Libretro stdio macros.
+#include <cstdio>
+#include <cstdlib>
+#include <algorithm>
+
 #include "tiles_generic.h"
 #include "nec_intf.h"
 #include "z80_intf.h"
