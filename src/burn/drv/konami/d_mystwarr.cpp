@@ -4389,3 +4389,52 @@ struct BurnDriver BurnDrvDadandrn = {
 	DadandrnInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Gaiapolis (Korean Translation)
+
+static struct BurnRomInfo gaiapolskRomDesc[] = {
+	{ "123e07k.24m",	0x100000, 0x0e72d087, 1 }, //  0 maincpu
+	{ "123e09k.19l",	0x100000, 0x0543c876, 1 }, //  1
+	{ "123jaf11k.19p",	0x040000, 0x28b62f0a, 1 }, //  2
+	{ "123jaf12k.17p",	0x040000, 0x08aad0d3, 1 }, //  3
+
+	{ "123e13.9c",		0x040000, 0xe772f822, 2 }, //  4 soundcpu
+
+	{ "123e16k.2t",		0x100000, 0x3dfb2ac7, 3 }, //  5 gfx1
+	{ "123e17k.2x",		0x100000, 0x07702a7a, 3 }, //  6
+
+	{ "123e19k.34u",	0x200000, 0xcd4f11d4, 4 }, //  7 gfx2
+	{ "123e21k.34y",	0x200000, 0x2df6b09a, 4 }, //  8
+	{ "123e18k.36u",	0x200000, 0x129eb45e, 4 }, //  9
+	{ "123e20k.36y",	0x200000, 0x8c933fba, 4 }, // 10
+
+	{ "123e04.32n",		0x080000, 0x0d4d5b8b, 5 }, // 11 gfx3
+	{ "123e05.29n",		0x080000, 0x7d123f3e, 5 }, // 12
+	{ "123e06.26n",		0x080000, 0xfa50121e, 5 }, // 13
+
+	{ "123e01.36j",		0x020000, 0x9dbc9678, 6 }, // 14 gfx4
+	{ "123e02.34j",		0x040000, 0xb8e3f500, 6 }, // 15
+	{ "123e03.36m",		0x040000, 0xfde4749f, 6 }, // 16
+
+	{ "123e14.2g",		0x200000, 0x65dfd3ff, 7 }, // 17 shared
+	{ "123e15.2m",		0x200000, 0x7017ff07, 7 }, // 18
+
+	{ "gaiapolsj.nv",	0x000080, 0xc4b970df, 8 }, // 19 eeprom
+};
+
+STD_ROM_PICK(gaiapolsk)
+STD_ROM_FN(gaiapolsk)
+
+struct BurnDriver BurnDrvGaiapolsk = {
+	"gaiapolsk", "gaiapols", NULL, NULL, "2026",
+	"Gaiapolis (Korean Translation)\0", NULL, "Konami", "GX123",
+	L"Gaiapolis (Korean Translation)\0\uAC00\uC774\uC544 \uD3F4\uB9AC\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_SCRFIGHT, 0,
+	NULL, gaiapolskRomInfo, gaiapolskRomName, NULL, NULL, NULL, NULL, DadandrnInputInfo, DadandrnDIPInfo,
+	GaiapolisInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	224, 376, 3, 4
+};

@@ -2641,3 +2641,56 @@ struct BurnDriver BurnDrvGunball = {
 	NitrobalInit, DrvExit, DrvFrame, NitrobalDraw, DrvScan, &DrvRecalc, 0x800,
 	240, 320, 3, 4
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Dark Seal 2 (Korean Translation v2.1)
+
+static struct BurnRomInfo darkseal2kRomDesc[] = {
+	{ "jb-01-3k.3d",	0x020000, 0x549aeecc, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "jb-00-3k.3a",	0x020000, 0x3edfc06f, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "jb-03.5d",		0x020000, 0x5217d404, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "jb-02.5a",		0x020000, 0x36a1ce28, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "mas13k",			0x080000, 0x962da556, 1 | BRF_PRG | BRF_ESS }, //  4
+	{ "mas12k",			0x080000, 0xa4593872, 1 | BRF_PRG | BRF_ESS }, //  5
+
+	{ "jb-06.20r",		0x010000, 0x2066a1dd, 2 | BRF_PRG | BRF_ESS }, //  6 Huc6280 Code
+
+	{ "jb-04k.10d",		0x010000, 0xa7ebfa66, 3 | BRF_GRA },           //  7 Characters
+	{ "jb-05k.12d",		0x010000, 0x61787730, 3 | BRF_GRA },           //  8
+
+	{ "mas00",			0x100000, 0x3d011034, 4 | BRF_GRA },           //  9 Foreground Tiles
+	{ "mas01",			0x100000, 0x6d0c9d0b, 4 | BRF_GRA },           // 10
+
+	{ "mas02k",			0x080000, 0x7ecffffe, 5 | BRF_GRA },           // 11 Background Tiles
+	{ "mas03k",			0x080000, 0xb9f4c5ca, 5 | BRF_GRA },           // 12
+
+	{ "mas04",			0x100000, 0x1e56953b, 6 | BRF_GRA },           // 13 Sprite Bank A
+	{ "mas05",			0x100000, 0x3826b8f8, 6 | BRF_GRA },           // 14
+	{ "mas06",			0x100000, 0x3b8bbd45, 6 | BRF_GRA },           // 15
+	{ "mas07",			0x100000, 0x31303769, 6 | BRF_GRA },           // 16
+
+	{ "mas08",			0x080000, 0xe224fb7a, 7 | BRF_GRA },           // 17 Sprite Bank B
+	{ "mas09",			0x080000, 0x5f6deb41, 7 | BRF_GRA },           // 18
+
+	{ "mas10",			0x100000, 0xf4b4c8a1, 8 | BRF_SND },           // 19 OKI M6295 Samples 0
+
+	{ "mas11",			0x080000, 0xc2f0a4f2, 9 | BRF_SND },           // 20 OKI M6295 Samples 1
+
+	{ "mb7122h.16l",	0x000400, 0x2bee57cc, 0 | BRF_OPT },           // 21 Unused PROMs
+};
+
+STD_ROM_PICK(darkseal2k)
+STD_ROM_FN(darkseal2k)
+
+struct BurnDriver BurnDrvDarkseal2k = {
+	"darkseal2k", "wizdfire", NULL, NULL, "2026",
+	"Dark Seal 2 (Korean Translation v2.1)\0", NULL, "Data East Corporation", "DECO IC16",
+	L"Dark Seal 2 (Korean Translation v2.1)\0\uB2E4\uD06C \uC530 2 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED v2.1)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_DATAEAST, GBF_SCRFIGHT, 0,
+	NULL, darkseal2kRomInfo, darkseal2kRomName, NULL, NULL, NULL, NULL, WizdfireInputInfo, WizdfireDIPInfo,
+	WizdfireInit, DrvExit, DrvFrame, WizdfireDraw, DrvScan, &DrvRecalc, 0x800,
+	320, 240, 4, 3
+};

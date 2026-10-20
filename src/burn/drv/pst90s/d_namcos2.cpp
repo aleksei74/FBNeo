@@ -7745,3 +7745,69 @@ struct BurnDriver BurnDrvFourtraxa = {
 	FourtraxInit, Namcos2Exit, DrvFrame, FinallapDraw, DrvScan, &DrvRecalc, 0x4000,
 	288, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Phelios (Korean Translation)
+
+static struct BurnRomInfo phelioskRomDesc[] = {
+	{ "ps1_mpr0k.mpr0",   0x20000, 0x785f0b2f, 0x01 | BRF_PRG | BRF_ESS }, //  0 Main 68K Code
+	{ "ps1_mpr1k.mpr1",   0x20000, 0x3232cf56, 0x01 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "ps1_spr0.spr0",    0x10000, 0xe9c6987e, 0x02 | BRF_PRG | BRF_ESS }, //  2 Sub 68K Code
+	{ "ps1_spr1.spr1",    0x10000, 0x02b074fb, 0x02 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "ps1_snd0.snd0",    0x20000, 0xda694838, 0x03 | BRF_PRG | BRF_ESS }, //  4 M6809 Code
+
+#if !defined ROM_VERIFY
+	{ "sys2mcpu.bin",     0x02000, 0xa342a97e, 0x04 | BRF_PRG | BRF_ESS }, //  5 HD68705 Code
+#endif
+	{ "sys2_c65c.3f",     0x08000, 0xa5b2a4ff, 0x04 | BRF_PRG | BRF_ESS }, //  6
+
+	{ "ps_obj-0k.obj0",   0x40000, 0x9afd5ebb, 0x05 | BRF_GRA },           //  7 Sprites
+	{ "ps_obj-1k.obj1",   0x40000, 0x2d36790c, 0x05 | BRF_GRA },           //  8
+	{ "ps_obj-2k.obj2",   0x40000, 0x5bee1dc9, 0x05 | BRF_GRA },           //  9
+	{ "ps_obj-3k.obj3",   0x40000, 0xb6acbd00, 0x05 | BRF_GRA },           // 10
+	{ "ps_obj-4.obj4",    0x40000, 0x81ea86c6, 0x05 | BRF_GRA },           // 11
+	{ "ps_obj-5.obj5",    0x40000, 0xaaebd51a, 0x05 | BRF_GRA },           // 12
+	{ "ps_obj-6.obj6",    0x40000, 0x032ea497, 0x05 | BRF_GRA },           // 13
+	{ "ps_obj-7.obj7",    0x40000, 0xf6183b36, 0x05 | BRF_GRA },           // 14
+
+	{ "ps_chr-0k.chr0",   0x20000, 0xd38b3ca7, 0x06 | BRF_GRA },           // 15 Layer Tiles
+	{ "ps_chr-1.chr1",    0x20000, 0x80c30742, 0x06 | BRF_GRA },           // 16
+	{ "ps_chr-2.chr2",    0x20000, 0xf4e11bf7, 0x06 | BRF_GRA },           // 17
+	{ "ps_chr-3.chr3",    0x20000, 0x97a93dc5, 0x06 | BRF_GRA },           // 18
+	{ "ps_chr-4.chr4",    0x20000, 0x81d965bf, 0x06 | BRF_GRA },           // 19
+	{ "ps_chr-5.chr5",    0x20000, 0x8ca72d35, 0x06 | BRF_GRA },           // 20
+	{ "ps_chr-6k.chr6",   0x20000, 0x6faa3706, 0x06 | BRF_GRA },           // 21
+
+	{ "ps_roz-0.roz0",    0x20000, 0x68043d7e, 0x07 | BRF_GRA },           // 22 Roz Layer Tiles
+	{ "ps_roz-1.roz1",    0x20000, 0x029802b4, 0x07 | BRF_GRA },           // 23
+	{ "ps_roz-2.roz2",    0x20000, 0xbf0b76dc, 0x07 | BRF_GRA },           // 24
+	{ "ps_roz-3.roz3",    0x20000, 0x9c821455, 0x07 | BRF_GRA },           // 25
+	{ "ps_roz-4.roz4",    0x20000, 0x63a39b7a, 0x07 | BRF_GRA },           // 26
+	{ "ps_roz-5.roz5",    0x20000, 0xfc5a99d0, 0x07 | BRF_GRA },           // 27
+	{ "ps_roz-6.roz6",    0x20000, 0xa2a17587, 0x07 | BRF_GRA },           // 28
+
+	{ "ps_shapek.shape",  0x20000, 0x0302eba7, 0x08 | BRF_GRA },           // 29 Layer Tiles Mask Data
+
+	{ "ps1_dat0.13s",     0x20000, 0xee4194b0, 0x09 | BRF_PRG | BRF_ESS }, // 30 Shared 68K Data
+	{ "ps1_dat1.13p",     0x20000, 0x5b22d714, 0x09 | BRF_PRG | BRF_ESS }, // 31
+
+	{ "ps_voi-1.voice1",  0x80000, 0xf67376ed, 0x0a | BRF_SND },           // 32 C140 Samples
+};
+
+STD_ROM_PICK(pheliosk)
+STD_ROM_FN(pheliosk)
+
+struct BurnDriver BurnDrvPheliosk = {
+	"pheliosk", "phelios", NULL, NULL, "1988",
+	"Phelios (Korean Translation)\0", NULL, "Namco", "System 2",
+	L"Phelios (Korean Translation)\0\uD3A0\uB9AC\uC624\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_VERSHOOT, 0,
+	NULL, phelioskRomInfo, phelioskRomName, NULL, NULL, NULL, NULL, DefaultInputInfo, DefaultDIPInfo,
+	PheliosInit, Namcos2Exit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x4000,
+	224, 288, 3, 4
+};

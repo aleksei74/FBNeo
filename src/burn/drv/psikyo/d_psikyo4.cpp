@@ -1540,3 +1540,79 @@ struct BurnDriver BurnDrvHotdebut = {
 	HotdebutInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
 	320, 240, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Taisen Hot Gimmick (Korean Translation)
+// https://github.com/stPark-dev/Taisen_Hot_Gimmick_Korean
+
+static struct BurnRomInfo hotgmckrRomDesc[] = {
+	{ "2-u23k.bin", 0x080000, 0x22a61d3a, 1 | BRF_PRG | BRF_ESS }, //  0 Sh2 Code
+	{ "1-u22k.bin", 0x080000, 0x8c9d2906, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "prog.bin",   0x200000, 0x500f6b1b, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "0lk.bin",    0x400000, 0x14c7147c, 2 | BRF_GRA },           //  3 Sprites
+	{ "0hk.bin",    0x400000, 0x73f7fbd2, 2 | BRF_GRA },           //  4
+	{ "1lk.bin",    0x400000, 0xac11fc0b, 2 | BRF_GRA },           //  5
+	{ "1hk.bin",    0x400000, 0x5c842e14, 2 | BRF_GRA },           //  6
+	{ "2lk.bin",    0x400000, 0x6afcaf1f, 2 | BRF_GRA },           //  7
+	{ "2hk.bin",    0x400000, 0x134bb7a8, 2 | BRF_GRA },           //  8
+	{ "3l.bin",     0x400000, 0xa8a646f7, 2 | BRF_GRA },           //  9
+	{ "3h.bin",     0x400000, 0x8c32becd, 2 | BRF_GRA },           // 10
+
+	{ "snd0.bin",   0x400000, 0xc090d51a, 3 | BRF_SND },           // 11 Samples
+	{ "snd1.bin",   0x400000, 0xc24243b5, 3 | BRF_SND },           // 12
+};
+
+STD_ROM_PICK(hotgmckr)
+STD_ROM_FN(hotgmckr)
+
+struct BurnDriver BurnDrvHotgmckr = {
+	"hotgmckr", "hotgmck", NULL, NULL, "2026",
+	"Taisen Hot Gimmick (Korean Translation)\0", NULL, "Psikyo", "PS4",
+	L"Taisen Hot Gimmick (Korean Translation)\0\uB300\uC804 \uD56B \uAE30\uBBF9 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PSIKYO, GBF_MAHJONG, 0,
+	NULL, hotgmckrRomInfo, hotgmckrRomName, NULL, NULL, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
+	HotgmckInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
+	320, 224, 4, 3
+};
+
+// Taisen Hot Gimmick Kairakuten (Korean Translation)
+// https://github.com/stPark-dev/Taisen_Hot_Gimmick_Kairakuten_Korean
+
+static struct BurnRomInfo hgkairakrRomDesc[] = {
+	{ "2k.u23",     0x080000, 0xbc47f426, 1 | BRF_PRG | BRF_ESS }, //  0 Sh2 Code
+	{ "1k.u22",     0x080000, 0x77052c48, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "prog.u1",    0x100000, 0x83cff542, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "0lk.u2",     0x400000, 0x02eb9188, 2 | BRF_GRA },           //  3 Sprites
+	{ "0hk.u11",    0x400000, 0x7b960f56, 2 | BRF_GRA },           //  4
+	{ "1l.u3",      0x400000, 0xf46d5002, 2 | BRF_GRA },           //  5
+	{ "1h.u12",     0x400000, 0x210592b6, 2 | BRF_GRA },           //  6
+	{ "2lk.u4",     0x400000, 0x2c32d8b4, 2 | BRF_GRA },           //  7
+	{ "2hk.u13",    0x400000, 0x13b535b6, 2 | BRF_GRA },           //  8
+	{ "3lk.u5",     0x400000, 0x2e2e472a, 2 | BRF_GRA },           //  9
+	{ "3hk.u14",    0x400000, 0x7059aa84, 2 | BRF_GRA },           // 10
+	{ "4l.u6",      0x400000, 0x76c10026, 2 | BRF_GRA },           // 11
+	{ "4h.u15",     0x400000, 0x799f0889, 2 | BRF_GRA },           // 12
+	{ "5lk.u7",     0x400000, 0xecd4d473, 2 | BRF_GRA },           // 13
+	{ "5hk.u16",    0x400000, 0x91e9c0ba, 2 | BRF_GRA },           // 14
+
+	{ "snd0.u10",   0x400000, 0x0e8e5fdf, 3 | BRF_SND },           // 15 Samples
+	{ "snd1.u19",   0x400000, 0xd8057d2f, 3 | BRF_SND },           // 16
+};
+
+STD_ROM_PICK(hgkairakr)
+STD_ROM_FN(hgkairakr)
+
+struct BurnDriver BurnDrvHgkairakr = {
+	"hgkairakr", "hgkairak", NULL, NULL, "2026",
+	"Taisen Hot Gimmick Kairakuten (Korean Translation)\0", NULL, "Psikyo", "PS4",
+	L"Taisen Hot Gimmick Kairakuten (Korean Translation)\0\uB300\uC804 \uD56B \uAE30\uBBF9 \uCF8C\uB77D\uCC9C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PSIKYO, GBF_MAHJONG, 0,
+	NULL, hgkairakrRomInfo, hgkairakrRomName, NULL, NULL, NULL, NULL, HotgmckInputInfo, HotgmckDIPInfo,
+	HgkairakInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x1002,
+	320, 224, 4, 3
+};

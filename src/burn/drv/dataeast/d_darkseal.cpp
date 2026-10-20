@@ -828,3 +828,45 @@ struct BurnDriver BurnDrvGatedom1 = {
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	256, 240, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Dark Seal (Korean Translation revision 4)
+
+static struct BurnRomInfo darksealkRomDesc[] = {
+	{ "fz_04-4.j12",	0x20000, 0x817faa2c, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "fz_01-4.h14",	0x20000, 0x373caeee, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "fz_00-2.h12",	0x20000, 0x1ab99aa7, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "fz_05-2.j14",	0x20000, 0x3374ef8c, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "fz_06-1.j15",	0x10000, 0xc4828a6d, 2 | BRF_PRG | BRF_ESS }, //  4 H6280 Code
+
+	{ "fz_02.j1",		0x10000, 0x3c9c3012, 3 | BRF_GRA },           //  5 Text Tiles
+	{ "fz_03.j2",		0x10000, 0x264b90ed, 3 | BRF_GRA },           //  6
+
+	{ "mac-03.h3",		0x80000, 0x9996f3dc, 4 | BRF_GRA },           //  7 Foreground Tiles
+
+	{ "mac-02.e20",		0x80000, 0x49504e89, 5 | BRF_GRA },           //  8 Background Tiles
+
+	{ "mac-00.b1",		0x80000, 0x52acf1d6, 6 | BRF_GRA },           //  9 Sprite Tiles
+	{ "mac-01.b3",		0x80000, 0xb28f7584, 6 | BRF_GRA },           // 10
+
+	{ "fz_08.l17",		0x20000, 0xc9bf68e1, 7 | BRF_SND },           // 11 Oki6295 #0 Samples
+
+	{ "fz_07.k14",		0x20000, 0x588dd3cb, 8 | BRF_SND },           // 12 Oki6295 #1 Samples
+};
+
+STD_ROM_PICK(darksealk)
+STD_ROM_FN(darksealk)
+
+struct BurnDriver BurnDrvDarksealk = {
+	"darksealk", "darkseal", NULL, NULL, "2026",
+	"Dark Seal (Korean Translation revision 4)\0", NULL, "Data East Corporation", "DECO IC16",
+	L"Dark Seal (Korean Translation revision 4)\0\uB2E4\uD06C \uC530 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED \uB9AC\uBE44\uC804 4)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_DATAEAST, GBF_MAZE | GBF_SCRFIGHT, 0,
+	NULL, darksealkRomInfo, darksealkRomName, NULL, NULL, NULL, NULL, DarksealInputInfo, DarksealDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	256, 240, 4, 3
+};
