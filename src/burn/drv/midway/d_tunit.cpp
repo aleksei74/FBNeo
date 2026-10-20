@@ -2001,3 +2001,85 @@ struct BurnDriver BurnDrvJdreddp = {
     JdreddpInit, TUnitExit, TUnitFrame, TUnitDraw, TUnitScan, &nTUnitRecalc, 0x8000,
 	TUNIT_SCREEN_WIDTH, TUNIT_SCREEN_HEIGHT, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+static struct BurnRomInfo mkkRomDesc[] = {
+	{ "l5_mortal_kombat_t-unit_uj12_game_romk.uj12",	0x080000, 0x4ba98f85, 1 | BRF_PRG | BRF_ESS }, //  0 TMS34010
+	{ "l5_mortal_kombat_t-unit_ug12_game_romk.ug12",	0x080000, 0xff84f65b, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "sl1_mortal_kombat_u3_sound_rom.u3",				0x040000, 0xc615844c, 4 | BRF_PRG | BRF_ESS  }, // 2 Sound CPU
+
+	{ "sl1_mortal_kombat_u12_sound_rom.u12",			0x040000, 0x258bd7f9, 2 | BRF_PRG | BRF_ESS }, //  3 ADPCM sound banks
+	{ "sl1_mortal_kombat_u13_sound_rom.u13",			0x040000, 0x7b7ec3b6, 2 | BRF_PRG | BRF_ESS }, //  4
+
+	{ "l1_mortal_kombat_t-unit_ug14_game_rom.ug14",		0x080000, 0x9e00834e, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x00, 0) }, //  5 GFX
+	{ "l1_mortal_kombat_t-unit_uj14_game_rom.uj14",		0x080000, 0xf4b0aaa7, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x00, 1) }, //  6
+	{ "l1_mortal_kombat_t-unit_ug19_game_rom.ug19",		0x080000, 0x2d8c7ba1, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x00, 2) }, //  7
+	{ "l1_mortal_kombat_t-unit_uj19_game_rom.uj19",		0x080000, 0x33b9b7a4, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x00, 3) }, //  8
+
+	{ "l1_mortal_kombat_t-unit_ug16_game_rom.ug16",		0x080000, 0x52c9d1e5, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x02, 0) }, //  9
+	{ "l1_mortal_kombat_t-unit_uj16_game_rom.uj16",		0x080000, 0xc94c58cf, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x02, 1) }, // 10
+	{ "l1_mortal_kombat_t-unit_ug20_game_rom.ug20",		0x080000, 0x2f7e55d3, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x02, 2) }, // 11
+	{ "l1_mortal_kombat_t-unit_uj20_game_rom.uj20",		0x080000, 0xeae96df0, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x02, 3) }, // 12
+
+	{ "l1_mortal_kombat_t-unit_ug17_game_romk.ug17",	0x080000, 0x69ceab47, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x04, 0) }, // 13
+	{ "l1_mortal_kombat_t-unit_uj17_game_romk.uj17",	0x080000, 0x4dd07692, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x04, 1) }, // 14
+	{ "l1_mortal_kombat_t-unit_ug22_game_romk.ug22",	0x080000, 0x4914a076, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x04, 2) }, // 15
+	{ "l1_mortal_kombat_t-unit_uj22_game_romk.uj22",	0x080000, 0xff653d83, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x04, 3) }, // 16
+};
+
+STD_ROM_PICK(mkk)
+STD_ROM_FN(mkk)
+
+struct BurnDriver BurnDrvMkk = {
+	"mkk", "mk", NULL, NULL, "2026",
+	"Mortal Kombat (Korean Translation)\0", NULL, "Midway", "Midway T-Unit",
+	L"Mortal Kombat (Korean Translation)\0\uBAA8\uD0C8 \uCEF4\uBC43 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_MIDWAY_TUNIT, GBF_VSFIGHT, 0,
+	NULL, mkkRomInfo, mkkRomName, NULL, NULL, NULL, NULL, MkInputInfo, MkDIPInfo,
+	MkInit, TUnitExit, TUnitFrame, TUnitDraw, TUnitScan, &nTUnitRecalc, 0x8000,
+	TUNIT_SCREEN_WIDTH, TUNIT_SCREEN_HEIGHT, 4, 3
+};
+
+static struct BurnRomInfo mk2kRomDesc[] = {
+	{ "l3.1_mortal_kombat_ii_game_rom_uj12k.uj12",	0x080000, 0x8cae1465, 1 | BRF_PRG | BRF_ESS }, //  0 TMS34010
+	{ "l3.1_mortal_kombat_ii_game_rom_ug12k.ug12",	0x080000, 0x0c0c49fa, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "l1_mortal_kombat_ii_sound_rom_u2.u2",		0x080000, 0x5f23d71d, 2 | BRF_PRG | BRF_ESS }, //  2 DCS sound banks
+	{ "l1_mortal_kombat_ii_sound_rom_u3.u3",		0x080000, 0xd6d92bf9, 2 | BRF_PRG | BRF_ESS }, //  3
+	{ "l1_mortal_kombat_ii_sound_rom_u4.u4",		0x080000, 0xeebc8e0f, 2 | BRF_PRG | BRF_ESS }, //  4
+	{ "l1_mortal_kombat_ii_sound_rom_u5.u5",		0x080000, 0x2b0b7961, 2 | BRF_PRG | BRF_ESS }, //  5
+	{ "l1_mortal_kombat_ii_sound_rom_u6.u6",		0x080000, 0xf694b27f, 2 | BRF_PRG | BRF_ESS }, //  6
+	{ "l1_mortal_kombat_ii_sound_rom_u7.u7",		0x080000, 0x20387e0a, 2 | BRF_PRG | BRF_ESS }, //  7
+
+	{ "l1_mortal_kombat_ii_game_rom_ug14.ug14",		0x100000, 0x01e73af6, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x00, 0) }, //  8 GFX
+	{ "l1_mortal_kombat_ii_game_rom_uj14.uj14",		0x100000, 0xd4985cbb, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x00, 1) }, //  9
+	{ "l1_mortal_kombat_ii_game_rom_ug19.ug19",		0x100000, 0xfec137be, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x00, 2) }, //  10
+	{ "l1_mortal_kombat_ii_game_rom_uj19.uj19",		0x100000, 0x2d763156, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x00, 3) }, //  11
+
+	{ "l1_mortal_kombat_ii_game_rom_ug16k.ug16",	0x100000, 0x4cc480b9, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x04, 0) }, //  12
+	{ "l1_mortal_kombat_ii_game_rom_uj16k.uj16",	0x100000, 0xc3cd36fb, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x04, 1) }, //  13
+	{ "l1_mortal_kombat_ii_game_rom_ug20k.ug20",	0x100000, 0x3e532c3d, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x04, 2) }, // 14
+	{ "l1_mortal_kombat_ii_game_rom_uj20k.uj20",	0x100000, 0x35e36861, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x04, 3) }, // 15
+
+	{ "l1_mortal_kombat_ii_game_rom_ug17.ug17",		0x100000, 0x937d8620, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x08, 0) }, // 16
+	{ "l1_mortal_kombat_ii_game_rom_uj17.uj17",		0x100000, 0x218de160, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x08, 1) }, // 17
+	{ "l1_mortal_kombat_ii_game_rom_ug22.ug22",		0x100000, 0x154d53b1, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x08, 2) }, // 18
+	{ "l1_mortal_kombat_ii_game_rom_uj22.uj22",		0x100000, 0x8891d785, 3 | BRF_GRA | BRF_ESS | TUNIT_GFX(0x08, 3) }, // 19
+};
+
+STD_ROM_PICK(mk2k)
+STD_ROM_FN(mk2k)
+
+struct BurnDriver BurnDrvMk2k = {
+	"mk2k", "mk2", NULL, NULL, "2026",
+	"Mortal Kombat II (Korean Translation)\0", NULL, "Midway", "Midway T-Unit",
+	L"Mortal Kombat II (Korean Translation)\0\uBAA8\uD0C8 \uCEF4\uBC43 II (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_MIDWAY_TUNIT, GBF_VSFIGHT, 0,
+	NULL, mk2RomInfo, mk2RomName, NULL, NULL, NULL, NULL, Mk2InputInfo, Mk2DIPInfo,
+    Mk2Init, TUnitExit, TUnitFrame, TUnitDraw, TUnitScan, &nTUnitRecalc, 0x8000,
+    TUNIT_SCREEN_WIDTH, TUNIT_SCREEN_HEIGHT, 4, 3
+};

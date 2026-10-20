@@ -1343,6 +1343,50 @@ struct BurnDriver BurnDrvGunbird2a = {
 	224, 320, 3, 4
 };
 
+// Gunbird 2 Makai (Morrigan Backport)
+// https://github.com/kuzearcade/Gunbird2_Makai
+
+static struct BurnRomInfo gunbird2mRomDesc[] = {
+	{ "2_prog_lm.u16",			0x080000, 0xd58149c8, 1 | BRF_PRG | BRF_ESS }, //  0 SH2 Code
+	{ "1_prog_hm.u17",			0x080000, 0xf850d33c, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "3_pdatam.u1",			0x080000, 0xe5e9c8be, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "0l.u3",					0x800000, 0x5c826bc8, 2 | BRF_GRA },           //  3 Graphics
+	{ "0h.u10",					0x800000, 0x3df0cb6c, 2 | BRF_GRA },           //  4
+	{ "1l.u4",					0x800000, 0x1558358d, 2 | BRF_GRA },           //  5
+	{ "1h.u11",					0x800000, 0x4ee0103b, 2 | BRF_GRA },           //  6
+	{ "2l.u5",					0x800000, 0xe1c7a7b8, 2 | BRF_GRA },           //  7
+	{ "2h.u12",					0x800000, 0xbc8a41df, 2 | BRF_GRA },           //  8
+	{ "3lm.u6",					0x800000, 0xd2f8b9ab, 2 | BRF_GRA },           //  9
+	{ "3hm.u13",				0x800000, 0xbd27a0eb, 2 | BRF_GRA },           // 10
+
+	{ "soundm.u9",				0x400000, 0x0e6b24f5, 3 | BRF_SND },           // 11 Samples
+
+	{ "eeprom-gunbird2.bin",	0x000100, 0x7ac38846, BRF_OPT },
+};
+
+STD_ROM_PICK(gunbird2m)
+STD_ROM_FN(gunbird2m)
+
+static INT32 Gunbird2mInit()
+{
+	speedhack_address = 0x004000c;
+	speedhack_pc[0] = 0x06028be6;
+	speedhack_pc[1] = 0x06028974;
+	speedhack_pc[2] = 0x06028e64;
+
+	return DrvInit(Gunbird2LoadCallback, 1, 0x4000000, 0);
+}
+
+struct BurnDriver BurnDrvGunbird2m = {
+	"gunbird2m", "gunbird2", NULL, NULL, "2026",
+	"Gunbird 2 Makai (Morrigan Backport)\0", NULL, "Psikyo", "PS5",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbird2mRomInfo, gunbird2mRomName, NULL, NULL, NULL, NULL, Common3ButtonInputInfo, Gunbird2DIPInfo,
+	Gunbird2mInit, DrvExit, DrvFrame, PsikyoshDraw, DrvScan, NULL, 0x1400,
+	224, 320, 3, 4
+};
 
 // Strikers 1945 III (World) / Strikers 1999 (Japan)
 

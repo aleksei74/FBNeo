@@ -4293,3 +4293,31 @@ struct BurnDriver BurnDrvGrdianszs = {
 };
 
 #undef GRDIANS_COMPONENT
+
+//========================
+// Add Korean Translation
+//========================
+
+static struct BurnRomInfo penbroskRomDesc[] = {
+	{ "a-blast_kor_u06.u06",	  0x080000, 0x6f570bd9, BRF_ESS | BRF_PRG },	// 68000 code
+	{ "a-blast_kor_u07.u07",	  0x080000, 0x43fafe40, BRF_ESS | BRF_PRG },
+
+	{ "a-blast_kor_u38.u38",	  0x400000, 0x6a60f0ea,	BRF_GRA },				// GFX
+	{ "a-blast_kor_u39.u39",	  0x400000, 0x53b4bc73,	BRF_GRA },
+	{ "a-blast_kor_u40.u40",	  0x400000, 0x7e8813fa,	BRF_GRA },
+
+	{ "a-blast_jpn_u18.u18",	  0x200000, 0xde4e65e2, BRF_SND },				// PCM
+};
+
+STD_ROM_PICK(penbrosk)
+STD_ROM_FN(penbrosk)
+
+struct BurnDriver BurnDrvPenbrosk = {
+	"penbrosk", "penbros", NULL, NULL, "2026",
+	"Penguin Brothers (Korean Translation)\0", NULL, "Subsino", "Newer Seta",
+	L"Penguin Brothers (Korean Translation)\0\uD3AD\uADC4 \uBE0C\uB77C\uB354\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_SETA2, GBF_PLATFORM, 0,
+	NULL, penbroskRomInfo, penbroskRomName, NULL, NULL, NULL, NULL, penbrosInputInfo, penbrosDIPInfo,
+	penbrosInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
+	320, 224, 4, 3
+};

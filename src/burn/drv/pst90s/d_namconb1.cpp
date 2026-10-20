@@ -2812,3 +2812,55 @@ struct BurnDriver BurnDrvMachbrkrj = {
 	MachbrkrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// The Outfoxies (Korean Translation, OU1)
+
+static struct BurnRomInfo outfxieskRomDesc[] = {
+	{ "ou1_mprlk.11c",	0x080000, 0x9c08d998, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
+	{ "ou1_mpruk.11d",	0x080000, 0x825b7883, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "ou1spr0.5b",		0x080000, 0x60cee566, 3 | BRF_PRG | BRF_ESS }, //  2 c75data
+
+	{ "ou1voi0.6n",		0x200000, 0x2d8fb271, 1 | BRF_SND },           //  3 c352
+
+	{ "ou1shask.12s",	0x200000, 0xd0986df8, 3 | BRF_GRA },           //  4 c123tmap:mask
+
+	{ "ou1shark.18s",	0x200000, 0x659159f9, 6 | BRF_GRA },           //  5 c169roz:mask
+
+	{ "ou1obj0l.4c",	0x200000, 0x1b4f7184, 1 | BRF_GRA },           //  6 c355spr
+	{ "ou1obj0u.8c",	0x200000, 0xd0a69794, 1 | BRF_GRA },           //  7
+	{ "ou1obj1l.4b",	0x200000, 0x48a93e84, 1 | BRF_GRA },           //  8
+	{ "ou1obj1u.8b",	0x200000, 0x999de386, 1 | BRF_GRA },           //  9
+	{ "ou1obj2l.4a",	0x200000, 0x30386cd0, 1 | BRF_GRA },           // 10
+	{ "ou1obj2u.8a",	0x200000, 0xccada5f8, 1 | BRF_GRA },           // 11
+	{ "ou1obj3l.6c",	0x200000, 0x5f41b44e, 1 | BRF_GRA },           // 12
+	{ "ou1obj3u.9c",	0x200000, 0xbc852c8e, 1 | BRF_GRA },           // 13
+	{ "ou1obj4l.6b",	0x200000, 0x99a5f9d7, 1 | BRF_GRA },           // 14
+	{ "ou1obj4u.9b",	0x200000, 0x70ecaabb, 1 | BRF_GRA },           // 15
+
+	{ "ou1-rot0k.3d",	0x200000, 0x925eccfa, 5 | BRF_GRA },           // 16 c169roz
+	{ "ou1-rot1.3c",	0x200000, 0x14866780, 5 | BRF_GRA },           // 17
+	{ "ou1-rot2.3b",	0x200000, 0x55ccf3af, 5 | BRF_GRA },           // 18
+
+	{ "ou1-scr0k.1d",	0x200000, 0xcadd61f0, 2 | BRF_GRA },           // 19 c123tmap
+
+	{ "ou1dat0.20a",	0x080000, 0x1a49aead, 4 | BRF_PRG | BRF_ESS }, // 20 data
+	{ "ou1dat1k.20b",	0x080000, 0xdaf713bf, 4 | BRF_PRG | BRF_ESS }, // 21
+};
+
+STDROMPICKEXT(outfxiesk, outfxiesk, namcoc75)
+STD_ROM_FN(outfxiesk)
+
+struct BurnDriver BurnDrvOutfxiesk = {
+	"outfxiesk", "outfxies", "namcoc75", NULL, "2026",
+	"The Outfoxies (Korean Translation, OU1)\0", NULL, "Namco", "NB-1 / NB-2",
+	L"The Outfoxies (Korean Translation, OU1)\0\uB514 \uC544\uC6C3\uD3ED\uC2DC\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, OU1)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_POST90S, GBF_RUNGUN, 0,
+	NULL, outfxieskRomInfo, outfxieskRomName, NULL, NULL, NULL, NULL, Namconb1InputInfo, Namconb1DIPInfo,
+	OutfxiesInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
+	288, 224, 4, 3
+};

@@ -6451,3 +6451,82 @@ struct BurnDriver BurnDrvLandmakrhe = {
 	landmakrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 232, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Elevator Action Returns (Korean Translation Ver 2.2K 1995/02/20)
+
+static struct BurnRomInfo elvactrkRomDesc[] = {
+	{ "e02-12k.20",		0x080000, 0xd529a8cd, TAITO_68KROM1_BYTESWAP32 }, //  0 68ec20 Code
+	{ "e02-11k.19",		0x080000, 0xe2ff987a, TAITO_68KROM1_BYTESWAP32 }, //  1
+	{ "e02-10k.18",		0x080000, 0x83097a40, TAITO_68KROM1_BYTESWAP32 }, //  2
+	{ "e02-09k.17",		0x080000, 0x1adc2ea1, TAITO_68KROM1_BYTESWAP32 }, //  3
+
+	{ "e02-03k.12",		0x200000, 0xe046a26b, TAITO_SPRITESA_BYTESWAP },  //  4 Sprites
+	{ "e02-02k.8",		0x200000, 0x4899a71e, TAITO_SPRITESA_BYTESWAP },  //  5
+	{ "e02-01.4",		0x200000, 0x2ba94726, TAITO_SPRITESA },           //  6
+
+	{ "e02-08.47",		0x200000, 0x29c9bd02, TAITO_CHARS_BYTESWAP },     //  7 Layer Tiles
+	{ "e02-07.45",		0x200000, 0x5eeee925, TAITO_CHARS_BYTESWAP },     //  8
+	{ "e02-06.43",		0x200000, 0x4c8726e9, TAITO_CHARS },              //  9
+
+	{ "e02-13.32",		0x040000, 0x80932702, TAITO_68KROM2_BYTESWAP },   // 10 68k Code
+	{ "e02-14.33",		0x040000, 0x706671a5, TAITO_68KROM2_BYTESWAP },   // 11
+
+	{ "e02-04.38",		0x200000, 0xb74307af, TAITO_ES5505_BYTESWAP },    // 12 Ensoniq Samples
+	{ "e02-05.39",		0x200000, 0xeb729855, TAITO_ES5505_BYTESWAP },    // 13
+};
+
+STD_ROM_PICK(elvactrk)
+STD_ROM_FN(elvactrk)
+
+struct BurnDriver BurnDrvElvactrk = {
+	"elvactrk", "elvactr", NULL, NULL, "2026",
+	"Elevator Action Returns (Korean Translation Ver 2.2K 1995/02/20)\0", NULL, "Taito Corporation", "Taito F3 System",
+	L"Elevator Action Returns (Korean Translation Ver 2.2K 1995/02/20)\0\uC5D8\uB9AC\uBCA0\uC774\uD130 \uC561\uC158 \uB9AC\uD134\uC988 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED Ver 2.2K 1995/02/20)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_PLATFORM, 0,
+	NULL, elvactrkRomInfo, elvactrkRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
+	elvactrInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	320, 232, 4, 3
+};
+
+// Light Bringer (Korean Translation Ver 2.1K 1994/02/18)
+
+static struct BurnRomInfo lightbrkRomDesc[] = {
+	{ "d69-20k.bin",	0x080000, 0xa84cfdb8, TAITO_68KROM1_BYTESWAP32 }, //  0 68ec20 Code
+	{ "d69-13k.bin",	0x080000, 0x83a21c1e, TAITO_68KROM1_BYTESWAP32 }, //  1
+	{ "d69-15k.bin",	0x080000, 0x33cf8313, TAITO_68KROM1_BYTESWAP32 }, //  2
+	{ "d69-14k.bin",	0x080000, 0xfd54c5a5, TAITO_68KROM1_BYTESWAP32 }, //  3
+
+	{ "d69-06.bin",		0x200000, 0xcb4aac81, TAITO_SPRITESA_BYTESWAP },  //  4 Sprites
+	{ "d69-07.bin",		0x200000, 0xb749f984, TAITO_SPRITESA_BYTESWAP },  //  5
+	{ "d69-09k.bin",	0x100000, 0x53090df7, TAITO_SPRITESA_BYTESWAP },  //  6
+	{ "d69-10k.bin",	0x100000, 0x5237ab51, TAITO_SPRITESA_BYTESWAP },  //  7
+	{ "d69-08.bin",		0x200000, 0x5b68d7d8, TAITO_SPRITESA },           //  8
+	{ "d69-11k.bin",	0x100000, 0x1ae22bc9, TAITO_SPRITESA },           //  9
+
+	{ "d69-03k.bin",	0x200000, 0x51ff9df1, TAITO_CHARS_BYTESWAP },     // 10 Layer Tiles
+	{ "d69-04k.bin",	0x200000, 0x5b33b1bc, TAITO_CHARS_BYTESWAP },     // 11
+	{ "d69-05k.bin",	0x200000, 0x0ffae334, TAITO_CHARS },              // 12
+
+	{ "d69-18.bin",		0x020000, 0x04600d7b, TAITO_68KROM2_BYTESWAP },   // 13 68k Code
+	{ "d69-19.bin",		0x020000, 0x1484e853, TAITO_68KROM2_BYTESWAP },   // 14
+
+	{ "d69-01.bin",		0x200000, 0x9ac93ac2, TAITO_ES5505_BYTESWAP },    // 15 Ensoniq Samples
+	{ "d69-02.bin",		0x200000, 0xdce28dd7, TAITO_ES5505_BYTESWAP },    // 16
+};
+
+STD_ROM_PICK(lightbrk)
+STD_ROM_FN(lightbrk)
+
+struct BurnDriver BurnDrvLightbrk = {
+	"lightbrk", "lightbr", NULL, NULL, "2026",
+	"Light Bringer (Korean Translation Ver 2.1K 1994/02/18)\0", NULL, "Taito Corporation", "Taito F3 System",
+	L"Light Bringer (Korean Translation Ver 2.1K 1994/02/18)\0\uB77C\uC774\uD2B8 \uBE0C\uB9C1\uC5B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED Ver 2.1K 1994/02/18)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
+	NULL, lightbrkRomInfo, lightbrkRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
+	lightbrInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	320, 224, 4, 3
+};

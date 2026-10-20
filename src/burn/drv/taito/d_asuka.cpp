@@ -2831,3 +2831,79 @@ struct BurnDriver BurnDrvJigkmgria = {
 	320, 224, 4, 3
 };
 #endif // 0
+
+//========================
+// Add Korean Translation
+//========================
+
+// Cadash (Korean Translation, rev 1)
+// https://github.com/17LABORATORY/CADASH-KOREAN-LOCALIZATION
+
+static struct BurnRomInfo cadashk1RomDesc[] = {
+	{ "c21_04-1k.ic11",			0x20000, 0xd450f486, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_06-1k.ic15",			0x20000, 0xfd3962d7, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_03-1k.ic10",			0x20000, 0xb544517b, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_05-1k.ic14",			0x20000, 0x5a954633, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+
+	{ "c21-08.38",				0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
+
+	{ "c21-02k.9",				0x80000, 0x5c9785e5, BRF_GRA | TAITO_CHARS },						//  5 Characters
+
+	{ "c21-01k.1",				0x80000, 0x56c68218, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
+
+	{ "c21-07.57",				0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },										//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },										//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },										// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },										// 11
+};
+
+STD_ROM_PICK(cadashk1)
+STD_ROM_FN(cadashk1)
+
+struct BurnDriver BurnDrvCadashk1 = {
+	"cadashk1", "cadash", NULL, NULL, "2026",
+	"Cadash (Korean Translation, rev 1)\0", NULL, "Taito", "Taito Misc",
+	L"Cadash (Korean Translation, rev 1)\0\uCE74\uB2E4\uC2DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, rev 1)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
+	NULL, cadashk1RomInfo, cadashk1RomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashjDIPInfo,
+	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	320, 240, 4, 3
+};
+
+// Cadash - Arranged (Korean Translation, rev 1)
+// https://github.com/17LABORATORY/CADASH-KOREAN-LOCALIZATION
+
+static struct BurnRomInfo cadashk1aRomDesc[] = {
+	{ "c21_04-1ka.ic11",		0x20000, 0x28fcaf92, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  0 68K Code
+	{ "c21_06-1ka.ic15",		0x20000, 0xba9404e8, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  1
+	{ "c21_03-1k.ic10",			0x20000, 0xb544517b, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  2
+	{ "c21_05-1k.ic14",			0x20000, 0x5a954633, BRF_PRG | BRF_ESS | TAITO_68KROM1_BYTESWAP },	//  3
+
+	{ "c21-08.38",				0x10000, 0xdca495a0, BRF_PRG | BRF_ESS | TAITO_Z80ROM1 },			//  4 Z80 Code
+
+	{ "c21-02k.9",				0x80000, 0x5c9785e5, BRF_GRA | TAITO_CHARS },						//  5 Characters
+
+	{ "c21-01k.1",				0x80000, 0x56c68218, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
+
+	{ "c21-07.57",				0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
+
+	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },										//  8 plds
+	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },										//  9
+	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },										// 10
+	{ "pal20l8b-c21-12.ic47",	0x00144, 0xbbc2cc97, BRF_OPT },										// 11
+};
+
+STD_ROM_PICK(cadashk1a)
+STD_ROM_FN(cadashk1a)
+
+struct BurnDriver BurnDrvCadashk1a = {
+	"cadashk1a", "cadash", NULL, NULL, "2026",
+	"Cadash - Arranged (Korean Translation, rev 1)\0", NULL, "Taito", "Taito Misc",
+	L"Cadash - Arranged (Korean Translation, rev 1)\0\uCE74\uB2E4\uC2DC - \uC5B4\uB808\uC778\uC9C0\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, rev 1)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
+	NULL, cadashk1aRomInfo, cadashk1aRomName, NULL, NULL, NULL, NULL, CadashInputInfo, CadashjDIPInfo,
+	CadashInit, TaitoExit, CadashFrame, DrvDraw, DrvScan, NULL, 0x1000,
+	320, 240, 4, 3
+};

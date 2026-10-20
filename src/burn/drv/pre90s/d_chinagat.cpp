@@ -1048,3 +1048,48 @@ struct BurnDriver BurnDrvSaiyugoub2 = {
 	DrvInit, DrvExit, DrvBoot2Frame, DrvDraw, DrvScan, &DrvRecalc, 0x180,
 	256, 240, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Sai Yu Gou Ma Roku (Korean Translation)
+
+static struct BurnRomInfo saiyugoukRomDesc[] = {
+	{ "23j3-0k.51",		0x20000, 0xb98d67ed, 0 | BRF_PRG | BRF_ESS }, //  0 HD6309 #0 Code
+
+	{ "23j4-0.48",		0x20000, 0x2914af38, 1 | BRF_PRG | BRF_ESS }, //  1 HD6309 #1 Code
+
+	{ "23j0-0.40",		0x08000, 0x9ffcadb6, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+
+	{ "23j6-0k.18",		0x20000, 0x184a8c1d, 3 | BRF_GRA },           //  3 Foreground Tiles
+
+	{ "23j7-0.103",		0x20000, 0x2f445030, 4 | BRF_GRA },           //  4 Sprites
+	{ "23j8-0.102",		0x20000, 0x237f725a, 4 | BRF_GRA },           //  5
+	{ "23j9-0.101",		0x20000, 0x8caf6097, 4 | BRF_GRA },           //  6
+	{ "23ja-0.100",		0x20000, 0xf678594f, 4 | BRF_GRA },           //  7
+
+	{ "saiyugou_a-13",	0x10000, 0xb745cac4, 5 | BRF_GRA },           //  8 Background Tiles set instead
+	{ "saiyugou_a-12k",	0x10000, 0x8e789562, 5 | BRF_GRA },           //  9
+	{ "saiyugou_a-15",	0x10000, 0x2f268f37, 5 | BRF_GRA },           // 10
+	{ "saiyugou_a-14k",	0x10000, 0xaf2f9d68, 5 | BRF_GRA },           // 11
+
+	{ "23j1-0.53",		0x20000, 0xf91f1001, 6 | BRF_SND },           // 12 MSM6295 Samples
+	{ "23j2-0.52",		0x20000, 0x8b6f26e9, 6 | BRF_SND },           // 13
+
+	{ "23jb-0.16",		0x00200, 0x46339529, 7 | BRF_OPT },           // 14 Proms (unused)
+	{ "23j5-0.45",		0x00100, 0xfdb130a9, 7 | BRF_OPT },           // 15
+};
+
+STD_ROM_PICK(saiyugouk)
+STD_ROM_FN(saiyugouk)
+
+struct BurnDriver BurnDrvSaiyugouk = {
+	"saiyugouk", "chinagat", NULL, NULL, "2026",
+	"Sai Yu Gou Ma Roku (Korean Translation)\0", NULL, "Technos Japan", "Miscellaneous",
+	L"Sai Yu Gou Ma Roku (Korean Translation)\0\uC11C\uC720\uD56D\uB9C8\uB85D (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_SCRFIGHT, 0,
+	NULL, saiyugoukRomInfo, saiyugoukRomName, NULL, NULL, NULL, NULL, DrvInputInfo, DrvDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x180,
+	256, 240, 4, 3
+};
