@@ -871,7 +871,7 @@ static INT32 DrvInit()
 
 	if (!strcmp(BurnDrvGetTextA(DRV_NAME), "pwrinst2a")) {
 		UINT16 *rom = (UINT16 *)Rom01;
-		rom[0xD46C/2] = 0xD482;	// kurara dash fix  0xd400 -> 0xd482
+		rom[0xD46C/2] = BURN_ENDIAN_SWAP_INT16(0xD482);	// kurara dash fix  0xd400 -> 0xd482
 	}
 	
 	DrvDoReset(); // Reset machine
@@ -1292,7 +1292,7 @@ struct BurnDriver BurnDrvPwrinst2ja = {
 
 struct BurnDriver BurnDrvPwrinst2k = {
 	"pwrinst2k", "pwrinst2", NULL, NULL, "1994",
-	"Power Instinct 2 (Korea, Ver. 94.04.08)\0", NULL, "Atlus", "Cave",
+	"Power instinct 2 (Korea, Ver. 94/04/08)\0", NULL, "Atlus", "Cave",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_16BIT_ONLY | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_68K_Z80, GBF_VSFIGHT, FBF_PWRINST,
 	NULL, pwrinst2kRomInfo, pwrinst2kRomName, NULL, NULL, NULL, NULL, pwrinst2InputInfo, NULL,

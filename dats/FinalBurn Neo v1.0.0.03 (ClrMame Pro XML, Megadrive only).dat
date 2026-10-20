@@ -171,12 +171,11 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
-	<game name="satyrhell" sourcefile="megadrive/d_megadrive.cpp">
-		<comment>Homebrew</comment>
-		<description>A Satyr In Hell (HB)</description>
-		<year>2022</year>
-		<manufacturer>kakoeimon</manufacturer>
-		<rom name="A Satyr In Hell (2022)(kakoeimon).bin" size="655360" crc="f4148d5c"/>
+	<game name="atetris" sourcefile="megadrive/d_megadrive.cpp">
+		<description>A-Tetris (HB, Alfa 2)</description>
+		<year>2026</year>
+		<manufacturer>Amiguetes Soft</manufacturer>
+		<rom name="A-Tetris Alfa 2 (2026)(Amiguetes Soft).bin" size="4192744" crc="b14244da"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -201,6 +200,15 @@
 		<year>1995</year>
 		<manufacturer>Viacom New Media</manufacturer>
 		<rom name="AAAHH!!! Real Monsters (USA)(1995)(Viacom New Media).bin" size="2097152" crc="fdc80bfc"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="abadcrim" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew, Very early beta: bugs expected</comment>
+		<description>Abadia del crimen, La (HB, Beta)</description>
+		<year>2026</year>
+		<manufacturer>Amiguetes Soft</manufacturer>
+		<rom name="Abadia del crimen, La Beta (2026)(Amiguetes Soft).bin" size="4063232" crc="041cda39"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -1005,6 +1013,15 @@
 		<year>1996</year>
 		<manufacturer>Midway</manufacturer>
 		<rom name="Arcade's Greatest Hits (Euro)(1996)(Midway).bin" size="524288" crc="c0dce0e5"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="arcadiama" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Arcadiama (HB, v1.03)</description>
+		<year>2026</year>
+		<manufacturer>NK</manufacturer>
+		<rom name="Arcadiama v1.03 (2026)(NK).bin" size="2752512" crc="d2951706"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -2271,6 +2288,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="bioblade" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Bio Blade: A Star Odyssey (HB)</description>
+		<year>2026</year>
+		<manufacturer>Berk Devs</manufacturer>
+		<rom name="Bio Blade - A Star Odyssey (2026)(Berk Devs).bin" size="655360" crc="9072be7c"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="biohazrb" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Bio Hazard Battle (Euro, USA)</description>
 		<year>1992</year>
@@ -2316,19 +2342,19 @@
 	</game>
 	<game name="bssf2gqc" cloneof="ssf2" romof="ssf2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack, NB: also applied 'NoPause' patch.</comment>
-		<description>Bishoujo Super Street Fighter II: Glamor Queen (Hack, v2.9C Censored)</description>
-		<year>2025</year>
+		<description>Bishoujo Super Street Fighter II: Glamor Queen (Hack, v3.0 Censored)</description>
+		<year>2025-26</year>
 		<manufacturer>Yoni Arousement</manufacturer>
-		<rom name="Bishoujo Super Street Fighter II - Glamor Queen v2.9C Censored (2025)(Yoni Arousement).bin" size="5242880" crc="bc29b098"/>
+		<rom name="Bishoujo Super Street Fighter II - Glamor Queen v3.0 Censored (2025-26)(Yoni Arousement).bin" size="5242880" crc="8357551c"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
 	<game name="bssf2gq" cloneof="ssf2" romof="ssf2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack, NB: also applied 'NoPause' patch.</comment>
-		<description>Bishoujo Super Street Fighter II: Glamor Queen (Hack, v2.9C)</description>
-		<year>2025</year>
+		<description>Bishoujo Super Street Fighter II: Glamor Queen (Hack, v3.0)</description>
+		<year>2025-26</year>
 		<manufacturer>Yoni Arousement</manufacturer>
-		<rom name="Bishoujo Super Street Fighter II - Glamor Queen v2.9C (2025)(Yoni Arousement).bin" size="5242880" crc="10db162f"/>
+		<rom name="Bishoujo Super Street Fighter II - Glamor Queen v3.0 (2025-26)(Yoni Arousement).bin" size="5242880" crc="fed31aa8"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -2338,6 +2364,15 @@
 		<year>2022-26</year>
 		<manufacturer>PSCD Games</manufacturer>
 		<rom name="Black Jewel Reborn Alpha (2022-26)(PSCD Games).bin" size="3932160" crc="5b901963"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="blacktiger" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Black Tiger (HB, v1.7)</description>
+		<year>2026</year>
+		<manufacturer>rester159</manufacturer>
+		<rom name="Black Tiger v1.7 (2026)(rester159).bin" size="4194304" crc="3e195ffb"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -2886,6 +2921,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="bulletpanic" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Bullet Panic (HB)</description>
+		<year>2026</year>
+		<manufacturer>abadede919302</manufacturer>
+		<rom name="Bullet Panic (2026)(abadede919302).bin" size="1441792" crc="5d84421a"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="bullvsla" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Bulls vs Lakers and the NBA Playoffs (Euro, USA)</description>
 		<year>1992</year>
@@ -2923,6 +2967,15 @@
 		<year>1990</year>
 		<manufacturer>Namco</manufacturer>
 		<rom name="Burning Force (USA)(1990)(Namco).bin" size="524288" crc="bdc8f02c"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="cabal" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Cabal (HB, Beta 3)</description>
+		<year>2026</year>
+		<manufacturer>Oldschool Is Beautiful</manufacturer>
+		<rom name="Cabal Beta 3 (2026)(Oldschool Is Beautiful).bin" size="2097152" crc="86a39e28"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -3250,6 +3303,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="catabyss3d" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Catacomb Abyss 3D, The (HB, v0.0.1)</description>
+		<year>2026</year>
+		<manufacturer>haroldo-ok</manufacturer>
+		<rom name="Catacomb Abyss 3D, The v0.0.1 (2026)(haroldo-ok).bin" size="2883584" crc="b7375b10"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="cavaleirop" cloneof="cavaleirodcp" romof="cavaleirodcp" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew, Prototype</comment>
 		<description>Cavaleiro (HB, Prototype)</description>
@@ -3260,11 +3322,11 @@
 		<driver status="good"/>
 	</game>
 	<game name="cavaleirodcp" sourcefile="megadrive/d_megadrive.cpp">
-		<comment>Homebrew, Prototype</comment>
-		<description>Cavaleiro: Director's Cut v3 (HB, Prototype)</description>
+		<comment>Homebrew</comment>
+		<description>Cavaleiro: Director's Cut v3 (HB)</description>
 		<year>2025</year>
 		<manufacturer>Manganga Team</manufacturer>
-		<rom name="Cavaleiro - Director's Cut v3 (Proto)(2025)(Manganga Team).bin" size="786432" crc="796ee6a6"/>
+		<rom name="Cavaleiro - Director's Cut v3 (2025)(Manganga Team).bin" size="786432" crc="796ee6a6"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -3940,6 +4002,15 @@
 		<year>1990</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Columns (World, v1.1)(1990)(Sega).bin" size="131072" crc="d783c244"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="columns2" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Columns II: The Voyage Through Time (HB)</description>
+		<year>2026</year>
+		<manufacturer>Master Linkuei</manufacturer>
+		<rom name="Columns II - The Voyage Through Time (2026)(Master Linkuei).bin" size="524288" crc="93dc3280"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -5177,6 +5248,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="diceroyal" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Dice Royal (HB, Alpha)</description>
+		<year>2026</year>
+		<manufacturer>Grave Games</manufacturer>
+		<rom name="Dice Royal Alpha (2026)(Grave Games).bin" size="262144" crc="0c8b6016"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="dicktrs" cloneof="dicktr" romof="dicktr" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Dick Tracy (Hack, Spanish)</description>
@@ -5951,6 +6031,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="dundurban" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Dungeon Durban (HB, v0.9.1)</description>
+		<year>2026</year>
+		<manufacturer>Durban Games</manufacturer>
+		<rom name="Dungeon Durban v0.9.1 (2026)(Durban Games).bin" size="1966080" crc="d2a02888"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="ddwares" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Dungeons &amp; Dragons - Warriors of the Eternal Sun (Euro, USA)</description>
 		<year>1992</year>
@@ -6160,6 +6249,15 @@
 		<year>2024</year>
 		<manufacturer>Ancient</manufacturer>
 		<rom name="Earthion - Fall 2024 Demo (2024)(Ancient).bin" size="6946816" crc="f3e4f17e"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="earthionrgs26" cloneof="earthione" romof="earthione" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Earthion - Retro Game Summit 2026 (HB)</description>
+		<year>2026</year>
+		<manufacturer>Ancient</manufacturer>
+		<rom name="Earthion - Retro Game Summit 2026 (2026)(Ancient).bin" size="7340032" crc="d911e0b5"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -7243,6 +7341,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="fightpub" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Fight Pub (HB, v0.5.3)</description>
+		<year>2026</year>
+		<manufacturer>Dead House Studios</manufacturer>
+		<rom name="Fight Pub v0.5.3 (2026)(Dead House Studios).bin" size="786432" crc="f9aac5d3"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="fightmass" cloneof="fightmas" romof="fightmas" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Fighting Masters (Hack, Spanish)</description>
@@ -7512,6 +7619,15 @@
 		<year>1993</year>
 		<manufacturer>Taito</manufacturer>
 		<rom name="Flintstones, The (USA)(1993)(Taito).bin" size="524288" crc="7c982c59"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="fazathoth" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Flowers of Azathoth (HB)</description>
+		<year>2026</year>
+		<manufacturer>Mike Daw</manufacturer>
+		<rom name="Flowers of Azathoth (2026)(Mike Daw).bin" size="262144" crc="18f4795a"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -8084,6 +8200,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="genthrees" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>GenThrees (HB, v1.01)</description>
+		<year>2026</year>
+		<manufacturer>abadede919302</manufacturer>
+		<rom name="GenThrees v1.01 (2026)(abadede919302).bin" size="262144" crc="657b99a3"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="georgeko" sourcefile="megadrive/d_megadrive.cpp">
 		<description>George Foreman's KO Boxing (Euro)</description>
 		<year>1992</year>
@@ -8136,10 +8261,19 @@
 	</game>
 	<game name="ghostbstse" cloneof="ghostbst" romof="ghostbst" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
-		<description>Ghostbusters - Special Edition (Hack, v2.1)</description>
-		<year>2024</year>
+		<description>Ghostbusters - Special Edition (Hack, v3.1)</description>
+		<year>2024-26</year>
 		<manufacturer>BillyTime! Games</manufacturer>
-		<rom name="Ghostbusters - Special Edition v2.1 (2024)(BillyTime! Games).bin" size="1122304" crc="b0191489"/>
+		<rom name="Ghostbusters - Special Edition v3.1 (2024-26)(BillyTime! Games).bin" size="3145728" crc="3d238f58"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="gnghb26" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Ghosts'n Goblins (HB)</description>
+		<year>2026</year>
+		<manufacturer>Frank</manufacturer>
+		<rom name="Ghosts'n Goblins (2026)(Frank).bin" size="3473408" crc="a5f87545"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -8749,6 +8883,24 @@
 		<year>2018</year>
 		<manufacturer>Second Dimension</manufacturer>
 		<rom name="Handy Harvy (2018)(2nd Dimension).bin" size="932864" crc="ceb61752"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="hangon" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Hang-On (HB, v1.11T)</description>
+		<year>2026</year>
+		<manufacturer>ShinobiZ</manufacturer>
+		<rom name="Hang-On v1.11T (2026)(ShinobiZ).bin" size="4194304" crc="7616cf34"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="hangonjrarc" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Hang-On Jr. (HB)</description>
+		<year>2026</year>
+		<manufacturer>yosoynacho</manufacturer>
+		<rom name="Hang-On Jr. (2026)(yosoynacho).bin" size="270416" crc="bf2dc938"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -10216,6 +10368,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="kidcham3" cloneof="kidcham" romof="kidcham" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Kid Chameleon 3: The Final Marathon (Hack, v1.7)</description>
+		<year>2019</year>
+		<manufacturer>super1rios</manufacturer>
+		<rom name="Kid Chameleon 3 - The Final Marathon v1.7 (2019)(super1rios).bin" size="4194304" crc="ce246114"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="killshow" cloneof="fatalrew" romof="fatalrew" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Killing Game Show, The (Japan)</description>
 		<year>1993</year>
@@ -10539,6 +10700,15 @@
 		<year>1994</year>
 		<manufacturer>Electronic Arts</manufacturer>
 		<rom name="La Russa Baseball 95 (USA, Oceania)(1994)(Electronic Arts).bin" size="2097152" crc="3f848a92"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="lamulana" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>La-Mulana (HB)</description>
+		<year>2026</year>
+		<manufacturer>hombreimaginario</manufacturer>
+		<rom name="La-Mulana (2026)(hombreimaginario).bin" size="3407872" crc="3ff78925"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -11191,6 +11361,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="luckydrop" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Lucky Drop! (HB)</description>
+		<year>2026</year>
+		<manufacturer>Mike Daw</manufacturer>
+		<rom name="Lucky Drop! (2026)(Mike Daw).bin" size="393216" crc="3060d2b0"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="lylecs" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
 		<description>Lyle in Cube Sector (HB, v1.01)</description>
@@ -11205,6 +11384,15 @@
 		<year>1991</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="M-1 Abrams Battle Tank (Euro, USA)(1991)(Sega).bin" size="524288" crc="1e2f74cf"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="mrajoyknu" cloneof="sk" romof="sk" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>M.Rajoy &amp; Knuckles (Hack)</description>
+		<year>2026</year>
+		<manufacturer>Ponferrada.IA</manufacturer>
+		<rom name="M.Rajoy &amp; Knuckles (2026)(Ponferrada.IA).bin" size="8480798" crc="e85b98c3"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -11631,6 +11819,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="match3" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Match-3 (HB, Demo)</description>
+		<year>2026</year>
+		<manufacturer>EugeneSpacehead</manufacturer>
+		<rom name="Match-3 Demo (2026)(EugeneSpacehead).bin" size="655360" crc="035deca4"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="maten" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Maten no Soumetsu (Japan)</description>
 		<year>1993</year>
@@ -11826,6 +12023,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="mcommando" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Mega Commando (HB, v0.82b)</description>
+		<year>2026</year>
+		<manufacturer>MXRetroDev</manufacturer>
+		<rom name="Mega Commando v0.82b (2026)(MXRetroDev).bin" size="3276800" crc="4aa12954"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="megaflappy" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
 		<description>Mega Flappy Sis (HB)</description>
@@ -12014,6 +12220,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="megartype" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Mega R-Type (HB, Demo v1.3)</description>
+		<year>2022</year>
+		<manufacturer>The_Roboz</manufacturer>
+		<rom name="Mega R-Type Demo v1.3 (2022)(The_Roboz).bin" size="2097152" crc="3acd1afb"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="megasmole" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
 		<description>Mega Slow Mole (HB, v0.8)</description>
@@ -12146,6 +12361,15 @@
 		<year>2026</year>
 		<manufacturer>PlayOnRetro</manufacturer>
 		<rom name="MegaBox Reloaded (2026)(PlayOnRetro).bin" size="1589592" crc="1a90be2d"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="megaldoom" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>MegaLDOOM (HB, v0.2)</description>
+		<year>2026</year>
+		<manufacturer>celsowm</manufacturer>
+		<rom name="MegaLDOOM v0.2 (2026)(celsowm).bin" size="3932160" crc="ffb6573d"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -12966,10 +13190,10 @@
 	</game>
 	<game name="mkaee" cloneof="mk" romof="mk" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
-		<description>Mortal Kombat Arcade Edition Enhanced (Hack, v2.8)</description>
+		<description>Mortal Kombat Arcade Edition Enhanced (Hack, v2.9)</description>
 		<year>2026</year>
 		<manufacturer>Rael G.C.</manufacturer>
-		<rom name="Mortal Kombat Arcade Edition Enhanced v2.8 (2026)(Rael G.C.).bin" size="4194304" crc="ebc90098"/>
+		<rom name="Mortal Kombat Arcade Edition Enhanced v2.9 (2026)(Rael G.C.).bin" size="4194304" crc="bc3378bf"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -13040,6 +13264,15 @@
 		<year>1994</year>
 		<manufacturer>Ocean</manufacturer>
 		<rom name="Mr. Nutz - Hoppin' Mad (Proto)(1994)(Ocean).bin" size="1048576" crc="2bfcaa3e"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="msbellsrally" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Ms. Bell's Rally-X MD (HB)</description>
+		<year>2026</year>
+		<manufacturer>NK Soft</manufacturer>
+		<rom name="Ms. Bell's Rally-X MD (2026)(NK Soft).bin" size="4194304" crc="50f4ebf0"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -13558,6 +13791,24 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="nemeshit" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Nemeshit (HB)</description>
+		<year>2026</year>
+		<manufacturer>Clankerbast Software</manufacturer>
+		<rom name="Nemeshit (2026)(Clankerbast Software).bin" size="4194304" crc="8f93aed2"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="neoglide" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Neo Glide (HB, v1.01)</description>
+		<year>2026</year>
+		<manufacturer>nicomegadrive</manufacturer>
+		<rom name="Neo Glide v1.01 (2026)(nicomegadrive).bin" size="1572864" crc="b46467b1"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="n3dgpebb" cloneof="pebble" romof="pebble" sourcefile="megadrive/d_megadrive.cpp">
 		<description>New 3D Golf Simulation - Pebble Beach no Hatou (Japan)</description>
 		<year>1993</year>
@@ -13906,6 +14157,15 @@
 		<year>1995</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Nightmare Circus (Proto)(1995)(Sega).bin" size="4194304" crc="ee96f1b8"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="nightvein" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>NightVein (HB, Demo 1.0.7)</description>
+		<year>2025</year>
+		<manufacturer>Retro Hammer</manufacturer>
+		<rom name="NightVein Demo 1.0.7 (2025)(Retro Hammer).bin" size="1409024" crc="ff730f1b"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -14506,6 +14766,24 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="pang" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Pang (DavidGames) (HB, Beta v0.98)</description>
+		<year>2026</year>
+		<manufacturer>DavidGames</manufacturer>
+		<rom name="Pang Beta v0.98 (2026)(DavidGames).bin" size="1441792" crc="bfe14ffc"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="pangoib" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Pang (Oldschool Is Beautiful) (HB, Beta 3)</description>
+		<year>2026</year>
+		<manufacturer>Oldschool Is Beautiful</manufacturer>
+		<rom name="Pang Beta 3 (2026)(Oldschool Is Beautiful).bin" size="3877096" crc="a789941b"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="pcottone" cloneof="pcotton" romof="pcotton" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Panorama Cotton (Hack, English)</description>
@@ -14594,10 +14872,10 @@
 	</game>
 	<game name="papi2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Papi Commando - Second Blood (HB)</description>
+		<description>Papi Commando - Second Blood ! (HB)</description>
 		<year>2020</year>
 		<manufacturer>Studio Vetea</manufacturer>
-		<rom name="Papi Commando - Second Blood (2020)(Studio Vetea).bin" size="2898250" crc="be7716af"/>
+		<rom name="Papi Commando - Second Blood ! (2020)(Studio Vetea).bin" size="2898250" crc="be7716af"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -14835,6 +15113,15 @@
 		<year>2025</year>
 		<manufacturer>WaterMelon</manufacturer>
 		<rom name="Paprium Minigame (2020)(WaterMelon).bin" size="524288" crc="57b0ffa4"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="parasol" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Parasol Stars (HB, v1.0 RC3)</description>
+		<year>2026</year>
+		<manufacturer>Oldschool Is Beautiful</manufacturer>
+		<rom name="Parasol Stars v1.0 RC3 (2026)(Oldschool Is Beautiful).bin" size="4194304" crc="181b816a"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -16246,6 +16533,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="quoridor" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Quoridor MD (HB)</description>
+		<year>2026</year>
+		<manufacturer>abadede919302</manufacturer>
+		<rom name="Quoridor MD (2026)(abadede919302).bin" size="262144" crc="e9f77007"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="rbibb93" sourcefile="megadrive/d_megadrive.cpp">
 		<description>R.B.I. Baseball '93 (USA)</description>
 		<year>1993</year>
@@ -17157,6 +17453,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="rodland" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Rodland (HB, Demo)</description>
+		<year>2026</year>
+		<manufacturer>format_c</manufacturer>
+		<rom name="Rodland Demo (2026)(format_c).bin" size="1048576" crc="4db093f3"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="mvpbb" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Roger Clements MVP Baseball (USA)</description>
 		<year>1992</year>
@@ -17602,12 +17907,30 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="satyrhell" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Satyr In Hell, A (HB)</description>
+		<year>2022</year>
+		<manufacturer>kakoeimon</manufacturer>
+		<rom name="Satyr In Hell, A (2022)(kakoeimon).bin" size="655360" crc="f4148d5c"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="msbp01" cloneof="msb" romof="msb" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Prototype</comment>
 		<description>Scholastic's The Magic School Bus (Prototype)</description>
 		<year>1995</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Scholastic's The Magic School Bus (Proto)(1995)(Sega).bin" size="1042944" crc="a2315f1c"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="scoff" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Scoff (HB, v2)</description>
+		<year>2026</year>
+		<manufacturer>Mike Daw</manufacturer>
+		<rom name="Scoff v2 (2026)(Mike Daw).bin" size="262144" crc="056b0644"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -18027,6 +18350,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="shaolincarcara2" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Shaolin Carcara 2 (HB, Demo)</description>
+		<year>2025</year>
+		<manufacturer>Manganga Team</manufacturer>
+		<rom name="Shaolin Carcara 2 Demo (2025)(Manganga Team).bin" size="1310720" crc="e7e0edfb"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="shaqfu" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Shaq Fu (Euro, USA)</description>
 		<year>1994</year>
@@ -18282,6 +18614,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="shinobi" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Shinobi (HB, Beta 3)</description>
+		<year>2026</year>
+		<manufacturer>Oldschool Is Beautiful</manufacturer>
+		<rom name="Shinobi Beta 3 (2026)(Oldschool Is Beautiful).bin" size="4194304" crc="53a81527"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="shinobi3" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Shinobi III: Return of the Ninja Master (Euro)</description>
 		<year>1993</year>
@@ -18357,6 +18698,15 @@
 		<year>1990</year>
 		<manufacturer>Sigma</manufacturer>
 		<rom name="Shiten Myouou (Japan)(1990)(Sigma).bin" size="524288" crc="7e729693"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="shmupthulhu" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Shmupthulhu (HB)</description>
+		<year>2026</year>
+		<manufacturer>Mike Daw</manufacturer>
+		<rom name="Shmupthulhu (2026)(Mike Daw).bin" size="524288" crc="866a7937"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -18457,6 +18807,15 @@
 		<year>2023</year>
 		<manufacturer>manu2097</manufacturer>
 		<rom name="Shylax v0.1 (2023)(manu2097).bin" size="1310720" crc="b29cf25d"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="sidearms" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Side Arms - Hyper Dyne (HB, v2.1)</description>
+		<year>2026</year>
+		<manufacturer>rester159</manufacturer>
+		<rom name="Side Arms - Hyper Dyne v2.1 (2026)(rester159).bin" size="4194304" crc="b36c3a67"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -18758,6 +19117,15 @@
 		<year>1994</year>
 		<manufacturer>Sega</manufacturer>
 		<rom name="Soleil (Euro, Spanish)(1994)(Sega).bin" size="2097152" crc="9ed4c323"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="somalipirates" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Somali Pirates (HB, 20261003)</description>
+		<year>2026</year>
+		<manufacturer>4D Lix</manufacturer>
+		<rom name="Somali Pirates 20261003 (2026)(4D Lix).bin" size="4194304" crc="4005ecc0"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -20218,6 +20586,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="sf248m" cloneof="sf2" romof="sf2" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Street Fighter II' - Special Champion Edition - 48 MBits Blast Processing Edition (Hack, v1.6)</description>
+		<year>2026</year>
+		<manufacturer>marcel_law</manufacturer>
+		<rom name="Street Fighter II' - Special Champion Edition - 48 MBits Blast Processing Edition v1.6 (2026)(marcel_law).bin" size="6291456" crc="09579505"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="sf2wwp" cloneof="sf2" romof="sf2" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Street Fighter II' - The World Warrior Plus (Hack)</description>
@@ -20275,6 +20652,15 @@
 		<year>1991</year>
 		<manufacturer>Treco</manufacturer>
 		<rom name="Street Smart (Japan, USA)(1991)(Treco).bin" size="524288" crc="b1dedfad"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="sv2furbos" cloneof="sf2" romof="sf2" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Street Voter II Furbo - Elecciones Anticipadas Edition (Hack, Spanish, v37)</description>
+		<year>2026</year>
+		<manufacturer>Ponferrada.IA</manufacturer>
+		<rom name="Street Voter II Furbo - Elecciones Anticipadas Edition v37 T-Spa (2026)(Ponferrada.IA).bin" size="4194304" crc="eb4b73c7"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -21376,6 +21762,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="supertripper" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Supertripper (HB, Demo)</description>
+		<year>2026</year>
+		<manufacturer>PlayOnRetro</manufacturer>
+		<rom name="Supertripper Demo (2026)(PlayOnRetro).bin" size="2097152" crc="a20cfd60"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="surgingc" cloneof="surging" romof="surging" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Surging Aura (Hack, Chinese)</description>
@@ -21961,10 +22356,10 @@
 	</game>
 	<game name="tmntarcade" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Homebrew</comment>
-		<description>Teenage Mutant Ninja Turtles: The Arcade Game (HB, v0.2.9d)</description>
+		<description>Teenage Mutant Ninja Turtles: The Arcade Game (HB, v0.3.9)</description>
 		<year>2026</year>
 		<manufacturer>Gustavo Valenzuela</manufacturer>
-		<rom name="Teenage Mutant Ninja Turtles - The Arcade Game v0.2.9d (2026)(Gustavo Valenzuela).bin" size="1703936" crc="a8532e61"/>
+		<rom name="Teenage Mutant Ninja Turtles - The Arcade Game v0.3.9 (2026)(Gustavo Valenzuela).bin" size="3932160" crc="37edbe49"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -22187,12 +22582,30 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="preliminary"/>
 	</game>
+	<game name="tetrisarc" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Tetris - Atari Games Arcade Port (HB, v1.04)</description>
+		<year>2026</year>
+		<manufacturer>ShinobiZ</manufacturer>
+		<rom name="Tetris - Atari Games Arcade Port v1.04 (2026)(ShinobiZ).bin" size="2097152" crc="1aad8339"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="tetrisredux" cloneof="tetris" romof="tetris" sourcefile="megadrive/d_megadrive.cpp">
 		<comment>Hack</comment>
 		<description>Tetris Redux (Hack)</description>
 		<year>2026</year>
 		<manufacturer>BillyTime! Games</manufacturer>
 		<rom name="Tetris Redux (2026)(BillyTime! Games).bin" size="262144" crc="b2d5bdb2"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="the8" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>The 8 (HB, Public Demo 1.0)</description>
+		<year>2026</year>
+		<manufacturer>Le Phil du Temps</manufacturer>
+		<rom name="The 8 Public Demo 1.0 (2026)(Le Phil du Temps).bin" size="1966080" crc="3fa96d14"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -22388,6 +22801,24 @@
 		<year>1994</year>
 		<manufacturer>Fox Interactive</manufacturer>
 		<rom name="Tick, The (USA)(1994)(Fox Interactive).bin" size="2097152" crc="425132f0"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tigeroad" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Tiger Road (hombreimaginario) (HB, 2026-10-17)</description>
+		<year>2026</year>
+		<manufacturer>hombreimaginario</manufacturer>
+		<rom name="Tiger Road 2026-10-17 (2026)(hombreimaginario).bin" size="2490368" crc="92480e61"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="tigeroadoib" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Tiger Road (Oldschool Is Beautiful) (HB, Alpha)</description>
+		<year>2026</year>
+		<manufacturer>Oldschool Is Beautiful</manufacturer>
+		<rom name="Tiger Road Alpha (2026)(Oldschool Is Beautiful).bin" size="4194304" crc="e7a2835d"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
@@ -24302,6 +24733,15 @@
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>
+	<game name="wboyarc" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Homebrew</comment>
+		<description>Wonder Boy - Arcade Port (HB, v1.5)</description>
+		<year>2026</year>
+		<manufacturer>ShinobiZ</manufacturer>
+		<rom name="Wonder Boy - Arcade Port v1.5 (2026)(ShinobiZ).bin" size="2097152" crc="bf96b19b"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
 	<game name="wboy3" sourcefile="megadrive/d_megadrive.cpp">
 		<description>Wonder Boy III: Monster Lair (Euro) ~ Monster Lair (Japan)</description>
 		<year>1991</year>
@@ -25019,6 +25459,15 @@
 		<year>1991</year>
 		<manufacturer>Renovation</manufacturer>
 		<rom name="ys iii (usa).bin" size="1048576" crc="ea27976e"/>
+		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
+		<driver status="good"/>
+	</game>
+	<game name="yuyugte" cloneof="yuyug" romof="yuyug" sourcefile="megadrive/d_megadrive.cpp">
+		<comment>Hack</comment>
+		<description>Yu Yu Hakusho Gaiden (Hack, English v1.0 Build 9)</description>
+		<year>2026</year>
+		<manufacturer>Patch Clan</manufacturer>
+		<rom name="Yu Yu Hakusho Gaiden T-Eng v1.0 Build 9 (2026)(Patch Clan).bin" size="4194304" crc="fadb2b33"/>
 		<video type="raster" orientation="horizontal" width="320" height="224" aspectx="4" aspecty="3"/>
 		<driver status="good"/>
 	</game>

@@ -987,7 +987,9 @@ static inline UINT32 RL(UINT32 A)
 	UINT8 *pr = MemMapRL[ A >> SH3_SHIFT ];
 	if ( (uintptr_t)pr >= SH3_MAXHANDLER ) {
 		UINT32 V = *((UINT32 *)(pr + (A & SH3_PAGEM)));
+#ifdef LSB_FIRST
 		V = (V << 16) | (V >> 16);
+#endif
 		return V;
 	}
 	return ReadLong[(uintptr_t)pr](A);
@@ -1038,7 +1040,9 @@ static inline void WL(UINT32 A, UINT32 V)
 
 	UINT8 *pr = MemMapW[ A >> SH3_SHIFT ];
 	if ((uintptr_t)pr >= SH3_MAXHANDLER) {
+#ifdef LSB_FIRST
 		V = (V << 16) | (V >> 16);
+#endif
 		*((UINT32 *)(pr + (A & SH3_PAGEM))) = (UINT32)V;
 		return;
 	}

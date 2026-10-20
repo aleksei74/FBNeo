@@ -55,6 +55,9 @@
     <ClCompile Include="..\..\src\burn\vector.cpp">
       <Filter>burn</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\burn\burn_hdd.cpp">
+      <Filter>burn</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\burn\devices\6821pia.cpp">
       <Filter>burn\devices</Filter>
     </ClCompile>
@@ -1906,6 +1909,9 @@
     <ClCompile Include="..\..\src\burn\drv\pst90s\d_cultures.cpp">
       <Filter>burn\drv\pst90s</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\burn\drv\pst90s\d_cyclwarr.cpp">
+      <Filter>burn\drv\pst90s</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\burn\drv\pst90s\d_dcon.cpp">
       <Filter>burn\drv\pst90s</Filter>
     </ClCompile>
@@ -3304,16 +3310,7 @@
     <ClCompile Include="..\..\src\cpu\mb88xx\mb88xx.cpp">
       <Filter>cpus\mb88xx</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\src\cpu\mips3\cop0.cpp">
-      <Filter>cpus\mips</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\cpu\mips3\cop1.cpp">
-      <Filter>cpus\mips</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\src\cpu\mips3\mips3.cpp">
-      <Filter>cpus\mips</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\cpu\mips3\x64\mips3_x64.cpp">
       <Filter>cpus\mips</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\cpu\nec\nec.cpp">

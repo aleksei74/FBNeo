@@ -406,6 +406,10 @@ static INT32 DrvLoadRoms()
 	if (BurnLoadRom(DrvMainROM,  0, 1)) return 1;
 	if (ri.nLen == 0x200000) memcpy (DrvMainROM + 0x200000, DrvMainROM, 0x200000);
 	//if (ri.nLen >= 0x400000) type_d = 1;
+#ifndef LSB_FIRST
+	// u4 is stored as little-endian 16-bit words; the SH-3 core wants native (big-endian) layout here
+	BurnByteswap(DrvMainROM, 0x400000);
+#endif
 
 	if (BurnLoadRom(DrvFlashROM, 1, 1)) return 1;
 

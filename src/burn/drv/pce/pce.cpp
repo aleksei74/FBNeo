@@ -384,10 +384,10 @@ static INT32 PCEDoReset()
 	return 0;
 }
 
-static INT32 CommonInit(int type)
+static INT32 CommonInit(int type, INT32 rom_index)
 {
 	struct BurnRomInfo ri;
-	BurnDrvGetRomInfo(&ri, 0);
+	BurnDrvGetRomInfo(&ri, rom_index);
 	UINT32 length = ri.nLen;
 
 	hardware_type = type;
@@ -402,7 +402,7 @@ static INT32 CommonInit(int type)
 	{
 		memset (PCECartROM, 0xff, length);
 
-		if (BurnLoadRom(PCECartROM, PCEDips[3], 1)) return 1;
+		if (BurnLoadRom(PCECartROM, rom_index, 1)) return 1;
 
 		if (ri.nLen & 0x200) { // remove header
 			memcpy (PCECartROM, PCECartROM + 0x200, ri.nLen - 0x200);
@@ -416,6 +416,13 @@ static INT32 CommonInit(int type)
 		}
 
 		if (length == 0x280000) pce_sf2 = 1;
+
+		if (HAS_CD && length < 0x40000) { // games express card (32kb)
+			for (UINT32 i = length; i < 0x40000; i += length) {
+				memcpy (PCECartROM + i, PCECartROM, length);
+			}
+			length = 0x40000;
+		}
 
 		if (length == 0x60000)
 		{
@@ -511,22 +518,29 @@ static INT32 CommonInit(int type)
 
 INT32 PCEInit()
 {
-	return CommonInit(PCE_HW);
+	return CommonInit(PCE_HW, PCEDips[3]);
 }
 
 INT32 TG16Init()
 {
-	return CommonInit(TG16_HW);
+	return CommonInit(TG16_HW, PCEDips[3]);
 }
 
 INT32 SGXInit()
 {
-	return CommonInit(SGX_HW);
+	return CommonInit(SGX_HW, PCEDips[3]);
 }
 
 INT32 PCECDInit()
 {
-	return CommonInit(PCEDips[2] & 1 ? ACARD_HW : CD_HW);
+	pce_cd_games_express = CDSubsystemIsGamesExpress();
+
+	if (pce_cd_games_express) {
+		bprintf(0, _T("PCE CD: Games Express disc detected\n"));
+		return CommonInit(CD_HW, 3); // games express card, not selectable
+	}
+
+	return CommonInit(PCEDips[2] & 1 ? ACARD_HW : CD_HW, PCEDips[3] & 3);
 }
 
 INT32 populousInit()
@@ -678,7 +692,10 @@ INT32 PCEFrame()
 	if (HAS_CD) timerIdle(nExtraCycles);
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
-		nCyclesDone[0] += h6280Run(1128/3); // 1128 m-cycles brings us to hblank. "/ 3" m-cycles -> cpu cycles
+		// 1128 m-cycles from the scheduled line start brings us to hblank. "/ 3" m-cycles -> cpu cycles
+		// (relative to the line start, not to the cpu: block transfers overrunning a line must not shorten the next ones - advancedvg floor and sfx)
+		INT32 nHblankCycles = (i * nCyclesTotal[0] / nInterleave) + (1128/3) - h6280TotalCycles();
+		if (nHblankCycles > 0) nCyclesDone[0] += h6280Run(nHblankCycles);
 		hblank();
 
 		if (HAS_CD) {
