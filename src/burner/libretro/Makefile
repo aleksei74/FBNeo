@@ -34,6 +34,9 @@ BACKSLASH := \$(BACKSLASH)
 filter_out1 = $(filter-out $(firstword $1),$1)
 filter_out2 = $(call filter_out1,$(call filter_out1,$1))
 
+# Probe both frontends; Ubuntu 18.04's GCC does not recognize Cortex-A76.
+supports_rpi5_cpu = $(shell printf 'int probe;\n' | $(CC) -mcpu=cortex-a76 -mtune=cortex-a76 -x c -c -o /dev/null - >/dev/null 2>&1 && printf 'int probe;\n' | $(CXX) -mcpu=cortex-a76 -mtune=cortex-a76 -x c++ -c -o /dev/null - >/dev/null 2>&1 && echo yes)
+
 # system platform
 ifeq ($(platform),)
 	platform = unix
@@ -137,7 +140,11 @@ ifneq (,$(findstring unix,$(platform)))
 		CC = arm-linux-gnueabihf-gcc
 		CXX = arm-linux-gnueabihf-g++
 		AR = arm-linux-gnueabihf-ar
-		PLATFORM_DEFINES := -marm -mcpu=cortex-a76 -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard
+		RPI5_CPU := $(if $(supports_rpi5_cpu),cortex-a76,cortex-a72)
+		ifeq ($(RPI5_CPU),cortex-a72)
+$(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 code generation)
+		endif
+		PLATFORM_DEFINES := -marm -mcpu=$(RPI5_CPU) -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard
 		INCLUDE_7Z_SUPPORT = 0
 		HAVE_NEON = 1
 		USE_CYCLONE = 0
@@ -213,6 +220,10 @@ else ifeq ($(platform), ras5_x64)
 	CC = aarch64-linux-gnu-gcc
 	CXX = aarch64-linux-gnu-g++
 	AR = aarch64-linux-gnu-gcc-ar
+	RPI5_CPU := $(if $(supports_rpi5_cpu),cortex-a76,cortex-a72)
+	ifeq ($(RPI5_CPU),cortex-a72)
+$(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 code generation)
+	endif
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
@@ -222,8 +233,8 @@ else ifeq ($(platform), ras5_x64)
 	ARCH = arm64
 	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
 	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
-	CFLAGS += -mcpu=cortex-a76 -mabi=lp64 -Wno-psabi -mtune=cortex-a76 $(CPUFLAGS)
-	CXXFLAGS += -mcpu=cortex-a76 -mabi=lp64 -Wno-psabi -mtune=cortex-a76 $(CPUFLAGS)
+	CFLAGS += -mcpu=$(RPI5_CPU) -mabi=lp64 -Wno-psabi -mtune=$(RPI5_CPU) $(CPUFLAGS)
+	CXXFLAGS += -mcpu=$(RPI5_CPU) -mabi=lp64 -Wno-psabi -mtune=$(RPI5_CPU) $(CPUFLAGS)
 	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
 
 # webOS (32/64-bit)
