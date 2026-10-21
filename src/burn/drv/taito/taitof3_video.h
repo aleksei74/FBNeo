@@ -14,8 +14,11 @@ extern UINT8 *TaitoF3LineRAM;
 
 extern UINT16 *bitmap_layer[10];
 extern UINT8 *bitmap_flags[10];
+extern INT32 bitmap_width[8];
 extern UINT32 *output_bitmap;
 
+extern UINT8 *tile_opaque_sp;
+extern UINT8 *tile_opaque_pf[8];
 extern UINT8 *dirty_tiles;
 extern UINT8 dirty_tile_count[10];
 
