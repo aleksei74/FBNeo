@@ -382,17 +382,30 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
 
-      - name: Set up MSYS2 MinGW64
+      - name: Set up MSYS2 UCRT64
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           install: >-
             base-devel
             git
             make
             perl
-            mingw-w64-x86_64-gcc
+            mingw-w64-ucrt-x86_64-gcc
+
+      # Catch CRT/fenv regressions before compiling the full core.
+      - name: Check MinGW-w64 C runtime linkage
+        shell: msys2 {0}
+        run: |
+          g++ --version
+          pacman -Q mingw-w64-ucrt-x86_64-crt mingw-w64-ucrt-x86_64-gcc
+          printf '%s\n' \
+            '#include <fenv.h>' \
+            'extern "C" __declspec(dllexport) int fbneo_fenv_probe(void) { return fesetenv(FE_DFL_ENV); }' \
+            | g++ -x c++ - -shared -Wl,-no-undefined -static -static-libgcc -static-libstdc++ -o fenv-link-probe.dll
+          test -f fenv-link-probe.dll
+          rm fenv-link-probe.dll
 
       - name: Build Windows x64 libretro core
         shell: msys2 {0}
