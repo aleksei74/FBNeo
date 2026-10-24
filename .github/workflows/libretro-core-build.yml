@@ -394,23 +394,26 @@ jobs:
             perl
             mingw-w64-ucrt-x86_64-gcc
 
-      # Catch CRT/fenv regressions before compiling the full core.
-      - name: Check MinGW-w64 C runtime linkage
+      # Recent mingw-w64 CRT builds define __mingw_fe_dfl_env in CRT_fp10.o.
+      # DLLs may reference fesetenv only via libmingwex, so include it explicitly.
+      - name: Verify MinGW-w64 CRT floating-point linkage
         shell: msys2 {0}
         run: |
           g++ --version
           pacman -Q mingw-w64-ucrt-x86_64-crt mingw-w64-ucrt-x86_64-gcc
+          test -f "${MINGW_PREFIX}/lib/CRT_fp10.o"
+          nm -g "${MINGW_PREFIX}/lib/CRT_fp10.o" | grep -q ' __mingw_fe_dfl_env$'
           printf '%s\n' \
             '#include <fenv.h>' \
-            'extern "C" __declspec(dllexport) int fbneo_fenv_probe(void) { return fesetenv(FE_DFL_ENV); }' \
-            | g++ -x c++ - -shared -Wl,-no-undefined -static -static-libgcc -static-libstdc++ -o fenv-link-probe.dll
+            'extern "C" __declspec(dllexport) int fbneo_fenv_probe(void) { fenv_t env; return fegetenv(&env) + fesetenv(&env); }' \
+            | g++ -x c++ - -shared -Wl,-no-undefined -static -static-libgcc -static-libstdc++ -l:CRT_fp10.o -o fenv-link-probe.dll
           test -f fenv-link-probe.dll
           rm fenv-link-probe.dll
 
       - name: Build Windows x64 libretro core
         shell: msys2 {0}
         run: |
-          make -C src/burner/libretro platform=win REGEN_HEADERS=1 -j"$(nproc)"
+          LDFLAGS="-l:CRT_fp10.o" make -C src/burner/libretro platform=win REGEN_HEADERS=1 -j"$(nproc)"
           test -f src/burner/libretro/fbneo_libretro.dll
 
       - name: Upload Windows x64 core
