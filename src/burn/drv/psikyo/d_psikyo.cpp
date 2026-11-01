@@ -2652,7 +2652,7 @@ STD_ROM_PICK(sngkacek)
 STD_ROM_FN(sngkacek)
 
 struct BurnDriver BurnDrvSngkacek = {
-	"sngkacek", "samuraia", NULL, NULL, "2023",
+	"sngkacek", "samuraia", NULL, NULL, "2026",
 	"Sengoku Ace (Korean Translation)\0", NULL, "Psikyo (Banpresto license)", "Psikyo 68EC020",
 	L"Sengoku Ace (Korean Translation)\0\uC804\uAD6D \uC5D0\uC774\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,

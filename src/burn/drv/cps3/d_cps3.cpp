@@ -2765,3 +2765,224 @@ struct BurnDriver BurnDrvJojobanrb = {
 	jojobaInit, cps3Exit, cps3Frame, DrvCps3Draw, cps3Scan, &cps3_palette_change, 0x40000,
 	384, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// --------------------------------------------------------------
+// Street Fighter III: New Generation (Korean Translation 970204)
+// --------------------------------------------------------------
+
+static struct BurnRomInfo sfiiikRomDesc[] = {
+	{ "sfiii_euro.29f400.u2",	0x080000, 0x27699ddc, BRF_ESS | BRF_BIOS },	// SH-2 Bios
+
+	{ "sfiii-simm1k.0",			0x200000, 0x8cf38236, BRF_ESS | BRF_PRG },
+	{ "sfiii-simm1k.1",			0x200000, 0x2338a85a, BRF_ESS | BRF_PRG },
+	{ "sfiii-simm1k.2",			0x200000, 0x42bb690d, BRF_ESS | BRF_PRG },
+	{ "sfiii-simm1k.3",			0x200000, 0xc4358cb8, BRF_ESS | BRF_PRG },
+	{ "sfiii-simm3.0",			0x200000, 0x080b3bd3, BRF_GRA },
+	{ "sfiii-simm3.1",			0x200000, 0x5c356f2f, BRF_GRA },
+	{ "sfiii-simm3.2",			0x200000, 0xf9c97a45, BRF_GRA },
+	{ "sfiii-simm3.3",			0x200000, 0x09de3ead, BRF_GRA },
+	{ "sfiii-simm3.4",			0x200000, 0x7dd7e1f3, BRF_GRA },
+	{ "sfiii-simm3.5",			0x200000, 0x47a03a3a, BRF_GRA },
+	{ "sfiii-simm3.6",			0x200000, 0xe9eb7a26, BRF_GRA },
+	{ "sfiii-simm3.7",			0x200000, 0x7f44395c, BRF_GRA },
+	{ "sfiii-simm4k.0",			0x200000, 0x587c172e, BRF_GRA },
+	{ "sfiii-simm4k.1",			0x200000, 0x5f01aaa9, BRF_GRA },
+	{ "sfiii-simm4.2",			0x200000, 0x8afc22d4, BRF_GRA },
+	{ "sfiii-simm4.3",			0x200000, 0x9f3873b8, BRF_GRA },
+	{ "sfiii-simm4.4",			0x200000, 0x166b3c97, BRF_GRA },
+	{ "sfiii-simm4.5",			0x200000, 0xe5ea2547, BRF_GRA },
+	{ "sfiii-simm4.6",			0x200000, 0xe85b9fdd, BRF_GRA },
+	{ "sfiii-simm4.7",			0x200000, 0x362c01b7, BRF_GRA },
+	{ "sfiii-simm5k.0",			0x200000, 0xd7393b21, BRF_GRA },
+	{ "sfiii-simm5k.1",			0x200000, 0x5f1f6197, BRF_GRA }
+};
+
+STD_ROM_PICK(sfiiik)
+STD_ROM_FN(sfiiik)
+
+struct BurnDriver BurnDrvSfiiik = {
+	"sfiiik", "sfiii", NULL, NULL, "2026",
+	"Street Fighter III: New Generation (Korean Translation 970204)\0", NULL, "Capcom", "CPS-3",
+	L"Street Fighter III: New Generation (Korean Translation 970204)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 III: \uB274 \uC81C\uB124\uB808\uC774\uC158 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970204)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS3, GBF_VSFIGHT, FBF_SF,
+	NULL, sfiiikRomInfo, sfiiikRomName, NULL, NULL, NULL, NULL, cps3InputInfo, sfiiiwideeuroDIPInfo,
+	sfiiiInit, cps3Exit, cps3Frame, DrvCps3Draw, cps3Scan, &cps3_palette_change, 0x40000,
+	384, 224, 4, 3
+};
+
+// -----------------------------------------------------------------------
+// Street Fighter III 2nd Impact: Giant Attack (Korean Translation 970930)
+// -----------------------------------------------------------------------
+
+static struct BurnRomInfo sfiii2kRomDesc[] = {
+
+	{ "sfiii2_usa.29f400.u2",				0x080000, 0x75dd72e0, BRF_ESS | BRF_BIOS },	// SH-2 Bios
+
+	{ "sfiii2-simm1k.0",		0x200000, 0x1dd6348b, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm1k.1",		0x200000, 0xca148a5a, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm1k.2",		0x200000, 0x46b3fe24, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm1k.3",		0x200000, 0x24c7fa74, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm2k.0",		0x200000, 0x51d61911, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm2k.1",		0x200000, 0xf64066f5, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm2k.2",		0x200000, 0x8b0266c7, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm2k.3",		0x200000, 0x897d56d1, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm3.0",			0x200000, 0xdab2d766, BRF_GRA },
+	{ "sfiii2-simm3.1",			0x200000, 0x1f2aa34b, BRF_GRA },
+	{ "sfiii2-simm3.2",			0x200000, 0x6f1a04eb, BRF_GRA },
+	{ "sfiii2-simm3.3",			0x200000, 0xe05ef205, BRF_GRA },
+	{ "sfiii2-simm3.4",			0x200000, 0xaffb074f, BRF_GRA },
+	{ "sfiii2-simm3.5",			0x200000, 0x6962872e, BRF_GRA },
+	{ "sfiii2-simm3.6",			0x200000, 0x6eed87de, BRF_GRA },
+	{ "sfiii2-simm3.7",			0x200000, 0xe18f479e, BRF_GRA },
+	{ "sfiii2-simm4.0",			0x200000, 0x764c2503, BRF_GRA },
+	{ "sfiii2-simm4.1",			0x200000, 0x3e16af6e, BRF_GRA },
+	{ "sfiii2-simm4.2",			0x200000, 0x215705e6, BRF_GRA },
+	{ "sfiii2-simm4.3",			0x200000, 0xe30cbd9c, BRF_GRA },
+	{ "sfiii2-simm4.4",			0x200000, 0x4185ded9, BRF_GRA },
+	{ "sfiii2-simm4.5",			0x200000, 0x4e8db013, BRF_GRA },
+	{ "sfiii2-simm4.6",			0x200000, 0x08df48ce, BRF_GRA },
+	{ "sfiii2-simm4.7",			0x200000, 0xbb8f80a5, BRF_GRA },
+	{ "sfiii2-simm5.0",			0x200000, 0xebdc4787, BRF_GRA },
+	{ "sfiii2-simm5.1",			0x200000, 0x6b7c550e, BRF_GRA },
+	{ "sfiii2-simm5.2",			0x200000, 0x56ff8c50, BRF_GRA },
+	{ "sfiii2-simm5.3",			0x200000, 0x3f2ac3e9, BRF_GRA },
+	{ "sfiii2-simm5k.4",		0x200000, 0x17b85ea8, BRF_GRA },
+	{ "sfiii2-simm5k.5",		0x200000, 0x002161dd, BRF_GRA },
+	{ "sfiii2-simm5.6",			0x200000, 0x2edc5986, BRF_GRA },
+	{ "sfiii2-simm5.7",			0x200000, 0x93ffa199, BRF_GRA }
+};
+
+STD_ROM_PICK(sfiii2k)
+STD_ROM_FN(sfiii2k)
+
+struct BurnDriver BurnDrvSfiii2k = {
+	"sfiii2k", "sfiii2", NULL, NULL, "2026",
+	"Street Fighter III 2nd Impact: Giant Attack (Korean Translation 970930)\0", NULL, "Capcom", "CPS-3",
+	L"Street Fighter III 2nd Impact: Giant Attack (Korean Translation 970930)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 III \uC138\uCEE8\uB4DC \uC784\uD329\uD2B8: \uC790\uC774\uC5B8\uD2B8 \uC5B4\uD0DD (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970930)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS3, GBF_VSFIGHT, FBF_SF,
+	NULL, sfiii2kRomInfo, sfiii2kRomName, NULL, NULL, NULL, NULL, cps3InputInfo, sfiiiwideusaDIPInfo,
+	sfiii2Init, cps3Exit, cps3Frame, DrvCps3Draw, cps3Scan, &cps3_palette_change, 0x40000,
+	384, 224, 4, 3
+};
+
+// -------------------------------------------------------------------------------
+// Street Fighter III 3rd Strike: Fight for the Future (Korean Translation 990608)
+// -------------------------------------------------------------------------------
+
+static struct BurnRomInfo sfiii3kRomDesc[] = {
+
+	{ "sfiii3_euro.29f400.u2",				0x080000, 0x30bbf293, BRF_ESS | BRF_BIOS },	// SH-2 Bios
+
+	{ "sfiii3-simm1k.0",		0x200000, 0x165ad612, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm1k.1",		0x200000, 0x00864bdb, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm1k.2",		0x200000, 0xc5952a35, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm1k.3",		0x200000, 0x2f8ffb30, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm2k.0",		0x200000, 0x18df884a, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm2k.1",		0x200000, 0xbdeb9f91, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm2k.2",		0x200000, 0xb13f2399, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm2k.3",		0x200000, 0x3271b90a, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm3.0",			0x200000, 0x7baa1f79, BRF_GRA },
+	{ "sfiii3-simm3.1",			0x200000, 0x234bf8fe, BRF_GRA },
+	{ "sfiii3-simm3.2",			0x200000, 0xd9ebc308, BRF_GRA },
+	{ "sfiii3-simm3.3",			0x200000, 0x293cba77, BRF_GRA },
+	{ "sfiii3-simm3.4",			0x200000, 0x6055e747, BRF_GRA },
+	{ "sfiii3-simm3.5",			0x200000, 0x499aa6fc, BRF_GRA },
+	{ "sfiii3-simm3.6",			0x200000, 0x6c13879e, BRF_GRA },
+	{ "sfiii3-simm3.7",			0x200000, 0xcf4f8ede, BRF_GRA },
+	{ "sfiii3-simm4.0",			0x200000, 0x091fd5ba, BRF_GRA },
+	{ "sfiii3-simm4.1",			0x200000, 0x0bca8917, BRF_GRA },
+	{ "sfiii3-simm4.2",			0x200000, 0xa0fd578b, BRF_GRA },
+	{ "sfiii3-simm4.3",			0x200000, 0x4bf8c699, BRF_GRA },
+	{ "sfiii3-simm4.4",			0x200000, 0x137b8785, BRF_GRA },
+	{ "sfiii3-simm4.5",			0x200000, 0x4fb70671, BRF_GRA },
+	{ "sfiii3-simm4.6",			0x200000, 0x832374a4, BRF_GRA },
+	{ "sfiii3-simm4.7",			0x200000, 0x1c88576d, BRF_GRA },
+	{ "sfiii3-simm5.0",			0x200000, 0xc67d9190, BRF_GRA },
+	{ "sfiii3-simm5.1",			0x200000, 0x6cb79868, BRF_GRA },
+	{ "sfiii3-simm5.2",			0x200000, 0xdf69930e, BRF_GRA },
+	{ "sfiii3-simm5.3",			0x200000, 0x333754e0, BRF_GRA },
+	{ "sfiii3-simm5.4",			0x200000, 0x78f6d417, BRF_GRA },
+	{ "sfiii3-simm5.5",			0x200000, 0x8ccad9b1, BRF_GRA },
+	{ "sfiii3-simm5k.6",		0x200000, 0x1889daf9, BRF_GRA },
+	{ "sfiii3-simm5k.7",		0x200000, 0xa446024e, BRF_GRA },
+	{ "sfiii3-simm6.0",			0x200000, 0x8da69042, BRF_GRA },
+	{ "sfiii3-simm6.1",			0x200000, 0x1c8c7ac4, BRF_GRA },
+	{ "sfiii3-simm6.2",			0x200000, 0xa671341d, BRF_GRA },
+	{ "sfiii3-simm6.3",			0x200000, 0x1a990249, BRF_GRA },
+	{ "sfiii3-simm6.4",			0x200000, 0x20cb39ac, BRF_GRA },
+	{ "sfiii3-simm6.5",			0x200000, 0x5f844b2f, BRF_GRA },
+	{ "sfiii3-simm6.6",			0x200000, 0x450e8d28, BRF_GRA },
+	{ "sfiii3-simm6.7",			0x200000, 0xcc5f4187, BRF_GRA }
+};
+
+STD_ROM_PICK(sfiii3k)
+STD_ROM_FN(sfiii3k)
+
+struct BurnDriver BurnDrvSfiii3k = {
+	"sfiii3k", "sfiii3", NULL, NULL, "2026",
+	"Street Fighter III 3rd Strike: Fight for the Future (Korean Translation 990608)\0", NULL, "Capcom", "CPS-3",
+	L"Street Fighter III 3rd Strike: Fight for the Future (Korean Translation 990608)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 III \uC11C\uB4DC \uC2A4\uD2B8\uB77C\uC774\uD06C: \uD30C\uC774\uD2B8 \uD3EC \uB354 \uD4E8\uCC98 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 990608)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS3, GBF_VSFIGHT, FBF_SF,
+	NULL, sfiii3kRomInfo, sfiii3kRomName, NULL, NULL, NULL, NULL, cps3InputInfo, euroDIPInfo,
+	sfiii3Init, cps3Exit, cps3Frame, DrvCps3Draw, cps3Scan, &cps3_palette_change, 0x40000,
+	384, 224, 4, 3
+};
+
+// ----------------------------------------------------------------------------
+// JoJo no Kimyou na Bouken: Mirai e no Isan (Korean Translation 990913, NO CD)
+// ----------------------------------------------------------------------------
+
+static struct BurnRomInfo jojobanr2kRomDesc[] = {
+
+	{ "jojoba_japan_nocd.29f400.u2",		0x080000, 0x4dab19f5, BRF_ESS | BRF_BIOS },	// SH-2 Bios
+
+	{ "jojoba-simm1k.0",		0x200000, 0xc249e777, BRF_ESS | BRF_PRG },
+	{ "jojoba-simm1k.1",		0x200000, 0x838e03e0, BRF_ESS | BRF_PRG },
+	{ "jojoba-simm1k.2",		0x200000, 0x237a39c0, BRF_ESS | BRF_PRG },
+	{ "jojoba-simm1k.3",		0x200000, 0xe31c0e03, BRF_ESS | BRF_PRG },
+	{ "jojoba-simm2.0",			0x200000, 0x305c4914, BRF_ESS | BRF_PRG },
+	{ "jojoba-simm2k.1",		0x200000, 0x78979d6d, BRF_ESS | BRF_PRG },
+	{ "jojoba-simm2k.2",		0x200000, 0x04616033, BRF_ESS | BRF_PRG },
+	{ "jojoba-simm2k.3",		0x200000, 0x0581a35d, BRF_ESS | BRF_PRG },
+	{ "jojoba-simm3.0",			0x200000, 0x4d16e111, BRF_GRA },
+	{ "jojoba-simm3.1",			0x200000, 0x9b3406d3, BRF_GRA },
+	{ "jojoba-simm3.2",			0x200000, 0xf2414997, BRF_GRA },
+	{ "jojoba-simm3.3",			0x200000, 0x954b9c7d, BRF_GRA },
+	{ "jojoba-simm3.4",			0x200000, 0x625adc1d, BRF_GRA },
+	{ "jojoba-simm3.5",			0x200000, 0x20a70bb4, BRF_GRA },
+	{ "jojoba-simm3.6",			0x200000, 0xa10ec5af, BRF_GRA },
+	{ "jojoba-simm3.7",			0x200000, 0x0bd0de7a, BRF_GRA },
+	{ "jojoba-simm4.0",			0x200000, 0x6ea14adc, BRF_GRA },
+	{ "jojoba-simm4.1",			0x200000, 0x8f4c42fb, BRF_GRA },
+	{ "jojoba-simm4.2",			0x200000, 0xef0586d1, BRF_GRA },
+	{ "jojoba-simm4.3",			0x200000, 0x93ccc470, BRF_GRA },
+	{ "jojoba-simm4.4",			0x200000, 0x3d9ec7d2, BRF_GRA },
+	{ "jojoba-simm4.5",			0x200000, 0x03e66850, BRF_GRA },
+	{ "jojoba-simm4.6",			0x200000, 0x01606ac3, BRF_GRA },
+	{ "jojoba-simm4.7",			0x200000, 0x36392b87, BRF_GRA },
+	{ "jojoba-simm5.0",			0x200000, 0x2ef8c60c, BRF_GRA },
+	{ "jojoba-simm5.1",			0x200000, 0xcf7d7ca6, BRF_GRA },
+	{ "jojoba-simm5.2",			0x200000, 0xb7815bfa, BRF_GRA },
+	{ "jojoba-simm5.3",			0x200000, 0x9bfec049, BRF_GRA },
+	{ "jojoba-simm5.4",			0x200000, 0xd167536b, BRF_GRA },
+	{ "jojoba-simm5.5",			0x200000, 0x55e7a042, BRF_GRA },
+	{ "jojoba-simm5.6",			0x200000, 0x4fb32906, BRF_GRA },
+	{ "jojoba-simm5.7",			0x200000, 0x8c8be520, BRF_GRA }
+};
+
+STD_ROM_PICK(jojobanr2k)
+STD_ROM_FN(jojobanr2k)
+
+struct BurnDriver BurnDrvJojobanr2k = {
+	"jojobanr2k", "jojoba", NULL, NULL, "2026",
+	"JoJo no Kimyou na Bouken: Mirai e no Isan (Korean Translation 990913, NO CD)\0", NULL, "Capcom", "CPS-3",
+	L"JoJo no Kimyou na Bouken: Mirai e no Isan (Korean Translation 990913, NO CD)\0\uC8E0\uC8E0\uC758 \uAE30\uBB18\uD55C \uBAA8\uD5D8: \uBBF8\uB798\uB85C\uC758 \uC720\uC0B0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 990913, NO CD)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_16BIT_ONLY | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS3 | HARDWARE_CAPCOM_CPS3_NO_CD, GBF_VSFIGHT, 0,
+	NULL, jojobanr2kRomInfo, jojobanr2kRomName, NULL, NULL, NULL, NULL, jojoInputInfo, jojobaDIPInfo,
+	jojobaInit, cps3Exit, cps3Frame, DrvCps3Draw, cps3Scan, &cps3_palette_change, 0x40000,
+	384, 224, 4, 3
+};

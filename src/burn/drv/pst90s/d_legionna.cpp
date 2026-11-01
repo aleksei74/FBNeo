@@ -2911,3 +2911,45 @@ struct BurnDriver BurnDrvGrainbowk = {
 	GrainbowInit, DrvExit, DrvFrame, GrainbowDraw, DrvScan, &DrvRecalc, 0x801,
 	320, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Legionnaire (Korean Translation)
+
+static struct BurnRomInfo legionnakRomDesc[] = {
+	{ "1k.u025",					0x020000, 0xf9484681, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "2k.u024",					0x020000, 0x683aa84d, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "3k.u026",					0x020000, 0xae2845f9, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "4k.u023",					0x020000, 0x05c8707b, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "6.u1110",					0x010000, 0xfe7b8d06, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "7k.u077",					0x010000, 0x2a26649f, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
+	{ "8k.u072",					0x010000, 0xb8aa1462, 3 | BRF_GRA },           //  6
+
+	{ "legionnire_obj1.u0815",		0x100000, 0xd35602f5, 4 | BRF_GRA },           //  7 Sprites
+	{ "legionnire_obj2.u0814",		0x100000, 0x351d3917, 4 | BRF_GRA },           //  8
+
+	{ "legionnire_backk.u075",		0x100000, 0x9efa2a14, 5 | BRF_GRA },           //  9 Background and Midground Tiles
+
+	{ "5.u106",						0x020000, 0x21d09bde, 6 | BRF_SND },           // 10 Samples
+
+	{ "copx-d1.u0330",				0x080000, 0x029bc402, 7 | BRF_GRA },           // 11 COP ROM
+
+	{ "leg007.u0910",				0x000200, 0xcc6da568, 8 | BRF_GRA },           // 12 Priority PROM?
+};
+
+STD_ROM_PICK(legionnak)
+STD_ROM_FN(legionnak)
+
+struct BurnDriver BurnDrvLegionnak = {
+	"legionnak", "legionna", NULL, NULL, "2026",
+	"Legionnaire (Korean Translation)\0", NULL, "TAD Corporation", "Miscellaneous",
+	L"Legionnaire (Korean Translation)\0\uB9AC\uC804\uC5D0\uC5B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_POST90S, GBF_SCRFIGHT, 0,
+	NULL, legionnakRomInfo, legionnakRomName, NULL, NULL, NULL, NULL, LegionnaInputInfo, LegionnaDIPInfo,
+	LegionnaInit, DrvExit, DrvFrame, LegionnaDraw, DrvScan, &DrvRecalc, 0x801,
+	256, 224, 4, 3
+};

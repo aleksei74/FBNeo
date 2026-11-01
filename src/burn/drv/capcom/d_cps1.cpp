@@ -31466,7 +31466,7 @@ struct BurnDriver BurnDrvCpsWonder3k = {
 	"wonder3k", "3wonders", NULL, NULL, "2023",
 	"Wonder 3 (Korean Translation 910520)\0", NULL, "Capcom", "CPS1",
 	L"Wonder 3 (Korean Translation 910520)\0\uC6D0\uB354 3 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 910520)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_MINIGAMES, 0,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_MINIGAMES, 0,
 	NULL, Wonder3kRomInfo, Wonder3kRomName, NULL, NULL, NULL, NULL, ThreeWondersInputInfo, ThreeWondersDIPInfo,
 	Cps1RasterInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
 	&CpsRecalcPal, 0x1000, 384, 224, 4, 3

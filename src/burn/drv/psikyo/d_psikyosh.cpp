@@ -1821,3 +1821,75 @@ struct BurnDriver BurnDrvTgm2p = {
 	Tgm2pInit, DrvExit, DrvFrame, PsikyoshDraw, DrvScan, NULL, 0x1400,
 	320, 240, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Gunbird 2 (Korean Translation)
+
+static struct BurnRomInfo gunbird2kRomDesc[] = {
+	{ "2_prog_lk.u16",	0x080000, 0x31ad5be6, 1 | BRF_PRG | BRF_ESS }, //  0 SH2 Code
+	{ "1_prog_hk.u17",	0x080000, 0x14b5cf1f, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "3_pdatak.u1",	0x080000, 0xdcb8f2b5, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "0lk.u3",			0x800000, 0x02e17630, 2 | BRF_GRA },           //  3 Graphics
+	{ "0hk.u10",		0x800000, 0xac6c186f, 2 | BRF_GRA },           //  4
+	{ "1lk.u4",			0x800000, 0x1adff517, 2 | BRF_GRA },           //  5
+	{ "1hk.u11",		0x800000, 0x73f46309, 2 | BRF_GRA },           //  6
+	{ "2lk.u5",			0x800000, 0x2fd68ef0, 2 | BRF_GRA },           //  7
+	{ "2hk.u12",		0x800000, 0xe7bddbf8, 2 | BRF_GRA },           //  8
+	{ "3l.u6",			0x400000, 0x0229d37f, 2 | BRF_GRA },           //  9
+	{ "3h.u13",			0x400000, 0xf41bbf2b, 2 | BRF_GRA },           // 10
+
+	{ "sound.u9",		0x400000, 0xf19796ab, 3 | BRF_SND },           // 11 Samples
+
+	{ "eeprom-gunbird2.bin",0x000100, 0x7ac38846, BRF_OPT },
+};
+
+STD_ROM_PICK(gunbird2k)
+STD_ROM_FN(gunbird2k)
+
+struct BurnDriver BurnDrvGunbird2k = {
+	"gunbird2k", "gunbird2", NULL, NULL, "2026",
+	"Gunbird 2 (Korean Translation)\0", NULL, "Psikyo", "PS5",
+	L"Gunbird 2 (Korean Translation)\0\uAC74\uBC84\uB4DC 2 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbird2kRomInfo, gunbird2kRomName, NULL, NULL, NULL, NULL, Common3ButtonInputInfo, Gunbird2DIPInfo,
+	Gunbird2Init, DrvExit, DrvFrame, PsikyoshDraw, DrvScan, NULL, 0x1400,
+	224, 320, 3, 4
+};
+
+// Gunbird 2 Makai (Morrigan Backport, Korean Translation)
+
+static struct BurnRomInfo gunbird2mkRomDesc[] = {
+	{ "2_prog_lmk.u16",			0x080000, 0xd2d57ddd, 1 | BRF_PRG | BRF_ESS }, //  0 SH2 Code
+	{ "1_prog_hmk.u17",			0x080000, 0xb06b29ac, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "3_pdatamk.u1",			0x080000, 0x514cd94f, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "0lk.u3",					0x800000, 0x02e17630, 2 | BRF_GRA },           //  3 Graphics
+	{ "0hk.u10",				0x800000, 0xac6c186f, 2 | BRF_GRA },           //  4
+	{ "1lk.u4",					0x800000, 0x1adff517, 2 | BRF_GRA },           //  5
+	{ "1hk.u11",				0x800000, 0x73f46309, 2 | BRF_GRA },           //  6
+	{ "2lk.u5",					0x800000, 0x2fd68ef0, 2 | BRF_GRA },           //  7
+	{ "2hk.u12",				0x800000, 0xe7bddbf8, 2 | BRF_GRA },           //  8
+	{ "3lmk.u6",				0x800000, 0x640a46c0, 2 | BRF_GRA },           //  9
+	{ "3hmk.u13",				0x800000, 0x58c900ac, 2 | BRF_GRA },           // 10
+
+	{ "soundm.u9",				0x400000, 0x0e6b24f5, 3 | BRF_SND },           // 11 Samples
+
+	{ "eeprom-gunbird2.bin",	0x000100, 0x7ac38846, BRF_OPT },
+};
+
+STD_ROM_PICK(gunbird2mk)
+STD_ROM_FN(gunbird2mk)
+
+struct BurnDriver BurnDrvGunbird2mk = {
+	"gunbird2mk", "gunbird2", NULL, NULL, "2026",
+	"Gunbird 2 Makai (Morrigan Backport, Korean Translation)\0", NULL, "Psikyo", "PS5",
+	L"Gunbird 2 Makai (Morrigan Backport, Korean Translation)\0\uAC74\uBC84\uB4DC 2 \uB9C8\uACC4 (\uBAA8\uB9AC\uAC74 \uC5ED\uC774\uC2DD, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbird2mkRomInfo, gunbird2mkRomName, NULL, NULL, NULL, NULL, Common3ButtonInputInfo, Gunbird2DIPInfo,
+	Gunbird2mInit, DrvExit, DrvFrame, PsikyoshDraw, DrvScan, NULL, 0x1400,
+	224, 320, 3, 4
+};

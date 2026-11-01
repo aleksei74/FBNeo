@@ -1069,3 +1069,43 @@ struct BurnDriver BurnDrvGijoeaa = {
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
 	288, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// G.I. Joe (Korean Translation)
+
+static struct BurnRomInfo gijoekRomDesc[] = {
+	{ "069jaa03k.14e",	0x040000, 0x88c9d3b5, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "069jaa02k.18e",	0x040000, 0x28a37fd1, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "069a12k.13e",	0x040000, 0x82a0cbf1, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "069a11k.16e",	0x040000, 0x288a389d, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "069a01.7c",		0x010000, 0x74172b99, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "069a10k.18j",	0x100000, 0x41b0d423, 3 | BRF_GRA },           //  5 K056832 Characters
+	{ "069a09k.16j",	0x100000, 0xce8716f9, 3 | BRF_GRA },           //  6
+
+	{ "069a08k.6h",		0x100000, 0x9679e239, 4 | BRF_GRA },           //  7 K053247 Sprites
+	{ "069a05k.1h",		0x100000, 0xc90f32e8, 4 | BRF_GRA },           //  8
+	{ "069a07k.4h",		0x100000, 0x61175089, 4 | BRF_GRA },           //  9
+	{ "069a06k.2h",		0x100000, 0xb6340d73, 4 | BRF_GRA },           // 10
+
+	{ "069a04.1e",		0x200000, 0x11d6dcd6, 5 | BRF_SND },           // 11 k054539
+
+	{ "er5911.7d",		0x000080, 0xc914fcf2, 6 | BRF_OPT },           // 12 eeprom data
+};
+
+STD_ROM_PICK(gijoek)
+STD_ROM_FN(gijoek)
+
+struct BurnDriver BurnDrvGijoek = {
+	"gijoek", "gijoe", NULL, NULL, "2026",
+	"G.I. Joe (Korean Translation)\0", NULL, "Konami", "GX069",
+	L"G.I. Joe (Korean Translation)\0G.I. \uC720\uACA9\uB300 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 4, HARDWARE_PREFIX_KONAMI, GBF_RUNGUN, 0,
+	NULL, gijoekRomInfo, gijoekRomName, NULL, NULL, NULL, NULL, GijoeInputInfo, GijoeDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x800,
+	288, 224, 4, 3
+};
