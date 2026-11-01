@@ -610,6 +610,25 @@ struct BurnDriver BurnSpec4soccersims4 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// 4x4 Off-Road Racing (48K-128K)
+
+static struct BurnRomInfo Spec4x4offroadRomDesc[] = {
+	{ "4x4 Off-Road Racing 48K-128K (1988)(U.S. Gold).tap", 84507, 0x928366fa, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(Spec4x4offroad, Spec4x4offroad, Spec128)
+STD_ROM_FN(Spec4x4offroad)
+
+struct BurnDriver BurnSpec4x4offroad = {
+	"spec_4x4offroad", NULL, "spec_spec128", NULL, "1988",
+	"4x4 Off-Road Racing (48K-128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_RACING, 0,
+	SpectrumGetZipName, Spec4x4offroadRomInfo, Spec4x4offroadRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // 5 in 1 Tetris (128K)
 
 static struct BurnRomInfo Spec5in1tetrisRomDesc[] = {
@@ -1010,6 +1029,25 @@ struct BurnDriver BurnSpecabusimpr = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Abyss (48K)
+
+static struct BurnRomInfo SpecAbyssRomDesc[] = {
+	{ "Abyss 48K (1984)(CCS).tap", 22565, 0x8cf49712, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecAbyss, SpecAbyss, Spectrum)
+STD_ROM_FN(SpecAbyss)
+
+struct BurnDriver BurnSpecAbyss = {
+	"spec_abyss", NULL, "spec_spectrum", NULL, "1984",
+	"Abyss (48K)\0", NULL, "CCS", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_MAZE | GBF_QUIZ, 0,
+	SpectrumGetZipName, SpecAbyssRomInfo, SpecAbyssRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // ACE: Air Combat Emulator (48K)
 
 static struct BurnRomInfo SpecAceRomDesc[] = {
@@ -1029,10 +1067,10 @@ struct BurnDriver BurnSpecAce = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// ACE 2: The Ultimate Head to Head Conflict (128K)
+// ACE 2: The Ultimate Head to Head Conflict (48K-128K)
 
 static struct BurnRomInfo SpecAce2RomDesc[] = {
-	{ "ACE 2 The Ultimate Head to Head Conflict 128K (1987)(Cascade Games).tap", 52048, 0x4f850b86, BRF_ESS | BRF_PRG },
+	{ "ACE 2 The Ultimate Head to Head Conflict 48K-128K (1987)(Cascade Games).tap", 52048, 0x4f850b86, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecAce2, SpecAce2, Spec128)
@@ -1040,7 +1078,7 @@ STD_ROM_FN(SpecAce2)
 
 struct BurnDriver BurnSpecAce2 = {
 	"spec_ace2", NULL, "spec_spec128", NULL, "1987",
-	"ACE 2: The Ultimate Head to Head Conflict (128K)\0", "D-S/K-J: throttle - W/O: select weapon - C/B: map", "Cascade Games", "ZX Spectrum",
+	"ACE 2: The Ultimate Head to Head Conflict (48K-128K)\0", "D-S/K-J: throttle - W/O: select weapon - C/B: map", "Cascade Games", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_SIM, 0,
 	SpectrumGetZipName, SpecAce2RomInfo, SpecAce2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
@@ -1048,10 +1086,10 @@ struct BurnDriver BurnSpecAce2 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// ACE 2088 (128K)
+// ACE 2088 (48K-128K)
 
 static struct BurnRomInfo SpecAce2088RomDesc[] = {
-	{ "ACE 2088 128K (1989)(Cascade Games).tap", 55874, 0x4ebb46a9, BRF_ESS | BRF_PRG },
+	{ "ACE 2088 48K-128K (1989)(Cascade Games).tap", 55874, 0x4ebb46a9, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecAce2088, SpecAce2088, Spec128)
@@ -1059,7 +1097,7 @@ STD_ROM_FN(SpecAce2088)
 
 struct BurnDriver BurnSpecAce2088 = {
 	"spec_ace2088", NULL, "spec_spec128", NULL, "1989",
-	"ACE 2088 (128K)\0", "SHIFT+J/K: speed up/down - L, R, T: change weapons - W: set display", "Cascade Games", "ZX Spectrum",
+	"ACE 2088 (48K-128K)\0", "SHIFT+J/K: speed up/down - L, R, T: change weapons - W: set display", "Cascade Games", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_SHOOT | GBF_SIM, 0,
 	SpectrumGetZipName, SpecAce2088RomInfo, SpecAce2088RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -1297,19 +1335,19 @@ struct BurnDriver BurnSpecadvlawn2 = {
 
 // Advanced Pinball Simulator (48K-128K)
 
-static struct BurnRomInfo SpecAdvancedpinballsimRomDesc[] = {
-	{ "Advanced Pinball Simulator 48K-128K (1990)(Codemasters).tap", 51760, 0xfca7d79b, BRF_ESS | BRF_PRG },
+static struct BurnRomInfo SpecAdvpinballsimRomDesc[] = {
+	{ "Advanced Pinball Simulator 48K-128K (1988)(Codemasters).tzx", 51788, 0xf9c67412, BRF_ESS | BRF_PRG },
 };
 
-STDROMPICKEXT(SpecAdvancedpinballsim, SpecAdvancedpinballsim, Spec128)
-STD_ROM_FN(SpecAdvancedpinballsim)
+STDROMPICKEXT(SpecAdvpinballsim, SpecAdvpinballsim, Spec128)
+STD_ROM_FN(SpecAdvpinballsim)
 
-struct BurnDriver BurnSpecAdvancedpinballsim = {
-	"spec_advancedpinballsim", NULL, "spec_spec128", NULL, "1990",
-	"Advanced Pinball Simulator (48K-128K)\0", NULL, "Codemasters", "ZX Spectrum",
+struct BurnDriver BurnSpecAdvpinballsim = {
+	"spec_advpinballsim", NULL, "spec_spec128", NULL, "1988",
+	"Advanced Pinball Simulator (48K-128K)\0", "Z: left flipper - M: right flipper - SPACE: launch ball", "Codemasters", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 3, HARDWARE_SPECTRUM, GBF_PINBALL, 0,
-	SpectrumGetZipName, SpecAdvancedpinballsimRomInfo, SpecAdvancedpinballsimRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpectrumGetZipName, SpecAdvpinballsimRomInfo, SpecAdvpinballsimRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -1773,7 +1811,7 @@ struct BurnDriver BurnSpecAlienit = {
 // Alien 8 (48K)
 
 static struct BurnRomInfo SpecAlien8RomDesc[] = {
-	{ "Alien 8 48K (1985)(Ultimate Play The Game).tap", 47264, 0x043d8dae, BRF_ESS | BRF_PRG },
+	{ "Alien 8 48K (1985)(Ultimate Play The Game).tzx", 39687, 0xc2721ed6, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecAlien8, SpecAlien8, Spectrum)
@@ -1783,7 +1821,7 @@ struct BurnDriver BurnSpecAlien8 = {
 	"spec_alien8", NULL, "spec_spectrum", NULL, "1985",
 	"Alien 8 (48K)\0", NULL, "Ultimate Play The Game", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ADV, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
 	SpectrumGetZipName, SpecAlien8RomInfo, SpecAlien8RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -1884,10 +1922,10 @@ struct BurnDriver BurnSpecAliensus = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Alien Storm (128K)
+// Alien Storm (48K-128K)
 
 static struct BurnRomInfo SpecAlienstormRomDesc[] = {
-	{ "Alien Storm 128K (1991)(U.S. Gold).tap", 252760, 0x8aa6b74d, BRF_ESS | BRF_PRG },
+	{ "Alien Storm 48K-128K (1991)(U.S. Gold).tap", 252760, 0x8aa6b74d, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecAlienstorm, SpecAlienstorm, Spec128)
@@ -1895,7 +1933,7 @@ STD_ROM_FN(SpecAlienstorm)
 
 struct BurnDriver BurnSpecAlienstorm = {
 	"spec_alienstorm", NULL, "spec_spec128", NULL, "1991",
-	"Alien Storm (128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
+	"Alien Storm (48K-128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_RUNGUN | GBF_SCRFIGHT, 0,
 	SpectrumGetZipName, SpecAlienstormRomInfo, SpecAlienstormRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -2913,7 +2951,7 @@ struct BurnDriver BurnSpecAtomrobokid = {
 // Attack of the Killer Tomatoes (48K)
 
 static struct BurnRomInfo SpecAktomatoesRomDesc[] = {
-	{ "Attack of the Killer Tomatoes 48K (1986)(Global).tap", 38305, 0xd3d3b7aa, BRF_ESS | BRF_PRG },
+	{ "Attack of the Killer Tomatoes 48K (1986)(Global).tzx", 38363, 0x89496495, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecAktomatoes, SpecAktomatoes, Spectrum)
@@ -3464,7 +3502,7 @@ struct BurnDriver BurnSpecbarbarn2 = {
 // Barmy Burgers (48K)
 
 static struct BurnRomInfo SpecBarmyburgRomDesc[] = {
-	{ "Barmy Burgers 48K (1983)(Blaby Computer Games).z80", 28248, 0x138faacd, BRF_ESS | BRF_PRG },
+	{ "Barmy Burgers 48K (1983)(Blaby Computer Games).tzx", 31126, 0x70455c9d, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecBarmyburg, SpecBarmyburg, Spectrum)
@@ -5345,7 +5383,7 @@ struct BurnDriver BurnSpecBravestarr = {
 // Breakthru (48K)
 
 static struct BurnRomInfo SpecBreakthruRomDesc[] = {
-	{ "Breakthru 48K (1986)(U.S. Gold).tap", 54622, 0xcd98cbc8, BRF_ESS | BRF_PRG },
+	{ "Breakthru 48K (1986)(U.S. Gold).tzx", 49888, 0xb199699f, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecBreakthru, SpecBreakthru, Spectrum)
@@ -6083,6 +6121,25 @@ struct BurnDriver BurnSpecCasanova = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Casey Jones (48K)
+
+static struct BurnRomInfo SpecCaseyjonesRomDesc[] = {
+	{ "Casey Jones 48K (1984)(Blaby Computer Games).tzx", 36421, 0xde4b4598, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecCaseyjones, SpecCaseyjones, Spectrum)
+STD_ROM_FN(SpecCaseyjones)
+
+struct BurnDriver BurnSpecCaseyjones = {
+	"spec_caseyjones", NULL, "spec_spectrum", NULL, "1984",
+	"Casey Jones (48K)\0", NULL, "Blaby Computer Games", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_HORSHOOT, 0,
+	SpectrumGetZipName, SpecCaseyjonesRomInfo, SpecCaseyjonesRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Cashdash (48K)
 
 static struct BurnRomInfo SpeccashdashRomDesc[] = {
@@ -6691,10 +6748,10 @@ struct BurnDriver BurnSpecChinjuggler = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Chip's Challenge (128K)
+// Chip's Challenge (48K-128K)
 
 static struct BurnRomInfo SpecChipchalRomDesc[] = {
-	{ "Chip's Challenge 128K (1990)(U.S. Gold).tap", 142333, 0xfcb9eb9a, BRF_ESS | BRF_PRG },
+	{ "Chip's Challenge 48K-128K (1990)(U.S. Gold).tap", 142333, 0xfcb9eb9a, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecChipchal, SpecChipchal, Spec128)
@@ -6702,7 +6759,7 @@ STD_ROM_FN(SpecChipchal)
 
 struct BurnDriver BurnSpecChipchal = {
 	"spec_chipchal", NULL, "spec_spec128", NULL, "1990",
-	"Chip's Challenge (128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
+	"Chip's Challenge (48K-128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecChipchalRomInfo, SpecChipchalRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
@@ -7603,10 +7660,10 @@ struct BurnDriver BurnSpecCbshootout = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Crack Down (128K)
+// Crack Down (48K-128K)
 
 static struct BurnRomInfo SpecCrackdownRomDesc[] = {
-	{ "Crack Down 128K (1990)(U.S. Gold).tap", 189590, 0xc82c010e, BRF_ESS | BRF_PRG },
+	{ "Crack Down 48K-128K (1990)(U.S. Gold).tap", 189590, 0xc82c010e, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecCrackdown, SpecCrackdown, Spec128)
@@ -7614,7 +7671,7 @@ STD_ROM_FN(SpecCrackdown)
 
 struct BurnDriver BurnSpecCrackdown = {
 	"spec_crackdown", NULL, "spec_spec128", NULL, "1990",
-	"Crack Down (128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
+	"Crack Down (48K-128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_RUNGUN, 0,
 	SpectrumGetZipName, SpecCrackdownRomInfo, SpecCrackdownRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
@@ -7983,10 +8040,10 @@ struct BurnDriver BurnSpecCyclone = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Cyrus II Chess (128K)
+// Cyrus II Chess (48K-128K)
 
 static struct BurnRomInfo SpecCyrus2RomDesc[] = {
-	{ "Cyrus II Chess 128K (1986)(Alligata).tap", 39926, 0x2eee30a5, BRF_ESS | BRF_PRG },
+	{ "Cyrus II Chess 48K-128K (1986)(Alligata).tap", 39926, 0x2eee30a5, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecCyrus2, SpecCyrus2, Spec128)
@@ -7994,7 +8051,7 @@ STD_ROM_FN(SpecCyrus2)
 
 struct BurnDriver BurnSpecCyrus2 = {
 	"spec_cyrus2", NULL, "spec_spec128", NULL, "1986",
-	"Cyrus II Chess (128K)\0", "SHIFT + 'cursor keys': move marker - ENTER: select a piece", "Alligata Software", "ZX Spectrum",
+	"Cyrus II Chess (48K-128K)\0", "SHIFT + 'cursor keys': move marker - ENTER: select a piece", "Alligata Software", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_BOARD | GBF_STRATEGY, 0,
 	SpectrumGetZipName, SpecCyrus2RomInfo, SpecCyrus2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
@@ -9924,7 +9981,7 @@ struct BurnDriver BurnSpecdragonto = {
 // Draughts Genius (48K)
 
 static struct BurnRomInfo SpecDrgeniusRomDesc[] = {
-	{ "Draughts Genius 48K (1987)(Rack-It).tap", 48605, 0x3d91e93f, BRF_ESS | BRF_PRG },
+	{ "Draughts Genius 48K (1987)(Rack-It).tzx", 48738, 0xbc6128f0, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecDrgenius, SpecDrgenius, Spectrum)
@@ -10529,10 +10586,10 @@ struct BurnDriver BurnSpecEmlynhughes = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// E-motion (128K)
+// E-motion (48K-128K)
 
 static struct BurnRomInfo SpecEmotionRomDesc[] = {
-	{ "E-motion 128K (1990)(U.S. Gold).tzx", 53034, 0xd335d40b, BRF_ESS | BRF_PRG },
+	{ "E-motion 48K-128K (1990)(U.S. Gold).tzx", 53034, 0xd335d40b, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecEmotion, SpecEmotion, Spec128)
@@ -10540,7 +10597,7 @@ STD_ROM_FN(SpecEmotion)
 
 struct BurnDriver BurnSpecEmotion = {
 	"spec_emotion", NULL, "spec_spec128", NULL, "1990",
-	"E-motion (128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
+	"E-motion (48K-128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_ACTION | GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecEmotionRomInfo, SpecEmotionRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -10833,10 +10890,10 @@ struct BurnDriver BurnSpecEstiracer = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// E-SWAT (128K)
+// E-SWAT (48K-128K)
 
 static struct BurnRomInfo SpeceswatRomDesc[] = {
-	{ "E-SWAT 128K (1990)(U.S. Gold).tap", 213337, 0x721ab30f, BRF_ESS | BRF_PRG },
+	{ "E-SWAT 48K-128K (1990)(U.S. Gold).tap", 213337, 0x721ab30f, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(Speceswat, Speceswat, Spec128)
@@ -10844,7 +10901,7 @@ STD_ROM_FN(Speceswat)
 
 struct BurnDriver BurnSpeceswat = {
 	"spec_eswat", NULL, "spec_spec128", NULL, "1990",
-	"E-SWAT (128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
+	"E-SWAT (48K-128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_RUNGUN, 0,
 	SpectrumGetZipName, SpeceswatRomInfo, SpeceswatRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
@@ -11401,6 +11458,25 @@ struct BurnDriver BurnSpecFightbomb = {
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_SIM, 0,
 	SpectrumGetZipName, SpecFightbombRomInfo, SpecFightbombRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Fighting Soccer (128K)
+
+static struct BurnRomInfo SpecFightsoccerRomDesc[] = {
+	{ "Fighting Soccer 128K (1989)(Activision).tzx", 110976, 0x3d8c8d44, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecFightsoccer, SpecFightsoccer, Spec128)
+STD_ROM_FN(SpecFightsoccer)
+
+struct BurnDriver BurnSpecFightsoccer = {
+	"spec_fightsoccer", NULL, "spec_spec128", NULL, "1989",
+	"Fighting Soccer (128K)\0", NULL, "Activision", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_SPORTSFOOTBALL, 0,
+	SpectrumGetZipName, SpecFightsoccerRomInfo, SpecFightsoccerRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -12871,7 +12947,7 @@ struct BurnDriver BurnSpecghostb2 = {
 // Ghost Hunters (48K)
 
 static struct BurnRomInfo SpecGhosthuntersRomDesc[] = {
-	{ "Ghost Hunters 48K (1987)(Codemasters).tap", 48896, 0xdfa7ffcb, BRF_ESS | BRF_PRG },
+	{ "Ghost Hunters 48K-128K (1987)(Codemasters).tzx", 51158, 0x431138fb, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecGhosthunters, SpecGhosthunters, Spectrum)
@@ -12881,7 +12957,7 @@ struct BurnDriver BurnSpecGhosthunters = {
 	"spec_ghosthunters", NULL, "spec_spectrum", NULL, "1987",
 	"Ghost Hunters (48K)\0", NULL, "Codemasters", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_SHOOT, 0,
 	SpectrumGetZipName, SpecGhosthuntersRomInfo, SpecGhosthuntersRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -14198,10 +14274,10 @@ struct BurnDriver BurnSpecheartlan = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Heavy Metal (128K)
+// Heavy Metal (48K-128K)
 
 static struct BurnRomInfo SpecHeavymetalRomDesc[] = {
-	{ "Heavy Metal 128K (1990)(U.S. Gold).tap", 86702, 0x67e11acf, BRF_ESS | BRF_PRG },
+	{ "Heavy Metal 48K-128K (1990)(U.S. Gold).tap", 86702, 0x67e11acf, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecHeavymetal, SpecHeavymetal, Spec128)
@@ -14209,7 +14285,7 @@ STD_ROM_FN(SpecHeavymetal)
 
 struct BurnDriver BurnSpecHeavymetal = {
 	"spec_heavymetal", NULL, "spec_spec128", NULL, "1990",
-	"Heavy Metal (128K)\0", "W/S: speed up/down - E: select weapon - D: smoke", "U.S. Gold", "ZX Spectrum",
+	"Heavy Metal (48K-128K)\0", "W/S: speed up/down - E: select weapon - D: smoke", "U.S. Gold", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_SHOOT, 0,
 	SpectrumGetZipName, SpecHeavymetalRomInfo, SpecHeavymetalRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -15300,17 +15376,36 @@ struct BurnDriver BurnSpecikariwarriors = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Implosion (48K-128K)
+
+static struct BurnRomInfo SpecImplosionRomDesc[] = {
+	{ "Implosion 48K-128K (1987)(Cascade Games).tzx", 48152, 0x5bc0fdcc, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecImplosion, SpecImplosion, Spec128)
+STD_ROM_FN(SpecImplosion)
+
+struct BurnDriver BurnSpecImplosion = {
+	"spec_implosion", NULL, "spec_spec128", NULL, "1987",
+	"Implosion (48K-128K)\0", NULL, "Cascade Games", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_MULTISHOOT, 0,
+	SpectrumGetZipName, SpecImplosionRomInfo, SpecImplosionRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Impossaball (48K)
 
 static struct BurnRomInfo SpecImpossaballRomDesc[] = {
-	{ "Impossaball 48K (1987)(Hewson Consultants).tap", 45993, 0x158525a4, BRF_ESS | BRF_PRG },
+	{ "Impossaball 48K (1986)(Hewson Consultants).tzx", 44657, 0x5304b5d4, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecImpossaball, SpecImpossaball, Spectrum)
 STD_ROM_FN(SpecImpossaball)
 
 struct BurnDriver BurnSpecImpossaball = {
-	"spec_impossaball", NULL, "spec_spectrum", NULL, "1987",
+	"spec_impossaball", NULL, "spec_spectrum", NULL, "1986",
 	"Impossaball (48K)\0", NULL, "Hewson Consultants", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
@@ -15832,10 +15927,10 @@ struct BurnDriver BurnSpecInvmast = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Iron Lord (128K)
+// Iron Lord (48K-128K)
 
 static struct BurnRomInfo SpecIronlordRomDesc[] = {
-	{ "Iron Lord 128K (1989)(Ubi Soft).tap", 195062, 0xaaefd67c, BRF_ESS | BRF_PRG },
+	{ "Iron Lord 48K-128K (1989)(Ubi Soft).tap", 195062, 0xaaefd67c, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecIronlord, SpecIronlord, Spec128)
@@ -15843,9 +15938,9 @@ STD_ROM_FN(SpecIronlord)
 
 struct BurnDriver BurnSpecIronlord = {
 	"spec_ironlord", NULL, "spec_spec128", NULL, "1989",
-	"Iron Lord (128K)\0", NULL, "Ubi Soft", "ZX Spectrum",
+	"Iron Lord (48K-128K)\0", NULL, "Ubi Soft", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ADV, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ADV | GBF_MINIGAMES, 0,
 	SpectrumGetZipName, SpecIronlordRomInfo, SpecIronlordRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -15885,6 +15980,25 @@ struct BurnDriver BurnSpecItaliansupercar = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_VERSHOOT, 0,
 	SpectrumGetZipName, SpecItaliansupercarRomInfo, SpecItaliansupercarRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Italy 1990 (48K-128K)
+
+static struct BurnRomInfo SpecItaly1990RomDesc[] = {
+	{ "Italy 1990 48K-128K (1990)(U.S. Gold).tap", 104924, 0x9977e9aa, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecItaly1990, SpecItaly1990, Spec128)
+STD_ROM_FN(SpecItaly1990)
+
+struct BurnDriver BurnSpecItaly1990 = {
+	"spec_italy1990", NULL, "spec_spec128", NULL, "1990",
+	"Italy 1990 (48K-128K)\0", NULL, "U.S. Gold", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_SPORTSFOOTBALL, 0,
+	SpectrumGetZipName, SpecItaly1990RomInfo, SpecItaly1990RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -16117,25 +16231,6 @@ struct BurnDriver BurnSpecJpatience = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Newmarket (48K)
-
-static struct BurnRomInfo SpecNewmarketRomDesc[] = {
-	{ "Newmarket 48K (1989)(Daton Software).tap", 37856, 0x25f5ce8c, BRF_ESS | BRF_PRG },
-};
-
-STDROMPICKEXT(SpecNewmarket, SpecNewmarket, Spectrum)
-STD_ROM_FN(SpecNewmarket)
-
-struct BurnDriver BurnSpecNewmarket = {
-	"spec_newmarket", NULL, "spec_spectrum", NULL, "1989",
-	"Newmarket (48K)\0", NULL, "Daton Software", "ZX Spectrum",
-	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_CARD, 0,
-	SpectrumGetZipName, SpecNewmarketRomInfo, SpecNewmarketRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPMDIPInfo,
-	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
-	&SpecRecalc, 0x10, 288, 224, 4, 3
-};
-
 // Jasper! (48K)
 
 static struct BurnRomInfo SpecJasperRomDesc[] = {
@@ -16364,7 +16459,7 @@ struct BurnDriver BurnSpecjswilly = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Jet Set Willy II - The Final Frontier (48K)
+// Jet Set Willy II: The Final Frontier (48K)
 
 static struct BurnRomInfo Specjswilly2RomDesc[] = {
 	{ "Jet Set Willy II - The Final Frontier 48K (1985)(Software Projects).tap", 49881, 0x85a4ac92, BRF_ESS | BRF_PRG },
@@ -16375,7 +16470,7 @@ STD_ROM_FN(Specjswilly2)
 
 struct BurnDriver BurnSpecjswilly2 = {
 	"spec_jswilly2", NULL, "spec_spectrum", NULL, "1985",
-	"Jet Set Willy II - The Final Frontier (48K)\0", NULL, "Software Projects", "ZX Spectrum",
+	"Jet Set Willy II: The Final Frontier (48K)\0", NULL, "Software Projects", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, Specjswilly2RomInfo, Specjswilly2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPMDIPInfo,
@@ -16573,6 +16668,25 @@ struct BurnDriver BurnSpecJudgedredd = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Jumbly (48K)
+
+static struct BurnRomInfo SpecJumblyRomDesc[] = {
+	{ "Jumbly 48K (1983)(DK'Tronics).tzx", 40334, 0x44a5a3fd, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecJumbly, SpecJumbly, Spectrum)
+STD_ROM_FN(SpecJumbly)
+
+struct BurnDriver BurnSpecJumbly = {
+	"spec_jumbly", NULL, "spec_spectrum", NULL, "1983",
+	"Jumbly (48K)\0", NULL, "DK'Tronics", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
+	SpectrumGetZipName, SpecJumblyRomInfo, SpecJumblyRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Jumping Jack (48K)
 
 static struct BurnRomInfo SpecJjackRomDesc[] = {
@@ -16690,7 +16804,7 @@ struct BurnDriver BurnSpecKami16k = {
 // Kamikaze (48K-128K)
 
 static struct BurnRomInfo SpecKamikazeRomDesc[] = {
-	{ "Kamikaze 48K-128K (1991)(Codemasters).tap", 47767, 0xd35b3009, BRF_ESS | BRF_PRG },
+	{ "Kamikaze 48K-128K (1991)(Codemasters).tzx", 47831, 0x740a3ae6, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecKamikaze, SpecKamikaze, Spec128)
@@ -16899,7 +17013,7 @@ struct BurnDriver BurnSpecKentucky = {
 // KGB Super Spy (48K)
 
 static struct BurnRomInfo SpecKgbsuperspyRomDesc[] = {
-	{ "KGB Super Spy 48K (1989)(Codemasters).tap", 45049, 0xa879a856, BRF_ESS | BRF_PRG },
+	{ "KGB Superspy 48K-128K (1989)(Codemasters).tzx", 47054, 0x40d5a54b, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecKgbsuperspy, SpecKgbsuperspy, Spectrum)
@@ -17982,7 +18096,7 @@ struct BurnDriver BurnSpeclivipres22 = {
 // Loco (48K)
 
 static struct BurnRomInfo SpecLocoRomDesc[] = {
-	{ "Loco 48K (1986)(Alligata).z80", 29077, 0xed68d9d3, BRF_ESS | BRF_PRG },
+	{ "Loco 48K (1986)(Alligata).tzx", 38637, 0xaefa099c, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecLoco, SpecLoco, Spectrum)
@@ -17992,7 +18106,7 @@ struct BurnDriver BurnSpecLoco = {
 	"spec_loco", NULL, "spec_spectrum", NULL, "1986",
 	"Loco (48K)\0", NULL, "Alligata Software", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_HORSHOOT, 0,
 	SpectrumGetZipName, SpecLocoRomInfo, SpecLocoRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -18115,7 +18229,7 @@ struct BurnDriver BurnSpecLordsmidnight = {
 // Lorna (Spanish) (48K-128K)
 
 static struct BurnRomInfo SpecLornaRomDesc[] = {
-	{ "Lorna ES 48K-128K (1990)(Topo Soft).tap", 0x1cf8a, 0xa09afe9a, BRF_ESS | BRF_PRG },
+	{ "Lorna ES 48K-128K (1990)(Topo Soft).tap", 118666, 0xa09afe9a, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecLorna, SpecLorna, Spec128)
@@ -18123,9 +18237,9 @@ STD_ROM_FN(SpecLorna)
 
 struct BurnDriver BurnSpecLorna = {
 	"spec_lorna", NULL, "spec_spec128", NULL, "1990",
-	"Lorna (Spanish) (48K-128K)\0", NULL, "Topo Soft", "ZX Spectrum",
+	"Lorna (Spanish) (48K-128K)\0", "L2: LOLI, L3: PLANINGA, L4: BLACK, L5: CROWN", "Topo Soft", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_SCRFIGHT, 0,
 	SpectrumGetZipName, SpecLornaRomInfo, SpecLornaRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInvesInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -18872,6 +18986,25 @@ struct BurnDriver BurnSpecMatchpoint = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Mathsted (48K)
+
+static struct BurnRomInfo SpecMathstedRomDesc[] = {
+	{ "Mathsted 48K (1983)(CCS).tzx", 44622, 0xc50c4a7f, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecMathsted, SpecMathsted, Spectrum)
+STD_ROM_FN(SpecMathsted)
+
+struct BurnDriver BurnSpecMathsted = {
+	"spec_mathsted", NULL, "spec_spectrum", NULL, "1983",
+	"Mathsted (48K)\0", NULL, "CCS", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_QUIZ, 0,
+	SpectrumGetZipName, SpecMathstedRomInfo, SpecMathstedRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Maze Mania (48K)
 
 static struct BurnRomInfo SpecMazemaniaRomDesc[] = {
@@ -19518,6 +19651,25 @@ struct BurnDriver BurnSpecMindtrap = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Mine Alert (48K)
+
+static struct BurnRomInfo SpecMinealertRomDesc[] = {
+	{ "Mine Alert 48K (1987)(Ramon Gallastegui).tzx", 31444, 0x8d6e6afa, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecMinealert, SpecMinealert, Spectrum)
+STD_ROM_FN(SpecMinealert)
+
+struct BurnDriver BurnSpecMinealert = {
+	"spec_minealert", NULL, "spec_spectrum", NULL, "1987",
+	"Mine Alert (48K)\0", NULL, "Ramon Gallastegui", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_MAZE, 0,
+	SpectrumGetZipName, SpecMinealertRomInfo, SpecMinealertRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Mined Out (48K)
 
 static struct BurnRomInfo SpecMinedoutRomDesc[] = {
@@ -19835,7 +19987,7 @@ struct BurnDriver BurnSpecMoonpatrol = {
 	"spec_moonpatrol", NULL, "spec_spectrum", NULL, "1984",
 	"Moon Patrol (48K)\0", NULL, "Atarisoft", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_ACTION | GBF_HORSHOOT, 0,
 	SpectrumGetZipName, SpecMoonpatrolRomInfo, SpecMoonpatrolRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -20468,10 +20620,29 @@ struct BurnDriver BurnSpecmutazone2 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Myla Di'Kaich (48K)
+
+static struct BurnRomInfo SpecMyladikaRomDesc[] = {
+	{ "Myla Di'Kaich 48K (1985)(Global).tzx", 48299, 0xea888a8c, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecMyladika, SpecMyladika, Spectrum)
+STD_ROM_FN(SpecMyladika)
+
+struct BurnDriver BurnSpecMyladika = {
+	"spec_myladika", NULL, "spec_spectrum", NULL, "1985",
+	"Myla Di'Kaich 48K (HB)\0", "Press forward controller to start game", "Global Software", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecMyladikaRomInfo, SpecMyladikaRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Mystery of Arkham Manor, The - Part 1 (48K)
 
 static struct BurnRomInfo SpecMysteryarkham1RomDesc[] = {
-	{ "Mystery of Arkham Manor, The - Part 1 48K (1987)(Melbourne House).tap", 56277, 0x6bf7a6ea, BRF_ESS | BRF_PRG },
+	{ "Mystery of Arkham Manor, The - Part 1 48K (1987)(Melbourne House).tzx", 47310, 0xd931b579, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecMysteryarkham1, SpecMysteryarkham1, Spectrum)
@@ -20479,7 +20650,7 @@ STD_ROM_FN(SpecMysteryarkham1)
 
 struct BurnDriver BurnSpecMysteryarkham1 = {
 	"spec_mysteryarkham1", NULL, "spec_spectrum", NULL, "1987",
-	"Mystery of Arkham Manor, The - Part 1 (48K)\0", "In-game menu - 6: down - 7: up - Space: select", "Melbourne House", "ZX Spectrum",
+	"Mystery of Arkham Manor, The - Part 1 (48K)\0", "In-game menu: '6' down, '7' up and SPACE to select", "Melbourne House", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ADV, 0,
 	SpectrumGetZipName, SpecMysteryarkham1RomInfo, SpecMysteryarkham1RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -20490,7 +20661,7 @@ struct BurnDriver BurnSpecMysteryarkham1 = {
 // Mystery of Arkham Manor, The - Part 2 (48K)
 
 static struct BurnRomInfo SpecMysteryarkham2RomDesc[] = {
-	{ "Mystery of Arkham Manor, The - Part 2 48K (1987)(Melbourne House).tap", 49343, 0x85b9867c, BRF_ESS | BRF_PRG },
+	{ "Mystery of Arkham Manor, The - Part 2 48K (1987)(Melbourne House).tzx", 47310, 0x24cb6375, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecMysteryarkham2, SpecMysteryarkham2, Spectrum)
@@ -20498,7 +20669,7 @@ STD_ROM_FN(SpecMysteryarkham2)
 
 struct BurnDriver BurnSpecMysteryarkham2 = {
 	"spec_mysteryarkham2", "spec_mysteryarkham1", "spec_spectrum", NULL, "1987",
-	"Mystery of Arkham Manor, The - Part 2 (48K)\0", "In-game menu - 6: down - 7: up - Space: select", "Melbourne House", "ZX Spectrum",
+	"Mystery of Arkham Manor, The - Part 2 (48K)\0", "In-game menu: '6' down, '7' up and SPACE to select", "Melbourne House", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SPECTRUM, GBF_ADV, 0,
 	SpectrumGetZipName, SpecMysteryarkham2RomInfo, SpecMysteryarkham2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -20863,6 +21034,25 @@ struct BurnDriver BurnSpecNestory2 = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecNestory2RomInfo, SpecNestory2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Newmarket (48K)
+
+static struct BurnRomInfo SpecNewmarketRomDesc[] = {
+	{ "Newmarket 48K (1989)(Daton Software).tap", 37856, 0x25f5ce8c, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecNewmarket, SpecNewmarket, Spectrum)
+STD_ROM_FN(SpecNewmarket)
+
+struct BurnDriver BurnSpecNewmarket = {
+	"spec_newmarket", NULL, "spec_spectrum", NULL, "1989",
+	"Newmarket (48K)\0", NULL, "Daton Software", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_CARD, 0,
+	SpectrumGetZipName, SpecNewmarketRomInfo, SpecNewmarketRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPMDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -21281,6 +21471,25 @@ struct BurnDriver BurnSpecNubowls = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecNubowlsRomInfo, SpecNubowlsRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Nuke Lear (48K)
+
+static struct BurnRomInfo SpecNukelearRomDesc[] = {
+	{ "Nuke Lear 48K (1984)(CCS).tzx", 30334, 0xf3e65284, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecNukelear, SpecNukelear, Spectrum)
+STD_ROM_FN(SpecNukelear)
+
+struct BurnDriver BurnSpecNukelear = {
+	"spec_nukelear", NULL, "spec_spectrum", NULL, "1984",
+	"Nuke Lear (48K)\0", NULL, "CCS", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	SpectrumGetZipName, SpecNukelearRomInfo, SpecNukelearRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -22102,6 +22311,25 @@ struct BurnDriver BurnSpecpassshot = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Pat The Postman (48K)
+
+static struct BurnRomInfo SpecPatpostmanRomDesc[] = {
+	{ "Pat The Postman 48K (1983)(Mikro-Gen).tzx", 37483, 0xf25a47d1, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecPatpostman, SpecPatpostman, Spectrum)
+STD_ROM_FN(SpecPatpostman)
+
+struct BurnDriver BurnSpecPatpostman = {
+	"spec_patpostman", NULL, "spec_spectrum", NULL, "1983",
+	"Pat The Postman (48K)\0", NULL, "Mikro-Gen", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_MAZE, 0,
+	SpectrumGetZipName, SpecPatpostmanRomInfo, SpecPatpostmanRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Pedro (48K)
 
 static struct BurnRomInfo SpecPedroRomDesc[] = {
@@ -22560,19 +22788,19 @@ struct BurnDriver BurnSpecpippo = {
 
 // Pitfall II: Lost Caverns (48K)
 
-static struct BurnRomInfo SpecPifalliiRomDesc[] = {
-	{ "Pitfall II - Lost Caverns 48K (1984)(Activision).tap", 27294, 0x9acc04e1, BRF_ESS | BRF_PRG },
+static struct BurnRomInfo SpecPitfalliiRomDesc[] = {
+	{ "Pitfall II - Lost Caverns 48K (1984)(Activision).tzx", 27352, 0xd323e1cc, BRF_ESS | BRF_PRG },
 };
 
-STDROMPICKEXT(SpecPifallii, SpecPifallii, Spectrum)
-STD_ROM_FN(SpecPifallii)
+STDROMPICKEXT(SpecPitfallii, SpecPitfallii, Spectrum)
+STD_ROM_FN(SpecPitfallii)
 
-struct BurnDriver BurnSpecPifallii = {
-	"spec_pifallii", NULL, "spec_spectrum", NULL, "1984",
-	"Pitfall II: Lost Caverns (48K)\0", "Press 'M' to open controller menu and SPACE to stop music (during a game session)", "Activision", "ZX Spectrum",
+struct BurnDriver BurnSpecPitfallii = {
+	"spec_pitfallii", NULL, "spec_spectrum", NULL, "1984",
+	"Pitfall II: Lost Caverns (48K)\0", "M: come back to controller menu (during demo game) - SPACE: stop music (during game)", "Activision", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
-	SpectrumGetZipName, SpecPifalliiRomInfo, SpecPifalliiRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpectrumGetZipName, SpecPitfalliiRomInfo, SpecPitfalliiRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -23527,10 +23755,10 @@ struct BurnDriver BurnSpecPunkstar = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Puzznic (128K)
+// Puzznic (48K-128K)
 
 static struct BurnRomInfo SpecpuzznicRomDesc[] = {
-	{ "Puzznic 128K (1990)(Ocean).tap", 33679, 0xeceabdd0, BRF_ESS | BRF_PRG },
+	{ "Puzznic 48K-128K (1990)(Ocean).tzx", 39252, 0xfada4e2c, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(Specpuzznic, Specpuzznic, Spec128)
@@ -23538,7 +23766,7 @@ STD_ROM_FN(Specpuzznic)
 
 struct BurnDriver BurnSpecpuzznic = {
 	"spec_puzznic", NULL, "spec_spec128", NULL, "1990",
-	"Puzznic (128K)\0", NULL, "Ocean Software", "ZX Spectrum",
+	"Puzznic (48K-128K)\0", NULL, "Ocean Software", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecpuzznicRomInfo, SpecpuzznicRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
@@ -23568,7 +23796,7 @@ struct BurnDriver BurnSpecPuzzled = {
 // Pyjamarama (48K)
 
 static struct BurnRomInfo SpecPyjamaramaRomDesc[] = {
-	{ "Pyjamarama 48K (1984)(Mikro-Gen).z80", 42069, 0x6801d962, BRF_ESS | BRF_PRG },
+	{ "Pyjamarama 48K (1984)(Mikro-Gen).tzx", 39042, 0x3188fe47, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecPyjamarama, SpecPyjamarama, Spectrum)
@@ -25158,6 +25386,25 @@ struct BurnDriver BurnSpecRuffreddy = {
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecRuffreddyRomInfo, SpecRuffreddyRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Runestone (48K)
+
+static struct BurnRomInfo SpecRunestoneRomDesc[] = {
+	{ "Runestone 48K (1986)(Firebird Software).tzx", 54100, 0x0ceb4ce5, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecRunestone, SpecRunestone, Spectrum)
+STD_ROM_FN(SpecRunestone)
+
+struct BurnDriver BurnSpecRunestone = {
+	"spec_runestone", NULL, "spec_spectrum", NULL, "1986",
+	"Runestone 48K (HB)\0", NULL, "Firebird Software", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ADV, 0,
+	SpectrumGetZipName, SpecRunestoneRomInfo, SpecRunestoneRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -27273,7 +27520,7 @@ struct BurnDriver BurnSpecsolnegrose2 = {
 // Solomon's Key (48K)
 
 static struct BurnRomInfo SpecsolomonRomDesc[] = {
-	{ "Solomon's Key 48K (1987)(U.S. Gold).tap", 47085, 0xf8e955e0, BRF_ESS | BRF_PRG },
+	{ "Solomon's Key 48K (1987)(U.S. Gold).tzx", 53588, 0xae59f1b7, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(Specsolomon, Specsolomon, Spectrum)
@@ -28068,6 +28315,25 @@ struct BurnDriver BurnSpecstainlesssteel = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Stalingrad (48K)
+
+static struct BurnRomInfo SpecStalingradRomDesc[] = {
+	{ "Stalingrad 48K (1988)(CCS).tzx", 48236, 0x10be1179, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecStalingrad, SpecStalingrad, Spectrum)
+STD_ROM_FN(SpecStalingrad)
+
+struct BurnDriver BurnSpecStalingrad = {
+	"spec_stalingrad", NULL, "spec_spectrum", NULL, "1988",
+	"Stalingrad (48K)\0", NULL, "CCS", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_STRATEGY, 0,
+	SpectrumGetZipName, SpecStalingradRomInfo, SpecStalingradRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Star Blade (48K)
 
 static struct BurnRomInfo SpecStarbladeRomDesc[] = {
@@ -28258,6 +28524,25 @@ struct BurnDriver BurnSpecStarglider2 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Starion (48K)
+
+static struct BurnRomInfo SpecStarionRomDesc[] = {
+	{ "Starion 48K (1985)(Melbourne House).tap", 50317, 0x67dfd139, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecStarion, SpecStarion, Spectrum)
+STD_ROM_FN(SpecStarion)
+
+struct BurnDriver BurnSpecStarion = {
+	"spec_starion", NULL, "spec_spectrum", NULL, "1985",
+	"Starion (48K)\0", "E: accelerate - Q: decelerate - R: status report - CAPS+SPACE: abort game", "Melbourne House", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_SHOOT | GBF_SIM, 0,
+	SpectrumGetZipName, SpecStarionRomInfo, SpecStarionRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Star Paws (48K-128K)
 
 static struct BurnRomInfo SpecStarpawsRomDesc[] = {
@@ -28349,6 +28634,25 @@ struct BurnDriver BurnSpecStarstrike2 = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_SHOOT, 0,
 	SpectrumGetZipName, SpecStarstrike2RomInfo, SpecStarstrike2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Star Trek (48K)
+
+static struct BurnRomInfo SpecStartrekRomDesc[] = {
+	{ "Star Trek 48K (1983)(Mikro-Gen).tzx", 49211, 0xb258b62b, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecStartrek, SpecStartrek, Spectrum)
+STD_ROM_FN(SpecStartrek)
+
+struct BurnDriver BurnSpecStartrek = {
+	"spec_startrek", NULL, "spec_spectrum", NULL, "1983",
+	"Star Trek (48K) (HB)\0", NULL, "Mikro-Gen", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_STRATEGY, 0,
+	SpectrumGetZipName, SpecStartrekRomInfo, SpecStartrekRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -28866,10 +29170,10 @@ struct BurnDriver BurnSpecStrykercryptsoftrogan = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Stunt Car Racer (128K)
+// Stunt Car Racer (48K-128K)
 
 static struct BurnRomInfo SpecstuntcarRomDesc[] = {
-	{ "Stunt Car Racer 128K (1989)(Micro Style).tap", 55835, 0xfdd995ec, BRF_ESS | BRF_PRG },
+	{ "Stunt Car Racer 48K-128K (1989)(Micro Style).tap", 55835, 0xfdd995ec, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(Specstuntcar, Specstuntcar, Spec128)
@@ -28877,7 +29181,7 @@ STD_ROM_FN(Specstuntcar)
 
 struct BurnDriver BurnSpecstuntcar = {
 	"spec_stuntcar", NULL, "spec_spec128", NULL, "1989",
-	"Stunt Car Racer (128K)\0", NULL, "Micro Style", "ZX Spectrum",
+	"Stunt Car Racer (48K-128K)\0", NULL, "Micro Style", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_RACING, 0,
 	SpectrumGetZipName, SpecstuntcarRomInfo, SpecstuntcarRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -28885,10 +29189,10 @@ struct BurnDriver BurnSpecstuntcar = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Stunt Man Seymour (128K)
+// Stunt Man Seymour (48K-128K)
 
 static struct BurnRomInfo SpecStuntmanseymourRomDesc[] = {
-	{ "Stunt Man Seymour (1992)(Codemasters).tap", 51574, 0x098c5ba8, BRF_ESS | BRF_PRG },
+	{ "Stunt Man Seymour 48K-128K (1992)(Codemasters).tap", 51574, 0x098c5ba8, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecStuntmanseymour, SpecStuntmanseymour, Spec128)
@@ -28896,7 +29200,7 @@ STD_ROM_FN(SpecStuntmanseymour)
 
 struct BurnDriver BurnSpecStuntmanseymour = {
 	"spec_stuntmanseymour", NULL, "spec_spec128", NULL, "1992",
-	"Stunt Man Seymour (128K)\0", NULL, "Codemasters", "ZX Spectrum",
+	"Stunt Man Seymour (48K-128K)\0", NULL, "Codemasters", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecStuntmanseymourRomInfo, SpecStuntmanseymourRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -29398,10 +29702,10 @@ struct BurnDriver BurnSpecsupespri = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Super Stuntman (48K)
+// Super Stunt Man (48K)
 
 static struct BurnRomInfo SpecSuperstuntmanRomDesc[] = {
-	{ "Super Stuntman 48K (1988)(Codemasters).tap", 43549, 0x984b4f12, BRF_ESS | BRF_PRG },
+	{ "Super Stunt Man 48K (1988)(Codemasters).tzx", 43577, 0xe6228cdd, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecSuperstuntman, SpecSuperstuntman, Spectrum)
@@ -29409,9 +29713,9 @@ STD_ROM_FN(SpecSuperstuntman)
 
 struct BurnDriver BurnSpecSuperstuntman = {
 	"spec_superstuntman", NULL, "spec_spectrum", NULL, "1988",
-	"Super Stuntman (48K)\0", NULL, "Codemasters", "ZX Spectrum",
+	"Super Stunt Man (48K)\0", NULL, "Codemasters", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_VERSHOOT, 0,
 	SpectrumGetZipName, SpecSuperstuntmanRomInfo, SpecSuperstuntmanRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -32096,6 +32400,44 @@ struct BurnDriver BurnSpecViz = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Vulcan ~ The Tunisian Campaign (128K)
+
+static struct BurnRomInfo SpecVulcan128RomDesc[] = {
+	{ "Vulcan 128K (1986)(CCS).tzx", 53740, 0xc1299a09, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecVulcan128, SpecVulcan128, Spec128)
+STD_ROM_FN(SpecVulcan128)
+
+struct BurnDriver BurnSpecVulcan128 = {
+	"spec_vulcan128", NULL, "spec_spec128", NULL, "1986",
+	"Vulcan ~ The Tunisian Campaign (128K)\0", NULL, "CCS", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_STRATEGY, 0,
+	SpectrumGetZipName, SpecVulcan128RomInfo, SpecVulcan128RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Vulcan ~ The Tunisian Campaign (48K)
+
+static struct BurnRomInfo SpecVulcan48RomDesc[] = {
+	{ "Vulcan 48K (1986)(CCS).tzx", 49796, 0x378fc601, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecVulcan48, SpecVulcan48, Spectrum)
+STD_ROM_FN(SpecVulcan48)
+
+struct BurnDriver BurnSpecVulcan48 = {
+	"spec_vulcan48", "spec_vulcan128", "spec_spectrum", NULL, "1986",
+	"Vulcan ~ The Tunisian Campaign (48K)\0", NULL, "CCS", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_SPECTRUM, GBF_STRATEGY, 0,
+	SpectrumGetZipName, SpecVulcan48RomInfo, SpecVulcan48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Wacky Darts (48K-128K)
 
 static struct BurnRomInfo SpecWackydartsRomDesc[] = {
@@ -32364,19 +32706,19 @@ struct BurnDriver BurnSpecWhiteheat = {
 
 // Who Dares Wins II (48K)
 
-static struct BurnRomInfo SpecWhodareswinsiiRomDesc[] = {
-	{ "Who Dares Wins II 48K (1986)(Alligata).tap", 48631, 0x02dc6931, BRF_ESS | BRF_PRG },
+static struct BurnRomInfo SpecWdwiiRomDesc[] = {
+	{ "Who Dares Wins II 48K (1986)(Alligata).tzx", 48692, 0xbf14f1aa, BRF_ESS | BRF_PRG },
 };
 
-STDROMPICKEXT(SpecWhodareswinsii, SpecWhodareswinsii, Spectrum)
-STD_ROM_FN(SpecWhodareswinsii)
+STDROMPICKEXT(SpecWdwii, SpecWdwii, Spectrum)
+STD_ROM_FN(SpecWdwii)
 
-struct BurnDriver BurnSpecWhodareswinsii = {
-	"spec_whodareswinsii", NULL, "spec_spectrum", NULL, "1986",
+struct BurnDriver BurnSpecWdwii = {
+	"spec_wdwii", NULL, "spec_spectrum", NULL, "1986",
 	"Who Dares Wins II (48K)\0", NULL, "Alligata Software", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 1, HARDWARE_SPECTRUM, GBF_RUNGUN, 0,
-	SpectrumGetZipName, SpecWhodareswinsiiRomInfo, SpecWhodareswinsiiRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpectrumGetZipName, SpecWdwiiRomInfo, SpecWdwiiRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -32990,10 +33332,10 @@ struct BurnDriver BurnSpecxenon = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Xenophobe (128K)
+// Xenophobe (48K-128K)
 
 static struct BurnRomInfo SpecXenophobeRomDesc[] = {
-	{ "Xenophobe 128K (1989)(Micro Style).tap", 213558, 0xb32da9b4, BRF_ESS | BRF_PRG },
+	{ "Xenophobe 48K-128K (1989)(Micro Style).tap", 213558, 0xb32da9b4, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecXenophobe, SpecXenophobe, Spec128)
@@ -33001,7 +33343,7 @@ STD_ROM_FN(SpecXenophobe)
 
 struct BurnDriver BurnSpecXenophobe = {
 	"spec_xenophobe", NULL, "spec_spec128", NULL, "1989",
-	"Xenophobe (128K)\0", NULL, "Micro Style", "ZX Spectrum",
+	"Xenophobe (48K-128K)\0", NULL, "Micro Style", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_SPECTRUM, GBF_RUNGUN, 0,
 	SpectrumGetZipName, SpecXenophobeRomInfo, SpecXenophobeRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
@@ -34842,7 +35184,7 @@ struct BurnDriver BurnSpecAncientfightte = {
 // Androide (48K) (HB)
 
 static struct BurnRomInfo SpecAndroideRomDesc[] = {
-	{ "Androide 48K (2014)(PixelSoft).tap", 42884, 0xa0cce6d2, BRF_ESS | BRF_PRG },
+	{ "Androide 48K (2014)(PixelSoft).tzx", 42912, 0x909a08f8, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecAndroide, SpecAndroide, Spectrum)
@@ -34911,6 +35253,44 @@ struct BurnDriver BurnSpecAngrybirdsvs = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_SHOOT, 0,
 	SpectrumGetZipName, SpecAngrybirdsvsRomInfo, SpecAngrybirdsvsRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Ant Attack 3D (128K) (HB)
+
+static struct BurnRomInfo SpecAntatk3d128RomDesc[] = {
+	{ "Ant Attack 3D 128K (2026)(AlColella).tap", 109122, 0x82c9b3cf, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecAntatk3d128, SpecAntatk3d128, Spec128)
+STD_ROM_FN(SpecAntatk3d128)
+
+struct BurnDriver BurnSpecAntatk3d128 = {
+	"spec_antatk3d128", NULL, "spec_spec128", NULL, "2026",
+	"Ant Attack 3D (128K) (HB)\0", NULL, "AlColella", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_MAZE, 0,
+	SpectrumGetZipName, SpecAntatk3d128RomInfo, SpecAntatk3d128RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Ant Attack 3D (48K) (HB)
+
+static struct BurnRomInfo SpecAntatk3d48RomDesc[] = {
+	{ "Ant Attack 3D 48K (2026)(AlColella).tap", 42554, 0x539d1507, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecAntatk3d48, SpecAntatk3d48, Spectrum)
+STD_ROM_FN(SpecAntatk3d48)
+
+struct BurnDriver BurnSpecAntatk3d48 = {
+	"spec_antatk3d48", "spec_antatk3d128", "spec_spectrum", NULL, "2026",
+	"Ant Attack 3D (48K) (HB)\0", NULL, "AlColella", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_MAZE, 0,
+	SpectrumGetZipName, SpecAntatk3d48RomInfo, SpecAntatk3d48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -35638,6 +36018,25 @@ struct BurnDriver BurnSpecBabymonkeyalba = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Back to the Gemba (128K+2A) (HB, Tech-Demo)
+
+static struct BurnRomInfo SpecBackgembaRomDesc[] = {
+	{ "Back to the Gemba 128K+2A (2015)(Gemba Boys).tap", 121502, 0x3fd44c58, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecBackgemba, SpecBackgemba, Spec1282a)
+STD_ROM_FN(SpecBackgemba)
+
+struct BurnDriver BurnSpecBackgemba = {
+	"spec_backgemba", NULL, "spec_spec1282a", NULL, "2015",
+	"Back to the Gemba (128K+2A) (HB, Tech-Demo)\0", NULL, "Gemba Boys", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW | BDF_DEMO, 1, HARDWARE_SPECTRUM, GBF_MISC, 0,
+	SpectrumGetZipName, SpecBackgembaRomInfo, SpecBackgembaRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KPlus2Init, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Backrooms ZX (English) (128K) (HB)
 
 static struct BurnRomInfo SpecBackrzxenRomDesc[] = {
@@ -35996,6 +36395,25 @@ struct BurnDriver BurnSpecBasirokopt = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecBasirokoptRomInfo, SpecBasirokoptRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Basil the Basset (48K) (HB)
+
+static struct BurnRomInfo SpecBasilbassetRomDesc[] = {
+	{ "Basil the Basset 48K (2026)(ReallySmall).tap", 26974, 0x35728636, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecBasilbasset, SpecBasilbasset, Spectrum)
+STD_ROM_FN(SpecBasilbasset)
+
+struct BurnDriver BurnSpecBasilbasset = {
+	"spec_basilbasset", NULL, "spec_spectrum", NULL, "2026",
+	"Basil the Basset (48K) (HB)\0", NULL, "ReallySmall", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecBasilbassetRomInfo, SpecBasilbassetRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -36509,6 +36927,25 @@ struct BurnDriver BurnSpecBilnighten = {
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ADV, 0,
 	SpectrumGetZipName, SpecBilnightenRomInfo, SpecBilnightenRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Bill & Ted's Excellent Game Boy Adventure ZX (128K) (HB, v1.1)
+
+static struct BurnRomInfo SpecBillntedRomDesc[] = {
+	{ "Bill & Ted's Excellent Game Boy Adventure ZX v1.1 128K (2026)(kirby2000).tzx", 84833, 0x1d6ab283, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecBillnted, SpecBillnted, Spec128)
+STD_ROM_FN(SpecBillnted)
+
+struct BurnDriver BurnSpecBillnted = {
+	"spec_billnted", NULL, "spec_spec128", NULL, "2026",
+	"Bill & Ted's Excellent Game Boy Adventure ZX (128K) (HB, v1.1)\0", "W, S and ENTER to choose and select options", "kirby2000", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecBillntedRomInfo, SpecBillntedRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -37120,6 +37557,44 @@ struct BurnDriver BurnSpecBloodstonesp = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Bloqtrix (128K) (HB)
+
+static struct BurnRomInfo SpecBloqtrix128RomDesc[] = {
+	{ "Bloqtrix 128K (2026)(Gabriel Cuesta).tap", 31961, 0x43ade574, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecBloqtrix128, SpecBloqtrix128, Spec128)
+STD_ROM_FN(SpecBloqtrix128)
+
+struct BurnDriver BurnSpecBloqtrix128 = {
+	"spec_bloqtrix128", NULL, "spec_spec128", NULL, "2026",
+	"Bloqtrix (128K) (HB)\0", NULL, "Gabriel Cuesta", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
+	SpectrumGetZipName, SpecBloqtrix128RomInfo, SpecBloqtrix128RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Bloqtrix (48K) (HB)
+
+static struct BurnRomInfo SpecBloqtrix48RomDesc[] = {
+	{ "Bloqtrix 48K (2026)(Gabriel Cuesta).tap", 29725, 0xccc94daa, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecBloqtrix48, SpecBloqtrix48, Spectrum)
+STD_ROM_FN(SpecBloqtrix48)
+
+struct BurnDriver BurnSpecBloqtrix48 = {
+	"spec_bloqtrix48", "spec_bloqtrix128", "spec_spectrum", NULL, "2026",
+	"Bloqtrix (48K) (HB)\0", NULL, "Gabriel Cuesta", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
+	SpectrumGetZipName, SpecBloqtrix48RomInfo, SpecBloqtrix48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Bluber (48K) (HB)
 
 static struct BurnRomInfo SpecBluberRomDesc[] = {
@@ -37553,6 +38028,25 @@ struct BurnDriver BurnSpecBoxes48 = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecBoxes48RomInfo, SpecBoxes48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Boxing ZX (48K) (HB)
+
+static struct BurnRomInfo SpecBoxingzxRomDesc[] = {
+	{ "Boxing ZX 48K-AY (2026)(FG&AI).tap", 30835, 0x165ac82c, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecBoxingzx, SpecBoxingzx, Spectrum)
+STD_ROM_FN(SpecBoxingzx)
+
+struct BurnDriver BurnSpecBoxingzx = {
+	"spec_boxingzx", NULL, "spec_spectrum", NULL, "2026",
+	"Boxing ZX (48K) (HB)\0", "AY Sound supported", "FG&AI", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_VSFIGHT, 0,
+	SpectrumGetZipName, SpecBoxingzxRomInfo, SpecBoxingzxRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -38337,41 +38831,117 @@ struct BurnDriver BurnSpecCastleofsorrow = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Castlevania: Spectral Interlude (English) (128K) (HB)
+// Castlevania: Spectral Interlude (English) (128K) (HB, v1.1)
 
-static struct BurnRomInfo SpeccastlevaniaRomDesc[] = {
-	{ "Castlevania - Spectral Interlude EN 128K (2015)(Rewind Team).tap", 0x1edba, 0xc100bb38, BRF_ESS | BRF_PRG },
+static struct BurnRomInfo SpecCastvaniaenRomDesc[] = {
+	{ "Castlevania - Spectral Interlude EN v1.1 128K (2015)(Rewind Team).tap", 126394, 0xc100bb38, BRF_ESS | BRF_PRG },
 };
 
-STDROMPICKEXT(Speccastlevania, Speccastlevania, Spec128)
-STD_ROM_FN(Speccastlevania)
+STDROMPICKEXT(SpecCastvaniaen, SpecCastvaniaen, Spec128)
+STD_ROM_FN(SpecCastvaniaen)
 
-struct BurnDriver BurnSpeccastlevania = {
-	"spec_castlevania", NULL, "spec_spec128", NULL, "2015",
-	"Castlevania: Spectral Interlude (English) (128K) (HB)\0", NULL, "Rewind Team", "ZX Spectrum",
+struct BurnDriver BurnSpecCastvaniaen = {
+	"spec_castvaniaen", NULL, "spec_spec128", NULL, "2015",
+	"Castlevania: Spectral Interlude (English) (128K) (HB, v1.1)\0", NULL, "Rewind Team", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_SCRFIGHT, 0,
-	SpectrumGetZipName, SpeccastlevaniaRomInfo, SpeccastlevaniaRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpectrumGetZipName, SpecCastvaniaenRomInfo, SpecCastvaniaenRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Castlevania: Spectral Interlude (Russian) (128K) (HB)
+// Castlevania: Spectral Interlude (Spanish) (128K) (HB, v1.1)
 
-static struct BurnRomInfo SpeccastlevanrusRomDesc[] = {
-	{ "Castlevania - Spectral Interlude RU 128K (2015)(Rewind Team).tap", 0x1f04e, 0x45561b70, BRF_ESS | BRF_PRG },
+static struct BurnRomInfo SpecCastvaniaesRomDesc[] = {
+	{ "Castlevania - Spectral Interlude ES v1.1 128K (2015)(Rewind Team).tap", 126950, 0x27e8ae63, BRF_ESS | BRF_PRG },
 };
 
-STDROMPICKEXT(Speccastlevanrus, Speccastlevanrus, Spec128)
-STD_ROM_FN(Speccastlevanrus)
+STDROMPICKEXT(SpecCastvaniaes, SpecCastvaniaes, Spec128)
+STD_ROM_FN(SpecCastvaniaes)
 
-struct BurnDriver BurnSpeccastlevanrus = {
-	"spec_castlevanrus", "spec_castlevania", "spec_spec128", NULL, "2015",
-	"Castlevania: Spectral Interlude (Russian) (128K) (HB)\0", NULL, "Rewind Team", "ZX Spectrum",
+struct BurnDriver BurnSpecCastvaniaes = {
+	"spec_castvaniaes", "spec_castvaniaen", "spec_spec128", NULL, "2015",
+	"Castlevania: Spectral Interlude (Spanish) (128K) (HB, v1.1)\0", NULL, "Rewind Team", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_SCRFIGHT, 0,
-	SpectrumGetZipName, SpeccastlevanrusRomInfo, SpeccastlevanrusRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpectrumGetZipName, SpecCastvaniaesRomInfo, SpecCastvaniaesRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Castlevania: Spectral Interlude (Italian) (128K) (HB, v1.1)
+
+static struct BurnRomInfo SpecCastvaniaitRomDesc[] = {
+	{ "Castlevania - Spectral Interlude IT v1.1 128K (2015)(Rewind Team).tap", 127355, 0xd9a89fc5, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecCastvaniait, SpecCastvaniait, Spec128)
+STD_ROM_FN(SpecCastvaniait)
+
+struct BurnDriver BurnSpecCastvaniait = {
+	"spec_castvaniait", "spec_castvaniaen", "spec_spec128", NULL, "2015",
+	"Castlevania: Spectral Interlude (Italian) (128K) (HB, v1.1)\0", NULL, "Rewind Team", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_SCRFIGHT, 0,
+	SpectrumGetZipName, SpecCastvaniaitRomInfo, SpecCastvaniaitRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Castlevania: Spectral Interlude (Polish) (128K) (HB, v1.1)
+
+static struct BurnRomInfo SpecCastvaniaplRomDesc[] = {
+	{ "Castlevania - Spectral Interlude PL v1.1 128K (2015)(Rewind Team).tap", 127378, 0x2f11f5bd, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecCastvaniapl, SpecCastvaniapl, Spec128)
+STD_ROM_FN(SpecCastvaniapl)
+
+struct BurnDriver BurnSpecCastvaniapl = {
+	"spec_castvaniapl", "spec_castvaniaen", "spec_spec128", NULL, "2015",
+	"Castlevania: Spectral Interlude (Polish) (128K) (HB, v1.1)\0", NULL, "Rewind Team", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_SCRFIGHT, 0,
+	SpectrumGetZipName, SpecCastvaniaplRomInfo, SpecCastvaniaplRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Castlevania: Spectral Interlude (Russian) (128K) (HB, v1.1)
+
+static struct BurnRomInfo SpecCastvaniaruRomDesc[] = {
+	{ "Castlevania - Spectral Interlude RU v1.1 128K (2015)(Rewind Team).tap", 127054, 0x45561b70, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecCastvaniaru, SpecCastvaniaru, Spec128)
+STD_ROM_FN(SpecCastvaniaru)
+
+struct BurnDriver BurnSpecCastvaniaru = {
+	"spec_castvaniaru", "spec_castvaniaen", "spec_spec128", NULL, "2015",
+	"Castlevania: Spectral Interlude (Russian) (128K) (HB, v1.1)\0", NULL, "Rewind Team", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_SCRFIGHT, 0,
+	SpectrumGetZipName, SpecCastvaniaruRomInfo, SpecCastvaniaruRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Catch a Hare (48K) (HB)
+
+static struct BurnRomInfo SpecCatchareRomDesc[] = {
+	{ "Catch a Hare 48K-AY (2014)(kas29).tap", 22973, 0x1d0f57b7, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecCatchare, SpecCatchare, Spectrum)
+STD_ROM_FN(SpecCatchare)
+
+struct BurnDriver BurnSpecCatchare = {
+	"spec_catchare", NULL, "spec_spectrum", NULL, "2014",
+	"Catch a Hare (48K) (HB)\0", "AY Sound supported", "kas29", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_BOARD, 0,
+	SpectrumGetZipName, SpecCatchareRomInfo, SpecCatchareRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -38777,7 +39347,7 @@ struct BurnDriver BurnSpecChiprescue = {
 // Chispy (English) (128K) (HB)
 
 static struct BurnRomInfo SpecChispyeRomDesc[] = {
-	{ "Chispy EN 128K (2022)(xavisan).tap", 43965, 0x93b9fa2a, BRF_ESS | BRF_PRG },
+	{ "Chispy EN 128K (2022)(Xavisan).tap", 43965, 0x93b9fa2a, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecChispye, SpecChispye, Spec128)
@@ -38785,7 +39355,7 @@ STD_ROM_FN(SpecChispye)
 
 struct BurnDriver BurnSpecChispye = {
 	"spec_chispye", NULL, "spec_spec128", NULL, "2022",
-	"Chispy (English) (128K) (HB)\0", NULL, "xavisan", "ZX Spectrum",
+	"Chispy (English) (128K) (HB)\0", NULL, "Xavisan", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecChispyeRomInfo, SpecChispyeRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -38796,7 +39366,7 @@ struct BurnDriver BurnSpecChispye = {
 // Chispy (Spanish) (128K) (HB)
 
 static struct BurnRomInfo SpecChispysRomDesc[] = {
-	{ "Chispy ES 128K (2022)(xavisan).tap", 43995, 0xc2c964b0, BRF_ESS | BRF_PRG },
+	{ "Chispy ES 128K (2022)(Xavisan).tap", 43995, 0xc2c964b0, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecChispys, SpecChispys, Spec128)
@@ -38804,7 +39374,7 @@ STD_ROM_FN(SpecChispys)
 
 struct BurnDriver BurnSpecChispys = {
 	"spec_chispys", "spec_chispye", "spec_spec128", NULL, "2022",
-	"Chispy (Spanish) (128K) (HB)\0", NULL, "xavisan", "ZX Spectrum",
+	"Chispy (Spanish) (128K) (HB)\0", NULL, "Xavisan", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecChispysRomInfo, SpecChispysRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39325,10 +39895,10 @@ struct BurnDriver BurnSpecCocoa2e3sp = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Code-112 (128K) (HB)
+// Code-112 (48K-128K) (HB)
 
 static struct BurnRomInfo SpecCode112RomDesc[] = {
-	{ "Code-112 128K (2020)(PC NONO Games).tap", 47864, 0xd3a6349d, BRF_ESS | BRF_PRG },
+	{ "Code-112 48K-128K (2020)(PC NONO Games).tap", 47864, 0xd3a6349d, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecCode112, SpecCode112, Spec128)
@@ -39336,7 +39906,7 @@ STD_ROM_FN(SpecCode112)
 
 struct BurnDriver BurnSpecCode112 = {
 	"spec_code112", NULL, "spec_spec128", NULL, "2020",
-	"Code-112 (128K) (HB)\0", NULL, "PC NONO Games", "ZX Spectrum",
+	"Code-112 (48K-128K) (HB)\0", NULL, "PC NONO Games", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecCode112RomInfo, SpecCode112RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39344,10 +39914,10 @@ struct BurnDriver BurnSpecCode112 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Code Zero (128K) (HB)
+// Code Zero (128K) (HB, v1.1)
 
 static struct BurnRomInfo SpecCodezeroRomDesc[] = {
-	{ "Code Zero 128K (2017)(Paul Jenkinson).tap", 39361, 0xeea64720, BRF_ESS | BRF_PRG },
+	{ "Code Zero v1.1 128K (2017)(Paul Jenkinson).tap", 39361, 0xeea64720, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecCodezero, SpecCodezero, Spec128)
@@ -39355,7 +39925,7 @@ STD_ROM_FN(SpecCodezero)
 
 struct BurnDriver BurnSpecCodezero = {
 	"spec_codezero", NULL, "spec_spec128", NULL, "2017",
-	"Code Zero (128K) (HB)\0", NULL, "Paul Jenkinson", "ZX Spectrum",
+	"Code Zero (128K) (HB, v1.1)\0", NULL, "Paul Jenkinson", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecCodezeroRomInfo, SpecCodezeroRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39363,10 +39933,10 @@ struct BurnDriver BurnSpecCodezero = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// COINZ are mine (128K) (HB)
+// COINZ are mine (48K-128K) (HB)
 
 static struct BurnRomInfo SpecCoinzRomDesc[] = {
-	{ "COINZ are mine 128K (2023)(Drunk Fly).tap", 31418, 0x1c0f1177, BRF_ESS | BRF_PRG },
+	{ "COINZ are mine 48K-128K (2023)(Drunk Fly).tap", 31418, 0x1c0f1177, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecCoinz, SpecCoinz, Spec128)
@@ -39374,7 +39944,7 @@ STD_ROM_FN(SpecCoinz)
 
 struct BurnDriver BurnSpecCoinz = {
 	"spec_coinz", NULL, "spec_spec128", NULL, "2023",
-	"COINZ are mine (128K) (HB)\0", NULL, "Drunk Fly", "ZX Spectrum",
+	"COINZ are mine (48K-128K) (HB)\0", NULL, "Drunk Fly", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecCoinzRomInfo, SpecCoinzRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39439,10 +40009,10 @@ struct BurnDriver BurnSpecColonoszx = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Colonos III - Part 1 (English) (128K) (HB)
+// Colonos III - Part 1 (English) (48K-128K) (HB)
 
 static struct BurnRomInfo SpecColonos3e1RomDesc[] = {
-	{ "Colonos III Part1 EN 128K (2022)(Jose Manuel Gris).tap", 40239, 0xd479a589, BRF_ESS | BRF_PRG },
+	{ "Colonos III Part1 EN 48K-128K (2022)(Jose Manuel Gris).tap", 40239, 0xd479a589, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecColonos3e1, SpecColonos3e1, Spec128)
@@ -39450,7 +40020,7 @@ STD_ROM_FN(SpecColonos3e1)
 
 struct BurnDriver BurnSpecColonos3e1 = {
 	"spec_colonos3e1", NULL, "spec_spec128", NULL, "2022",
-	"Colonos III - Part 1 (English) (128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
+	"Colonos III - Part 1 (English) (48K-128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
 	SpectrumGetZipName, SpecColonos3e1RomInfo, SpecColonos3e1RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39458,10 +40028,10 @@ struct BurnDriver BurnSpecColonos3e1 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Colonos III - Part 2 (English) (128K) (HB)
+// Colonos III - Part 2 (English) (48K-128K) (HB)
 
 static struct BurnRomInfo SpecColonos3e2RomDesc[] = {
-	{ "Colonos III Part2 EN 128K (2022)(Jose Manuel Gris).tap", 37801, 0x9d287b2d, BRF_ESS | BRF_PRG },
+	{ "Colonos III Part2 EN 48K-128K (2022)(Jose Manuel Gris).tap", 37801, 0x9d287b2d, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecColonos3e2, SpecColonos3e2, Spec128)
@@ -39469,7 +40039,7 @@ STD_ROM_FN(SpecColonos3e2)
 
 struct BurnDriver BurnSpecColonos3e2 = {
 	"spec_colonos3e2", "spec_colonos3e1", "spec_spec128", NULL, "2022",
-	"Colonos III - Part 2 (English) (128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
+	"Colonos III - Part 2 (English) (48K-128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ADV | GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecColonos3e2RomInfo, SpecColonos3e2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39477,10 +40047,10 @@ struct BurnDriver BurnSpecColonos3e2 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Colonos III - Part 3 (English) (128K) (HB)
+// Colonos III - Part 3 (English) (48K-128K) (HB)
 
 static struct BurnRomInfo SpecColonos3e3RomDesc[] = {
-	{ "Colonos III Part3 EN 128K (2022)(Jose Manuel Gris).tap", 37320, 0x5fec4b64, BRF_ESS | BRF_PRG },
+	{ "Colonos III Part3 EN 48K-128K (2022)(Jose Manuel Gris).tap", 37320, 0x5fec4b64, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecColonos3e3, SpecColonos3e3, Spec128)
@@ -39488,7 +40058,7 @@ STD_ROM_FN(SpecColonos3e3)
 
 struct BurnDriver BurnSpecColonos3e3 = {
 	"spec_colonos3e3", "spec_colonos3e1", "spec_spec128", NULL, "2022",
-	"Colonos III - Part 3 (English) (128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
+	"Colonos III - Part 3 (English) (48K-128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ADV | GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecColonos3e3RomInfo, SpecColonos3e3RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39496,10 +40066,10 @@ struct BurnDriver BurnSpecColonos3e3 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Colonos III - Parte 1 (Spanish) (128K) (HB)
+// Colonos III - Parte 1 (Spanish) (48K-128K) (HB)
 
 static struct BurnRomInfo SpecColonos3s1RomDesc[] = {
-	{ "Colonos III Parte1 ES 128K (2022)(Jose Manuel Gris).tap", 40344, 0x9faec737, BRF_ESS | BRF_PRG },
+	{ "Colonos III Parte1 ES 48K-128K (2022)(Jose Manuel Gris).tap", 40344, 0x9faec737, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecColonos3s1, SpecColonos3s1, Spec128)
@@ -39507,7 +40077,7 @@ STD_ROM_FN(SpecColonos3s1)
 
 struct BurnDriver BurnSpecColonos3s1 = {
 	"spec_colonos3s1", NULL, "spec_spec128", NULL, "2022",
-	"Colonos III - Parte 1 (Spanish) (128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
+	"Colonos III - Parte 1 (Spanish) (48K-128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
 	SpectrumGetZipName, SpecColonos3s1RomInfo, SpecColonos3s1RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39515,10 +40085,10 @@ struct BurnDriver BurnSpecColonos3s1 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Colonos III - Parte 2 (Spanish) (128K) (HB)
+// Colonos III - Parte 2 (Spanish) (48K-128K) (HB)
 
 static struct BurnRomInfo SpecColonos3s2RomDesc[] = {
-	{ "Colonos III Parte2 ES 128K (2022)(Jose Manuel Gris).tap", 37808, 0x3f4195f8, BRF_ESS | BRF_PRG },
+	{ "Colonos III Parte2 ES 48K-128K (2022)(Jose Manuel Gris).tap", 37808, 0x3f4195f8, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecColonos3s2, SpecColonos3s2, Spec128)
@@ -39526,7 +40096,7 @@ STD_ROM_FN(SpecColonos3s2)
 
 struct BurnDriver BurnSpecColonos3s2 = {
 	"spec_colonos3s2", "spec_colonos3s1", "spec_spec128", NULL, "2022",
-	"Colonos III - Parte 2 (Spanish) (128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
+	"Colonos III - Parte 2 (Spanish) (48K-128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ADV | GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecColonos3s2RomInfo, SpecColonos3s2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39534,10 +40104,10 @@ struct BurnDriver BurnSpecColonos3s2 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Colonos III - Parte 3 (Spanish) (128K) (HB)
+// Colonos III - Parte 3 (Spanish) (48K-128K) (HB)
 
 static struct BurnRomInfo SpecColonos3s3RomDesc[] = {
-	{ "Colonos III Parte3 ES 128K (2022)(Jose Manuel Gris).tap", 37325, 0x9f90edc5, BRF_ESS | BRF_PRG },
+	{ "Colonos III Parte3 ES 48K-128K (2022)(Jose Manuel Gris).tap", 37325, 0x9f90edc5, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecColonos3s3, SpecColonos3s3, Spec128)
@@ -39545,7 +40115,7 @@ STD_ROM_FN(SpecColonos3s3)
 
 struct BurnDriver BurnSpecColonos3s3 = {
 	"spec_colonos3s3", "spec_colonos3s1", "spec_spec128", NULL, "2022",
-	"Colonos III - Parte 3 (Spanish) (128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
+	"Colonos III - Parte 3 (Spanish) (48K-128K) (HB)\0", NULL, "Jose Manuel Gris", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ADV | GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecColonos3s3RomInfo, SpecColonos3s3RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -39553,10 +40123,10 @@ struct BurnDriver BurnSpecColonos3s3 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Coloristic (128K) (HB)
+// Coloristic (48K-128K) (HB)
 
 static struct BurnRomInfo SpecColoristicRomDesc[] = {
-	{ "Coloristic 128K (2020)(Martin Borik).tap", 16436, 0x1c824bfb, BRF_ESS | BRF_PRG },
+	{ "Coloristic 48K-128K (2020)(Martin Borik).tap", 16436, 0x1c824bfb, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecColoristic, SpecColoristic, Spec128)
@@ -39564,8 +40134,8 @@ STD_ROM_FN(SpecColoristic)
 
 struct BurnDriver BurnSpecColoristic = {
 	"spec_coloristic", NULL, "spec_spec128", NULL, "2020",
-	"Coloristic (128K) (HB)\0", NULL, "Martin Borik", "ZX Spectrum",
-	NULL, NULL, NULL, NULL,
+	"Coloristic (48K-128K) (HB)\0", NULL, "Martin Borik", "ZX Spectrum",
+	NULL, NULL, L"Martin B\u00f3rik", NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecColoristicRomInfo, SpecColoristicRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
@@ -39591,10 +40161,10 @@ struct BurnDriver BurnSpecCommando2 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Cómeme el Chip (128K) (HB)
+// Cómeme el Chip (48K) (HB)
 
 static struct BurnRomInfo SpecComechipRomDesc[] = {
-	{ "Comeme el Chip 128K (2019)(Beyker Soft).tap", 43332, 0x1ef8fe2b, BRF_ESS | BRF_PRG },
+	{ "Comeme el Chip 48K (2019)(Beyker Soft).tzx", 43392, 0x8824f60e, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecComechip, SpecComechip, Spec128)
@@ -39602,11 +40172,49 @@ STD_ROM_FN(SpecComechip)
 
 struct BurnDriver BurnSpecComechip = {
 	"spec_comechip", NULL, "spec_spec128", NULL, "2019",
-	"Comeme el Chip (128K) (HB)\0", NULL, "Beyker Soft", "ZX Spectrum",
-	L"C\u00f3meme el Chip (128K) (HB)\0", NULL, NULL, NULL,
+	"Comeme el Chip (48K) (HB)\0", NULL, "Beyker Soft", "ZX Spectrum",
+	L"C\u00f3meme el Chip (48K) (HB)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecComechipRomInfo, SpecComechipRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Como Cão e Gato (Portuguese) (48K) (HB)
+
+static struct BurnRomInfo SpecComocgRomDesc[] = {
+	{ "Como Cao e Gato PT 48K (2026)(CarlosITV).tap", 32756, 0x913883b8, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecComocg, SpecComocg, Spectrum)
+STD_ROM_FN(SpecComocg)
+
+struct BurnDriver BurnSpecComocg = {
+	"spec_comocg", "spec_likecd", "spec_spectrum", NULL, "2026",
+	"Como Cao e Gato (Portuguese) (48K) (HB)\0", NULL, "CarlosITV", "ZX Spectrum",
+	L"Como C\u00E3o e Gato (Portuguese) (48K) (HB)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_BOARD, 0,
+	SpectrumGetZipName, SpecComocgRomInfo, SpecComocgRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Como el Perro y el Gato (Spanish) (48K) (HB)
+
+static struct BurnRomInfo SpecComopgRomDesc[] = {
+	{ "Como el Perro y el Gato ES 48K (2026)(CarlosITV).tap", 32795, 0xf8396013, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecComopg, SpecComopg, Spectrum)
+STD_ROM_FN(SpecComopg)
+
+struct BurnDriver BurnSpecComopg = {
+	"spec_comopg", "spec_likecd", "spec_spectrum", NULL, "2026",
+	"Como el Perro y el Gato (Spanish) (48K) (HB)\0", NULL, "CarlosITV", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_BOARD, 0,
+	SpectrumGetZipName, SpecComopgRomInfo, SpecComopgRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -40674,6 +41282,44 @@ struct BurnDriver BurnSpecCursedemons = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Curse of Dusarlyn, The (English) (128K)
+
+static struct BurnRomInfo SpecCursedusarenRomDesc[] = {
+	{ "Curse of Dusarlyn, The EN 128K (2026)(RetroWorks).tzx", 92110, 0x8f50c153, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecCursedusaren, SpecCursedusaren, Spec128)
+STD_ROM_FN(SpecCursedusaren)
+
+struct BurnDriver BurnSpecCursedusaren = {
+	"spec_cursedusaren", NULL, "spec_spec128", NULL, "2026",
+	"Curse of Dusarlyn, The (English) (128K)\0", NULL, "RetroWorks", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
+	SpectrumGetZipName, SpecCursedusarenRomInfo, SpecCursedusarenRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Curse of Dusarlyn, The (Spanish) (128K)
+
+static struct BurnRomInfo SpecCursedusaresRomDesc[] = {
+	{ "Curse of Dusarlyn, The ES 128K (2026)(RetroWorks).tzx", 92079, 0x7494a0d7, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecCursedusares, SpecCursedusares, Spec128)
+STD_ROM_FN(SpecCursedusares)
+
+struct BurnDriver BurnSpecCursedusares = {
+	"spec_cursedusares", "spec_cursedusaren", "spec_spec128", NULL, "2026",
+	"Curse of Dusarlyn, The (Spanish) (128K)\0", NULL, "RetroWorks", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
+	SpectrumGetZipName, SpecCursedusaresRomInfo, SpecCursedusaresRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Curse of the Night (48K-128K) (Hack, English)
 
 static struct BurnRomInfo SpecCursenightRomDesc[] = {
@@ -41016,10 +41662,10 @@ struct BurnDriver BurnSpecDarklostpages = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Dark Castle (128K) (HB)
+// Dark Castle (48K-128K) (HB)
 
 static struct BurnRomInfo SpecDarkcastleRomDesc[] = {
-	{ "Dark Castle 128K (2016)(kas29).tap", 24948, 0x828a865c, BRF_ESS | BRF_PRG },
+	{ "Dark Castle 48K-128K (2016)(kas29).tap", 24948, 0x828a865c, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecDarkcastle, SpecDarkcastle, Spec128)
@@ -41027,7 +41673,7 @@ STD_ROM_FN(SpecDarkcastle)
 
 struct BurnDriver BurnSpecDarkcastle = {
 	"spec_darkcastle", NULL, "spec_spec128", NULL, "2016",
-	"Dark Castle (128K) (HB)\0", NULL, "kas29", "ZX Spectrum",
+	"Dark Castle (48K-128K) (HB)\0", NULL, "kas29", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_MAZE, 0,
 	SpectrumGetZipName, SpecDarkcastleRomInfo, SpecDarkcastleRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -42308,7 +42954,7 @@ struct BurnDriver BurnSpecDogmole = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Dogmole Tuppowski - The New Adventures (English) (128K) (HB)
+// Dogmole Tuppowski: The New Adventures (English) (128K) (HB)
 
 static struct BurnRomInfo SpecDogadvenRomDesc[] = {
 	{ "Dogmole Tuppowski - The New Adventures 128K (2014)(The Mojon Twins).tap", 53730, 0x23af5af2, BRF_ESS | BRF_PRG },
@@ -42319,7 +42965,7 @@ STD_ROM_FN(SpecDogadven)
 
 struct BurnDriver BurnSpecDogadven = {
 	"spec_dogadven", NULL, "spec_spec128", NULL, "2014",
-	"Dogmole Tuppowski - The New Adventures (English) (128K) (HB)\0", NULL, "The Mojon Twins", "ZX Spectrum",
+	"Dogmole Tuppowski: The New Adventures (English) (128K) (HB)\0", NULL, "The Mojon Twins", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecDogadvenRomInfo, SpecDogadvenRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -42327,7 +42973,7 @@ struct BurnDriver BurnSpecDogadven = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Dogmole Tuppowski - Las Nuevas Aventuras (Spanish) (128K) (HB)
+// Dogmole Tuppowski: Las Nuevas Aventuras (Spanish) (128K) (HB)
 
 static struct BurnRomInfo SpecDogadvesRomDesc[] = {
 	{ "Dogmole Tuppowski - Las Nuevas Aventuras 128K (2014)(The Mojon Twins).tap", 53802, 0xd599d2db, BRF_ESS | BRF_PRG },
@@ -42338,7 +42984,7 @@ STD_ROM_FN(SpecDogadves)
 
 struct BurnDriver BurnSpecDogadves = {
 	"spec_dogadves", "spec_dogadven", "spec_spec128", NULL, "2014",
-	"Dogmole Tuppowski - Las Nuevas Aventuras (Spanish) (128K) (HB)\0", NULL, "The Mojon Twins", "ZX Spectrum",
+	"Dogmole Tuppowski: Las Nuevas Aventuras (Spanish) (128K) (HB)\0", NULL, "The Mojon Twins", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecDogadvesRomInfo, SpecDogadvesRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -43467,18 +44113,18 @@ struct BurnDriver BurnSpecElixirvitae = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Elon M. with Jetpack (128K) (HB)
+// Elon M. with Jetpack (48K-128K) (HB)
 
 static struct BurnRomInfo SpecElonjetpackRomDesc[] = {
-	{ "Elon M. with Jetpack 128K (2019)(Matra).tap", 46403, 0xbc78e913, BRF_ESS | BRF_PRG },
+	{ "Elon M. with Jetpack 48K-128K (2018)(Matra).tap", 46403, 0xbc78e913, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecElonjetpack, SpecElonjetpack, Spec128)
 STD_ROM_FN(SpecElonjetpack)
 
 struct BurnDriver BurnSpecElonjetpack = {
-	"spec_elonjetpack", NULL, "spec_spec128", NULL, "2018-19",
-	"Elon M. with Jetpack (128K) (HB)\0", NULL, "Rafael Vico Costa - Matra", "ZX Spectrum",
+	"spec_elonjetpack", NULL, "spec_spec128", NULL, "2018",
+	"Elon M. with Jetpack (48K-128K) (HB)\0", NULL, "Rafael Vico Costa - Matra", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
 	SpectrumGetZipName, SpecElonjetpackRomInfo, SpecElonjetpackRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -43577,6 +44223,25 @@ struct BurnDriver BurnSpecefmb = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecefmbRomInfo, SpecefmbRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Enduro ZX (48K) (HB)
+
+static struct BurnRomInfo SpecEndurozxRomDesc[] = {
+	{ "Enduro ZX 48K-AY (2026)(FG&AI).tap", 37537, 0x3a12439d, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecEndurozx, SpecEndurozx, Spectrum)
+STD_ROM_FN(SpecEndurozx)
+
+struct BurnDriver BurnSpecEndurozx = {
+	"spec_endurozx", NULL, "spec_spectrum", NULL, "2026",
+	"Enduro ZX (48K) (HB)\0", "AY Sound supported", "FG&AI", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_RACING, 0,
+	SpectrumGetZipName, SpecEndurozxRomInfo, SpecEndurozxRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -43828,10 +44493,29 @@ struct BurnDriver BurnSpecEscapemonjases = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Escape from Twilight Castle (128K) (HB)
+// Escape from Omega Base (48K) (HB, v1.3)
+
+static struct BurnRomInfo SpecEscfobRomDesc[] = {
+	{ "Escape from Omega Base v1.3 48K (2026)(ZXCesco).tzx", 32840, 0x39f32c49, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecEscfob, SpecEscfob, Spectrum)
+STD_ROM_FN(SpecEscfob)
+
+struct BurnDriver BurnSpecEscfob = {
+	"spec_escfob", NULL, "spec_spectrum", NULL, "2026",
+	"Escape from Omega Base (48K) (HB, v1.3)\0", NULL, "ZXCesco", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_MAZE, 0,
+	SpectrumGetZipName, SpecEscfobRomInfo, SpecEscfobRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Escape from the Twilight Castle (128K) (HB)
 
 static struct BurnRomInfo SpecEsctwicastleRomDesc[] = {
-	{ "Escape from Twilight Castle 128K (2025)(Miguetelo).tap", 51206, 0x9d6ff436, BRF_ESS | BRF_PRG },
+	{ "Escape from the Twilight Castle 128K (2025)(Miguetelo).tap", 51206, 0x9d6ff436, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecEsctwicastle, SpecEsctwicastle, Spec128)
@@ -43839,7 +44523,7 @@ STD_ROM_FN(SpecEsctwicastle)
 
 struct BurnDriver BurnSpecEsctwicastle = {
 	"spec_esctwicastle", NULL, "spec_spec128", NULL, "2025",
-	"Escape from Twilight Castle (128K) (HB)\0", NULL, "Miguetelo", "ZX Spectrum",
+	"Escape from the Twilight Castle (128K) (HB)\0", NULL, "Miguetelo", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecEsctwicastleRomInfo, SpecEsctwicastleRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -43977,6 +44661,25 @@ struct BurnDriver BurnSpecExodron = {
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecExodronRomInfo, SpecExodronRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Exolon - Zikimad Edition (48K-128K) (Hack)
+
+static struct BurnRomInfo SpecExolonzeRomDesc[] = {
+	{ "Exolon - Zikimad Edition 48K-128K (2026)(ZikiTrake).tap", 43507, 0x4b0930d9, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecExolonze, SpecExolonze, Spec128)
+STD_ROM_FN(SpecExolonze)
+
+struct BurnDriver BurnSpecExolonze = {
+	"spec_exolonze", "spec_exolon128", "spec_spec128", NULL, "2026",
+	"Exolon - Zikimad Edition (48K-128K) (Hack)\0", NULL, "ZikiTrake", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE| BDF_HACK, 1, HARDWARE_SPECTRUM, GBF_RUNGUN, 0,
+	SpectrumGetZipName, SpecExolonzeRomInfo, SpecExolonzeRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -44528,6 +45231,25 @@ struct BurnDriver BurnSpecFloppyverseh = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecFloppyversehRomInfo, SpecFloppyversehRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Flyover (16K) (HB)
+
+static struct BurnRomInfo SpecFlyoverRomDesc[] = {
+	{ "Flyover 16K (2026)(A. Millet).tap", 7115, 0x8d691b59, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecFlyover, SpecFlyover, Spectrum)
+STD_ROM_FN(SpecFlyover)
+
+struct BurnDriver BurnSpecFlyover = {
+	"spec_flyover", NULL, "spec_spectrum", NULL, "2026",
+	"Flyover (16K) (HB)\0", NULL, "A. Millet", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	SpectrumGetZipName, SpecFlyoverRomInfo, SpecFlyoverRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -45804,6 +46526,25 @@ struct BurnDriver BurnSpecGo9x9 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Go 9x9 (48K) (HB)
+
+static struct BurnRomInfo SpecGo9x9v1RomDesc[] = {
+	{ "Go 9x9 48K (2026)(LAWLORD).tap", 32120, 0x4c25e15c, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecGo9x9v1, SpecGo9x9v1, Spectrum)
+STD_ROM_FN(SpecGo9x9v1)
+
+struct BurnDriver BurnSpecGo9x9v1 = {
+	"spec_go9x9v1", "spec_go9x9", "spec_spectrum", NULL, "2026",
+	"Go 9x9 (48K) (HB)\0", NULL, "LAWLORD", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_BOARD | GBF_STRATEGY, 0,
+	SpectrumGetZipName, SpecGo9x9v1RomInfo, SpecGo9x9v1RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Goblinarama (128K) (HB, v2)
 
 static struct BurnRomInfo SpecGoblinaramaRomDesc[] = {
@@ -46187,7 +46928,7 @@ struct BurnDriver BurnSpecGuntus = {
 // GVolcano (128K) (HB)
 
 static struct BurnRomInfo SpecGvolcanoRomDesc[] = {
-	{ "GVolcano 128K (2022)(xavisan).tap", 39024, 0x0b6fe4c5, BRF_ESS | BRF_PRG },
+	{ "GVolcano 128K (2022)(Xavisan).tap", 39024, 0x0b6fe4c5, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecGvolcano, SpecGvolcano, Spec128)
@@ -46195,7 +46936,7 @@ STD_ROM_FN(SpecGvolcano)
 
 struct BurnDriver BurnSpecGvolcano = {
 	"spec_gvolcano", NULL, "spec_spec128", NULL, "2022",
-	"GVolcano (128K) (HB)\0", NULL, "xavisan", "ZX Spectrum",
+	"GVolcano (128K) (HB)\0", NULL, "Xavisan", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecGvolcanoRomInfo, SpecGvolcanoRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -48939,6 +49680,44 @@ struct BurnDriver BurnSpecKarlos = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Keystone Kapers ZX (48K) (HB)
+
+static struct BurnRomInfo SpecKeykapersRomDesc[] = {
+	{ "Keystone Kapers ZX 48K-AY (2026)(FG&AI).tap", 35800, 0x83b79938, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecKeykapers, SpecKeykapers, Spectrum)
+STD_ROM_FN(SpecKeykapers)
+
+struct BurnDriver BurnSpecKeykapers = {
+	"spec_keykapers", NULL, "spec_spectrum", NULL, "2026",
+	"Keystone Kapers ZX (48K) (HB)\0", "AY Sound supported", "FG&AI", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	SpectrumGetZipName, SpecKeykapersRomInfo, SpecKeykapersRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Killer Bees (48K) (HB)
+
+static struct BurnRomInfo SpecKillerbeesRomDesc[] = {
+	{ "Killer Bees 48K-AY (2014)(Gary James).tap", 23349, 0xc2bb0b45, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecKillerbees, SpecKillerbees, Spectrum)
+STD_ROM_FN(SpecKillerbees)
+
+struct BurnDriver BurnSpecKillerbees = {
+	"spec_killerbees", NULL, "spec_spectrum", NULL, "2014",
+	"Killer Bees (48K) (HB)\0", "AY Sound supported - Press '2' to use controller", "Gary James", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	SpectrumGetZipName, SpecKillerbeesRomInfo, SpecKillerbeesRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // King's Valley (48K-128K) (HB)
 
 static struct BurnRomInfo SpecKingsvalleyRomDesc[] = {
@@ -49756,6 +50535,44 @@ struct BurnDriver BurnSpecFrogprince = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Legend of the Little Chicken, The (English) (128K) (HB)
+
+static struct BurnRomInfo SpecLchickenRomDesc[] = {
+	{ "Legend of the Little Chicken, The EN 128K (2026)(Furillo Productions).tap", 105744, 0xe41d1b25, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecLchicken, SpecLchicken, Spec128)
+STD_ROM_FN(SpecLchicken)
+
+struct BurnDriver BurnSpecLchicken = {
+	"spec_lchicken", NULL, "spec_spec128", NULL, "2026",
+	"Legend of the Little Chicken, The (English) (128K) (HB)\0", NULL, "Furillo Productions", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_VERSHOOT, 0,
+	SpectrumGetZipName, SpecLchickenRomInfo, SpecLchickenRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Llamaban El Pollito, Le (Spanish) (128K) (HB)
+
+static struct BurnRomInfo SpecLpollitoRomDesc[] = {
+	{ "Llamaban El Pollito, Le ES 128K (2026)(Furillo Productions).tap", 105983, 0x9c2b30b5, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecLpollito, SpecLpollito, Spec128)
+STD_ROM_FN(SpecLpollito)
+
+struct BurnDriver BurnSpecLpollito = {
+	"spec_lpollito", "spec_lchicken", "spec_spec128", NULL, "2026",
+	"Llamaban El Pollito, Le (Spanish) (128K) (HB)\0", NULL, "Furillo Productions", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_VERSHOOT, 0,
+	SpectrumGetZipName, SpecLpollitoRomInfo, SpecLpollitoRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Legend of Traxtor (48K) (HB)
 
 static struct BurnRomInfo SpectraxtorRomDesc[] = {
@@ -49790,6 +50607,25 @@ struct BurnDriver BurnSpecLift = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecLiftRomInfo, SpecLiftRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Like Cat and Dog (English) (48K) (HB)
+
+static struct BurnRomInfo SpecLikecdRomDesc[] = {
+	{ "Like Cat and Dog EN 48K (2026)(CarlosITV).tap", 32398, 0x8f79e03e, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecLikecd, SpecLikecd, Spectrum)
+STD_ROM_FN(SpecLikecd)
+
+struct BurnDriver BurnSpecLikecd = {
+	"spec_likecd", NULL, "spec_spectrum", NULL, "2026",
+	"Like Cat and Dog (English) (48K) (HB)\0", NULL, "CarlosITV", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_BOARD, 0,
+	SpectrumGetZipName, SpecLikecdRomInfo, SpecLikecdRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -52606,6 +53442,25 @@ struct BurnDriver BurnSpecModrains = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Mine Alert 2 (128K) (HB)
+
+static struct BurnRomInfo SpecMinealert2RomDesc[] = {
+	{ "Mine Alert 2 128K (2026)(namco-nexgen).tap", 85093, 0x2eca386a, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecMinealert2, SpecMinealert2, Spec128)
+STD_ROM_FN(SpecMinealert2)
+
+struct BurnDriver BurnSpecMinealert2 = {
+	"spec_minealert2", NULL, "spec_spec128", NULL, "2026",
+	"Mine Alert 2 (128K) (HB)\0", NULL, "namco/nexgen", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_MAZE | GBF_MULTISHOOT, 0,
+	SpectrumGetZipName, SpecMinealert2RomInfo, SpecMinealert2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Minesweeper (128K) (HB, v1.03)
 
 static struct BurnRomInfo SpecMinesweeper128RomDesc[] = {
@@ -52641,6 +53496,25 @@ struct BurnDriver BurnSpecMinesweeper48 = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecMinesweeper48RomInfo, SpecMinesweeper48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// MinTee Golf (128K) (HB)
+
+static struct BurnRomInfo SpecMinteegolfRomDesc[] = {
+	{ "MinTee Golf 128K (2026)(Boingball).tap", 80292, 0x3e09b1fc, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecMinteegolf, SpecMinteegolf, Spec128)
+STD_ROM_FN(SpecMinteegolf)
+
+struct BurnDriver BurnSpecMinteegolf = {
+	"spec_minteegolf", NULL, "spec_spec128", NULL, "2026",
+	"MinTee Golf (128K) (HB)\0", NULL, "Boingball", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_SPORTSMISC, 0,
+	SpectrumGetZipName, SpecMinteegolfRomInfo, SpecMinteegolfRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -53006,6 +53880,25 @@ struct BurnDriver BurnSpecMojonisn = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Molten Spectrum (48K-128K) (HB)
+
+static struct BurnRomInfo SpecMoltenRomDesc[] = {
+	{ "Molten Spectrum 48K-128K (2026)(DarkSoL41).tap", 49194, 0xe46c012d, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecMolten, SpecMolten, Spec128)
+STD_ROM_FN(SpecMolten)
+
+struct BurnDriver BurnSpecMolten = {
+	"spec_molten", NULL, "spec_spec128", NULL, "2026",
+	"Molten Spectrum (48K-128K) (HB)\0", NULL, "DarkSoL41", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
+	SpectrumGetZipName, SpecMoltenRomInfo, SpecMoltenRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Money Mouse in Full Barn House - Ep. 1 (48K) (HB)
 
 static struct BurnRomInfo SpecMoneymouse1RomDesc[] = {
@@ -53158,10 +54051,10 @@ struct BurnDriver BurnSpecMoonpirates = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Moon Ranger (128K) (HB)
+// Moon Ranger (48K-128K) (HB)
 
 static struct BurnRomInfo SpecMoonrangerRomDesc[] = {
-	{ "Moon Ranger 128K (2020)(Gabriele Amore).tap", 29940, 0xd33c199a, BRF_ESS | BRF_PRG },
+	{ "Moon Ranger 48K-128K (2020)(Gabriele Amore).tap", 29940, 0xd33c199a, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecMoonranger, SpecMoonranger, Spec128)
@@ -53169,18 +54062,18 @@ STD_ROM_FN(SpecMoonranger)
 
 struct BurnDriver BurnSpecMoonranger = {
 	"spec_moonranger", NULL, "spec_spec128", NULL, "2020",
-	"Moon Ranger (128K) (HB)\0", NULL, "Gabriele Amore", "ZX Spectrum",
+	"Moon Ranger (48K-128K) (HB)\0", NULL, "Gabriele Amore", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_HORSHOOT, 0,
 	SpectrumGetZipName, SpecMoonrangerRomInfo, SpecMoonrangerRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPMDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Moon Ranger (128K) (HB, v2)
+// Moon Ranger (48K-128K) (HB, v2)
 
 static struct BurnRomInfo SpecMoonrangerv2RomDesc[] = {
-	{ "Moon Ranger v2 128K (2021)(Gabriele Amore).tap", 45527, 0xebb5c2a1, BRF_ESS | BRF_PRG },
+	{ "Moon Ranger v2 48K-128K (2021)(Gabriele Amore).tap", 45527, 0xebb5c2a1, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecMoonrangerv2, SpecMoonrangerv2, Spec128)
@@ -53188,9 +54081,9 @@ STD_ROM_FN(SpecMoonrangerv2)
 
 struct BurnDriver BurnSpecMoonrangerv2 = {
 	"spec_moonrangerv2", NULL, "spec_spec128", NULL, "2021",
-	"Moon Ranger (128K) (HB, v2)\0", NULL, "Gabriele Amore", "ZX Spectrum",
+	"Moon Ranger (48K-128K) (HB, v2)\0", NULL, "Gabriele Amore", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_HORSHOOT, 0,
 	SpectrumGetZipName, SpecMoonrangerv2RomInfo, SpecMoonrangerv2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPMDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -53424,22 +54317,22 @@ struct BurnDriver BurnSpecMouselife2 = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Mousetrap (48K) (HB)
+// Mousetrap (16K) (HB)
 
 static struct BurnRomInfo SpecMousetrapRomDesc[] = {
-	{ "Mousetrap 48K (2020)(Chris Maling).tap", 10185, 0x170bd6b3, BRF_ESS | BRF_PRG },
+	{ "Mousetrap 16K (2020)(Chris Maling).tzx", 10213, 0x06bb2d2d, BRF_ESS | BRF_PRG },
 };
 
-STDROMPICKEXT(SpecMousetrap, SpecMousetrap, Spec128)
+STDROMPICKEXT(SpecMousetrap, SpecMousetrap, Spectrum)
 STD_ROM_FN(SpecMousetrap)
 
 struct BurnDriver BurnSpecMousetrap = {
-	"spec_mousetrap", NULL, "spec_spec128", NULL, "2020",
-	"Mousetrap (48K) (HB)\0", NULL, "Chris Maling", "ZX Spectrum",
+	"spec_mousetrap", NULL, "spec_spectrum", NULL, "2020",
+	"Mousetrap (16K) (HB)\0", NULL, "Chris Maling", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
 	SpectrumGetZipName, SpecMousetrapRomInfo, SpecMousetrapRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
-	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -53990,6 +54883,25 @@ struct BurnDriver BurnSpecNighthallowen = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecNighthallowenRomInfo, SpecNighthallowenRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// NightMare of Pepe the Hippe-Punk, The (English) (48K) (HB)
+
+static struct BurnRomInfo SpecNightpepeRomDesc[] = {
+	{ "NightMare of Pepe the Hippe-Punk, The EN 48K (2026)(MANSoft).tap", 42967, 0x3c396d18, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecNightpepe, SpecNightpepe, Spectrum)
+STD_ROM_FN(SpecNightpepe)
+
+struct BurnDriver BurnSpecNightpepe = {
+	"spec_nightpepe", NULL, "spec_spectrum", NULL, "2026",
+	"NightMare of Pepe the Hippe-Punk, The (English) (48K) (HB)\0", NULL, "MANSoft", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecNightpepeRomInfo, SpecNightpepeRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -54735,6 +55647,44 @@ struct BurnDriver BurnSpecOiltanker = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// O-Invaders Back! (128K) (HB, v2.04)
+
+static struct BurnRomInfo SpecOinvback128RomDesc[] = {
+	{ "O-Invaders Back! v2.04 128K (2026)(Oblo).tzx", 47578, 0x3e1b40bd, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecOinvback128, SpecOinvback128, Spec128)
+STD_ROM_FN(SpecOinvback128)
+
+struct BurnDriver BurnSpecOinvback128 = {
+	"spec_oinvback128", NULL, "spec_spec128", NULL, "2026",
+	"O-Invaders Back! (128K) (HB, v2.04)\0", NULL, "Oblo", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_VERSHOOT, 0,
+	SpectrumGetZipName, SpecOinvback128RomInfo, SpecOinvback128RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// O-Invaders Back! (48K) (HB, v1.5)
+
+static struct BurnRomInfo SpecOinvback48RomDesc[] = {
+	{ "O-Invaders Back! v1.5 48K (2026)(Oblo).tzx", 47256, 0x5cae23d4, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecOinvback48, SpecOinvback48, Spectrum)
+STD_ROM_FN(SpecOinvback48)
+
+struct BurnDriver BurnSpecOinvback48 = {
+	"spec_oinvback48", "spec_oinvback128", "spec_spectrum", NULL, "2026",
+	"O-Invaders Back! (48K) (HB, v1.5)\0", NULL, "Oblo", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_VERSHOOT, 0,
+	SpectrumGetZipName, SpecOinvback48RomInfo, SpecOinvback48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Old Tower (128K) (HB)
 
 static struct BurnRomInfo SpecoldtowerRomDesc[] = {
@@ -55206,6 +56156,25 @@ struct BurnDriver BurnSpecOure = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
 	SpectrumGetZipName, SpecOureRomInfo, SpecOureRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Outpost (48K) (HB)
+
+static struct BurnRomInfo SpecOutpostRomDesc[] = {
+	{ "Outpost 48K (2026)(usebox.net).tap", 22114, 0x2ac59251, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecOutpost, SpecOutpost, Spectrum)
+STD_ROM_FN(SpecOutpost)
+
+struct BurnDriver BurnSpecOutpost = {
+	"spec_outpost", NULL, "spec_spectrum", NULL, "2026",
+	"Outpost (48K) (HB)\0", NULL, "usebox.net", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecOutpostRomInfo, SpecOutpostRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -55685,10 +56654,10 @@ struct BurnDriver BurnSpecPartyscroll = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Pataslocas (128K) (HB)
+// Pataslocas (48K-128K) (HB)
 
 static struct BurnRomInfo SpecPataslocasRomDesc[] = {
-	{ "Pataslocas 128K (2020)(Beyker Soft).tap", 48869, 0x242d2c7c, BRF_ESS | BRF_PRG },
+	{ "Pataslocas 48K-128K (2020)(Beyker Soft).tap", 48869, 0x242d2c7c, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecPataslocas, SpecPataslocas, Spec128)
@@ -55696,7 +56665,7 @@ STD_ROM_FN(SpecPataslocas)
 
 struct BurnDriver BurnSpecPataslocas = {
 	"spec_pataslocas", NULL, "spec_spec128", NULL, "2020",
-	"Pataslocas (128K) (HB)\0", NULL, "Beyker Soft", "ZX Spectrum",
+	"Pataslocas (48K-128K) (HB)\0", NULL, "Beyker Soft", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
 	SpectrumGetZipName, SpecPataslocasRomInfo, SpecPataslocasRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
@@ -56122,6 +57091,25 @@ struct BurnDriver BurnSpecPerseuspt = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Pesadilla de Pepe el perroflauta, La (Spanish) (48K) (HB)
+
+static struct BurnRomInfo SpecPesapepeRomDesc[] = {
+	{ "Pesadilla de Pepe el perroflauta, La ES 48K (2026)(MANSoft).tap", 43072, 0x646e85f6, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecPesapepe, SpecPesapepe, Spectrum)
+STD_ROM_FN(SpecPesapepe)
+
+struct BurnDriver BurnSpecPesapepe = {
+	"spec_pesapepe", "spec_nightpepe", "spec_spectrum", NULL, "2026",
+	"Pesadilla de Pepe el perroflauta, La (Spanish) (48K) (HB)\0", NULL, "MANSoft", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecPesapepeRomInfo, SpecPesapepeRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Pets vs Aliens Prologue (48K-128K) (HB)
 
 static struct BurnRomInfo SpecpvsaRomDesc[] = {
@@ -56369,6 +57357,25 @@ struct BurnDriver BurnSpecpilotatk = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Pinball Action (128K) (HB)
+
+static struct BurnRomInfo SpecPinballactionRomDesc[] = {
+	{ "Pinball Action 128K (2026)(namco-nexgen).tap", 105439, 0x18489b50, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecPinballaction, SpecPinballaction, Spec128)
+STD_ROM_FN(SpecPinballaction)
+
+struct BurnDriver BurnSpecPinballaction = {
+	"spec_pinballaction", NULL, "spec_spec128", NULL, "2026",
+	"Pinball Action (128K) (HB)\0", NULL, "namco/nexgen", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PINBALL, 0,
+	SpectrumGetZipName, SpecPinballactionRomInfo, SpecPinballactionRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Pink Pills - no timer last (128K) (HB)
 
 static struct BurnRomInfo SpecPinkpillsaRomDesc[] = {
@@ -56460,6 +57467,25 @@ struct BurnDriver BurnSpecPcaptcreedjp = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecPcaptcreedjpRomInfo, SpecPcaptcreedjpRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Pitfall ZX (48K) (HB)
+
+static struct BurnRomInfo SpecPitfallzxRomDesc[] = {
+	{ "Pitfall ZX 48K-AY (2026)(FG&AI).tap", 32198, 0x2312d603, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecPitfallzx, SpecPitfallzx, Spectrum)
+STD_ROM_FN(SpecPitfallzx)
+
+struct BurnDriver BurnSpecPitfallzx = {
+	"spec_pitfallzx", NULL, "spec_spectrum", NULL, "2026",
+	"Pitfall ZX (48K) (HB)\0", "AY Sound supported", "FG&AI", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecPitfallzxRomInfo, SpecPitfallzxRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -57243,6 +58269,25 @@ struct BurnDriver BurnSpecQuiviria = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// R2-D2 Exam (48K) (HB)
+
+static struct BurnRomInfo SpecR2d2examRomDesc[] = {
+	{ "R2-D2 Exam 48K-AY (2013)(kas29).tap", 20351, 0x786ff746, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecR2d2exam, SpecR2d2exam, Spectrum)
+STD_ROM_FN(SpecR2d2exam)
+
+struct BurnDriver BurnSpecR2d2exam = {
+	"spec_r2d2exam", NULL, "spec_spectrum", NULL, "2013",
+	"R2-D2 Exam (48K) (HB)\0", "AY Sound supported", "kas29", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_PUZZLE, 0,
+	SpectrumGetZipName, SpecR2d2examRomInfo, SpecR2d2examRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecQAOPSpaceDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Rabbit in Nightmareland (128K) (HB)
 
 static struct BurnRomInfo SpecRabbitinnRomDesc[] = {
@@ -57300,10 +58345,10 @@ struct BurnDriver BurnSpecRabbitinw48k = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Rabid Mower (128K) (HB)
+// Rabid Mower (48K-128K) (HB)
 
 static struct BurnRomInfo SpecRabidmowerRomDesc[] = {
-	{ "Rabid Mower 128K (2015)(kas29).tap", 23329, 0xbfd089f6, BRF_ESS | BRF_PRG },
+	{ "Rabid Mower 48K-128K (2015)(kas29).tap", 23329, 0xbfd089f6, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecRabidmower, SpecRabidmower, Spec128)
@@ -57311,7 +58356,7 @@ STD_ROM_FN(SpecRabidmower)
 
 struct BurnDriver BurnSpecRabidmower = {
 	"spec_rabidmower", NULL, "spec_spec128", NULL, "2015",
-	"Rabid Mower (128K) (HB)\0", NULL, "kas29", "ZX Spectrum",
+	"Rabid Mower (48K-128K) (HB)\0", NULL, "kas29", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_ACTION, 0,
 	SpectrumGetZipName, SpecRabidmowerRomInfo, SpecRabidmowerRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -58440,10 +59485,10 @@ struct BurnDriver BurnSpecRiverrad = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// River Raid+ (48K) (Hack, v0.2)
+// River Raid+ (48K) (Hack, v0.7)
 
 static struct BurnRomInfo SpecRiveraidplusRomDesc[] = {
-	{ "River Raid+ v0.2 48K (2026)(theALFEST).tap", 22554, 0x2e917c63, BRF_ESS | BRF_PRG },
+	{ "River Raid+ v0.7 48K-AY (2026)(theALFEST).tap", 26652, 0x53f67db2, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecRiveraidplus, SpecRiveraidplus, Spectrum)
@@ -58451,7 +59496,7 @@ STD_ROM_FN(SpecRiveraidplus)
 
 struct BurnDriver BurnSpecRiveraidplus = {
 	"spec_riveraidplus", "spec_riveraid", "spec_spectrum", NULL, "2026",
-	"River Raid+ (48K) (Hack, v0.2)\0", NULL, "theALFEST", "ZX Spectrum",
+	"River Raid+ (48K) (Hack, v0.7)\0", "AY Sound supported", "theALFEST", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_SPECTRUM, GBF_VERSHOOT, 0,
 	SpectrumGetZipName, SpecRiveraidplusRomInfo, SpecRiveraidplusRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -58671,7 +59716,7 @@ struct BurnDriver BurnSpecRogue = {
 // Rollerball (48K) (HB)
 
 static struct BurnRomInfo SpecRollerballRomDesc[] = {
-	{ "Rollerball 48K (2025)(Dvader).tap", 18725, 0xf5deee13, BRF_ESS | BRF_PRG },
+	{ "Rollerball 48K (2025)(Dvader).tap", 19060, 0xc5545bce, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecRollerball, SpecRollerball, Spectrum)
@@ -58679,10 +59724,10 @@ STD_ROM_FN(SpecRollerball)
 
 struct BurnDriver BurnSpecRollerball = {
 	"spec_rollerball", NULL, "spec_spectrum", NULL, "2025",
-	"Rollerball (48K) (HB)\0", "Select '3. Sinclair' to use controller" , "Dvader", "ZX Spectrum",
+	"Rollerball (48K) (HB)\0", NULL, "Dvader", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
-	SpectrumGetZipName, SpecRollerballRomInfo, SpecRollerballRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
+	SpectrumGetZipName, SpecRollerballRomInfo, SpecRollerballRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -59101,6 +60146,44 @@ struct BurnDriver BurnSpecRunawayru = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
 	SpectrumGetZipName, SpecRunawayruRomInfo, SpecRunawayruRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Runner A.P.E.R. (128K) (HB)
+
+static struct BurnRomInfo SpecRunner128RomDesc[] = {
+	{ "Runner A.P.E.R. 128K (2026)(Revive8Bit).z80", 36905, 0x48619d18, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecRunner128, SpecRunner128, Spec128)
+STD_ROM_FN(SpecRunner128)
+
+struct BurnDriver BurnSpecRunner128 = {
+	"spec_runner128", NULL, "spec_spec128", NULL, "2026",
+	"Runner A.P.E.R. (128K) (HB)\0", NULL, "Revive8Bit", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	SpectrumGetZipName, SpecRunner128RomInfo, SpecRunner128RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Runner A.P.E.R. (48K) (HB)
+
+static struct BurnRomInfo SpecRunner48RomDesc[] = {
+	{ "Runner A.P.E.R. 48K-AY (2026)(Revive8Bit).z80", 35590, 0x9ecd85b0, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecRunner48, SpecRunner48, Spectrum)
+STD_ROM_FN(SpecRunner48)
+
+struct BurnDriver BurnSpecRunner48 = {
+	"spec_runner48", "spec_runner128", "spec_spectrum", NULL, "2026",
+	"Runner A.P.E.R. (48K) (HB)\0", "AY Sound supported", "Revive8Bit", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	SpectrumGetZipName, SpecRunner48RomInfo, SpecRunner48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -59564,7 +60647,7 @@ struct BurnDriver BurnSpecSanxion2023 = {
 // Savage Princess (48K) (HB)
 
 static struct BurnRomInfo SpecSavageprincessRomDesc[] = {
-	{ "Savage Princess 48K (2020)(BitmapSoft).tap", 41563, 0x6edbd594, BRF_ESS | BRF_PRG },
+	{ "Savage Princess 48K (2020)(BitmapSoft).tzx", 41591, 0xa5d4c8c3, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecSavageprincess, SpecSavageprincess, Spectrum)
@@ -59583,7 +60666,7 @@ struct BurnDriver BurnSpecSavageprincess = {
 // Savage Princess 2 (48K-128K) (HB)
 
 static struct BurnRomInfo SpecSavageprincess2RomDesc[] = {
-	{ "Savage Princess 2 48K-128K (2023)(Bitmap Soft).tap", 48393, 0xd3e5e547, BRF_ESS | BRF_PRG },
+	{ "Savage Princess 2 48K-128K (2023)(Monster's Legs).tap", 48393, 0xd3e5e547, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecSavageprincess2, SpecSavageprincess2, Spec128)
@@ -59591,7 +60674,7 @@ STD_ROM_FN(SpecSavageprincess2)
 
 struct BurnDriver BurnSpecSavageprincess2 = {
 	"spec_savageprincess2", NULL, "spec_spec128", NULL, "2023",
-	"Savage Princess 2 (48K-128K) (HB)\0", NULL, "Bitmap Soft", "ZX Spectrum",
+	"Savage Princess 2 (48K-128K) (HB)\0", NULL, "Monster's Legs", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecSavageprincess2RomInfo, SpecSavageprincess2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -60058,7 +61141,7 @@ struct BurnDriver BurnSpecSeraphima = {
 // Seto Taisho Vs Yokai (128K) (HB)
 
 static struct BurnRomInfo SpecSetaishoRomDesc[] = {
-	{ "Seto Taisho Vs Yokai 128K (2016)(Monument Microgames).tap", 83481, 0x4a0550ce, BRF_ESS | BRF_PRG },
+	{ "Seto Taisho Vs Yokai 128K (2016)(Monument Microgames).tzx", 83742, 0x32f33aed, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecSetaisho, SpecSetaisho, Spec128)
@@ -60169,10 +61252,10 @@ struct BurnDriver BurnSpecShadowfields = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Shadows of Belial (English) (128K) (HB, v1.0.4)
+// Shadows of Belial (English) (128K) (HB, v1.0.5)
 
 static struct BurnRomInfo SpecShabelialenRomDesc[] = {
-	{ "Shadows of Belial EN v1.0.4 128K (2016)(RetroWorks).tap", 138736, 0xcaf1f445, BRF_ESS | BRF_PRG },
+	{ "Shadows of Belial EN v1.0.5 128K (2026)(RetroWorks).tap", 138687, 0x4ac79734, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecShabelialen, SpecShabelialen, Spec128)
@@ -60180,7 +61263,7 @@ STD_ROM_FN(SpecShabelialen)
 
 struct BurnDriver BurnSpecShabelialen = {
 	"spec_shabelialen", NULL, "spec_spec128", NULL, "RetroWorks",
-	"Shadows of Belial (English) (128K) (HB, v1.0.4)\0", NULL, "2026", "ZX Spectrum",
+	"Shadows of Belial (English) (128K) (HB, v1.0.5)\0", NULL, "2026", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecShabelialenRomInfo, SpecShabelialenRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -60188,10 +61271,10 @@ struct BurnDriver BurnSpecShabelialen = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 	
-// Shadows of Belial (Spanish) (128K) (HB, v1.0.4)
+// Shadows of Belial (Spanish) (128K) (HB, v1.0.5)
 
 static struct BurnRomInfo SpecShabelialesRomDesc[] = {
-	{ "Shadows of Belial ES v1.0.4 128K (2026)(RetroWorks).tap", 139295, 0x07167c28, BRF_ESS | BRF_PRG },
+	{ "Shadows of Belial ES v1.0.5 128K (2026)(RetroWorks).tap", 139297, 0x2faa2142, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecShabeliales, SpecShabeliales, Spec128)
@@ -60199,10 +61282,48 @@ STD_ROM_FN(SpecShabeliales)
 
 struct BurnDriver BurnSpecShabeliales = {
 	"spec_shabeliales", "spec_shabelialen", "spec_spec128", NULL, "RetroWorks",
-	"Shadows of Belial (Spanish) (128K) (HB, v1.0.4)\0", NULL, "2026", "ZX Spectrum",
+	"Shadows of Belial (Spanish) (128K) (HB, v1.0.5)\0", NULL, "2026", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecShabelialesRomInfo, SpecShabelialesRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Shadows of Belial (Portuguese) (128K) (HB, v1.0.5)
+
+static struct BurnRomInfo SpecShabelialptRomDesc[] = {
+	{ "Shadows of Belial PT v1.0.5 128K (2026)(RetroWorks).tap", 139372, 0xb20c499b, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecShabelialpt, SpecShabelialpt, Spec128)
+STD_ROM_FN(SpecShabelialpt)
+
+struct BurnDriver BurnSpecShabelialpt = {
+	"spec_shabelialpt", "spec_shabelialen", "spec_spec128", NULL, "RetroWorks",
+	"Shadows of Belial (Portuguese) (128K) (HB, v1.0.5)\0", NULL, "2026", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecShabelialptRomInfo, SpecShabelialptRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Shadows of Belial (Russian) (128K) (HB, v1.0.5)
+
+static struct BurnRomInfo SpecShabelialruRomDesc[] = {
+	{ "Shadows of Belial RU v1.0.5 128K (2026)(RetroWorks).tap", 139086, 0x719f3964, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecShabelialru, SpecShabelialru, Spec128)
+STD_ROM_FN(SpecShabelialru)
+
+struct BurnDriver BurnSpecShabelialru = {
+	"spec_shabelialru", "spec_shabelialen", "spec_spec128", NULL, "RetroWorks",
+	"Shadows of Belial (Russian) (128K) (HB, v1.0.5)\0", NULL, "2026", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecShabelialruRomInfo, SpecShabelialruRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -61154,6 +62275,25 @@ struct BurnDriver BurnSpecsoloes = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecsoloesRomInfo, SpecsoloesRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Solomon's Key - Extended Edition (48K) (Hack)
+
+static struct BurnRomInfo SpecSolomoneeRomDesc[] = {
+	{ "Solomon's Key - Extended Edition 48K (2026)(ZikiTrake).tap", 49270, 0x291df706, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecSolomonee, SpecSolomonee, Spectrum)
+STD_ROM_FN(SpecSolomonee)
+
+struct BurnDriver BurnSpecSolomonee = {
+	"spec_solomonee", "spec_solomon", "spec_spectrum", NULL, "2026",
+	"Solomon's Key - Extended Edition 48K\0", NULL, "ZikiTrake", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecSolomoneeRomInfo, SpecSolomoneeRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -62145,10 +63285,10 @@ struct BurnDriver BurnSpecSqijzx = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Squares (128K) (HB)
+// Squares (48K-128K) (HB)
 
 static struct BurnRomInfo SpecSquaresRomDesc[] = {
-	{ "Squares 128K (2017)(Kas29).tap", 16053, 0x1b924ae6, BRF_ESS | BRF_PRG },
+	{ "Squares 48K-128K (2017)(Kas29).tap", 16053, 0x1b924ae6, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecSquares, SpecSquares, Spec128)
@@ -62156,7 +63296,7 @@ STD_ROM_FN(SpecSquares)
 
 struct BurnDriver BurnSpecSquares = {
 	"spec_squares", NULL, "spec_spec128", NULL, "2017",
-	"Squares (128K) (HB)\0", NULL, "Kas29", "ZX Spectrum",
+	"Squares (48K-128K) (HB)\0", NULL, "Kas29", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION, 0,
 	SpectrumGetZipName, SpecSquaresRomInfo, SpecSquaresRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
@@ -62179,6 +63319,25 @@ struct BurnDriver BurnSpecStarball = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_BREAKOUT, 0,
 	SpectrumGetZipName, SpecStarballRomInfo, SpecStarballRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Starforge (128K) (HB)
+
+static struct BurnRomInfo SpecStarforgeRomDesc[] = {
+	{ "Starforge 128K (2026)(Peter Coupe).tap", 109924, 0x76c18708, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecStarforge, SpecStarforge, Spec128)
+STD_ROM_FN(SpecStarforge)
+
+struct BurnDriver BurnSpecStarforge = {
+	"spec_starforge", NULL, "spec_spec128", NULL, "2026",
+	"Starforge (128K) (HB)\0", NULL, "Peter Coupe", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_MULTISHOOT | GBF_STRATEGY, 0,
+	SpectrumGetZipName, SpecStarforgeRomInfo, SpecStarforgeRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -62620,6 +63779,25 @@ struct BurnDriver BurnSpecSudokuny = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Sugar Byte (48K)
+
+static struct BurnRomInfo SpecSugarbyteRomDesc[] = {
+	{ "Sugar Byte 48K-AY (2026)(Revive8Bit).tap", 37240, 0x61835d96, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecSugarbyte, SpecSugarbyte, Spectrum)
+STD_ROM_FN(SpecSugarbyte)
+
+struct BurnDriver BurnSpecSugarbyte = {
+	"spec_sugarbyte", NULL, "spec_spectrum", NULL, "2026",
+	"Sugar Byte (48K) (HB)\0", "AY Sound supported", "Revive8Bit", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
+	SpectrumGetZipName, SpecSugarbyteRomInfo, SpecSugarbyteRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Summer Santa 2022 (128K) (HB)
 
 static struct BurnRomInfo SpecSummersantaRomDesc[] = {
@@ -62845,6 +64023,25 @@ struct BurnDriver BurnSpecSlopez2 = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ADV, 0,
 	SpectrumGetZipName, SpecSlopez2RomInfo, SpecSlopez2RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Super Mario Land (128K) (HB)
+
+static struct BurnRomInfo SpecSml128RomDesc[] = {
+	{ "Super Mario Land 128K (2026)(kirby2000).tap", 68451, 0xd5fe3947, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecSml128, SpecSml128, Spec128)
+STD_ROM_FN(SpecSml128)
+
+struct BurnDriver BurnSpecSml128 = {
+	"spec_sml128", NULL, "spec_spec128", NULL, "2026",
+	"Super Mario Land (128K) (HB)\0", NULL, "kirby2000", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecSml128RomInfo, SpecSml128RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -63285,10 +64482,10 @@ struct BurnDriver BurnSpecTalesgrupp = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Tank Battle (128K) (HB)
+// Tank Battle (48K-128K) (HB)
 
 static struct BurnRomInfo SpecTankbtleRomDesc[] = {
-	{ "Tank Battle 128K (2020)(kas29).tap", 44955, 0x2d909b3c, BRF_ESS | BRF_PRG },
+	{ "Tank Battle 48K-128K (2020)(kas29).tap", 44955, 0x2d909b3c, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecTankbtle, SpecTankbtle, Spec128)
@@ -63296,9 +64493,9 @@ STD_ROM_FN(SpecTankbtle)
 
 struct BurnDriver BurnSpecTankbtle = {
 	"spec_tankbtle", NULL, "spec_spec128", NULL, "2020",
-	"Tank Battle (128K) (HB)\0", NULL, "kas29", "ZX Spectrum",
+	"Tank Battle (48K-128K) (HB)\0", NULL, "kas29", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_ACTION, 0,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_MULTISHOOT, 0,
 	SpectrumGetZipName, SpecTankbtleRomInfo, SpecTankbtleRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
@@ -63643,6 +64840,44 @@ struct BurnDriver BurnSpecTetrisce = {
 	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
 	SpectrumGetZipName, SpecTetrisceRomInfo, SpecTetrisceRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Tetris ZX (128K) (HB)
+
+static struct BurnRomInfo SpecTetriszx128RomDesc[] = {
+	{ "Tetris ZX 128K (2026)(kirby2000).tap", 80844, 0xd2abaf42, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecTetriszx128, SpecTetriszx128, Spec128)
+STD_ROM_FN(SpecTetriszx128)
+
+struct BurnDriver BurnSpecTetriszx128 = {
+	"spec_tetriszx128", NULL, "spec_spec128", NULL, "2026",
+	"Tetris ZX (128K) (HB)\0", NULL, "kirby2000", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
+	SpectrumGetZipName, SpecTetriszx128RomInfo, SpecTetriszx128RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Tetris ZX (48K) (HB)
+
+static struct BurnRomInfo SpecTetriszx48RomDesc[] = {
+	{ "Tetris ZX 48K (2026)(kirby2000).tap", 47997, 0x07247f8b, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecTetriszx48, SpecTetriszx48, Spectrum)
+STD_ROM_FN(SpecTetriszx48)
+
+struct BurnDriver BurnSpecTetriszx48 = {
+	"spec_tetriszx48", "spec_tetriszx128", "spec_spectrum", NULL, "2026",
+	"Tetris ZX (48K) (HB)\0", NULL, "kirby2000", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_PUZZLE, 0,
+	SpectrumGetZipName, SpecTetriszx48RomInfo, SpecTetriszx48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -64745,6 +65980,44 @@ struct BurnDriver BurnSpecTurbothetortoise30th = {
 	BDF_GAME_WORKING | BDF_CLONE, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
 	SpectrumGetZipName, SpecTurbothetortoise30thRomInfo, SpecTurbothetortoise30thRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Turbo Vektor (128K) (HB)
+
+static struct BurnRomInfo SpecTurbovek128RomDesc[] = {
+	{ "Turbo Vektor 128K (2026)(BokenDev Studios).tzx", 53765, 0x49d2b736, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecTurbovek128, SpecTurbovek128, Spec128)
+STD_ROM_FN(SpecTurbovek128)
+
+struct BurnDriver BurnSpecTurbovek128 = {
+	"spec_turbovek128", NULL, "spec_spec128", NULL, "2026",
+	"Turbo Vektor (128K) (HB)\0", NULL, "BokenDev Studios", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_RACING, 0,
+	SpectrumGetZipName, SpecTurbovek128RomInfo, SpecTurbovek128RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Turbo Vektor (48K) (HB)
+
+static struct BurnRomInfo SpecTurbovek48RomDesc[] = {
+	{ "Turbo Vektor 48K (2026)(BokenDev Studios).tzx", 36204, 0x220d8754, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecTurbovek48, SpecTurbovek48, Spectrum)
+STD_ROM_FN(SpecTurbovek48)
+
+struct BurnDriver BurnSpecTurbovek48 = {
+	"spec_turbovek48", "spec_turbovek128", "spec_spectrum", NULL, "2026",
+	"Turbo Vektor (48K) (HB)\0", NULL, "BokenDev Studios", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_RACING, 0,
+	SpectrumGetZipName, SpecTurbovek48RomInfo, SpecTurbovek48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
@@ -65964,6 +67237,25 @@ struct BurnDriver BurnSpecWhitejaguarzx = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Who Dares Wins III (128K) (HB, v1.1)
+
+static struct BurnRomInfo SpecWdwiiiRomDesc[] = {
+	{ "Who Dares Wins III v1.1 128K (2026)(namco-nexgen).tap", 73967, 0xb8f9cc8b, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecWdwiii, SpecWdwiii, Spec128)
+STD_ROM_FN(SpecWdwiii)
+
+struct BurnDriver BurnSpecWdwiii = {
+	"spec_wdwiii", NULL, "spec_spec128", NULL, "2026",
+	"Who Dares Wins III (128K) (HB, v1.1)\0", NULL, "namco/nexgen", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_RUNGUN, 0,
+	SpectrumGetZipName, SpecWdwiiiRomInfo, SpecWdwiiiRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Wiking - Improved Version (Polish) (128K) (Hack)
 
 static struct BurnRomInfo SpecWiking128RomDesc[] = {
@@ -66440,6 +67732,25 @@ struct BurnDriver BurnSpecXenomaze = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// XPong48 (48K) (HB)
+
+static struct BurnRomInfo SpecXpong48RomDesc[] = {
+	{ "XPong48 48K-AY (2026)(CodeBiters).tap", 32548, 0xc563401a, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecXpong48, SpecXpong48, Spectrum)
+STD_ROM_FN(SpecXpong48)
+
+struct BurnDriver BurnSpecXpong48 = {
+	"spec_xpong48", NULL, "spec_spectrum", NULL, "2026",
+	"XPong48 (48K) (HB)\0", "AY Sound supported", "CodeBiters", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 2, HARDWARE_SPECTRUM, GBF_BALLPADDLE, 0,
+	SpectrumGetZipName, SpecXpong48RomInfo, SpecXpong48RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // X=Y=Z (48K) (HB)
 
 static struct BurnRomInfo SpecXyzRomDesc[] = {
@@ -66687,6 +67998,25 @@ struct BurnDriver BurnSpecYoyorevenge = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
+// Yrion's Crusade (48K-128K) (HB)
+
+static struct BurnRomInfo SpecYrionRomDesc[] = {
+	{ "Yrion's Crusade 48K-128K (2026)(Krappy Gamez).tap", 42662, 0x9cdbb755, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecYrion, SpecYrion, Spec128)
+STD_ROM_FN(SpecYrion)
+
+struct BurnDriver BurnSpecYrion = {
+	"spec_yrion", NULL, "spec_spec128", NULL, "2026",
+	"Yrion's Crusade (48K-128K) (HB)\0", NULL, "Krappy Gamez", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM, 0,
+	SpectrumGetZipName, SpecYrionRomInfo, SpecYrionRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
+	Spec128KInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
 // Yumiko in the haunted mansion (128K) (HB)
 
 static struct BurnRomInfo SpecYumikohmRomDesc[] = {
@@ -66709,7 +68039,7 @@ struct BurnDriver BurnSpecYumikohm = {
 // Zabij Ducha (Polish) (48K-128K) (HB)
 
 static struct BurnRomInfo SpecZabijdkRomDesc[] = {
-	{ "Zabij Ducha 48K-128K (2017)(Rafal Miazga).tap", 23267, 0x4d360f64, BRF_ESS | BRF_PRG },
+	{ "Zabij Ducha PL 48K-128K (2017)(Rafal Miazga).tap", 23267, 0x4d360f64, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecZabijdk, SpecZabijdk, Spec128)
@@ -66991,21 +68321,40 @@ struct BurnDriver BurnSpecZlalox = {
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
 
-// Zoinho (Spanish) (48K) (HB)
+// Zoinho: No Jardim dos Tolos (Portuguese) (48K) (HB)
 
 static struct BurnRomInfo SpecZoinhoRomDesc[] = {
-	{ "Zoinho 48K (2021)(Bitnamic).tap", 29137, 0xa64d5e5a, BRF_ESS | BRF_PRG },
+	{ "Zoinho - No Jardim dos Tolos PT 48K (2021)(Bitnamic).tap", 29137, 0xa64d5e5a, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(SpecZoinho, SpecZoinho, Spectrum)
 STD_ROM_FN(SpecZoinho)
 
 struct BurnDriver BurnSpecZoinho = {
-	"spec_zoinho", NULL, "spec_spectrum", NULL, "2021",
-	"Zoinho (Spanish) (48K) (HB)\0", NULL, "Bitnamic", "ZX Spectrum",
+	"spec_zoinho", "spec_zoinho25", "spec_spectrum", NULL, "2021",
+	"Zoinho: No Jardim dos Tolos (Portuguese) (48K) (HB)\0", NULL, "Bitnamic", "ZX Spectrum",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
+	SpectrumGetZipName, SpecZoinhoRomInfo, SpecZoinhoRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
+	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
+	&SpecRecalc, 0x10, 288, 224, 4, 3
+};
+
+// Zoinho: In the Garden of the Fools (English) (48K) (HB)
+
+static struct BurnRomInfo SpecZoinho25RomDesc[] = {
+	{ "Zoinho - In the Garden of the Fools 48K (2025)(R.C. Nunes).tap", 42058, 0x7ec6faaa, BRF_ESS | BRF_PRG },
+};
+
+STDROMPICKEXT(SpecZoinho25, SpecZoinho25, Spectrum)
+STD_ROM_FN(SpecZoinho25)
+
+struct BurnDriver BurnSpecZoinho25 = {
+	"spec_zoinho25", NULL, "spec_spectrum", NULL, "2025",
+	"Zoinho: In the Garden of the Fools (English) (48K) (HB)\0", "Set 'Cursor Keys' to use controller", "R.C. Nunes", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_ACTION | GBF_ADV, 0,
-	SpectrumGetZipName, SpecZoinhoRomInfo, SpecZoinhoRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecIntf2DIPInfo,
+	SpectrumGetZipName, SpecZoinho25RomInfo, SpecZoinho25RomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecCursorKeysDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3
 };
@@ -67013,7 +68362,7 @@ struct BurnDriver BurnSpecZoinho = {
 // Zombie Calavera Prologue (48K) (HB)
 
 static struct BurnRomInfo SpeczcalaveraRomDesc[] = {
-	{ "Zombie Calavera Prologue 48K (2010)(Mojon Twins).tap", 37966, 0x9eaf2b79, BRF_ESS | BRF_PRG },
+	{ "Zombie Calavera Prologue 48K (2010)(The Mojon Twins).tzx", 38000, 0xbb2c916b, BRF_ESS | BRF_PRG },
 };
 
 STDROMPICKEXT(Speczcalavera, Speczcalavera, Spectrum)
@@ -67023,7 +68372,7 @@ struct BurnDriver BurnSpeczcalavera = {
 	"spec_zcalavera", NULL, "spec_spectrum", NULL, "2010",
 	"Zombie Calavera Prologue (48K) (HB)\0", NULL, "The Mojon Twins", "ZX Spectrum",
 	NULL, NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_RUNGUN | GBF_PLATFORM, 0,
+	BDF_GAME_WORKING | BDF_HOMEBREW, 1, HARDWARE_SPECTRUM, GBF_PLATFORM | GBF_RUNGUN, 0,
 	SpectrumGetZipName, SpeczcalaveraRomInfo, SpeczcalaveraRomName, NULL, NULL, NULL, NULL, SpecInputInfo, SpecDIPInfo,
 	SpecInit, SpecExit, SpecFrame, SpecDraw, SpecScan,
 	&SpecRecalc, 0x10, 288, 224, 4, 3

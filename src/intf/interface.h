@@ -47,6 +47,7 @@ struct InputInOut {
 
 INT32 InputInit();
 INT32 InputExit();
+INT32 InputSelect(UINT32 nPlugIn);
 INT32 InputSetCooperativeLevel(const bool bExclusive, const bool bForeGround);
 INT32 InputMake(bool bCopy);
 INT32 InputFind(const INT32 nFlags);
@@ -240,6 +241,7 @@ extern INT64 nVidBlitterOpt[];
 extern INT32 bVidFullStretch;
 extern INT32 bVidTripleBuffer;
 extern INT32 bVidVSync;
+extern INT32 bVidVRR;
 extern double dVidCubicB;
 extern double dVidCubicC;
 extern INT32 bVidDX9Bilinear;
