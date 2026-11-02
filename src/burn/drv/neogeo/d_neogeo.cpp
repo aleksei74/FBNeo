@@ -34052,17 +34052,17 @@ struct BurnDriver BurnDrvSamsh5spuh = {
 // Samurai Shodown V Special / Samurai Spirits Zero Special (Korean Translation)
 
 static struct BurnRomInfo samsh5spkRomDesc[] = {
-	{ "272-p1k.p1",   0x400000, 0xa82cb0a4, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
-	{ "272-p2k.sp2",  0x400000, 0xc2d8e7cd, 1 | BRF_ESS | BRF_PRG }, //  1
+	{ "272-p1k.p1",   0x400000, 0x2e29c196, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "272-p2k.sp2",  0x400000, 0x6c3de4d5, 1 | BRF_ESS | BRF_PRG }, //  1
 
-	{ "272-c1k.c1",   0x800000, 0xd2bd9f4a, 3 | BRF_GRA },           //  2 Sprite data
-	{ "272-c2k.c2",   0x800000, 0x3051c47d, 3 | BRF_GRA },           //  3
-	{ "272-c3k.c3",   0x800000, 0x527edebd, 3 | BRF_GRA },           //  4
-	{ "272-c4k.c4",   0x800000, 0x9ce66211, 3 | BRF_GRA },           //  5
-	{ "272-c5k.c5",   0x800000, 0xda1bd17f, 3 | BRF_GRA },           //  6
-	{ "272-c6k.c6",   0x800000, 0xf5d769f6, 3 | BRF_GRA },           //  7
-	{ "272-c7k.c7",   0x800000, 0x909122fe, 3 | BRF_GRA },           //  8
-	{ "272-c8k.c8",   0x800000, 0xd5ac5170, 3 | BRF_GRA },           //  9
+	{ "272-c1k.c1",   0x800000, 0x23231727, 3 | BRF_GRA },           //  2 Sprite data
+	{ "272-c2k.c2",   0x800000, 0xfe8fced7, 3 | BRF_GRA },           //  3
+	{ "272-c3k.c3",   0x800000, 0x7a2a2f4b, 3 | BRF_GRA },           //  4
+	{ "272-c4k.c4",   0x800000, 0x5d89a4ac, 3 | BRF_GRA },           //  5
+	{ "272-c5k.c5",   0x800000, 0x8b32735b, 3 | BRF_GRA },           //  6
+	{ "272-c6k.c6",   0x800000, 0x9b301d55, 3 | BRF_GRA },           //  7
+	{ "272-c7k.c7",   0x800000, 0xc352e127, 3 | BRF_GRA },           //  8
+	{ "272-c8k.c8",   0x800000, 0xd9cec752, 3 | BRF_GRA },           //  9
 
 	{ "272-m1.m1",    0x080000, 0xadeebf40, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
 
@@ -34086,18 +34086,18 @@ struct BurnDriver BurnDrvSamsh5spk = {
 // Samurai Shodown V Perfect / Samurai Spirits Zero Perfect (Korean Translation)
 
 static struct BurnRomInfo samsh5pfkRomDesc[] = {
-	{ "273-p1k.bin", 0x800000, 0xd8b0c3c9, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "273-p1k.bin", 0x800000, 0x10194153, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
 
-	{ "273-s1.bin",  0x020000, 0xabb3baf9, 2 | BRF_GRA },           //  1 Text layer tiles
+	{ "273-s1k.bin", 0x020000, 0xf78a200c, 2 | BRF_GRA },           //  1 Text layer tiles
 
-	{ "273-c1k.bin", 0x800000, 0x43b4cd7f, 3 | BRF_GRA },           //  2 Sprite data
-	{ "273-c2k.bin", 0x800000, 0x5b92f1ae, 3 | BRF_GRA },           //  3
+	{ "273-c1k.bin", 0x800000, 0x98c0a894, 3 | BRF_GRA },           //  2 Sprite data
+	{ "273-c2k.bin", 0x800000, 0xee8c1e53, 3 | BRF_GRA },           //  3
 	{ "273-c3k.bin", 0x800000, 0x659e6114, 3 | BRF_GRA },           //  4
 	{ "273-c4k.bin", 0x800000, 0x27580640, 3 | BRF_GRA },           //  5
 	{ "273-c5d.bin", 0x800000, 0x1b5c1ea2, 3 | BRF_GRA },           //  6
 	{ "273-c6d.bin", 0x800000, 0xdeeaad58, 3 | BRF_GRA },           //  7
-	{ "273-c7k.bin", 0x800000, 0x1fdfca39, 3 | BRF_GRA },           //  8
-	{ "273-c8k.bin", 0x800000, 0xb59e355d, 3 | BRF_GRA },           //  9
+	{ "273-c7k.bin", 0x800000, 0x47f6c8a3, 3 | BRF_GRA },           //  8
+	{ "273-c8k.bin", 0x800000, 0xf2f8251a, 3 | BRF_GRA },           //  9
 
 	{ "273-m1.bin",  0x020000, 0x654e9236, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
 

@@ -836,15 +836,15 @@ struct BurnDriver BurnDrvGatedom1 = {
 // Dark Seal (Korean Translation revision 4)
 
 static struct BurnRomInfo darksealkRomDesc[] = {
-	{ "fz_04-4.j12",	0x20000, 0x817faa2c, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
-	{ "fz_01-4.h14",	0x20000, 0x373caeee, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "fz_00-2.h12",	0x20000, 0x1ab99aa7, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "fz_05-2.j14",	0x20000, 0x3374ef8c, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "fz_04-4k.j12",	0x20000, 0x3dfa9132, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "fz_01-4k.h14",	0x20000, 0x98bcb1d9, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "fz_00-2k.h12",	0x20000, 0xdd6cbd56, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "fz_05-2k.j14",	0x20000, 0x8aff09f7, 1 | BRF_PRG | BRF_ESS }, //  3
 
 	{ "fz_06-1.j15",	0x10000, 0xc4828a6d, 2 | BRF_PRG | BRF_ESS }, //  4 H6280 Code
 
-	{ "fz_02.j1",		0x10000, 0x3c9c3012, 3 | BRF_GRA },           //  5 Text Tiles
-	{ "fz_03.j2",		0x10000, 0x264b90ed, 3 | BRF_GRA },           //  6
+	{ "fz_02k.j1",		0x10000, 0xccc277e4, 3 | BRF_GRA },           //  5 Text Tiles
+	{ "fz_03k.j2",		0x10000, 0xb7e2476f, 3 | BRF_GRA },           //  6
 
 	{ "mac-03.h3",		0x80000, 0x9996f3dc, 4 | BRF_GRA },           //  7 Foreground Tiles
 
