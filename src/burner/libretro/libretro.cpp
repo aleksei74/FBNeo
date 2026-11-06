@@ -21,6 +21,9 @@
 #ifdef BUILD_PCE
 #include "pcecdlist.h"
 #endif
+#ifdef BUILD_MEGADRIVE
+#include "segacdlist.h"
+#endif
 
 #include <file/file_path.h>
 
@@ -82,7 +85,8 @@ static bool bVidImageNeedRealloc     = false;
 static bool bRotationDone            = false;
 static int16_t *pAudBuffer           = NULL;
 static char text_missing_files[2048] = "";
-static bool bCDEmuStarted                 = false;
+static bool bCDEmuStarted            = false;
+static bool bRomdataStarting         = false;
 
 // Frameskipping v2 Support
 #define FRAMESKIP_MAX 30
@@ -368,7 +372,7 @@ void retro_set_environment(retro_environment_t cb)
 	static const struct retro_subsystem_rom_info subsystem_rom[] = {
 		{ "Rom", "zip|7z", true, true, true, NULL, 0 },
 	};
-#if defined(BUILD_NEOGEO) || defined(BUILD_PCE)
+#if defined(BUILD_NEOGEO) || defined(BUILD_PCE) || defined(BUILD_MEGADRIVE)
 	static const struct retro_subsystem_rom_info subsystem_iso[] = {
 #ifdef INCLUDE_CHD_SUPPORT
 		{ "Iso", "ccd|cue|chd",    true, true, true, NULL, 0 },
@@ -379,53 +383,54 @@ void retro_set_environment(retro_environment_t cb)
 #endif
 	static const struct retro_subsystem_info subsystems[] = {
 #ifdef BUILD_ASTROHOME
-		{ "Bally Astrocade Home Computer",       "astro", subsystem_rom, 1, RETRO_GAME_TYPE_ASTRO },
+		{ "Bally Astrocade Home Computer",       "astro",  subsystem_rom, 1, RETRO_GAME_TYPE_ASTRO  },
 #endif
 #ifdef BUILD_COLECO
-		{ "CBS ColecoVision",                    "cv",    subsystem_rom, 1, RETRO_GAME_TYPE_CV    },
+		{ "CBS ColecoVision",                    "cv",     subsystem_rom, 1, RETRO_GAME_TYPE_CV     },
 #endif
 #ifdef BUILD_CHANNELF
-		{ "Fairchild ChannelF",                  "chf",   subsystem_rom, 1, RETRO_GAME_TYPE_CHF   },
+		{ "Fairchild ChannelF",                  "chf",    subsystem_rom, 1, RETRO_GAME_TYPE_CHF    },
 #endif
 #ifdef BUILD_MSX
-		{ "MSX 1",                               "msx",   subsystem_rom, 1, RETRO_GAME_TYPE_MSX   },
+		{ "MSX 1",                               "msx",    subsystem_rom, 1, RETRO_GAME_TYPE_MSX    },
 #endif
 #ifdef BUILD_PCE
-		{ "Nec PC-Engine",                       "pce",   subsystem_rom, 1, RETRO_GAME_TYPE_PCE   },
-		{ "Nec SuperGrafX",                      "sgx",   subsystem_rom, 1, RETRO_GAME_TYPE_SGX   },
-		{ "Nec TurboGrafx-16",                   "tg16",  subsystem_rom, 1, RETRO_GAME_TYPE_TG    },
+		{ "Nec PC-Engine",                       "pce",    subsystem_rom, 1, RETRO_GAME_TYPE_PCE    },
+		{ "Nec SuperGrafX",                      "sgx",    subsystem_rom, 1, RETRO_GAME_TYPE_SGX    },
+		{ "Nec TurboGrafx-16",                   "tg16",   subsystem_rom, 1, RETRO_GAME_TYPE_TG     },
 #endif
 #ifdef BUILD_NES
-		{ "Nintendo Entertainment System",       "nes",   subsystem_rom, 1, RETRO_GAME_TYPE_NES   },
-		{ "Nintendo Family Disk System",         "fds",   subsystem_rom, 1, RETRO_GAME_TYPE_FDS   },
+		{ "Nintendo Entertainment System",       "nes",    subsystem_rom, 1, RETRO_GAME_TYPE_NES    },
+		{ "Nintendo Family Disk System",         "fds",    subsystem_rom, 1, RETRO_GAME_TYPE_FDS    },
 #endif
 #ifdef BUILD_SNES
-		{ "Super Nintendo Entertainment System", "snes",  subsystem_rom, 1, RETRO_GAME_TYPE_SNES  },
+		{ "Super Nintendo Entertainment System", "snes",   subsystem_rom, 1, RETRO_GAME_TYPE_SNES   },
 #endif
 #ifdef BUILD_GBA
-		{ "Nintendo Gameboy Advance",            "gba",   subsystem_rom, 1, RETRO_GAME_TYPE_GBA   },
+		{ "Nintendo Gameboy Advance",            "gba",    subsystem_rom, 1, RETRO_GAME_TYPE_GBA    },
 #endif
 #ifdef BUILD_SMS
-		{ "Sega GameGear",                       "gg",    subsystem_rom, 1, RETRO_GAME_TYPE_GG    },
-		{ "Sega Master System",                  "sms",   subsystem_rom, 1, RETRO_GAME_TYPE_SMS   },
+		{ "Sega GameGear",                       "gg",     subsystem_rom, 1, RETRO_GAME_TYPE_GG     },
+		{ "Sega Master System",                  "sms",    subsystem_rom, 1, RETRO_GAME_TYPE_SMS    },
 #endif
 #ifdef BUILD_MEGADRIVE
-		{ "Sega Megadrive",                      "md",    subsystem_rom, 1, RETRO_GAME_TYPE_MD    },
+		{ "Sega Megadrive",                      "md",     subsystem_rom, 1, RETRO_GAME_TYPE_MD     },
+		{ "Sega CD",                             "segacd", subsystem_iso, 1, RETRO_GAME_TYPE_SEGACD },
 #endif
 #ifdef BUILD_SG1000
-		{ "Sega SG-1000",                        "sg1k",  subsystem_rom, 1, RETRO_GAME_TYPE_SG1K  },
+		{ "Sega SG-1000",                        "sg1k",   subsystem_rom, 1, RETRO_GAME_TYPE_SG1K   },
 #endif
 #ifdef BUILD_PST90S
-		{ "SNK Neo Geo Pocket",                  "ngp",   subsystem_rom, 1, RETRO_GAME_TYPE_NGP   },
+		{ "SNK Neo Geo Pocket",                  "ngp",    subsystem_rom, 1, RETRO_GAME_TYPE_NGP    },
 #endif
 #ifdef BUILD_SPECTRUM
-		{ "ZX Spectrum",                         "spec",  subsystem_rom, 1, RETRO_GAME_TYPE_SPEC  },
+		{ "ZX Spectrum",                         "spec",   subsystem_rom, 1, RETRO_GAME_TYPE_SPEC   },
 #endif
 #ifdef BUILD_NEOGEO
-		{ "Neogeo CD",                           "neocd", subsystem_iso, 1, RETRO_GAME_TYPE_NEOCD },
+		{ "Neogeo CD",                           "neocd",  subsystem_iso, 1, RETRO_GAME_TYPE_NEOCD  },
 #endif
 #ifdef BUILD_PCE
-		{ "Nec PC-Engine CD",                    "pcecd", subsystem_iso, 1, RETRO_GAME_TYPE_PCECD },
+		{ "Nec PC-Engine CD",                    "pcecd",  subsystem_iso, 1, RETRO_GAME_TYPE_PCECD  },
 #endif
 		{ NULL },
 	};
@@ -454,9 +459,9 @@ void retro_get_system_info(struct retro_system_info *info)
 	info->need_fullpath = true;
 	info->block_extract = true;
 #ifdef INCLUDE_CHD_SUPPORT
-	info->valid_extensions = "zip|7z|cue|ccd|chd";
+	info->valid_extensions = "zip|7z|cue|ccd|chd|m3u";
 #else
-	info->valid_extensions = "zip|7z|cue|ccd";
+	info->valid_extensions = "zip|7z|cue|ccd|m3u";
 #endif
 
 	free(library_version);
@@ -885,6 +890,23 @@ static void locate_archive(std::vector<located_archive>& pathList, const char* c
 
 	if (bPatchedRomsetsEnabled)
 	{
+		if (bRomdataStarting)
+		{
+			// Search romdatas directory
+			snprintf_nowarn(path, sizeof(path), "%s%c%s", szAppRomdatasPath, PATH_DEFAULT_SLASH_C(), romName);
+			if (ZipOpen(path) == 0)
+			{
+				g_find_list_path.push_back(located_archive());
+				located_archive *located = &g_find_list_path.back();
+				located->path = path;
+				located->ignoreCrc = false;
+				ZipClose();
+				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Romdata found at %s\n", path);
+			}
+			else
+				HandleMessage(RETRO_LOG_INFO, "[FBNeo] No romdata found at %s\n", path);
+		}
+
 		// Search system fbneo "patched" subdirectory
 		snprintf_nowarn(path, sizeof(path), "%s%cfbneo%cpatched%c%s", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), romName);
 		if (ZipOpen(path) == 0)
@@ -1321,6 +1343,7 @@ void retro_reset()
 
 	// RomData & IPS Patches can be selected before retro_reset() and will be reset after retro_reset(),
 	// at which point the data is processed and returned to determine whether to subsequently Reset or Re-Init.
+	bRomdataStarting = false;
 	INT32 nIndex   = apply_romdatas_from_variables();
 	INT32 nPatches = apply_ipses_from_variables();
 
@@ -1349,7 +1372,7 @@ void retro_reset()
 		retro_incomplete_exit();
 
 		if (nPatches > 0) IpsPatchInit();
-		if (nIndex >= 0) RomDataInit();
+		if (nIndex >= 0) { bRomdataStarting = true; RomDataInit(); }
 
 		retro_load_game_common();
 	} 
@@ -1882,16 +1905,198 @@ static void SetUguiError(const char* error)
 	gui_set_window_title("FBNeo Error");
 }
 
-#if defined(BUILD_NEOGEO) || defined(BUILD_PCE)
+#if defined(BUILD_NEOGEO) || defined(BUILD_PCE) || defined(BUILD_MEGADRIVE)
+// disk control (multi-disc games), for the cd drivers that handle the tray
+#define DISC_MAX 16
+
+static char g_disc_path[DISC_MAX][MAX_PATH];
+static unsigned g_disc_count = 0;
+static unsigned g_disc_index = 0;
+static unsigned g_disc_initial_index = 0;
+static char g_disc_initial_path[MAX_PATH] = "";
+
+static bool disc_supported()
+{
+	return bCDEmuStarted && CDEmuIsTraySupported();
+}
+
+static bool disc_set_eject_state(bool ejected)
+{
+	if (!disc_supported())
+		return false;
+
+	CDEmuSetTrayOpen(ejected);
+	return true;
+}
+
+static bool disc_get_eject_state(void)
+{
+	return disc_supported() && CDEmuIsTrayOpen();
+}
+
+static unsigned disc_get_image_index(void)
+{
+	return g_disc_index;
+}
+
+static bool disc_set_image_index(unsigned index)
+{
+	if (!disc_supported())
+		return false;
+
+	// index == count means no disc, the current image stays loaded behind the open tray
+	if (index >= g_disc_count || index == g_disc_index) {
+		g_disc_index = index;
+		return true;
+	}
+
+	if (g_disc_path[index][0] == '\0' || CDInfo_ChangeDisc(g_disc_path[index])) {
+		HandleMessage(RETRO_LOG_ERROR, "[FBNeo] Couldn't change disc to %s\n", g_disc_path[index]);
+		return false;
+	}
+
+	HandleMessage(RETRO_LOG_INFO, "[FBNeo] Disc changed to %s\n", g_disc_path[index]);
+	g_disc_index = index;
+	return true;
+}
+
+static unsigned disc_get_num_images(void)
+{
+	return g_disc_count;
+}
+
+static bool disc_replace_image_index(unsigned index, const struct retro_game_info *info)
+{
+	if (index >= g_disc_count)
+		return false;
+
+	if (info == NULL) {
+		for (unsigned i = index; i + 1 < g_disc_count; i++)
+			strcpy(g_disc_path[i], g_disc_path[i + 1]);
+		g_disc_count--;
+		if (g_disc_index > index)
+			g_disc_index--;
+		return true;
+	}
+
+	if (info->path == NULL || strlen(info->path) >= MAX_PATH)
+		return false;
+
+	strcpy(g_disc_path[index], info->path);
+	return true;
+}
+
+static bool disc_add_image_index(void)
+{
+	if (g_disc_count >= DISC_MAX)
+		return false;
+
+	g_disc_path[g_disc_count++][0] = '\0';
+	return true;
+}
+
+static bool disc_set_initial_image(unsigned index, const char *path)
+{
+	if (path == NULL || strlen(path) >= MAX_PATH)
+		return false;
+
+	g_disc_initial_index = index;
+	strcpy(g_disc_initial_path, path);
+	return true;
+}
+
+static bool disc_get_image_path(unsigned index, char *path, size_t len)
+{
+	if (index >= g_disc_count || g_disc_path[index][0] == '\0' || len == 0)
+		return false;
+
+	strncpy(path, g_disc_path[index], len - 1);
+	path[len - 1] = '\0';
+	return true;
+}
+
+static bool disc_get_image_label(unsigned index, char *label, size_t len)
+{
+	if (index >= g_disc_count || g_disc_path[index][0] == '\0' || len == 0)
+		return false;
+
+	fill_pathname_base(label, g_disc_path[index], len);
+	path_remove_extension(label);
+	return true;
+}
+
+static void disc_control_register()
+{
+	static struct retro_disk_control_callback disc_cb = {
+		disc_set_eject_state, disc_get_eject_state, disc_get_image_index, disc_set_image_index,
+		disc_get_num_images, disc_replace_image_index, disc_add_image_index
+	};
+	static struct retro_disk_control_ext_callback disc_ext_cb = {
+		disc_set_eject_state, disc_get_eject_state, disc_get_image_index, disc_set_image_index,
+		disc_get_num_images, disc_replace_image_index, disc_add_image_index,
+		disc_set_initial_image, disc_get_image_path, disc_get_image_label
+	};
+
+	unsigned version = 0;
+	if (environ_cb(RETRO_ENVIRONMENT_GET_DISK_CONTROL_INTERFACE_VERSION, &version) && version >= 1)
+		environ_cb(RETRO_ENVIRONMENT_SET_DISK_CONTROL_EXT_INTERFACE, &disc_ext_cb);
+	else
+		environ_cb(RETRO_ENVIRONMENT_SET_DISK_CONTROL_INTERFACE, &disc_cb);
+}
+
+// m3u playlist: one image per line, relative to the playlist folder
+static bool disc_load_m3u(const char* path)
+{
+	RFILE *fp = filestream_open(path, RETRO_VFS_FILE_ACCESS_READ, RETRO_VFS_FILE_ACCESS_HINT_NONE);
+	if (!fp)
+		return false;
+
+	char base[MAX_PATH];
+	strncpy(base, path, MAX_PATH - 1);
+	base[MAX_PATH - 1] = '\0';
+	path_basedir(base);
+
+	char line[MAX_PATH];
+	while (g_disc_count < DISC_MAX && filestream_gets(fp, line, sizeof(line))) {
+		string_trim_whitespace(line);
+		if (line[0] == '\0' || line[0] == '#')
+			continue;
+		if (path_is_absolute(line))
+			strcpy(g_disc_path[g_disc_count], line);
+		else
+			fill_pathname_join(g_disc_path[g_disc_count], base, line, MAX_PATH);
+		g_disc_count++;
+	}
+
+	filestream_close(fp);
+	return g_disc_count > 0;
+}
+
 static bool SetCDEmuImage(const char* path)
 {
+	g_disc_count = 0;
+	g_disc_index = 0;
+
 	if (path == NULL || strlen(path) >= MAX_PATH) {
 		CDEmuImage[0] = '\0';
 		HandleMessage(RETRO_LOG_ERROR, "[FBNeo] Disc image path is empty or too long\n");
 		return false;
 	}
 
-	strcpy(CDEmuImage, path);
+	if (string_is_equal_noncase(path_get_extension(path), "m3u")) {
+		if (!disc_load_m3u(path)) {
+			CDEmuImage[0] = '\0';
+			HandleMessage(RETRO_LOG_ERROR, "[FBNeo] Couldn't read playlist %s\n", path);
+			return false;
+		}
+		if (g_disc_initial_index < g_disc_count && !strcmp(g_disc_path[g_disc_initial_index], g_disc_initial_path))
+			g_disc_index = g_disc_initial_index;
+	} else {
+		strcpy(g_disc_path[0], path);
+		g_disc_count = 1;
+	}
+
+	strcpy(CDEmuImage, g_disc_path[g_disc_index]);
 	return true;
 }
 #endif
@@ -2108,9 +2313,9 @@ static bool retro_load_game_common()
 		AudioBufferInit(nBurnSoundRate, 6000);
 		HandleMessage(RETRO_LOG_INFO, "[FBNeo] Samplerate set to %d\n", nBurnSoundRate);
 
-#if defined(BUILD_NEOGEO) || defined(BUILD_PCE)
+#if defined(BUILD_NEOGEO) || defined(BUILD_PCE) || defined(BUILD_MEGADRIVE)
 		// Start CD reader emulation if needed
-		if (nGameType == RETRO_GAME_TYPE_NEOCD || nGameType == RETRO_GAME_TYPE_PCECD) {
+		if (nGameType == RETRO_GAME_TYPE_NEOCD || nGameType == RETRO_GAME_TYPE_PCECD || nGameType == RETRO_GAME_TYPE_SEGACD) {
 			const char* ext = path_get_extension(CDEmuImage);
 			if (!string_is_equal_noncase(ext, "cue")
 			 && !string_is_equal_noncase(ext, "ccd")
@@ -2132,6 +2337,7 @@ static bool retro_load_game_common()
 			}
 			// cd emulation is started
 			bCDEmuStarted = true;
+			disc_control_register();
 #ifdef BUILD_NEOGEO
 			if (nGameType == RETRO_GAME_TYPE_NEOCD) {
 				NeoCDInfo_Init();
@@ -2142,6 +2348,12 @@ static bool retro_load_game_common()
 			if (nGameType == RETRO_GAME_TYPE_PCECD) {
 				PceCDInfo_Init();
 				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Starting PC Engine CD\n");
+			}
+#endif
+#ifdef BUILD_MEGADRIVE
+			if (nGameType == RETRO_GAME_TYPE_SEGACD) {
+				SegaCDInfo_Init();
+				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Starting Sega CD\n");
 			}
 #endif
 		}
@@ -2509,6 +2721,20 @@ bool retro_load_game(const struct retro_game_info *info)
 		ready = true;
 	}
 #endif
+#ifdef BUILD_MEGADRIVE
+	if (!ready && (strcmp(g_rom_parent_dir, "segacd")==0 || strncmp(g_driver_name, "segacd_", 7)==0)) {
+		HandleMessage(RETRO_LOG_INFO, "[FBNeo] subsystem segacd identified from parent folder\n");
+		prefix = "";
+		nGameType = RETRO_GAME_TYPE_SEGACD;
+		if (!SetCDEmuImage(szRomsetPath)) {
+			RomDataExit();
+			IpsPatchExit();
+			return false;
+		}
+		extract_basename(g_driver_name, "md_segacd", sizeof(g_driver_name), prefix);
+		ready = true;
+	}
+#endif
 	if (!ready) {
 		extract_basename(g_driver_name, szRomsetPath, sizeof(g_driver_name), prefix);
 	}
@@ -2605,12 +2831,15 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 			prefix = "astro_";
 			break;
 #endif
-#if defined(BUILD_NEOGEO) || defined(BUILD_PCE)
+#if defined(BUILD_NEOGEO) || defined(BUILD_PCE) || defined(BUILD_MEGADRIVE)
 #ifdef BUILD_NEOGEO
 		case RETRO_GAME_TYPE_NEOCD:
 #endif
 #ifdef BUILD_PCE
 		case RETRO_GAME_TYPE_PCECD:
+#endif
+#ifdef BUILD_MEGADRIVE
+		case RETRO_GAME_TYPE_SEGACD:
 #endif
 			prefix = "";
 			if (!SetCDEmuImage(info->path)) {
@@ -2633,6 +2862,10 @@ bool retro_load_game_special(unsigned game_type, const struct retro_game_info *i
 #ifdef BUILD_PCE
 	if(nGameType == RETRO_GAME_TYPE_PCECD)
 		extract_basename(g_driver_name, "pce_scdsys", sizeof(g_driver_name), "");
+#endif
+#ifdef BUILD_MEGADRIVE
+	if(nGameType == RETRO_GAME_TYPE_SEGACD)
+		extract_basename(g_driver_name, "md_segacd", sizeof(g_driver_name), "");
 #endif
 
 	return retro_load_game_common();
@@ -2704,8 +2937,8 @@ static void retro_incomplete_exit()
 		if (BurnNvramSave(g_autofs_path) == 0 && path_is_valid(g_autofs_path))
 			HandleMessage(RETRO_LOG_INFO, "[FBNeo] EEPROM succesfully saved to %s\n", g_autofs_path);
 		BurnDrvExit();
-#if defined(BUILD_NEOGEO) || defined(BUILD_PCE)
-		if (nGameType == RETRO_GAME_TYPE_NEOCD || nGameType == RETRO_GAME_TYPE_PCECD)
+#if defined(BUILD_NEOGEO) || defined(BUILD_PCE) || defined(BUILD_MEGADRIVE)
+		if (nGameType == RETRO_GAME_TYPE_NEOCD || nGameType == RETRO_GAME_TYPE_PCECD || nGameType == RETRO_GAME_TYPE_SEGACD)
 			CDEmuExit();
 #endif
 		nBurnDrvActive = ~0U;

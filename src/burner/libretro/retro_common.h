@@ -30,6 +30,7 @@
 #define RETRO_GAME_TYPE_ASTRO	17
 #define RETRO_GAME_TYPE_PCECD	18
 #define RETRO_GAME_TYPE_GBA		19
+#define RETRO_GAME_TYPE_SEGACD	20
 
 #define PERCENT_VALUES \
 	  {"25%",	NULL }, \
@@ -247,6 +248,7 @@ extern bool bAllowDepth32;
 extern bool bPatchedRomsetsEnabled;
 extern bool bLibretroSupportsAudioBuffStatus;
 extern bool bLowPassFilterEnabled;
+extern bool bRumbleEnabled;
 extern UINT32 nVerticalMode;
 extern UINT32 nNewWidth;
 extern UINT32 nNewHeight;
