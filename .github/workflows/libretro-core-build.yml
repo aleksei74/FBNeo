@@ -193,19 +193,19 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y build-essential perl file binutils libegl1-mesa-dev libgles2-mesa-dev
 
-      - name: Select device platform
+      - name: Select ARM64 device tuning
         id: device
         shell: bash
         run: |
           case "${{ matrix.target }}" in
             odroid-n2)
-              echo "platform=odroid-n2_x64" >> "${GITHUB_OUTPUT}"
+              echo "tune=cortex-a73" >> "${GITHUB_OUTPUT}"
               ;;
             odroid-go-advance)
-              echo "platform=classic_armv8_a35_x64" >> "${GITHUB_OUTPUT}"
+              echo "tune=cortex-a35" >> "${GITHUB_OUTPUT}"
               ;;
             s905-arm64)
-              echo "platform=ras3_x64" >> "${GITHUB_OUTPUT}"
+              echo "tune=cortex-a53" >> "${GITHUB_OUTPUT}"
               ;;
             *)
               echo "Unknown ARM64 device target: ${{ matrix.target }}" >&2
@@ -216,7 +216,8 @@ jobs:
       - name: Build ${{ matrix.target }} core
         run: |
           make -C src/burner/libretro \
-            platform="${{ steps.device.outputs.platform }}" \
+            platform=unix \
+            PLATFORM_DEFINES="-march=armv8-a -mtune=${{ steps.device.outputs.tune }}" \
             CC=gcc CXX=g++ AR=gcc-ar \
             REGEN_HEADERS=1 -j"$(nproc)"
 
@@ -265,10 +266,10 @@ jobs:
         run: |
           case "${{ matrix.target }}" in
             playstation-classic)
-              echo "platform=classic_armv8_a35" >> "${GITHUB_OUTPUT}"
+              echo "platform=armv7-neon" >> "${GITHUB_OUTPUT}"
               ;;
             powkiddy-a12-a13)
-              echo "platform=classic_armv7_a7" >> "${GITHUB_OUTPUT}"
+              echo "platform=armv7-neon" >> "${GITHUB_OUTPUT}"
               ;;
             raspberry-pi2)
               echo "platform=rpi2" >> "${GITHUB_OUTPUT}"
@@ -280,7 +281,7 @@ jobs:
               echo "platform=rpi4" >> "${GITHUB_OUTPUT}"
               ;;
             super-famicom-mini)
-              echo "platform=classic_armv7_a7" >> "${GITHUB_OUTPUT}"
+              echo "platform=armv7-neon" >> "${GITHUB_OUTPUT}"
               ;;
             *)
               echo "Unknown ARM32 device target: ${{ matrix.target }}" >&2
@@ -290,9 +291,18 @@ jobs:
 
       - name: Build ${{ matrix.target }} core
         run: |
+          # The generic armv7-neon platform needs explicit NEON/FPU flags.
+          extra_flags=()
+          if [ "${{ steps.device.outputs.platform }}" = "armv7-neon" ]; then
+            extra_flags=('PLATFORM_DEFINES=-marm -mfpu=neon-vfpv4 -mfloat-abi=hard')
+          fi
+
           make -C src/burner/libretro \
             platform="${{ steps.device.outputs.platform }}" \
-            NAMCOS_OPENGL=0 NAMCOS_OPENGL_ES2=0 NAMCOS_OPENGL_LIBS= \
+            "${extra_flags[@]}" \
+            CC=arm-linux-gnueabihf-gcc \
+            CXX=arm-linux-gnueabihf-g++ \
+            AR=arm-linux-gnueabihf-ar \
             REGEN_HEADERS=1 -j"$(nproc)"
 
           test -f src/burner/libretro/fbneo_libretro.so

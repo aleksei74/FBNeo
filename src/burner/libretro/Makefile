@@ -76,7 +76,10 @@ ifneq (,$(findstring unix,$(platform)))
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -lpthread
+	# Android bionic provides pthread APIs in libc; there is no separate libpthread.
+	ifeq (,$(findstring android,$(platform)))
+		LDFLAGS += -lpthread
+	endif
 
 	# Raspberry Pi
 	ifneq (,$(findstring rpi1,$(platform)))
