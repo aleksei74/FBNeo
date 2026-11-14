@@ -832,17 +832,6 @@ static INT32 MemIndex()
 	TaitoSpritesA		= Next; Next += TaitoSpriteARomSize;
 	TaitoChars			= Next; Next += TaitoCharRomSize;
 
-	tile_opaque_sp		= Next; Next += TaitoSpriteARomSize / 0x100;
-
-	tile_opaque_pf[0]	= Next; Next += TaitoCharRomSize / 0x100;
-	tile_opaque_pf[1]	= Next; Next += TaitoCharRomSize / 0x100;
-	tile_opaque_pf[2]	= Next; Next += TaitoCharRomSize / 0x100;
-	tile_opaque_pf[3]	= Next; Next += TaitoCharRomSize / 0x100;
-	tile_opaque_pf[4]	= Next; Next += TaitoCharRomSize / 0x100;
-	tile_opaque_pf[5]	= Next; Next += TaitoCharRomSize / 0x100;
-	tile_opaque_pf[6]	= Next; Next += TaitoCharRomSize / 0x100;
-	tile_opaque_pf[7]	= Next; Next += TaitoCharRomSize / 0x100;
-
 	MSM6295ROM			= Next;
 	TaitoF3ES5506Rom	= Next;
 	TaitoES5505Rom		= Next; Next += TaitoF3ES5506RomSize;
@@ -917,53 +906,6 @@ static INT32 MemIndex()
 	return 0;
 }
 
-static void DrvCalculateTransTable(INT32 sprlen, INT32 len)
-{
-	{
-		UINT8 *sprite_gfx = TaitoSpritesA;
-
-		memset (tile_opaque_sp, 1, sprlen/0x100);
-
-		for (INT32 i = 0; i < sprlen; i++) {
-			if (sprite_gfx[i] == 0) {
-				tile_opaque_sp[i/0x100] = 0;
-				i|=0xff;
-			}
-		}
-	}
-
-	{
-		UINT8 *pf_gfx = TaitoChars;
-
-		for (INT32 c = 0;c < len/0x100;c++)
-		{
-			INT32 x,y;
-			INT32 extra_planes; /* 0 = 4bpp, 1=5bpp, 2=?, 3=6bpp */
-
-			for (extra_planes=0; extra_planes<4; extra_planes++)
-			{
-				INT32 chk_trans_or_opa=0;
-				UINT8 extra_mask = ((extra_planes << 4) | 0x0f);
-				const UINT8 *dp = pf_gfx + c * 0x100;
-
-				for (y = 0;y < 16;y++)
-				{
-					for (x = 0;x < 16;x++)
-					{
-						if(!(dp[x] & extra_mask))
-							chk_trans_or_opa|=2;
-						else
-							chk_trans_or_opa|=1;
-					}
-					dp += 16;
-				}
-
-				tile_opaque_pf[extra_planes][c]=chk_trans_or_opa;
-			}
-		}
-	}
-}
-
 static void DrvGfxDecode(INT32 spr_len, INT32 tile_len)
 {
 	INT32 Plane0[6]  = { (spr_len * 4)+0, (spr_len * 4)+1, 0, 1, 2, 3 }; // sprite
@@ -1019,7 +961,6 @@ static void tile_decode(INT32 spr_len, INT32 tile_len)
 
 	DrvGfxDecode(spr_len, tile_len);
 
-	DrvCalculateTransTable(spr_len, tile_len);
 }
 
 static INT32 TaitoF3GetRoms(bool bLoad)
@@ -1322,15 +1263,6 @@ static INT32 DrvInit(INT32 (*pRomLoadCB)(), void (*pPalUpdateCB)(UINT16), INT32 
 	sprite_lag = spritelag;
 
 	TaitoF3VideoInit();
-
-	bitmap_width[0] = (extend) ? 1024 : 512;
-	bitmap_width[1] = (extend) ? 1024 : 512;
-	bitmap_width[2] = (extend) ? 1024 : 512;
-	bitmap_width[3] = (extend) ? 1024 : 512;
-	bitmap_width[4] = 512;
-	bitmap_width[5] = 512;
-	bitmap_width[6] = 512;
-	bitmap_width[7] = 512;
 
 	BurnTrackballInit(2);
 
@@ -3933,7 +3865,6 @@ static INT32 DrvGfxDecode()
 		TaitoChars[i+7] |= tmp2[5];
 	}
 
-	DrvCalculateTransTable(0x400000,0x400000);
 
 	BurnFree(tmp);
 
@@ -4043,15 +3974,6 @@ static INT32 bubsymphbInit()
 	sprite_lag = 1;
 
 	TaitoF3VideoInit();
-
-	bitmap_width[0] = extended_layers ? 1024 : 512;
-	bitmap_width[1] = extended_layers ? 1024 : 512;
-	bitmap_width[2] = extended_layers ? 1024 : 512;
-	bitmap_width[3] = extended_layers ? 1024 : 512;
-	bitmap_width[4] = 512;
-	bitmap_width[5] = 512;
-	bitmap_width[6] = 512;
-	bitmap_width[7] = 512;
 
 	DrvDoReset(1);
 
