@@ -242,7 +242,6 @@ static INT32 MemIndex()
 	DrvVLMROM		= Next; Next += 0x002000;
 
 	DrvColPROM		= Next; Next += 0x000020;
-;
 	DrvPalette		= (UINT32*)Next; Next += 0x20 * sizeof(UINT32);
 
 	AllRam			= Next;

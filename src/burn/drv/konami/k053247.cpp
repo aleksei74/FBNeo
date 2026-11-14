@@ -6,6 +6,7 @@
 
 #include "tiles_generic.h"
 #include "konamiic.h"
+#include "gx_fpga_blend.h"
 
 #define K053247_CUSTOMSHADOW	0x20000000
 #define K053247_SHDSHIFT		20
@@ -663,7 +664,7 @@ static inline UINT32 highlight_blend(UINT32 d)
 	return r|g|b;
 }
 
-#define GX_ZBUFW     512
+#define GX_ZBUFW     1024
 #define GX_ZBUFH     256
 
 void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32 sx, INT32 sy,
@@ -762,7 +763,9 @@ void zdrawgfxzoom32GP(UINT32 code, UINT32 color, INT32 flipx, INT32 flipy, INT32
 					dst_row[x] = pal_base_new[pal_idx];
 				} else {
 					UINT8 alpha_level = alpha;
-					if (alpha & 0x100) {
+					if (K056832GetAlphaTileMode() == 3) {
+						dst_row[x] = GxFpgaBlend(dst_row[x],pal_base_new[pal_idx],alpha);
+					} else if (alpha & 0x100) {
 						UINT32 temp = alpha_blend_r32(pal_base_new[pal_idx], 0, alpha_level);
 						dst_row[x] = add_blend_r32(dst_row[x], temp);
 					} else {

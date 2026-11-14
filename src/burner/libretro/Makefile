@@ -104,7 +104,22 @@ ifneq (,$(findstring unix,$(platform)))
 	endif
 
 	# Raspberry Pi
-	ifneq (,$(findstring rpi1,$(platform)))
+	ifneq (,$(filter rpi3_64 rpi4_64 rpi5_64,$(platform)))
+		CC = aarch64-linux-gnu-gcc
+		CXX = aarch64-linux-gnu-g++
+		AR = aarch64-linux-gnu-ar
+		ARCH = arm64
+		HAVE_NEON = 0
+		ifeq (,$(filter rpi5_64,$(platform)))
+			RPI64_CPU := $(if $(filter rpi3_64,$(platform)),cortex-a53,cortex-a72)
+		else
+			RPI64_CPU := $(if $(supports_rpi5_cpu),cortex-a76,cortex-a72)
+			ifeq ($(RPI64_CPU),cortex-a72)
+$(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 code generation)
+			endif
+		endif
+		PLATFORM_DEFINES := -mcpu=$(RPI64_CPU) -mtune=$(RPI64_CPU) -mabi=lp64
+	else ifneq (,$(findstring rpi1,$(platform)))
 		CC = arm-linux-gnueabihf-gcc
 		CXX = arm-linux-gnueabihf-g++
 		AR = arm-linux-gnueabihf-ar
@@ -500,6 +515,28 @@ else ifeq ($(platform), classic_armv7_a7)
 	CFLAGS += $(PLATFORM_FLAGS)
 	CXXFLAGS += $(PLATFORM_FLAGS)
 
+# RG35XX
+else ifeq ($(platform), rg35xx)
+	# GarlicOS uses the legacy uClibc SDK, not the Koriki/glibc toolchain.
+	RG35XX_TOOLCHAIN ?= /opt/miyoo
+	RG35XX_CROSS_COMPILE ?= $(if $(wildcard $(RG35XX_TOOLCHAIN)/bin/arm-miyoo-linux-uclibcgnueabi-gcc),$(RG35XX_TOOLCHAIN)/bin/)arm-miyoo-linux-uclibcgnueabi-
+	CC = $(RG35XX_CROSS_COMPILE)gcc
+	CXX = $(RG35XX_CROSS_COMPILE)g++
+	AR = $(RG35XX_CROSS_COMPILE)ar
+	TARGET := $(TARGET_NAME)_libretro.so
+	fpic := -fPIC
+	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
+	PLATFORM_FLAGS = -marm -march=armv7-a -mtune=cortex-a9 -mfpu=neon-fp16 -mfloat-abi=softfp
+	USE_EXPERIMENTAL_FLAGS = 0
+	HAVE_NEON = 1
+	USE_CYCLONE = 1
+	ARCH = arm
+	ENDIANNESS_DEFINES := -DLSB_FIRST
+	# Keep the soft-float calling convention required by the GarlicOS SDK.
+	LDFLAGS += $(PLATFORM_FLAGS) -static-libgcc -static-libstdc++ -pthread
+	CFLAGS += $(PLATFORM_FLAGS)
+	CXXFLAGS += $(PLATFORM_FLAGS)
+
 # (armv8 a35, hard point, neon based) ###
 # Playstation Classic
 else ifeq ($(platform), classic_armv8_a35)
@@ -739,6 +776,7 @@ LIBS += $(NAMCOS_OPENGL_LIBS)
 CC_SYSTEM = gcc
 CXX_SYSTEM = g++
 
+
 include Makefile.common
 include $(INCLUDED_MAKEFILE)
 
@@ -872,13 +910,13 @@ CTVMAKE_EXE = ctvmake$(EXE_EXT)
 PGM_SPRITE_CREATE_EXE = pgmspritecreate$(EXE_EXT)
 EXE_PREFIX = ./
 
-# backward compatibility (make less than 4.4 doesn't support .WAIT)
-.WAIT:
-
 .PHONY: all clean generate-files generate-files-clean clean-objs
 
 ifeq ($(REGEN_HEADERS), 1)
-all: generate-files .WAIT $(TARGET)
+# GNU Make 4.1 has no .WAIT barrier. Re-read dependencies only after the
+# generated headers and Musashi sources are complete, preserving the jobserver.
+all: generate-files
+	+$(MAKE) REGEN_HEADERS=0 $(TARGET)
 else
 all: $(TARGET)
 endif
@@ -995,7 +1033,18 @@ $(OBJDIR)/%.o: ../../%.S
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@
 
-$(TARGET): $(OBJS)
+# A shared output name can outlive a switch back to older platform objects.
+# Update this stamp only when the selected objects or link settings change.
+LINK_CONFIG_FILE := $(TARGET).build-config
+.PHONY: FORCE_LINK_CONFIG
+FORCE_LINK_CONFIG:
+
+$(LINK_CONFIG_FILE): FORCE_LINK_CONFIG
+	$(file >$@.tmp,$(OBJDIR)|$(OBJS)|$(LD)|$(AR)|$(STATIC_LINKING)|$(SHARED)|$(LDFLAGS)|$(LIBS))
+	@cmp -s $@.tmp $@ || mv -f $@.tmp $@
+	@rm -f $@.tmp
+
+$(TARGET): $(OBJS) $(LINK_CONFIG_FILE)
 ifeq ($(STATIC_LINKING), 1)
 ifeq ($(SPLIT_UP_LINK), 1)
 	$(AR) rcs $@ $(foreach OBJS,$(OBJS),$(NEWLINE) $(AR) q $@ $(OBJS))
@@ -1008,7 +1057,7 @@ ifeq ($(SPLIT_UP_LINK), 1)
 	$(LD) $(LINKOUT)$@ $(SHARED) @$@.in $(LDFLAGS) $(LIBS)
 	@rm -f $@.in
 else
-	$(LD) $(LINKOUT)$@ $(SHARED) $^ $(LDFLAGS) $(LIBS)
+	$(LD) $(LINKOUT)$@ $(SHARED) $(OBJS) $(LDFLAGS) $(LIBS)
 endif
 endif
 
@@ -1025,7 +1074,8 @@ endif
 	rm -rf $(OBJDIR)
 
 clean: clean-objs
-	rm -f $(TARGET)
+	rm -f $(TARGET) $(LINK_CONFIG_FILE) $(LINK_CONFIG_FILE).tmp
 	rm -f $(M68KMAKE_EXE)
 	rm -f $(PGM_SPRITE_CREATE_EXE)
 	rm -f $(CTVMAKE_EXE)
+

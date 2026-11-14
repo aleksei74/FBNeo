@@ -4,6 +4,7 @@
 #include "tiles_generic.h"
 #include "k053936.h"
 
+
 // Render target for the high-color (32-bit) paths; set by the driver via
 // K053936SetRenderTarget(). NULL -> the 32-bit paths are skipped.
 static UINT32 *k053936_bitmap32 = NULL;
@@ -760,6 +761,38 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 	cy = starty;
 	cx = startx;
 
+    // Horizontal solid ROZ rows share invariant source Y.
+    // Hoist row addressing/wrap and destination bounds out of the pixel loop.
+    // Keep the original +1 destination-row convention, including its final-row
+    // clipping; source X may legally spill into the next source row, so retain
+    // the original linear-address bound instead of clipping X to source width.
+    if (blend <= 0 && !pixeldouble_output && incxy == 0 && tx < 0 && ty > 0 &&
+        sx >= 0 && sx - tx <= nScreenWidth && sy >= 0 && sy + ty <= nScreenHeight &&
+        src_pitch > 0 && src_size > 0) {
+        const UINT32 xmask = K053936_gp_wrap[chip] ? (0x1fff & (K053936_source_width[chip]-1)) : 0x1fff;
+        const UINT32 ymask = K053936_gp_wrap[chip] ? (0x1fff & (K053936_source_height[chip]-1)) : 0x1fff;
+        UINT32 rowx = startx, rowy = starty;
+        for (INT32 row=0;row<ty;++row,rowx+=(UINT32)incyx,rowy+=(UINT32)incyy) {
+            const INT32 target_y = sy + row + 1;
+            if (target_y >= nScreenHeight) continue;
+            const INT32 source_y = (rowy >> 16) & ymask;
+            if (source_y < src_miny || source_y > src_maxy) continue;
+            const INT32 source_row = source_y * src_pitch;
+            UINT32 *target = dst_base + target_y * dst_pitch + sx;
+            UINT32 source_x = rowx;
+            for (INT32 x=0;x < -tx;++x,source_x+=(UINT32)incxx) {
+                const INT32 px = (source_x >> 16) & xmask;
+                const INT32 offset = source_row + px;
+                if ((UINT32)offset >= (UINT32)src_size || px < src_minx || px > src_maxx) continue;
+                const INT32 pixel = src_base[offset] | color_base;
+                if ((pixel & cmask) && pixel < K053936GP_PALETTE_ENTRIES) target[x] = pal_base[pixel];
+            }
+        }
+        return;
+    }
+
+	// Advance both output pixels even when the source is transparent/clipped.
+	// Otherwise doubled GX rows consume extra source pixels and shift later spans.
 	if (blend > 0)
 	{
 		dst_ptr += dst_pitch;      // draw blended
@@ -767,7 +800,7 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 		startx += incyx;
 
 		do {
-			do {
+			for (; ecx < 0; ecx += pixeldouble_output ? 2 : 1) {
 				INT32 srcx = (cx >> 16) & 0x1fff;
 				INT32 srcy = (cy >> 16) & 0x1fff;
 				INT32 pixel;
@@ -798,14 +831,13 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 				INT32 dst_index = dst_ptr + ecx + dst_base2;
 				if ((UINT32)dst_index < (UINT32)dst_size) dst_base[dst_index] = alpha_blend(pal_base[pixel], dst_base[dst_index], alpha);
 
-				if (pixeldouble_output)
+				if (pixeldouble_output && ecx + 1 < 0)
 				{
-					ecx++;
-					dst_index = dst_ptr + ecx + dst_base2;
+					dst_index = dst_ptr + ecx + 1 + dst_base2;
 					if ((UINT32)dst_index < (UINT32)dst_size) dst_base[dst_index] = alpha_blend(pal_base[pixel], dst_base[dst_index], alpha);
 				}
 			}
-			while (++ecx < 0);
+
 
 			ecx = tx;
 			dst_ptr += dst_pitch;
@@ -820,7 +852,7 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 		startx += incyx;
 
 		do {
-			do {
+			for (; ecx < 0; ecx += pixeldouble_output ? 2 : 1) {
 				INT32 srcx = (cx >> 16) & 0x1fff;
 				INT32 srcy = (cy >> 16) & 0x1fff;
 				INT32 pixel;
@@ -851,14 +883,13 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 				INT32 dst_index = dst_ptr + ecx + dst_base2;
 				if ((UINT32)dst_index < (UINT32)dst_size) dst_base[dst_index] = pal_base[pixel];
 
-				if (pixeldouble_output)
+				if (pixeldouble_output && ecx + 1 < 0)
 				{
-					ecx++;
-					dst_index = dst_ptr + ecx + dst_base2;
+					dst_index = dst_ptr + ecx + 1 + dst_base2;
 					if ((UINT32)dst_index < (UINT32)dst_size) dst_base[dst_index] = pal_base[pixel];
 				}
 			}
-			while (++ecx < 0);
+
 
 			ecx = tx;
 			dst_ptr += dst_pitch;
@@ -869,7 +900,7 @@ static inline void K053936GP_copyroz32clip(INT32 chip, UINT16 *src_bitmap, INT32
 }
 
 static void K053936GP_zoom_draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT16 *src_bitmap,
-		INT32 tilebpp, INT32 blend, INT32 alpha, INT32 pixeldouble_output)
+		INT32 tilebpp, INT32 blend, INT32 alpha, INT32 pixeldouble_output, INT32 first, INT32 last)
 {
 	UINT16 *lineaddr;
 
@@ -881,8 +912,8 @@ static void K053936GP_zoom_draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT
 	INT32 my_clip[4];
 	my_clip[0] = 0;
 	my_clip[1] = nScreenWidth - 1;
-	my_clip[2] = 0;
-	my_clip[3] = nScreenHeight - 1;
+	my_clip[2] = first;
+	my_clip[3] = last - 1;
 
 	if (BURN_ENDIAN_SWAP_INT16(ctrl[0x07]) & 0x0040)    /* "super" mode */
 	{
@@ -942,7 +973,7 @@ static void K053936GP_zoom_draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT
 }
 
 static void K053936GP_zoom_draw_noswap(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, UINT16 *src_bitmap,
-		INT32 tilebpp, INT32 blend, INT32 alpha, INT32 pixeldouble_output)
+		INT32 tilebpp, INT32 blend, INT32 alpha, INT32 pixeldouble_output, INT32 first, INT32 last)
 {
 	UINT16 *lineaddr;
 
@@ -954,8 +985,8 @@ static void K053936GP_zoom_draw_noswap(INT32 chip, UINT16 *ctrl, UINT16 *linectr
 	INT32 my_clip[4];
 	my_clip[0] = 0;
 	my_clip[1] = nScreenWidth - 1;
-	my_clip[2] = 0;
-	my_clip[3] = nScreenHeight - 1;
+	my_clip[2] = first;
+	my_clip[3] = last - 1;
 
 	if (ctrl[0x07] & 0x0040)    /* "super" mode */
 	{
@@ -1014,17 +1045,33 @@ static void K053936GP_zoom_draw_noswap(INT32 chip, UINT16 *ctrl, UINT16 *linectr
 	}
 }
 
+static void gp_dispatch_draw(bool noswap, UINT16 *bitmap, INT32 tilebpp, INT32 blend,
+    INT32 alpha, INT32 doubled, UINT16 *ctrl, UINT16 *linectrl)
+{
+    struct Draw { bool noswap; UINT16 *bitmap; INT32 bpp,blend,alpha,doubled; UINT16 *ctrl,*line; };
+
+    Draw job = {noswap,bitmap,tilebpp,blend,alpha,doubled,ctrl,linectrl};
+    auto run = [](void *context, int first, int last) {
+        if (first >= last) return;
+        Draw &d = *static_cast<Draw *>(context);
+        if (d.noswap) K053936GP_zoom_draw_noswap(0,d.ctrl,d.line,d.bitmap,d.bpp,d.blend,d.alpha,d.doubled,first,last);
+        else K053936GP_zoom_draw(0,d.ctrl,d.line,d.bitmap,d.bpp,d.blend,d.alpha,d.doubled,first,last);
+    };
+    // Pixel-doubled output can straddle a row boundary; retain its serial path.
+    run(&job,0,nScreenHeight);
+}
+
 void K053936GP_0_zoom_draw(UINT16 *bitmap, INT32 tilebpp, INT32 blend, INT32 alpha, INT32 pixeldouble_output, UINT16* temp_m_k053936_0_ctrl_16, UINT16* temp_m_k053936_0_linectrl_16,UINT16* temp_m_k053936_0_ctrl, UINT16* temp_m_k053936_0_linectrl)
 {
 	if (K053936_enable[0] == 0) return;
 
 	if (temp_m_k053936_0_ctrl_16)
 	{
-		K053936GP_zoom_draw_noswap(0,temp_m_k053936_0_ctrl_16,temp_m_k053936_0_linectrl_16,bitmap,tilebpp,blend,alpha, pixeldouble_output);
+		gp_dispatch_draw(true,bitmap,tilebpp,blend,alpha,pixeldouble_output,temp_m_k053936_0_ctrl_16,temp_m_k053936_0_linectrl_16);
 	}
 	else
 	{
-		K053936GP_zoom_draw(0,temp_m_k053936_0_ctrl,   temp_m_k053936_0_linectrl,   bitmap,tilebpp,blend,alpha, pixeldouble_output);
+		gp_dispatch_draw(false,bitmap,tilebpp,blend,alpha,pixeldouble_output,temp_m_k053936_0_ctrl,temp_m_k053936_0_linectrl);
 	}
 }
 
@@ -1033,5 +1080,5 @@ void K053936GP_0_zoom_draw_noswap(UINT16 *bitmap, INT32 tilebpp, INT32 blend, IN
 	if (K053936_enable[0] == 0) return;
 	if (ctrl == NULL || linectrl == NULL) return;
 
-	K053936GP_zoom_draw_noswap(0, ctrl, linectrl, bitmap, tilebpp, blend, alpha, pixeldouble_output);
+	gp_dispatch_draw(true,bitmap,tilebpp,blend,alpha,pixeldouble_output,ctrl,linectrl);
 }

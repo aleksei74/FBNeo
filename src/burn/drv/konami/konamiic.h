@@ -197,6 +197,7 @@ void K056832SetGlobalOffsets(INT32 minx, INT32 miny);
 void K056832SetLayerOffsets(INT32 layer, INT32 xoffs, INT32 yoffs);
 void K056832SetAlphaTileMode(INT32 enable);
 void K056832SetAlphaTileCallback(UINT32 (*Callback)(INT32 layer, INT32 code, INT32 color, INT32 pixel, INT32 x, INT32 y, INT32 *alpha, UINT32 rgb));
+INT32 K056832GetAlphaTileMode(); // mode 3: GX hardware colour/mix routing
 INT32 K056832GetLastAlphaTileMixCode();
 void K056832SetExtLinescroll();
 void K056832SetLinemap();
@@ -494,5 +495,6 @@ void konamigx_mixer_set_spriteram_bank(INT32 bank);
 void konamigx_mixer_set_spriteram_latch(UINT16 *ram);
 void konamigx_mixer_primode(int mode);
 void konamigx_prepare_frame();
+void konamigx_mixer_set_extra_bitmap(const UINT16 *bitmap);
 void konamigx_mixer(int sub1 /*extra tilemap 1*/, int sub1flags, int sub2 /*extra tilemap 2*/, int sub2flags, int mixerflags, int extra_bitmap /*extra tilemap 3*/, int rushingheroes_hack);
 extern INT32 konamigx_mystwarr_kludge;

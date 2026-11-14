@@ -7,6 +7,52 @@
 #include "seibucop.h"
 #include "seibusnd.h"
 
+
+static bool legion_frame_active;
+extern int FBA_LuaRunning();
+
+struct LegionSoundCommand {
+    enum Kind { Timer, Irq, Finish } kind;
+    INT32 arg0, arg1;
+    bool last;
+};
+
+static void LegionPostSound(LegionSoundCommand::Kind kind, INT32 arg0 = 0, INT32 arg1 = 0, bool last = false)
+{
+    if (kind == LegionSoundCommand::Timer) {
+        BurnTimerUpdate(arg0);
+        if (last) BurnTimerEndFrame(arg1);
+    } else if (kind == LegionSoundCommand::Irq) {
+        seibu_main_word_write(arg0, arg1);
+    } else ZetClose();
+}
+
+
+static void LegionBeginSound()
+{
+    ZetOpen(0);
+}
+
+static UINT8 LegionSoundRead(INT32 offset)
+{
+    // Completion transfers passive latch ownership to the main CPU.
+    {}
+    return seibu_main_word_read(offset);
+}
+
+static void LegionSoundWrite(INT32 offset, UINT8 data)
+{
+    // Register 4 changes the Z80 vector/IRQ and executes on its owner.
+    // Other registers are shared command bytes and pending flags.
+    if (legion_frame_active && ((offset >> 1) & 7) == 4) {
+        LegionPostSound(LegionSoundCommand::Irq, offset, data);
+        {}
+    } else {
+        {}
+        seibu_main_word_write(offset, data);
+    }
+}
+
 static UINT8 *AllMem;
 static UINT8 *Drv68KROM;
 static UINT8 *DrvZ80ROM;
@@ -268,7 +314,7 @@ static struct BurnInputInfo GrainbowInputList[] = {
 	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy1 + 13,	"p2 fire 2"	},
 	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy1 + 14,	"p2 fire 3"	},
 
-	{"P3 Start",		BIT_DIGITAL,	DrvJoy3 + 8,	"p3 start"	},
+	{"P3 Start",		BIT_DIGITAL,	DrvJoy1 + 8,	"p3 start"	},
 	{"P3 Up",			BIT_DIGITAL,	DrvJoy2 + 0,	"p3 up"		},
 	{"P3 Down",			BIT_DIGITAL,	DrvJoy2 + 1,	"p3 down"	},
 	{"P3 Left",			BIT_DIGITAL,	DrvJoy2 + 2,	"p3 left"	},
@@ -277,7 +323,7 @@ static struct BurnInputInfo GrainbowInputList[] = {
 	{"P3 Button 2",		BIT_DIGITAL,	DrvJoy2 + 5,	"p3 fire 2"	},
 	{"P3 Button 3",		BIT_DIGITAL,	DrvJoy2 + 6,	"p3 fire 3"	},
 
-	{"P4 Start",		BIT_DIGITAL,	DrvJoy3 + 9,	"p4 start"	},
+	{"P4 Start",		BIT_DIGITAL,	DrvJoy1 + 9,	"p4 start"	},
 	{"P4 Up",			BIT_DIGITAL,	DrvJoy2 + 8,	"p4 up"		},
 	{"P4 Down",			BIT_DIGITAL,	DrvJoy2 + 9,	"p4 down"	},
 	{"P4 Left",			BIT_DIGITAL,	DrvJoy2 + 10,	"p4 left"	},
@@ -790,7 +836,7 @@ static void __fastcall legionna_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (address >= 0x100700 && address <= 0x10071f) {
-		seibu_main_word_write((address-0x100700)/2, data);
+		LegionSoundWrite((address-0x100700)/2, data);
 		return;
 	}
 
@@ -805,7 +851,7 @@ static void __fastcall legionna_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if (address >= 0x100700 && address <= 0x10071f) {
-		seibu_main_word_write((address-0x100700)/2, data);
+		LegionSoundWrite((address-0x100700)/2, data);
 		return;
 	}
 
@@ -826,9 +872,9 @@ static UINT16 __fastcall legionna_main_read_word(UINT32 address)
 	if (address >= 0x100700 && address <= 0x10071f) {
 		if (denjinmk_hack) {
 			if (address == 0x100714) return 1;
-			return seibu_main_word_read(((address & 0x1f)/2) & 7);
+			return LegionSoundRead(((address & 0x1f)/2) & 7);
 		}
-		return seibu_main_word_read((address & 0x1f)/2);
+		return LegionSoundRead((address & 0x1f)/2);
 	}
 
 	return legionna_common_read_word(address);
@@ -853,7 +899,7 @@ static UINT16 __fastcall cupsocs_main_read_word(UINT32 address)
 	if (address >= 0x100700 && address <= 0x10071f)
 		return cupsoc_main_read_word(address + 0x40);
 	if (address >= 0x100740 && address <= 0x10075f)
-		return seibu_main_word_read((address & 0x1f) / 2);
+		return LegionSoundRead((address & 0x1f) / 2);
 	if (address >= 0x100600 && address <= 0x10067f) return 0;
 	return legionna_common_read_word(address);
 }
@@ -865,7 +911,7 @@ static void __fastcall cupsocs_main_write_word(UINT32 address, UINT16 data)
 		return;
 	}
 	if (address >= 0x100740 && address <= 0x10075f) {
-		seibu_main_word_write((address & 0x1f) / 2, data);
+		LegionSoundWrite((address & 0x1f) / 2, data);
 		return;
 	}
 	legionna_common_write_word(address, data);
@@ -875,7 +921,7 @@ static void __fastcall cupsocs_main_write_byte(UINT32 address, UINT8 data)
 {
 	if (address >= 0x100600 && address <= 0x10067f) return;
 	if (address >= 0x100740 && address <= 0x10075f) {
-		seibu_main_word_write((address & 0x1f) / 2, data);
+		LegionSoundWrite((address & 0x1f) / 2, data);
 		return;
 	}
 	legionna_common_write_byte(address, data);
@@ -889,7 +935,7 @@ static void __fastcall heatbrl_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (address >= 0x1007c0 && address <= 0x1007df) {
-		seibu_main_word_write((address-0x1007c0)/2, data);
+		LegionSoundWrite((address-0x1007c0)/2, data);
 		return;
 	}
 
@@ -904,7 +950,7 @@ static void __fastcall heatbrl_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if (address >= 0x1007c0 && address <= 0x1007df) {
-		seibu_main_word_write((address-0x1007c0)/2, data);
+		LegionSoundWrite((address-0x1007c0)/2, data);
 		bprintf(0, _T("sound wb? %X\n"), address);
 		return;
 	}
@@ -920,7 +966,7 @@ static UINT16 __fastcall heatbrl_main_read_word(UINT32 address)
 	}
 
 	if (address >= 0x1007c0 && address <= 0x1007df) {
-		return seibu_main_word_read((address & 0x1f)/2);
+		return LegionSoundRead((address & 0x1f)/2);
 	}
 
 	return legionna_common_read_word(address);
@@ -1045,6 +1091,7 @@ static tilemap_callback( tx )
 
 static INT32 DrvDoReset()
 {
+    legion_frame_active = false;
 	memset (AllRam, 0, RamEnd - AllRam);
 
 	SekOpen(0);
@@ -1658,6 +1705,7 @@ static INT32 CupsocInit()
 
 static INT32 DrvExit()
 {
+    legion_frame_active = false;
 	GenericTilesExit();
 	SekExit();
 	seibu_sound_exit();
@@ -1933,6 +1981,9 @@ static INT32 DrvFrame()
 		DrvDoReset();
 	}
 
+    if (FBA_LuaRunning()) ;
+    legion_frame_active = false;
+
 	ZetNewFrame();
 
 	{
@@ -1960,28 +2011,30 @@ static INT32 DrvFrame()
 	INT32 nCyclesDone[2] = { nExtraCycles[0], 0 };
 
 	SekOpen(0);
-	ZetOpen(0);
+	LegionBeginSound();
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
 		CPU_RUN(0, Sek);
 		if (i == (nInterleave - 1)) SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 
-		CPU_RUN_TIMER(1);
+        LegionPostSound(LegionSoundCommand::Timer, (i + 1) * nCyclesTotal[1] / nInterleave, nCyclesTotal[1], i == nInterleave - 1);
 	}
 
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
 
-	ZetClose();
 	SekClose();
 
-	if (pBurnDraw) {
-		BurnDrvRedraw();
-	}
+    if (legion_frame_active) ([](void *) {
+        if (pBurnDraw) BurnDrvRedraw();
+    })(NULL);
+    LegionPostSound(LegionSoundCommand::Finish);
+    if (!legion_frame_active && pBurnDraw) BurnDrvRedraw();
 
-	if (pBurnSoundOut) {
-		seibu_sound_update(pBurnSoundOut, nBurnSoundLen);
-	}
+    ([](void *) {
+        if (pBurnSoundOut) seibu_sound_update(pBurnSoundOut, nBurnSoundLen);
+    })(NULL);
+    legion_frame_active = false;
 
 	return 0;
 }
@@ -2019,6 +2072,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SCAN_VAR(nExtraCycles);
 	}
+
+    if (nAction & ACB_WRITE) MSM6295SetBank(0, DrvSndROM + (sample_bank & 1) * 0x40000, 0, 0x3ffff);
 
 	return 0;
 }

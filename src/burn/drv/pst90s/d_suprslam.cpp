@@ -7,20 +7,16 @@
 #include "z80_intf.h"
 #include "konamiic.h"
 #include "burn_ym2610.h"
-#include "epic12_threads.h"
 #include "suprslam_sprite.h"
 #include "suprslam_palette.h"
 #include "suprslam_video.h"
 
 static SuprslamPaletteChanges PaletteChanges;
 
-static Epic12ThreadPool SuprslamThreads;
-static SuprslamSpriteTile *SpriteTiles;
 static UINT8 *SpriteCoverage;
 static UINT8 *BgCacheRAM;
 static INT32 BgCacheBank;
 static INT32 BgCacheValid;
-static INT32 SpriteTileCount, SpritePixelCount;
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -60,6 +56,61 @@ static INT32 sprite_ctrl;
 static UINT16 gfx_bank_reg;
 static UINT8 vs9209_latch[8];
 static UINT8 vs9209_dir[8];
+
+static bool suprslam_frame_active;
+static INT32 suprslam_sample_irq = -1;
+extern int FBA_LuaRunning();
+
+static void SuprslamFlushSampleIrq()
+{
+	// Sample callbacks publish an IRQ while Z80 is stopped at Invoke. Apply
+	// it on the Z80 owner before register/timer processing or CPU execution resumes.
+	if (suprslam_sample_irq >= 0) {
+		ZetSetIRQLine(0, suprslam_sample_irq ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
+		suprslam_sample_irq = -1;
+	}
+}
+struct SuprslamSoundCommand {
+	enum Kind { Timer, Nmi, Finish } kind;
+	INT32 value;
+};
+static void SuprslamApplySound(const SuprslamSoundCommand &command)
+{
+	if (command.kind == SuprslamSoundCommand::Timer) {
+		BurnTimerUpdate(command.value);
+	} else if (command.kind == SuprslamSoundCommand::Nmi) {
+		soundlatch = command.value;
+		sound_flag = 1;
+		ZetNmi();
+	} else {
+		BurnTimerEndFrame(command.value);
+		if (pBurnSoundOut) {
+			{
+				BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
+			}
+			SuprslamFlushSampleIrq();
+		}
+	}
+}
+static void SuprslamPostSound(SuprslamSoundCommand::Kind kind, INT32 value)
+{
+	const SuprslamSoundCommand command = { kind, value };
+	SuprslamApplySound(command);
+}
+static INT32 SuprslamSoundFlag()
+{
+	{
+	}
+	return sound_flag;
+}
+static void SuprslamBeginFrame()
+{
+	if (FBA_LuaRunning())
+		;
+	suprslam_frame_active = false;
+	ZetNewFrame();
+	ZetOpen(0);
+}
 
 static struct BurnInputInfo SuprslamInputList[] = {
 	{"P1 Coin",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
@@ -224,10 +275,10 @@ STDDIPINFO(Suprslamk)
 
 static inline void palette_write(INT32 offset)
 {
-	UINT16 p = BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvPalRAM + offset)));
+	UINT16 p = BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvPalRAM + offset)));
 
-	INT32 r = (p >>  0) & 0x1f;
-	INT32 b = (p >>  5) & 0x1f;
+	INT32 r = (p >> 0) & 0x1f;
+	INT32 b = (p >> 5) & 0x1f;
 	INT32 g = (p >> 10) & 0x1f;
 
 	r = (r << 3) | (r >> 2);
@@ -267,22 +318,19 @@ static void vs9209_write(INT32 offset, UINT8 data)
 static void __fastcall suprslam_main_write_word(UINT32 address, UINT16 data)
 {
 	if ((address & 0xfffff000) == 0xffa000) {
-		*((UINT16*)(DrvPalRAM + (address & 0xffe))) = BURN_ENDIAN_SWAP_INT16(data);
+		*((UINT16 *)(DrvPalRAM + (address & 0xffe))) = BURN_ENDIAN_SWAP_INT16(data);
 		PaletteChanges.Mark((address & 0xffe) / 2);
 		return;
 	}
 
-	switch (address)
-	{
+	switch (address) {
 		case 0xff9000:
-			soundlatch = data & 0xff;
-			sound_flag = 1;
-			ZetNmi();
-		return;
+			SuprslamPostSound(SuprslamSoundCommand::Nmi, data & 0xff);
+			return;
 
 		case 0xffe000:
 			gfx_bank_write(data);
-		return;
+			return;
 	}
 
 	if ((address & 0xffffffe0) == 0xfff000) {
@@ -300,9 +348,7 @@ static void __fastcall suprslam_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if (address == 0xff9001) {
-		soundlatch = data;
-		sound_flag = 1;
-		ZetNmi();
+		SuprslamPostSound(SuprslamSoundCommand::Nmi, data);
 		return;
 	}
 
@@ -325,11 +371,16 @@ static UINT16 __fastcall suprslam_main_read_word(UINT32 address)
 {
 	if ((address & 0xfffffff0) == 0xfff000) {
 		switch ((address >> 1) & 7) {
-			case 0: return DrvInputs[0];
-			case 1: return DrvInputs[1];
-			case 2: return DrvInputs[2] | (sound_flag ? 0x0000 : 0x0100);
-			case 3: return DrvDips[0];
-			case 4: return DrvDips[1];
+			case 0:
+				return DrvInputs[0];
+			case 1:
+				return DrvInputs[1];
+			case 2:
+				return DrvInputs[2] | (SuprslamSoundFlag() ? 0x0000 : 0x0100);
+			case 3:
+				return DrvDips[0];
+			case 4:
+				return DrvDips[1];
 		}
 	}
 
@@ -354,29 +405,27 @@ static void bankswitch(INT32 data)
 
 static void __fastcall suprslam_sound_write_port(UINT16 port, UINT8 data)
 {
-	switch (port & 0xff)
-	{
+	switch (port & 0xff) {
 		case 0x00:
 			bankswitch(data);
-		return;
+			return;
 
 		case 0x04:
 			sound_flag = 0;
-		return;
+			return;
 
 		case 0x08:
 		case 0x09:
 		case 0x0a:
 		case 0x0b:
 			BurnYM2610Write(port & 3, data);
-		return;
+			return;
 	}
 }
 
 static UINT8 __fastcall suprslam_sound_read_port(UINT16 port)
 {
-	switch (port & 0xff)
-	{
+	switch (port & 0xff) {
 		case 0x04:
 			return soundlatch;
 
@@ -392,14 +441,15 @@ static UINT8 __fastcall suprslam_sound_read_port(UINT16 port)
 
 static void DrvFMIRQHandler(INT32, INT32 nStatus)
 {
-	if (ZetGetActive() == -1) return;
+	if (ZetGetActive() == -1)
+		return;
 
 	ZetSetIRQLine(0, nStatus ? CPU_IRQSTATUS_ACK : CPU_IRQSTATUS_NONE);
 }
 
-static tilemap_callback( bg )
+static tilemap_callback(bg)
 {
-	UINT16 attr = BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvBgRAM + offs * 2)));
+	UINT16 attr = BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvBgRAM + offs * 2)));
 
 	INT32 code = (attr & 0x0fff) + bg_bank;
 	INT32 color = (attr >> 12) + 0x10;
@@ -407,9 +457,9 @@ static tilemap_callback( bg )
 	TILE_SET_INFO(1, code, color, 0);
 }
 
-static tilemap_callback( screen )
+static tilemap_callback(screen)
 {
-	UINT16 attr = BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvScreenRAM + offs * 2)));
+	UINT16 attr = BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvScreenRAM + offs * 2)));
 
 	INT32 code = (attr & 0x0fff) + screen_bank;
 	INT32 color = attr >> 12;
@@ -419,10 +469,12 @@ static tilemap_callback( screen )
 
 static INT32 DrvDoReset()
 {
+	suprslam_frame_active = false;
+	suprslam_sample_irq = -1;
 	BgCacheValid = 0;
 	DrvRecalc = 1;
 	PaletteChanges.Clear();
-	memset (AllRam, 0, RamEnd - AllRam);
+	memset(AllRam, 0, RamEnd - AllRam);
 
 	SekOpen(0);
 	SekReset();
@@ -451,37 +503,58 @@ static INT32 DrvDoReset()
 
 static INT32 MemIndex()
 {
-	UINT8 *Next; Next = AllMem;
+	UINT8 *Next;
+	Next = AllMem;
 
-	Drv68KROM		= Next; Next += 0x100000;
-	DrvZ80ROM		= Next; Next += 0x020000;
+	Drv68KROM = Next;
+	Next += 0x100000;
+	DrvZ80ROM = Next;
+	Next += 0x020000;
 
-	DrvGfxROM[0]	= Next; Next += 0x400000;
-	DrvGfxROM[1]	= Next; Next += 0x1000000;
-	DrvGfxROM[2]	= Next; Next += 0x800000;
-	SpriteCoverage = Next; Next += 0x10000;
-	BgCacheRAM = Next; Next += 0x2000;
+	DrvGfxROM[0] = Next;
+	Next += 0x400000;
+	DrvGfxROM[1] = Next;
+	Next += 0x1000000;
+	DrvGfxROM[2] = Next;
+	Next += 0x800000;
+	SpriteCoverage = Next;
+	Next += 0x10000;
+	BgCacheRAM = Next;
+	Next += 0x2000;
 
-	DrvSndROM[0]	= Next; Next += 0x200000;
-	DrvSndROM[1]	= Next; Next += 0x100000;
+	DrvSndROM[0] = Next;
+	Next += 0x200000;
+	DrvSndROM[1] = Next;
+	Next += 0x100000;
 
-	DrvPalette		= (UINT32*)Next; Next += 0x800 * sizeof(UINT32);
+	DrvPalette = (UINT32 *)Next;
+	Next += 0x800 * sizeof(UINT32);
 
-	AllRam			= Next;
+	AllRam = Next;
 
-	DrvSprRAM		= Next; Next += 0x002000;
-	DrvSprTableRAM	= Next; Next += 0x010000;
-	Drv68KRAM		= Next; Next += 0x010000;
-	DrvScreenRAM	= Next; Next += 0x001000;
-	DrvBgRAM		= Next; Next += 0x002000;
-	DrvVRegs		= Next; Next += 0x000040;
-	DrvK053936LineRAM	= Next; Next += 0x001000;
-	DrvK053936CtrlRAM	= Next; Next += 0x000040;
-	DrvPalRAM		= Next; Next += 0x001000;
-	DrvZ80RAM		= Next; Next += 0x000800;
+	DrvSprRAM = Next;
+	Next += 0x002000;
+	DrvSprTableRAM = Next;
+	Next += 0x010000;
+	Drv68KRAM = Next;
+	Next += 0x010000;
+	DrvScreenRAM = Next;
+	Next += 0x001000;
+	DrvBgRAM = Next;
+	Next += 0x002000;
+	DrvVRegs = Next;
+	Next += 0x000040;
+	DrvK053936LineRAM = Next;
+	Next += 0x001000;
+	DrvK053936CtrlRAM = Next;
+	Next += 0x000040;
+	DrvPalRAM = Next;
+	Next += 0x001000;
+	DrvZ80RAM = Next;
+	Next += 0x000800;
 
-	RamEnd			= Next;
-	MemEnd			= Next;
+	RamEnd = Next;
+	MemEnd = Next;
 
 	return 0;
 }
@@ -490,34 +563,36 @@ static INT32 DrvGfxDecode(UINT8 *tmp)
 {
 	INT32 Plane[4] = { 0, 1, 2, 3 };
 	INT32 XOffs8x8[8] = { 4, 0, 12, 8, 20, 16, 28, 24 };
-	INT32 YOffs8x8[8] = { 0*32, 1*32, 2*32, 3*32, 4*32, 5*32, 6*32, 7*32 };
-	INT32 XOffs16x16[16] = {
-		8, 12, 0, 4, 24, 28, 16, 20,
-		32+8, 32+12, 32+0, 32+4, 32+24, 32+28, 32+16, 32+20
-	};
-	INT32 YOffs16x16[16] = {
-		0*64, 1*64, 2*64, 3*64, 4*64, 5*64, 6*64, 7*64,
-		8*64, 9*64, 10*64, 11*64, 12*64, 13*64, 14*64, 15*64
-	};
+	INT32 YOffs8x8[8] = { 0 * 32, 1 * 32, 2 * 32, 3 * 32, 4 * 32, 5 * 32, 6 * 32, 7 * 32 };
+	INT32 XOffs16x16[16] = { 8, 12, 0, 4, 24, 28, 16, 20, 32 + 8, 32 + 12, 32 + 0, 32 + 4, 32 + 24, 32 + 28, 32 + 16, 32 + 20 };
+	INT32 YOffs16x16[16] = { 0 * 64, 1 * 64, 2 * 64,  3 * 64,  4 * 64,  5 * 64,  6 * 64,  7 * 64,
+	                         8 * 64, 9 * 64, 10 * 64, 11 * 64, 12 * 64, 13 * 64, 14 * 64, 15 * 64 };
 
-	if (BurnLoadRom(tmp + 0x000000,  5, 1)) return 1;
+	if (BurnLoadRom(tmp + 0x000000, 5, 1))
+		return 1;
 
-	GfxDecode(0x10000, 4,  8,  8, Plane, XOffs8x8, YOffs8x8, 8*32, tmp, DrvGfxROM[0]);
+	GfxDecode(0x10000, 4, 8, 8, Plane, XOffs8x8, YOffs8x8, 8 * 32, tmp, DrvGfxROM[0]);
 
-	if (BurnLoadRom(tmp + 0x000000,  6, 1)) return 1;
-	if (BurnLoadRom(tmp + 0x200000,  7, 1)) return 1;
-	if (BurnLoadRom(tmp + 0x400000,  8, 1)) return 1;
-	if (BurnLoadRom(tmp + 0x600000,  9, 1)) return 1;
+	if (BurnLoadRom(tmp + 0x000000, 6, 1))
+		return 1;
+	if (BurnLoadRom(tmp + 0x200000, 7, 1))
+		return 1;
+	if (BurnLoadRom(tmp + 0x400000, 8, 1))
+		return 1;
+	if (BurnLoadRom(tmp + 0x600000, 9, 1))
+		return 1;
 
-	GfxDecode(0x10000, 4, 16, 16, Plane, XOffs16x16, YOffs16x16, 16*64, tmp, DrvGfxROM[1]);
+	GfxDecode(0x10000, 4, 16, 16, Plane, XOffs16x16, YOffs16x16, 16 * 64, tmp, DrvGfxROM[1]);
 	for (INT32 code = 0; code < 0x10000; code++) {
 		SpriteCoverage[code] = SuprslamTileCoverage(DrvGfxROM[1] + code * 256);
 	}
 
-	if (BurnLoadRom(tmp + 0x000000, 10, 1)) return 1;
-	if (BurnLoadRom(tmp + 0x200000, 11, 1)) return 1;
+	if (BurnLoadRom(tmp + 0x000000, 10, 1))
+		return 1;
+	if (BurnLoadRom(tmp + 0x200000, 11, 1))
+		return 1;
 
-	GfxDecode(0x08000, 4, 16, 16, Plane, XOffs16x16, YOffs16x16, 16*64, tmp, DrvGfxROM[2]);
+	GfxDecode(0x08000, 4, 16, 16, Plane, XOffs16x16, YOffs16x16, 16 * 64, tmp, DrvGfxROM[2]);
 
 	return 0;
 }
@@ -528,50 +603,58 @@ static INT32 DrvInit()
 	MemIndex();
 	INT32 nLen = MemEnd - (UINT8 *)0;
 
-	if ((AllMem = (UINT8 *)BurnMalloc(nLen)) == NULL) return 1;
+	if ((AllMem = (UINT8 *)BurnMalloc(nLen)) == NULL)
+		return 1;
 
 	memset(AllMem, 0, nLen);
 	MemIndex();
 
-	if (BurnLoadRom(Drv68KROM + 0x000000,  0, 1)) return 1;
-	if (BurnLoadRom(Drv68KROM + 0x080000,  1, 1)) return 1;
+	if (BurnLoadRom(Drv68KROM + 0x000000, 0, 1))
+		return 1;
+	if (BurnLoadRom(Drv68KROM + 0x080000, 1, 1))
+		return 1;
 
-	if (BurnLoadRom(DrvZ80ROM + 0x000000,  2, 1)) return 1;
+	if (BurnLoadRom(DrvZ80ROM + 0x000000, 2, 1))
+		return 1;
 
-	if (BurnLoadRom(DrvSndROM[0] + 0x000000,  3, 1)) return 1;
-	if (BurnLoadRom(DrvSndROM[1] + 0x000000,  4, 1)) return 1;
+	if (BurnLoadRom(DrvSndROM[0] + 0x000000, 3, 1))
+		return 1;
+	if (BurnLoadRom(DrvSndROM[1] + 0x000000, 4, 1))
+		return 1;
 
-	UINT8 *tmp = (UINT8*)BurnMalloc(0x800000);
+	UINT8 *tmp = (UINT8 *)BurnMalloc(0x800000);
 
-	if (tmp == NULL) return 1;
+	if (tmp == NULL)
+		return 1;
 
 	INT32 rc = DrvGfxDecode(tmp);
 	BurnFree(tmp);
 
-	if (rc) return 1;
+	if (rc)
+		return 1;
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
-	SekMapMemory(Drv68KROM,			0x000000, 0x0fffff, MAP_ROM);
-	SekMapMemory(DrvSprRAM,			0xfb0000, 0xfb1fff, MAP_RAM);
-	SekMapMemory(DrvSprTableRAM,		0xfc0000, 0xfcffff, MAP_RAM);
-	SekMapMemory(Drv68KRAM,			0xfd0000, 0xfdffff, MAP_RAM);
-	SekMapMemory(DrvScreenRAM,		0xfe0000, 0xfe0fff, MAP_RAM);
-	SekMapMemory(DrvBgRAM,			0xff0000, 0xff1fff, MAP_RAM);
-	SekMapMemory(DrvVRegs,			0xff2000, 0xff203f, MAP_RAM);
-	SekMapMemory(DrvK053936LineRAM,	0xff8000, 0xff8fff, MAP_RAM);
-	SekMapMemory(DrvPalRAM,			0xffa000, 0xffafff, MAP_ROM);
-	SekMapMemory(DrvK053936CtrlRAM,	0xffd000, 0xffd01f, MAP_RAM);
-	SekSetWriteWordHandler(0,		suprslam_main_write_word);
-	SekSetWriteByteHandler(0,		suprslam_main_write_byte);
-	SekSetReadWordHandler(0,			suprslam_main_read_word);
-	SekSetReadByteHandler(0,			suprslam_main_read_byte);
+	SekMapMemory(Drv68KROM, 0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(DrvSprRAM, 0xfb0000, 0xfb1fff, MAP_RAM);
+	SekMapMemory(DrvSprTableRAM, 0xfc0000, 0xfcffff, MAP_RAM);
+	SekMapMemory(Drv68KRAM, 0xfd0000, 0xfdffff, MAP_RAM);
+	SekMapMemory(DrvScreenRAM, 0xfe0000, 0xfe0fff, MAP_RAM);
+	SekMapMemory(DrvBgRAM, 0xff0000, 0xff1fff, MAP_RAM);
+	SekMapMemory(DrvVRegs, 0xff2000, 0xff203f, MAP_RAM);
+	SekMapMemory(DrvK053936LineRAM, 0xff8000, 0xff8fff, MAP_RAM);
+	SekMapMemory(DrvPalRAM, 0xffa000, 0xffafff, MAP_ROM);
+	SekMapMemory(DrvK053936CtrlRAM, 0xffd000, 0xffd01f, MAP_RAM);
+	SekSetWriteWordHandler(0, suprslam_main_write_word);
+	SekSetWriteByteHandler(0, suprslam_main_write_byte);
+	SekSetReadWordHandler(0, suprslam_main_read_word);
+	SekSetReadByteHandler(0, suprslam_main_read_byte);
 	SekClose();
 
 	ZetInit(0);
 	ZetOpen(0);
-	ZetMapMemory(DrvZ80ROM,			0x0000, 0x77ff, MAP_ROM);
-	ZetMapMemory(DrvZ80RAM,			0x7800, 0x7fff, MAP_RAM);
+	ZetMapMemory(DrvZ80ROM, 0x0000, 0x77ff, MAP_ROM);
+	ZetMapMemory(DrvZ80RAM, 0x7800, 0x7fff, MAP_RAM);
 	ZetSetOutHandler(suprslam_sound_write_port);
 	ZetSetInHandler(suprslam_sound_read_port);
 	ZetClose();
@@ -588,7 +671,7 @@ static INT32 DrvInit()
 	GenericTilemapInit(0, TILEMAP_SCAN_ROWS, screen_map_callback, 8, 8, 64, 32);
 	GenericTilemapInit(1, TILEMAP_SCAN_ROWS, bg_map_callback, 16, 16, 64, 64);
 	GenericTilemapUseDirtyTiles(1);
-	GenericTilemapSetGfx(0, DrvGfxROM[0], 4,  8,  8, 0x400000, 0x000, 0x0f);
+	GenericTilemapSetGfx(0, DrvGfxROM[0], 4, 8, 8, 0x400000, 0x000, 0x0f);
 	GenericTilemapSetGfx(1, DrvGfxROM[2], 4, 16, 16, 0x800000, 0x100, 0x0f);
 	GenericTilemapSetGfx(2, DrvGfxROM[1], 4, 16, 16, 0x1000000, 0x200, 0x0f);
 	GenericTilemapSetTransparent(0, 0x0f);
@@ -600,18 +683,14 @@ static INT32 DrvInit()
 	K053936SetOffset(0, -45, -21);
 
 	DrvDoReset();
-	SpriteTiles = (SuprslamSpriteTile*)BurnMalloc(0x8000 * sizeof(SuprslamSpriteTile));
-	if (SpriteTiles == NULL) return 1;
 	// 224 rows / minimum 64 uses at most three parts, including the caller.
-	SuprslamThreads.Configure(2);
 
 	return 0;
 }
 
 static INT32 DrvExit()
 {
-	SuprslamThreads.Shutdown();
-	BurnFree(SpriteTiles);
+	suprslam_frame_active = false;
 	K053936Exit();
 	GenericTilesExit();
 	BurnYM2610Exit();
@@ -624,18 +703,18 @@ static INT32 DrvExit()
 	return 0;
 }
 
-static void draw_sprite_tile(INT32 code, INT32 color, INT32 x, INT32 y,
-	INT32 flipx, INT32 flipy, INT32 zoomx, INT32 zoomy)
+static void draw_sprite_tile(INT32 code, INT32 color, INT32 x, INT32 y, INT32 flipx, INT32 flipy, INT32 zoomx, INT32 zoomy)
 {
-	if (SpriteCoverage[code] == 0) return;
+	if (SpriteCoverage[code] == 0)
+		return;
 	// Match RenderZoomedTile's rounded extent before rejecting wrapped copies.
 	const INT32 width = (zoomx + 1) / 2;
 	const INT32 height = (zoomy + 1) / 2;
-	if (x >= nScreenWidth || x + width <= 0 ||
-		y >= nScreenHeight || y + height <= 0) return;
+	if (x >= nScreenWidth || x + width <= 0 || y >= nScreenHeight || y + height <= 0)
+		return;
 
 	// At most one wrapped copy is visible on the 320x224 screen.
-	SuprslamSpriteTile &tile = SpriteTiles[SpriteTileCount++];
+	SuprslamSpriteTile tile;
 	tile.code = code;
 	tile.color = color;
 	tile.x = x;
@@ -645,36 +724,22 @@ static void draw_sprite_tile(INT32 code, INT32 color, INT32 x, INT32 y,
 	tile.flipx = flipx;
 	tile.flipy = flipy;
 	tile.opaque = SpriteCoverage[code] == 2;
-	SpritePixelCount += width * height;
-}
-
-struct SuprslamSpriteClip { INT32 left, right, top, bottom; };
-
-static void draw_sprite_rows(void *context, INT32 begin, INT32 end)
-{
-	const SuprslamSpriteClip &clip = *(SuprslamSpriteClip*)context;
-	const INT32 top = begin > clip.top ? begin : clip.top;
-	const INT32 bottom = end < clip.bottom ? end : clip.bottom;
-	// Each worker owns disjoint rows and visits tiles in the original order.
-	for (INT32 i = 0; i < SpriteTileCount; i++) {
-		SuprslamRenderTile(pTransDraw, nScreenWidth, GenericGfxData[2].gfxbase,
-			SpriteTiles[i], clip.left, clip.right, top, bottom);
-	}
+	INT32 left, right, top, bottom;
+	GenericTilesGetClip(&left, &right, &top, &bottom);
+	SuprslamRenderTile(pTransDraw, nScreenWidth, GenericGfxData[2].gfxbase, tile, left, right, top, bottom);
 }
 
 static void draw_sprites()
 {
-	SpriteTileCount = SpritePixelCount = 0;
-	UINT16 *spriteram = (UINT16*)DrvSprRAM;
-	UINT16 *spritetable = (UINT16*)DrvSprTableRAM;
+	UINT16 *spriteram = (UINT16 *)DrvSprRAM;
+	UINT16 *spritetable = (UINT16 *)DrvSprTableRAM;
 	GenericTilesGfx *gfx = &GenericGfxData[2];
 
-	for (INT32 offs = 0; offs < (0x2000 / 16); offs++)
-	{
+	for (INT32 offs = 0; offs < (0x2000 / 16); offs++) {
 		const UINT16 entry = BURN_ENDIAN_SWAP_INT16(spriteram[offs]);
-		if (entry & 0x4000) break;
-		if ((entry & 0x8000) == 0x0000)
-		{
+		if (entry & 0x4000)
+			break;
+		if ((entry & 0x8000) == 0x0000) {
 			INT32 attr_start = (entry & 0x03ff) * 4;
 			UINT16 *ram = &spriteram[attr_start];
 
@@ -694,9 +759,9 @@ static void draw_sprites()
 			INT32 yinc = flipy ? -1 : 1;
 			const INT32 height = (zoomy + 1) / 2;
 			INT32 positions[8], offsets[8];
-			const INT32 columns = SuprslamBuildColumns(ox, xsize, zoomx, flipx,
-				nScreenWidth, positions, offsets);
-			if (columns == 0) continue;
+			const INT32 columns = SuprslamBuildColumns(ox, xsize, zoomx, flipx, nScreenWidth, positions, offsets);
+			if (columns == 0)
+				continue;
 
 			for (INT32 ycnt = ystart; ycnt != yend; ycnt += yinc) {
 				const INT32 y = SuprslamWrapCoordinate(oy + ycnt * zoomy / 2, nScreenHeight);
@@ -713,15 +778,6 @@ static void draw_sprites()
 				map += xsize + 1;
 			}
 		}
-	}
-
-	SuprslamSpriteClip clip;
-	GenericTilesGetClip(&clip.left, &clip.right, &clip.top, &clip.bottom);
-	// Small sprite lists are faster without waking workers.
-	if (SpritePixelCount >= 524288) {
-		SuprslamThreads.ParallelFor(nScreenHeight, 64, draw_sprite_rows, &clip);
-	} else {
-		draw_sprite_rows(&clip, 0, nScreenHeight);
 	}
 }
 
@@ -742,12 +798,12 @@ static INT32 DrvDraw()
 
 	BurnTransferClear(0);
 
-	UINT16 *vregs = (UINT16*)DrvVRegs;
+	UINT16 *vregs = (UINT16 *)DrvVRegs;
 	GenericTilemapSetScrollX(0, BURN_ENDIAN_SWAP_INT16(vregs[0x04 / 2]));
 
 	if (nBurnLayer & 1) {
-		UINT16 *ctrl = (UINT16*)DrvK053936CtrlRAM;
-		UINT16 *line = (UINT16*)DrvK053936LineRAM;
+		UINT16 *ctrl = (UINT16 *)DrvK053936CtrlRAM;
+		UINT16 *line = (UINT16 *)DrvK053936LineRAM;
 
 		// Bitmap 1 contains palette indices; palette and ROZ changes do not
 		// invalidate it. Compare RAM to cover direct CPU writes and cheats.
@@ -756,9 +812,7 @@ static INT32 DrvDraw()
 				GenericTilemapAllTilesDirty(1);
 			} else {
 				// Each pair of RAM bytes describes one tile, including its palette.
-				SuprslamMarkBackgroundChanges(BgCacheRAM, DrvBgRAM, [](INT32 tile) {
-					GenericTilemapSetTileDirty(1, tile);
-				});
+				SuprslamMarkBackgroundChanges(BgCacheRAM, DrvBgRAM, [](INT32 tile) { GenericTilemapSetTileDirty(1, tile); });
 			}
 			GenericTilemapDraw(1, 1, TMAP_FORCEOPAQUE);
 			memcpy(BgCacheRAM, DrvBgRAM, 0x2000);
@@ -768,9 +822,12 @@ static INT32 DrvDraw()
 		K053936Draw(0, ctrl, line, K053936_DRAW_16BIT | K053936_DRAW_CLIP);
 	}
 
-	if (!(sprite_ctrl & 8) && (nSpriteEnable & 1)) draw_sprites();
-	if (nBurnLayer & 2) GenericTilemapDraw(0, pTransDraw, 0);
-	if ((sprite_ctrl & 8) && (nSpriteEnable & 1)) draw_sprites();
+	if (!(sprite_ctrl & 8) && (nSpriteEnable & 1))
+		draw_sprites();
+	if (nBurnLayer & 2)
+		GenericTilemapDraw(0, pTransDraw, 0);
+	if ((sprite_ctrl & 8) && (nSpriteEnable & 1))
+		draw_sprites();
 
 	BurnTransferCopy(DrvPalette);
 
@@ -779,9 +836,8 @@ static INT32 DrvDraw()
 
 static bool ranking_screen()
 {
-	return SuprslamRankingScreen(screen_bank, bg_bank, sprite_ctrl, [](int tile) {
-		return BURN_ENDIAN_SWAP_INT16(((UINT16*)DrvScreenRAM)[tile]);
-	});
+	return SuprslamRankingScreen(screen_bank, bg_bank, sprite_ctrl,
+	                             [](int tile) { return BURN_ENDIAN_SWAP_INT16(((UINT16 *)DrvScreenRAM)[tile]); });
 }
 
 static INT32 DrvFrame()
@@ -791,7 +847,6 @@ static INT32 DrvFrame()
 	}
 
 	SekNewFrame();
-	ZetNewFrame();
 
 	memset(DrvInputs, 0xff, sizeof(DrvInputs));
 
@@ -802,7 +857,7 @@ static INT32 DrvFrame()
 	}
 
 	SekOpen(0);
-	ZetOpen(0);
+	SuprslamBeginFrame();
 
 	INT32 nInterleave = 256;
 	INT32 nCyclesTotal[2] = { 16000000 / 60, 4000000 / 60 };
@@ -810,32 +865,32 @@ static INT32 DrvFrame()
 	INT32 nVBlankStart = nInterleave - ((2300 * 60 * nInterleave + 999999) / 1000000);
 	bool ranking_drawn = false;
 
-	for (INT32 i = 0; i < nInterleave; i++)
-	{
+	for (INT32 i = 0; i < nInterleave; i++) {
 		CPU_RUN(0, Sek);
 		if (i == nVBlankStart) {
 			// Only ranking lists need the pre-IRQ snapshot. Other scenes update later.
 			if (pBurnDraw && ranking_screen()) {
-				BurnDrvRedraw();
+				// Ranking must finish before the original pre-IRQ boundary.
+				{
+					BurnDrvRedraw();
+				}
 				ranking_drawn = true;
 			}
 			SekSetIRQLine(1, CPU_IRQSTATUS_AUTO);
 		}
 
-		BurnTimerUpdate((nCyclesTotal[1] * (i + 1)) / nInterleave);
+		SuprslamPostSound(SuprslamSoundCommand::Timer, (nCyclesTotal[1] * (i + 1)) / nInterleave);
 	}
 
-	BurnTimerEndFrame(nCyclesTotal[1]);
-
-	if (pBurnSoundOut) {
-		BurnYM2610Update(pBurnSoundOut, nBurnSoundLen);
-	}
-
-	ZetClose();
 	SekClose();
-
-	// Also use the normal phase if this IRQ ended the ranking scene.
-	if (pBurnDraw && (!ranking_drawn || !ranking_screen())) BurnDrvRedraw();
+	if (pBurnDraw && (!ranking_drawn || !ranking_screen()))
+		([](void *) { BurnDrvRedraw(); })(NULL);
+	SuprslamPostSound(SuprslamSoundCommand::Finish, nCyclesTotal[1]);
+	if (suprslam_frame_active)
+		;
+	else
+		ZetClose();
+	suprslam_frame_active = false;
 
 	return 0;
 }
@@ -850,9 +905,9 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 	if (nAction & ACB_MEMORY_RAM) {
 		memset(&ba, 0, sizeof(ba));
-		ba.Data		= AllRam;
-		ba.nLen		= RamEnd - AllRam;
-		ba.szName	= "All Ram";
+		ba.Data = AllRam;
+		ba.nLen = RamEnd - AllRam;
+		ba.szName = "All Ram";
 		BurnAcb(&ba);
 	}
 
@@ -888,23 +943,24 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 // From TV Animation Slam Dunk - Super Slams
 
 static struct BurnRomInfo suprslamRomDesc[] = {
-	{ "eb26ic47.bin",	0x080000, 0x8d051fd8, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "eb26ic73.bin",	0x080000, 0xca4ad383, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "eb26ic47.bin", 0x080000, 0x8d051fd8, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "eb26ic73.bin", 0x080000, 0xca4ad383, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "eb26ic38.bin",	0x020000, 0x153f2c50, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "eb26ic38.bin", 0x020000, 0x153f2c50, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
-	{ "eb26ic66.bin",	0x200000, 0x8cb33682, 3 | BRF_SND },           //  3 YM2610 ADPCM-A
-	{ "eb26ic59.bin",	0x100000, 0x4ae4095b, 4 | BRF_SND },           //  4 YM2610 ADPCM-B
+	{ "eb26ic66.bin", 0x200000, 0x8cb33682, 3 | BRF_SND           }, //  3 YM2610 ADPCM-A
 
-	{ "eb26ic43.bin",	0x200000, 0x9dfb0959, 5 | BRF_GRA },           //  5 8x8 Tiles
+	{ "eb26ic59.bin", 0x100000, 0x4ae4095b, 4 | BRF_SND           }, //  4 YM2610 ADPCM-B
 
-	{ "eb26ic09.bin",	0x200000, 0x5a415365, 6 | BRF_GRA },           //  6 Sprites
-	{ "eb26ic10.bin",	0x200000, 0xa04f3140, 6 | BRF_GRA },           //  7
-	{ "eb26_100.bin",	0x200000, 0xc2ee5eb6, 6 | BRF_GRA },           //  8
-	{ "eb26_101.bin",	0x200000, 0x7df654b7, 6 | BRF_GRA },           //  9
+	{ "eb26ic43.bin", 0x200000, 0x9dfb0959, 5 | BRF_GRA           }, //  5 8x8 Tiles
 
-	{ "eb26ic12.bin",	0x200000, 0x14561bd7, 7 | BRF_GRA },           // 10 16x16 BG Tiles
-	{ "eb26ic36.bin",	0x200000, 0x92019d89, 7 | BRF_GRA },           // 11
+	{ "eb26ic09.bin", 0x200000, 0x5a415365, 6 | BRF_GRA           }, //  6 Sprites
+	{ "eb26ic10.bin", 0x200000, 0xa04f3140, 6 | BRF_GRA           }, //  7
+	{ "eb26_100.bin", 0x200000, 0xc2ee5eb6, 6 | BRF_GRA           }, //  8
+	{ "eb26_101.bin", 0x200000, 0x7df654b7, 6 | BRF_GRA           }, //  9
+
+	{ "eb26ic12.bin", 0x200000, 0x14561bd7, 7 | BRF_GRA           }, // 10 16x16 BG Tiles
+	{ "eb26ic36.bin", 0x200000, 0x92019d89, 7 | BRF_GRA           }, // 11
 };
 
 STD_ROM_PICK(suprslam)
@@ -923,23 +979,24 @@ struct BurnDriver BurnDrvSuprslam = {
 // From TV Animation Slam Dunk - Super Slams (Korean Translation)
 
 static struct BurnRomInfo suprslamkRomDesc[] = {
-	{ "eb26ic47k.bin",	0x080000, 0x3fa42f6e, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "eb26ic73k.bin",	0x080000, 0x08d9cdf4, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "eb26ic47k.bin", 0x080000, 0x3fa42f6e, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "eb26ic73k.bin", 0x080000, 0x08d9cdf4, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "eb26ic38.bin",	0x020000, 0x153f2c50, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "eb26ic38.bin",  0x020000, 0x153f2c50, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
-	{ "eb26ic66.bin",	0x200000, 0x8cb33682, 3 | BRF_SND },           //  3 YM2610 ADPCM-A
-	{ "eb26ic59.bin",	0x100000, 0x4ae4095b, 4 | BRF_SND },           //  4 YM2610 ADPCM-B
+	{ "eb26ic66.bin",  0x200000, 0x8cb33682, 3 | BRF_SND           }, //  3 YM2610 ADPCM-A
 
-	{ "eb26ic43k.bin",	0x200000, 0xcfc28eed, 5 | BRF_GRA },           //  5 8x8 Tiles
+	{ "eb26ic59.bin",  0x100000, 0x4ae4095b, 4 | BRF_SND           }, //  4 YM2610 ADPCM-B
 
-	{ "eb26ic09.bin",	0x200000, 0x5a415365, 6 | BRF_GRA },           //  6 Sprites
-	{ "eb26ic10.bin",	0x200000, 0xa04f3140, 6 | BRF_GRA },           //  7
-	{ "eb26_100k.bin",	0x200000, 0x87d5f622, 6 | BRF_GRA },           //  8
-	{ "eb26_101.bin",	0x200000, 0x7df654b7, 6 | BRF_GRA },           //  9
+	{ "eb26ic43k.bin", 0x200000, 0xcfc28eed, 5 | BRF_GRA           }, //  5 8x8 Tiles
 
-	{ "eb26ic12.bin",	0x200000, 0x14561bd7, 7 | BRF_GRA },           // 10 16x16 BG Tiles
-	{ "eb26ic36.bin",	0x200000, 0x92019d89, 7 | BRF_GRA },           // 11
+	{ "eb26ic09.bin",  0x200000, 0x5a415365, 6 | BRF_GRA           }, //  6 Sprites
+	{ "eb26ic10.bin",  0x200000, 0xa04f3140, 6 | BRF_GRA           }, //  7
+	{ "eb26_100k.bin", 0x200000, 0x87d5f622, 6 | BRF_GRA           }, //  8
+	{ "eb26_101.bin",  0x200000, 0x7df654b7, 6 | BRF_GRA           }, //  9
+
+	{ "eb26ic12.bin",  0x200000, 0x14561bd7, 7 | BRF_GRA           }, // 10 16x16 BG Tiles
+	{ "eb26ic36.bin",  0x200000, 0x92019d89, 7 | BRF_GRA           }, // 11
 };
 
 STD_ROM_PICK(suprslamk)

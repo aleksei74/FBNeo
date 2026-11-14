@@ -4298,6 +4298,37 @@ struct BurnDriver BurnDrvGrdianszs = {
 // Add Korean Translation
 //========================
 
+static struct BurnRomInfo grdianskRomDesc[] = {
+	{ "u2k.bin",      0x080000, 0x2d8eacaa, BRF_ESS | BRF_PRG },	// 68000 code
+	{ "u3k.bin",      0x080000, 0x0df12de7, BRF_ESS | BRF_PRG },
+	{ "u4k.bin",      0x080000, 0x69a7e7a7, BRF_ESS | BRF_PRG },
+	{ "u5k.bin",      0x080000, 0x98fa0115, BRF_ESS | BRF_PRG },
+
+	{ "u16k.bin",     0x400000, 0xfb2a13a4, BRF_GRA },				// GFX
+	{ "u20k.bin",     0x400000, 0x5f4481b1, BRF_GRA },
+	{ "u15k.bin",     0x400000, 0x57cac62a, BRF_GRA },
+	{ "u19k.bin",     0x400000, 0xcc95936e, BRF_GRA },
+	{ "u18.bin",      0x400000, 0x967babf4, BRF_GRA },
+	{ "u22k.bin",     0x400000, 0x61e5fd73, BRF_GRA },
+	{ "u17.bin",      0x400000, 0x0fad0629, BRF_GRA },
+	{ "u21k.bin",     0x400000, 0x85c04ffe, BRF_GRA },
+
+	{ "u32.bin",      0x100000, 0xcf0f3017, BRF_SND },				// PCM
+};
+
+STD_ROM_PICK(grdiansk)
+STD_ROM_FN(grdiansk)
+
+struct BurnDriver BurnDrvGrdiansk = {
+	"grdiansk", "grdians", NULL, NULL, "2026",
+	"Guardians / Denjin Makai II (Korean Translation)\0", NULL, "Winkysoft (Banpresto license)", "Newer Seta",
+	L"Guardians / Denjin Makai II (Korean Translation)\0\uAC00\uB514\uC5B8\uC2A4 / \uC804\uC2E0\uB9C8\uAD34 II (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_SETA2, GBF_SCRFIGHT, 0,
+	NULL, grdianskRomInfo, grdianskRomName, NULL, NULL, NULL, NULL, grdiansInputInfo, grdiansDIPInfo,
+	grdiansInit, grdiansExit, grdiansFrame, DrvDraw, grdiansScan, &bRecalcPalette, 0x8000,
+	304, 232, 4, 3
+};
+
 static struct BurnRomInfo penbroskRomDesc[] = {
 	{ "a-blast_kor_u06.u06",	  0x080000, 0x6f570bd9, BRF_ESS | BRF_PRG },	// 68000 code
 	{ "a-blast_kor_u07.u07",	  0x080000, 0x43fafe40, BRF_ESS | BRF_PRG },

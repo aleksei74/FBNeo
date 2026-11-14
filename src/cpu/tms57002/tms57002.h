@@ -22,7 +22,14 @@ typedef UINT32 u32;
 typedef INT64 s64;
 typedef UINT64 u64;
 
+// Internal DSP implementation, not part of the libretro shared-library ABI.
+// Local binding lets ELF compilers inline handlers instead of preserving
+// replaceable out-of-line calls for every decoded DSP operation.
+#if defined(__GNUC__) && !defined(_WIN32)
+class __attribute__((visibility("hidden"))) tms57002_device
+#else
 class tms57002_device
+#endif
 {
 public:
 	tms57002_device();

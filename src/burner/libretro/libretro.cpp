@@ -2,6 +2,11 @@
 #include <string>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <errno.h>
+#if defined(__linux__)
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 
 #include "libretro.h"
 #include "burner.h"

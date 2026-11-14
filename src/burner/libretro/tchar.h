@@ -27,6 +27,16 @@
 	#include <string>
 #endif
 
+#ifdef __cplusplus
+#include <cstdio>
+#include <cstdlib>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <atomic>
+#include <exception>
+#include <stdexcept>
+#endif
 #include "streams/file_stream_transforms.h"
 
 extern int kNetGame;

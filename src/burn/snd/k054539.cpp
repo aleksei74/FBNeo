@@ -11,7 +11,8 @@
 // Dec 3, 2017: anti-pop/anti-click code added: rampdown, dpcm table symmetricification, check last sample of 4bit dpcm for huge dc offset)
 // Jan 19, 2018: added cubic resampling. -dink
 // Aug 21-24, 2020: added digital delay/echo effect. -dink
-// Generated with Codex AI (by DsNo)
+
+#define DELAY_DEBUG 0 // debug the digital delay stuff.
 
 #if defined (_MSC_VER)
 #define _USE_MATH_DEFINES
@@ -92,6 +93,7 @@ static INT32 nPosition[2];
 
 static inline UINT8 k054539_read_rom(k054539_info *chip, INT32 address)
 {
+	if (chip->k054539_flags & K054539_ROM_WRAP) address = (UINT32)address & chip->rom_mask;
 	if (address < 0 || (UINT32)address >= chip->rom_size) {
 		return 0;
 	}
@@ -99,12 +101,21 @@ static inline UINT8 k054539_read_rom(k054539_info *chip, INT32 address)
 	return chip->rom[address];
 }
 
+static inline UINT8 k054539_sample_rom(k054539_info *chip, INT32 address)
+{
+	return (chip->k054539_flags & K054539_GX) ? k054539_read_rom(chip, address) : chip->rom[address];
+}
+
 static void timer_callback(INT32 chip)
 {
 	if (Chips[chip].regs[0x22f] & 0x20) {
-		Chips[chip].timer_state ^= 1;
 		if (Chips[chip].intf.irq) {
-			Chips[chip].intf.irq(Chips[chip].timer_state);
+			if (Chips[chip].k054539_flags & (K054539_GX | K054539_TIMER_EDGES)) {
+				Chips[chip].timer_state ^= 1;
+				Chips[chip].intf.irq(Chips[chip].timer_state);
+			} else {
+				Chips[chip].intf.irq(chip);
+			}
 		}
 	}
 }
@@ -114,11 +125,9 @@ void K054539SetIRQCallback(INT32 chip, void (*irq_cb)(int))
 	info = &Chips[chip];
 	info->intf.irq = irq_cb;
 
-#if defined FBNEO_DEBUG
 	if (chip != 0) {
 		bprintf(0, _T("K054539SetIRQCallback(): timer only enabled for chip #0!\n"));
 	}
-#endif
 }
 
 void K054539SetFlags(INT32 chip, INT32 flags)
@@ -170,12 +179,6 @@ static void k054539_keyoff(INT32 channel)
 
 	if(k054539_regupdate())
 		info->regs[0x22c] &= ~(1 << channel);
-}
-
-static inline void k054539_keyoff_update(k054539_info *chip, INT32 channel)
-{
-	if (!(chip->regs[0x22f] & 0x80))
-		chip->regs[0x22c] &= ~(1 << channel);
 }
 
 void K054539Write(INT32 chip, INT32 offset, UINT8 data)
@@ -250,20 +253,33 @@ void K054539Write(INT32 chip, INT32 offset, UINT8 data)
 		case 0x227:
 		{
 			if (chip == 0) {
-				INT32 cycles = (INT32)((1 / ((38 + data) * (info->clock/384.0/14400.0))) * 18432000 / 2);
+				INT32 cycles = (1 / ((38 + data) * (info->clock/384.0/14400.0))) * 18432000;
+				//bprintf(0, _T("chip %d - timer:  data / cycles  %x  %d\n"), chip, data, cycles);
+				if (info->k054539_flags & (K054539_GX | K054539_TIMER_EDGES))
+					cycles = (INT32)((1 / ((38 + data) * (info->clock/384.0/14400.0))) * 18432000 / 2);
 				info->irqtimer.start(cycles, -1, 1, 1);
-				info->timer_state = 0;
-				if (info->intf.irq) info->intf.irq(info->timer_state);
+				if (info->k054539_flags & (K054539_GX | K054539_TIMER_EDGES)) {
+					info->timer_state = 0;
+					if (info->intf.irq) info->intf.irq(0);
+				}
 			}
 		}
 		break;
 
 		case 0x22d:
-			if(regbase[0x22e] == 0x80) {
-				INT32 addr = (info->cur_ptr & 0x3fff) | ((info->cur_ptr & 0x10000) >> 2);
-				info->delay_ram[addr] = data;
+			if (info->k054539_flags & K054539_GX) {
+				if (regbase[0x22e] == 0x80) {
+					INT32 addr = (info->cur_ptr & 0x3fff) | ((info->cur_ptr & 0x10000) >> 2);
+					info->delay_ram[addr] = data;
+				}
+				info->cur_ptr = (info->cur_ptr + 1) & 0x1ffff;
+				break;
 			}
-			info->cur_ptr = (info->cur_ptr + 1) & 0x1ffff;
+			if(regbase[0x22e] == 0x80)
+				info->cur_zone[info->cur_ptr] = data;
+			info->cur_ptr++;
+			if(info->cur_ptr == info->cur_limit)
+				info->cur_ptr = 0;
 		break;
 
 		case 0x22e:
@@ -275,7 +291,7 @@ void K054539Write(INT32 chip, INT32 offset, UINT8 data)
 		break;
 
 		case 0x22f:
-			if (!(data & 0x20)) {
+			if ((info->k054539_flags & (K054539_GX | K054539_TIMER_EDGES)) && !(data & 0x20)) {
 				info->timer_state = 0;
 				if (info->intf.irq) info->intf.irq(info->timer_state);
 			}
@@ -300,14 +316,21 @@ UINT8 K054539Read(INT32 chip, INT32 offset)
 	switch(offset) {
 	case 0x22d:
 		if(info->regs[0x22f] & 0x10) {
-			UINT8 res;
-			if (info->regs[0x22e] == 0x80) {
-				INT32 addr = (info->cur_ptr & 0x3fff) | ((info->cur_ptr & 0x10000) >> 2);
-				res = info->delay_ram[addr];
-			} else {
-				res = k054539_read_rom(info, (0x20000 * info->regs[0x22e]) + info->cur_ptr);
+			if (info->k054539_flags & K054539_GX) {
+				UINT8 res;
+				if (info->regs[0x22e] == 0x80) {
+					INT32 addr = (info->cur_ptr & 0x3fff) | ((info->cur_ptr & 0x10000) >> 2);
+					res = info->delay_ram[addr];
+				} else {
+					res = k054539_read_rom(info, (0x20000 * info->regs[0x22e]) + info->cur_ptr);
+				}
+				info->cur_ptr = (info->cur_ptr + 1) & 0x1ffff;
+				return res;
 			}
-			info->cur_ptr = (info->cur_ptr + 1) & 0x1ffff;
+			UINT8 res = info->cur_zone[info->cur_ptr];
+			info->cur_ptr++;
+			if(info->cur_ptr == info->cur_limit)
+				info->cur_ptr = 0;
 			return res;
 		} else
 			return 0;
@@ -334,14 +357,15 @@ void K054539Reset(INT32 chip)
 	info->delay_pos = 0;
 	info->delay_size = 0;
 	info->delay_decay = 0.6;
+	info->timer_state = 0;
 	memset(info->delay_ram, 0, DELAYRAM_SIZE);
 
 	if (chip == 0) {
 		info->irqtimer.stop_retrig();
 	}
-	info->timer_state = 0;
-	if (info->intf.irq) info->intf.irq(info->timer_state);
 
+	info->timer_state = 0;
+	if ((info->k054539_flags & (K054539_GX | K054539_TIMER_EDGES)) && info->intf.irq) info->intf.irq(0);
 	info->cur_ptr = 0;
 	info->cur_zone = info->rom;
 	memset(info->regs, 0, sizeof(info->regs));
@@ -361,7 +385,6 @@ static void k054539_init_chip(INT32 clock, UINT8 *rom, INT32 nLen)
 	info->delay_pos = 0;
 	info->delay_size = 0;
 	info->delay_decay = 0.6;
-	info->timer_state = 0;
 	memset(info->delay_ram, 0, DELAYRAM_SIZE);
 
 	info->cur_ptr = 0;
@@ -381,10 +404,9 @@ static void k054539_init_chip(INT32 clock, UINT8 *rom, INT32 nLen)
 	info->output_dir[BURN_SND_K054539_ROUTE_1] = BURN_SND_ROUTE_BOTH;
 	info->output_dir[BURN_SND_K054539_ROUTE_2] = BURN_SND_ROUTE_BOTH;
 
-	INT32 sample_rate = clock / 384;
-	if (sample_rate <= 0) sample_rate = 48000;
-	info->biquad[0].init(FILT_HIGHPASS, sample_rate, 500, 1.0, 0.0);
-	info->biquad[1].init(FILT_LOWPASS, sample_rate, 12000, 1.0, 0.0);
+	bprintf(0, _T("*   K054539: init biquad filter for delay taps.\n"));
+	info->biquad[0].init(FILT_HIGHPASS, 48000, 500, 1.0, 0.0);
+	info->biquad[1].init(FILT_LOWPASS, 48000, 12000, 1.0, 0.0);
 }
 
 void K054539SetApanCallback(INT32 chip, void (*ApanCB)(double, double))
@@ -482,19 +504,26 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 	if (chip > nNumChips) bprintf(PRINT_ERROR, _T("K054539Update called with invalid chip %x\n"), chip);
 #endif
 
-	k054539_info *const info = &Chips[chip];
+	info = &Chips[chip];
 #define VOL_CAP 1.80
 
 	static const INT16 dpcm[16] = {
 		0 * 0x100,   1 * 0x100,   2 * 0x100,   4 * 0x100,  8 * 0x100, 16 * 0x100, 32 * 0x100, 64 * 0x100,
 		0 * 0x100, -64 * 0x100, -32 * 0x100, -16 * 0x100, -8 * 0x100, -4 * 0x100, -2 * 0x100, -1 * 0x100
 	};
+#if DELAY_DEBUG
+	bprintf(0, _T("-- frame %d --\n"), nCurrentFrame);
+	INT32 once[8] = {0,0,0,0,0,0,0,0};
+#endif
 	INT16 *delay_line = (INT16 *)(info->delay_ram);
+	UINT32 rom_mask = info->rom_mask;
 
 	if(!(info->regs[0x22f] & 1))
 		return;
 
-	// re-sampleizer pt.1
+	// Derive input demand from this call's output length and fractional carry.
+	// GX flushes at register writes, so every call must retire its consumed
+	// input history; waiting for a full-frame call accumulates stale positions.
 	INT32 nSamplesNeeded = (INT32)(((UINT64)nFractionalPosition[chip] + (UINT64)nSampleSize[chip] * samples_len) >> 16) + 8;
 
 	INT16 *pBufL = soundbuf[chip] + 0 * 4096 + 5 + nPosition[chip];
@@ -503,11 +532,24 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 	for (INT32 sample = 0; sample < (nSamplesNeeded - nPosition[chip]); sample++) {
 		double lval, rval;
 
-		if(!(info->k054539_flags & K054539_DISABLE_REVERB))
-			lval = rval = delay_line[info->delay_pos];
-		else
-			lval = rval = 0;
-		delay_line[info->delay_pos] = 0;
+		if (info->k054539_flags & K054539_GX) {
+			if(!(info->k054539_flags & K054539_DISABLE_REVERB))
+				lval = rval = delay_line[info->delay_pos];
+			else
+				lval = rval = 0;
+			delay_line[info->delay_pos] = 0;
+		} else {
+			if(!(info->k054539_flags & K054539_DISABLE_REVERB) && info->delay_size) {
+				lval = rval = delay_line[info->delay_pos];
+
+				INT16 tap0 = info->biquad[1].filter(delay_line[info->delay_pos]) / 2;
+				delay_line[info->delay_pos] = tap0;
+				delay_line[info->delay_pos] *= info->delay_decay; // delay decay length
+				info->delay_pos = (info->delay_pos + 1) % (info->delay_size);
+			}
+			else
+				lval = rval = 0;
+		}
 
 		for(INT32 ch=0; ch<8; ch++) {
 			if(info->regs[0x22c] & (1<<ch)) {
@@ -521,6 +563,46 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 
 				INT32 bval = vol + base1[0x04];
 				if (bval > 255) bval = 255;
+				if (!(info->k054539_flags & K054539_GX)) {
+					INT32 delay = base1[0x04]; // delay buffer size -dink
+
+					if (base1[0x04] > 0x4f && base1[0x04] != 0xf2) delay = -1; // yep, it's disabled.
+
+					switch (delay) {
+						case -1:
+							chan->delay_on = 0;
+							break;
+						case 0x00: // shortest delay, needs longer decay to be heard.
+						case 0x1f:
+#if DELAY_DEBUG
+							if (once[ch] == 0) {
+								bprintf(0, _T("ch %x:  %x\n"), ch, delay);
+								once[ch] = 1;
+							}
+#endif
+							info->delay_decay = 0.7;
+							delay = 0x1f; // viostorm st.3.
+							info->delay_size = (delay & 0xf0) << 8;
+							chan->delay_on = 1;
+							break;
+
+						case 0xf2:
+							delay = 0x4f; // wtf? xmen titlescreen. *contradiction*
+						case 0x2f:
+						case 0x3f:
+						case 0x4f:
+#if DELAY_DEBUG
+							if (once[ch] == 0) {
+								bprintf(0, _T("ch %x:  %x\n"), ch, delay);
+								once[ch] = 1;
+							}
+#endif
+							info->delay_decay = 0.6;
+							info->delay_size = (delay & 0xf0) << 8;
+							chan->delay_on = 1;
+							break;
+					}
+				}
 
 				INT32 pan = base1[0x05];
 				// DJ Main: 81-87 right, 88 middle, 89-8f left
@@ -548,7 +630,7 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 				INT32 rdelta = (base1[0x06] | (base1[0x07] << 8)) >> 3;
 				rdelta = (rdelta + info->delay_pos) & 0x3fff;
 
-				INT32 cur_pos = (base1[0x0c] | (base1[0x0d] << 8) | (base1[0x0e] << 16));
+				INT32 cur_pos = (base1[0x0c] | (base1[0x0d] << 8) | (base1[0x0e] << 16)) & ((info->k054539_flags & K054539_GX) ? 0xffffff : rom_mask);
 
 				INT32 fdelta, pdelta;
 				if(base2[0] & 0x20) {
@@ -580,13 +662,13 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 						cur_pos += pdelta;
 
 						cur_pval = cur_val;
-						cur_val = (INT16)(k054539_read_rom(info, cur_pos) << 8);
+						cur_val = (INT16)(k054539_sample_rom(info, cur_pos) << 8);
 						if(cur_val == (INT16)0x8000 && (base2[1] & 1)) {
-							cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16));
-							cur_val = (INT16)(k054539_read_rom(info, cur_pos) << 8);
+							cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & ((info->k054539_flags & K054539_GX) ? 0xffffff : rom_mask);
+							cur_val = (INT16)(k054539_sample_rom(info, cur_pos) << 8);
 						}
 						if(cur_val == (INT16)0x8000) {
-							k054539_keyoff_update(info, ch);
+							k054539_keyoff(ch);
 							cur_val = 0;
 							break;
 						}
@@ -603,13 +685,13 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 						cur_pos += pdelta;
 
 						cur_pval = cur_val;
-						cur_val = (INT16)(k054539_read_rom(info, cur_pos) | k054539_read_rom(info, cur_pos + 1)<<8);
+						cur_val = (INT16)(k054539_sample_rom(info, cur_pos) | k054539_sample_rom(info, cur_pos + 1)<<8);
 						if(cur_val == (INT16)0x8000 && (base2[1] & 1)) {
-							cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16));
-							cur_val = (INT16)(k054539_read_rom(info, cur_pos) | k054539_read_rom(info, cur_pos + 1)<<8);
+							cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & ((info->k054539_flags & K054539_GX) ? 0xffffff : rom_mask);
+							cur_val = (INT16)(k054539_sample_rom(info, cur_pos) | k054539_sample_rom(info, cur_pos + 1)<<8);
 						}
 						if(cur_val == (INT16)0x8000) {
-							k054539_keyoff_update(info, ch);
+							k054539_keyoff(ch);
 							cur_val = 0;
 							break;
 						}
@@ -631,13 +713,13 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 						cur_pos += pdelta;
 
 						cur_pval = cur_val;
-						cur_val = k054539_read_rom(info, cur_pos >> 1);
+						cur_val = k054539_sample_rom(info, cur_pos >> 1);
 						if(cur_val == 0x88 && (base2[1] & 1)) {
-							cur_pos = (base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) << 1;
-							cur_val = k054539_read_rom(info, cur_pos >> 1);
+							cur_pos = ((base1[0x08] | (base1[0x09] << 8) | (base1[0x0a] << 16)) & ((info->k054539_flags & K054539_GX) ? 0xffffff : rom_mask)) << 1;
+							cur_val = k054539_sample_rom(info, cur_pos >> 1);
 						}
 						if(cur_val == 0x88) {
-							k054539_keyoff_update(info, ch);
+							k054539_keyoff(ch);
 							cur_val = 0;
 							break;
 						}
@@ -664,7 +746,14 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 				}
 				lval += cur_val * lvol;
 				rval += cur_val * rvol;
-				delay_line[(rdelta + info->delay_pos) & 0x1fff] += (INT16)(cur_val * rbvol);
+
+				if (info->k054539_flags & K054539_GX) {
+					delay_line[(rdelta + info->delay_pos) & 0x1fff] += (INT16)(cur_val * rbvol);
+				} else if (chan->delay_on) {
+					double monovol = (lvol + rvol) / 2;
+					INT16 tap = (INT16)(info->biquad[0].filter(cur_val * monovol));
+					delay_line[info->delay_pos & 0x3fff] += tap;
+				}
 
 				chan->lvol = lvol;
 				chan->rvol = rvol;
@@ -674,7 +763,7 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 				chan->pval = cur_pval;
 				chan->val = cur_val;
 
-				if (!(info->regs[0x22f] & 0x80)) {
+				if(k054539_regupdate()) {
 					base1[0x0c] = cur_pos     & 0xff;
 					base1[0x0d] = cur_pos>> 8 & 0xff;
 					base1[0x0e] = cur_pos>>16 & 0xff;
@@ -689,11 +778,22 @@ void K054539Update(INT32 chip, INT16 *outputs, INT32 samples_len)
 					chan->val += ((chan->val < -4) ? 4 : 1);
 				}
 
+				if (!(info->k054539_flags & K054539_GX) && chan->delay_on) {
+					// click aversion w/delay:
+					// we still have to process delay until we hit a zero crossing.  or else.
+					double monovol = (chan->lvol + chan->rvol) / 2;
+					INT16 tap = (INT16)(info->biquad[0].filter(chan->val * monovol));
+					delay_line[info->delay_pos & 0x3fff] += tap;
+
+					if (tap == 0) chan->delay_on = 0;
+				}
+
 				lval += chan->val * chan->lvol;
 				rval += chan->val * chan->rvol;
 			}
 		}
-		info->delay_pos = (info->delay_pos + 1) & 0x1fff;
+
+		if (info->k054539_flags & K054539_GX) info->delay_pos = (info->delay_pos + 1) & 0x1fff;
 
 		if (info->k054539_flags & K054539_REVERSE_STEREO) {
 			double temp = rval;

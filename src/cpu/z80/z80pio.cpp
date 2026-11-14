@@ -394,8 +394,20 @@ static void z80pio_update_strobe(int ch, int state)
 		}
 		break;
 
-		/* input mode: strobe is used by peripheral to load data from the peripheral
-            into port a input register, data loaded into pio when signal is active */
+		/* In input mode, /STB latches data while low and requests an
+		   interrupt on its rising edge (Z80 PIO / MAME 0.289). */
+		case PIO_MODE1:
+			state &= 1;
+			if (!state && z80pio->port_read[ch])
+				z80pio->in[ch] = z80pio->port_read[ch](0);
+			if (!z80pio->strobe[ch] && state) {
+				set_rdy(ch, 0);
+				if (z80pio->enable[ch] & PIO_INT_ENABLE)
+					z80pio->int_state[ch] |= Z80_DAISY_INT;
+			}
+			z80pio->strobe[ch] = state;
+			interrupt_check();
+			break;
 
 		default:
 			break;

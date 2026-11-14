@@ -1,3 +1,7 @@
+#define K054539_ROM_WRAP       32 // Mirror unconnected sample ROM address lines.
+// RUNGUN: timer line transitions without changing PCM/reverb behavior.
+#define K054539_TIMER_EDGES    16
+#define K054539_GX              8 // GX timer edges and hardware reverb
 #define K054539_RESET_FLAGS     0
 #define K054539_REVERSE_STEREO  1
 #define K054539_DISABLE_REVERB  2

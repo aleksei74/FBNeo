@@ -7,13 +7,28 @@
 #include "m377_intf.h"
 #include "c352.h"
 #include "burn_gun.h"
-#include "namcos_poly_threads.h"
-#include "namcos_gl_frame.h"
+#include "namcos_video.h"
+
+// C76 executes synchronously; buffered C352 writes use its live cycle count.
+static INT32 NamcosC352SyncCycles()
+{
+	return M377TotalCycles();
+}
+
+static UINT16 NamcosC352Read(unsigned long address)
+{
+	return c352_read(address);
+}
+
+static void NamcosC352Write(unsigned long address, unsigned short value)
+{
+	c352_write(address, value);
+}
 
 static UINT8 DrvJoy1[16];
 static UINT8 DrvJoy2[16];
 static UINT8 DrvJoy3[16];
-static UINT8 DrvDips[4];
+static UINT8 DrvDips[2];
 static UINT8 DrvReset;
 static UINT8 DrvTestSwitch;
 static UINT8 DrvTestSwitchLast;
@@ -26,23 +41,16 @@ static UINT8 *DrvBankROM;
 static UINT8 *DrvC76BIOS;
 static UINT8 *DrvC76ROM;
 static UINT8 *DrvC352ROM;
+static UINT8 *DrvSensorROM; // Family Bowl H8/3002 firmware; sensor protocol not emulated.
+static INT32 DrvFamilyBowl;
 static UINT8 *DrvMainRAM;
 static UINT8 *DrvSharedRAM;
 static UINT8 *DrvEEPROM;
 static UINT8 *DrvScratchRAM;
 static UINT8 *DrvIoRAM;
 static UINT16 *DrvGpuVram;
-static UINT64 DrvGpuVramGeneration;
-static UINT64 DrvGpuVramRowGeneration[1024];
 static UINT32 *DrvPalette;
 static decltype(BurnHighCol) DrvPaletteHighCol;
-static NamcosPolyThreadPool DrvPolyThreads;
-static NamcosOpenGLFrameConverter DrvOpenGLFrame;
-static INT32 DrvDisableHardwareRaster;
-static INT32 DrvHardwareRasterStreak;
-static INT32 DrvOpenGLCropBottom;
-static thread_local INT32 DrvPolyClipY1 = -0x8000;
-static thread_local INT32 DrvPolyClipY2 = 0x7fff;
 
 static UINT8 DrvBank[8];
 static UINT32 DrvBankOffset;
@@ -93,7 +101,6 @@ static UINT32 DrvGpuImageY;
 static UINT32 DrvGpuImageW;
 static UINT32 DrvGpuImageH;
 static UINT32 DrvGpuImageCount;
-static INT32 DrvGpuImageHardwareUpload;
 static UINT32 DrvGpuImageCurX;
 static UINT32 DrvGpuImageCurY;
 static UINT32 DrvGpuImageColumn;
@@ -123,7 +130,6 @@ static INT32 DrvBankRomDuplicateHalves;
 static INT32 DrvBankRom64;
 static INT32 DrvBankRomCompact64;
 static UINT32 DrvBankRomPairStride;
-static INT32 DrvUseBootDecompressHook;
 static UINT32 DrvC352LoadOffset;
 static UINT32 DrvC352MirrorOffset;
 static UINT32 DrvC352MirrorSize;
@@ -166,7 +172,7 @@ static UINT32 DrvMdecCommand1;
 static UINT32 DrvMdecStatus1;
 
 #define NAMCOS11_BIU_RAM 0x00000008
-#define NAMCOS11_BIU_DS  0x00000080
+#define NAMCOS11_BIU_DS 0x00000080
 
 static const INT32 NAMCOS11_PSX_CLOCK = 67737600;
 // The PSX CPU core executes one cycle for every four input clocks, as in MAME.
@@ -192,7 +198,7 @@ static inline INT32 Namcos11MdecSign10(UINT16 value)
 
 static inline UINT16 Namcos11MdecReadWord(UINT32 address)
 {
-	return *((UINT16*)(DrvMainRAM + (address & 0x3fffff)));
+	return *((UINT16 *)(DrvMainRAM + (address & 0x3fffff)));
 }
 
 static void Namcos11MdecCosPrecalc()
@@ -216,7 +222,8 @@ static void Namcos11MdecIdct(INT32 *source, INT32 *dest)
 		INT32 sum[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
 		INT32 *data = source;
 		for (INT32 vu = 0; vu < 8; vu++) {
-			for (INT32 i = 0; i < 8; i++) sum[i] += data[i] * precalc[i];
+			for (INT32 i = 0; i < 8; i++)
+				sum[i] += data[i] * precalc[i];
 			data += 8;
 			precalc += 8;
 		}
@@ -231,19 +238,23 @@ static UINT32 Namcos11MdecUnpack(UINT32 address)
 	for (INT32 blockNo = 0; blockNo < 6; blockNo++) {
 		INT32 unpacked[NAMCOS11_MDEC_DCTSIZE2];
 		memset(unpacked, 0, sizeof(unpacked));
-		if (blockNo == 2) quant = DrvMdecQuantY;
+		if (blockNo == 2)
+			quant = DrvMdecQuantY;
 		UINT16 packed = Namcos11MdecReadWord(address);
 		address += 2;
-		if (packed == 0xfe00) break;
+		if (packed == 0xfe00)
+			break;
 		INT32 qscale = packed >> 10;
 		unpacked[0] = Namcos11MdecSign10(packed) * quant[0];
 		INT32 z = 0;
 		for (;;) {
 			packed = Namcos11MdecReadWord(address);
 			address += 2;
-			if (packed == 0xfe00) break;
+			if (packed == 0xfe00)
+				break;
 			z += (packed >> 10) + 1;
-			if (z > 63) break;
+			if (z > 63)
+				break;
 			unpacked[Namcos11MdecZigzag[z]] = (Namcos11MdecSign10(packed) * quant[z] * qscale) / 8;
 		}
 		Namcos11MdecIdct(unpacked, block);
@@ -255,8 +266,10 @@ static UINT32 Namcos11MdecUnpack(UINT32 address)
 static inline UINT8 Namcos11MdecClamp8(INT32 value)
 {
 	value += 128;
-	if (value < 0) return 0;
-	if (value > 255) return 255;
+	if (value < 0)
+		return 0;
+	if (value > 255)
+		return 255;
 	return value;
 }
 
@@ -291,9 +304,15 @@ static void Namcos11MdecYuvToRgb15()
 				b = (1814 * cb[4]) >> 10;
 				Namcos11MdecMakeRgb15(address + 16, r, g, b, y + NAMCOS11_MDEC_DCTSIZE2, stp);
 				Namcos11MdecMakeRgb15(address + 48, r, g, b, y + NAMCOS11_MDEC_DCTSIZE2 + 8, stp);
-				cr++; cb++; y += 2; address += 4;
+				cr++;
+				cb++;
+				y += 2;
+				address += 4;
 			}
-			cr += 4; cb += 4; y += 8; address += 48;
+			cr += 4;
+			cb += 4;
+			y += 8;
+			address += 48;
 		}
 		y += NAMCOS11_MDEC_DCTSIZE2;
 	}
@@ -302,7 +321,7 @@ static void Namcos11MdecYuvToRgb15()
 
 static void Namcos11MdecMakeRgb24(UINT32 address, INT32 r, INT32 g, INT32 b, INT32 *y)
 {
-	UINT8 *output = (UINT8*)DrvMdecOutput;
+	UINT8 *output = (UINT8 *)DrvMdecOutput;
 	output[address + 0] = Namcos11MdecClamp8(y[0] + r);
 	output[address + 1] = Namcos11MdecClamp8(y[0] + g);
 	output[address + 2] = Namcos11MdecClamp8(y[0] + b);
@@ -330,9 +349,15 @@ static void Namcos11MdecYuvToRgb24()
 				b = (1814 * cb[4]) >> 10;
 				Namcos11MdecMakeRgb24(address + 24, r, g, b, y + NAMCOS11_MDEC_DCTSIZE2);
 				Namcos11MdecMakeRgb24(address + 72, r, g, b, y + NAMCOS11_MDEC_DCTSIZE2 + 8);
-				cr++; cb++; y += 2; address += 6;
+				cr++;
+				cb++;
+				y += 2;
+				address += 6;
 			}
-			cr += 4; cb += 4; y += 8; address += 72;
+			cr += 4;
+			cb += 4;
+			y += 8;
+			address += 72;
 		}
 		y += NAMCOS11_MDEC_DCTSIZE2;
 	}
@@ -359,8 +384,7 @@ static void Namcos11MdecReset()
 static void Namcos11MdecDmaWrite(UINT32 address, INT32 size)
 {
 	address &= 0x3fffff;
-	switch (DrvMdecCommand0 >> 28)
-	{
+	switch (DrvMdecCommand0 >> 28) {
 		case 3:
 			DrvMdecAddress0 = address;
 			DrvMdecSize0 = size * 4;
@@ -369,17 +393,19 @@ static void Namcos11MdecDmaWrite(UINT32 address, INT32 size)
 
 		case 4:
 			for (INT32 index = 0; size > 0; index += 4, address += 4, size--) {
-				UINT32 data = *((UINT32*)(DrvMainRAM + (address & 0x3fffff)));
+				UINT32 data = *((UINT32 *)(DrvMainRAM + (address & 0x3fffff)));
 				for (INT32 byteIndex = 0; byteIndex < 4; byteIndex++) {
-					if (index + byteIndex < 64) DrvMdecQuantY[index + byteIndex] = (data >> (byteIndex * 8)) & 0xff;
-					else if (index + byteIndex < 128) DrvMdecQuantUV[index + byteIndex - 64] = (data >> (byteIndex * 8)) & 0xff;
+					if (index + byteIndex < 64)
+						DrvMdecQuantY[index + byteIndex] = (data >> (byteIndex * 8)) & 0xff;
+					else if (index + byteIndex < 128)
+						DrvMdecQuantUV[index + byteIndex - 64] = (data >> (byteIndex * 8)) & 0xff;
 				}
 			}
 			break;
 
 		case 6:
 			for (INT32 index = 0; size > 0 && index < 64; index += 2, address += 4, size--) {
-				UINT32 data = *((UINT32*)(DrvMainRAM + (address & 0x3fffff)));
+				UINT32 data = *((UINT32 *)(DrvMainRAM + (address & 0x3fffff)));
 				DrvMdecCos[index + 0] = (INT16)(data & 0xffff);
 				DrvMdecCos[index + 1] = (INT16)(data >> 16);
 			}
@@ -401,8 +427,10 @@ static void Namcos11MdecDmaRead(UINT32 address, INT32 size)
 				UINT32 next = Namcos11MdecUnpack(DrvMdecAddress0);
 				DrvMdecSize0 -= next - DrvMdecAddress0;
 				DrvMdecAddress0 = next;
-				if (DrvMdecCommand0 & (1U << 27)) Namcos11MdecYuvToRgb15();
-				else Namcos11MdecYuvToRgb24();
+				if (DrvMdecCommand0 & (1U << 27))
+					Namcos11MdecYuvToRgb15();
+				else
+					Namcos11MdecYuvToRgb24();
 				DrvMdecOffset = 0;
 				while (DrvMdecSize0 && Namcos11MdecReadWord(DrvMdecAddress0) == 0xfe00) {
 					DrvMdecAddress0 += 2;
@@ -411,15 +439,17 @@ static void Namcos11MdecDmaRead(UINT32 address, INT32 size)
 			}
 
 			UINT32 count = DrvMdecDecoded;
-			if (count > (UINT32)size) count = size;
-			memcpy(DrvMainRAM + address, (UINT8*)DrvMdecOutput + DrvMdecOffset, count * 4);
+			if (count > (UINT32)size)
+				count = size;
+			memcpy(DrvMainRAM + address, (UINT8 *)DrvMdecOutput + DrvMdecOffset, count * 4);
 			DrvMdecDecoded -= count;
 			DrvMdecOffset += count * 4;
 			address = (address + count * 4) & 0x3fffff;
 			size -= count;
 		}
 	}
-	if ((INT32)DrvMdecSize0 <= 0) DrvMdecStatus1 &= ~(1U << 29);
+	if ((INT32)DrvMdecSize0 <= 0)
+		DrvMdecStatus1 &= ~(1U << 29);
 }
 
 static void Namcos11GpuUpdateVisibleArea()
@@ -430,8 +460,7 @@ static void Namcos11GpuUpdateVisibleArea()
 		DrvGpuScreenHeight = (DrvGpuStatus & (1 << 19)) ? 480 : 240;
 	}
 
-		switch ((DrvGpuStatus >> 17) & 3)
-	{
+	switch ((DrvGpuStatus >> 17) & 3) {
 		case 0:
 			DrvGpuScreenWidth = (DrvGpuStatus & (1 << 16)) ? 368 : 256;
 			break;
@@ -448,34 +477,40 @@ static void Namcos11GpuUpdateVisibleArea()
 			DrvGpuScreenWidth = 640;
 			break;
 	}
-
 }
 
-#define PSX_RC_STOP					0x0001
-#define PSX_RC_RESET				0x0004
-#define PSX_RC_COUNTTARGET			0x0008
-#define PSX_RC_IRQTARGET			0x0010
-#define PSX_RC_IRQOVERFLOW			0x0020
-#define PSX_RC_REPEAT				0x0040
-#define PSX_RC_CLC					0x0100
-#define PSX_RC_DIV					0x0200
-#define PSX_RC_REACHEDTARGET		0x0800
-#define PSX_RC_REACHEDFFFF			0x1000
+#define PSX_RC_STOP 0x0001
+#define PSX_RC_RESET 0x0004
+#define PSX_RC_COUNTTARGET 0x0008
+#define PSX_RC_IRQTARGET 0x0010
+#define PSX_RC_IRQOVERFLOW 0x0020
+#define PSX_RC_REPEAT 0x0040
+#define PSX_RC_CLC 0x0100
+#define PSX_RC_DIV 0x0200
+#define PSX_RC_REACHEDTARGET 0x0800
+#define PSX_RC_REACHEDFFFF 0x1000
 
-#define PSX_SIO_STATUS_TX_RDY		0x0001
-#define PSX_SIO_STATUS_RX_RDY		0x0002
-#define PSX_SIO_STATUS_TX_EMPTY		0x0004
-#define PSX_SIO_STATUS_OVERRUN		0x0010
-#define PSX_SIO_STATUS_DSR			0x0080
-#define PSX_SIO_STATUS_IRQ			0x0200
+#define PSX_SIO_STATUS_TX_RDY 0x0001
+#define PSX_SIO_STATUS_RX_RDY 0x0002
+#define PSX_SIO_STATUS_TX_EMPTY 0x0004
+#define PSX_SIO_STATUS_OVERRUN 0x0010
+#define PSX_SIO_STATUS_DSR 0x0080
+#define PSX_SIO_STATUS_IRQ 0x0200
 
-#define PSX_SIO_CONTROL_TX_ENA		0x0001
-#define PSX_SIO_CONTROL_IACK		0x0010
-#define PSX_SIO_CONTROL_RESET		0x0040
-#define PSX_SIO_CONTROL_TX_IENA		0x0400
-#define PSX_SIO_CONTROL_RX_IENA		0x0800
-#define PSX_SIO_CONTROL_DSR_IENA	0x1000
-#define PSX_SIO_CONTROL_DTR			0x2000
+#define PSX_SIO_CONTROL_TX_ENA 0x0001
+#define PSX_SIO_CONTROL_IACK 0x0010
+#define PSX_SIO_CONTROL_RESET 0x0040
+#define PSX_SIO_CONTROL_TX_IENA 0x0400
+#define PSX_SIO_CONTROL_RX_IENA 0x0800
+#define PSX_SIO_CONTROL_DSR_IENA 0x1000
+#define PSX_SIO_CONTROL_DTR 0x2000
+
+// MAME port layouts and SYSTEM11_MiSTer SYSTEM11.sv: only these
+// layouts route P1 kicks through ADC and P2 kicks through PLAYER4.
+static bool Namcos11UsesKickInputs()
+{
+	return DrvKeycusType == 406 || DrvKeycusType == 411 || DrvLightgunGame;
+}
 
 static UINT8 Namcos11C76ReadAdc(UINT32 address)
 {
@@ -486,24 +521,20 @@ static UINT8 Namcos11C76ReadAdc(UINT32 address)
 	}
 
 	if (DrvKeycusType == 432) {
-		switch (address)
-		{
-			case M37710_ADC0_L:
-			{
+		switch (address) {
+			case M37710_ADC0_L: {
 				INT16 steering = (DrvAnalog[0] * 3) / 4;
 				return ProcessAnalog(steering, 1, INPUT_DEADZONE, 0x38, 0xc8);
 			}
 
-			case M37710_ADC1_L:
-			{
+			case M37710_ADC1_L: {
 				return DrvJoy1[4] ? 0x00 : ProcessAnalog(DrvAnalog[1], 1, INPUT_DEADZONE | INPUT_LINEAR | INPUT_MIGHTBEDIGITAL, 0x00, 0x7f);
 			}
 		}
 	}
 
 	if (DrvKeycusType == 409) {
-		switch (address)
-		{
+		switch (address) {
 			case M37710_ADC2_L:
 				data ^= (DrvJoy1[7] & 1) ? 0xff : 0x00; // P1 button 4
 				break;
@@ -512,8 +543,12 @@ static UINT8 Namcos11C76ReadAdc(UINT32 address)
 		return data;
 	}
 
-	switch (address)
-	{
+	// Base-layout ADCs belong to P3, not P1. Unmapped P3 inputs stay idle;
+	// My Angel 3 and Pocket Racer's remaining ADC channels are unused.
+	if (!Namcos11UsesKickInputs())
+		return data;
+
+	switch (address) {
 		case M37710_ADC1_L:
 			data ^= (DrvJoy1[7] & 1) ? 0xff : 0x00; // P1 button 4
 			break;
@@ -549,10 +584,11 @@ static UINT8 Namcos11MakePlayerInput(UINT8 *joy, UINT8 start)
 	data ^= (joy[0] & 1) << 3; // up
 	data ^= (joy[4] & 1) << 4; // button 1
 	data ^= (joy[5] & 1) << 5; // button 2
-	data ^= (joy[6] & 1) << 6; // button 3
+	if (!Namcos11UsesKickInputs())
+		data ^= (joy[6] & 1) << 6; // unused on kick-input layouts
 	data ^= (start & 1) << 7;
 
-	return data;
+	return DrvKeycusType == 432 ? 0xff : data; // Pocket Racer PLAYER1/2 are unused.
 }
 
 static UINT8 Namcos11MakeQuizInput(UINT8 *joy, UINT8 start)
@@ -572,13 +608,14 @@ static UINT16 Namcos11C76ReadInput(UINT32 address)
 {
 	UINT16 data = 0xffff;
 
-	switch (address & 6)
-	{
+	switch (address & 6) {
 		case 0:
 			data = 0xffff;
 			if (DrvKeycusType == 409) {
 				data ^= (DrvJoy2[7] & 1) << 4; // P2 button 4
-			} else {
+			} else if (DrvKeycusType == 432) {
+				data ^= (DrvJoy1[5] & 1) << 3; // Pocket Racer view change
+			} else if (Namcos11UsesKickInputs()) {
 				data ^= (DrvJoy2[6] & 1) << 4; // P2 button 3
 				data ^= (DrvJoy2[7] & 1) << 5; // P2 button 4
 			}
@@ -586,20 +623,22 @@ static UINT16 Namcos11C76ReadInput(UINT32 address)
 
 		case 2: {
 			UINT8 sw = DrvDips[0];
-			sw ^= (DrvJoy3[5] & 1) << 7; // service
-			sw ^= (DrvJoy3[0] & 1) << 5; // coin 1
-			sw ^= (DrvJoy3[1] & 1) << 4; // coin 2
+			sw ^= (DrvJoy3[5] & 1) << 7;    // service
+			sw ^= (DrvJoy3[0] & 1) << 5;    // coin 1
+			sw ^= (DrvJoy3[1] & 1) << 4;    // coin 2
 			sw ^= (DrvTestSwitch & 1) << 6; // test switch
 			data = 0xff00 | sw;
 			break;
 		}
 
 		case 4:
-			data = 0xff00 | ((DrvKeycusType == 443 && !DrvLightgunGame) ? Namcos11MakeQuizInput(DrvJoy1, DrvJoy3[2]) : Namcos11MakePlayerInput(DrvJoy1, DrvJoy3[2]));
+			data = 0xff00 | ((DrvKeycusType == 443 && !DrvLightgunGame) ? Namcos11MakeQuizInput(DrvJoy1, DrvJoy3[2])
+			                                                            : Namcos11MakePlayerInput(DrvJoy1, DrvJoy3[2]));
 			break;
 
 		case 6:
-			data = 0xff00 | ((DrvKeycusType == 443 && !DrvLightgunGame) ? Namcos11MakeQuizInput(DrvJoy2, DrvJoy3[3]) : Namcos11MakePlayerInput(DrvJoy2, DrvJoy3[3]));
+			data = 0xff00 | ((DrvKeycusType == 443 && !DrvLightgunGame) ? Namcos11MakeQuizInput(DrvJoy2, DrvJoy3[3])
+			                                                            : Namcos11MakePlayerInput(DrvJoy2, DrvJoy3[3]));
 			break;
 	}
 
@@ -618,7 +657,7 @@ static UINT8 Namcos11C76ReadByte(UINT32 address)
 	}
 
 	if ((address & 0xfff000) == 0x002000) {
-		return c352_read((address & 0x0fff) >> 1) >> ((address & 1) << 3);
+		return NamcosC352Read((address & 0x0fff) >> 1) >> ((address & 1) << 3);
 	}
 
 	if (address >= 0x510000 && address <= 0x51ffff) {
@@ -640,7 +679,7 @@ static UINT16 Namcos11C76ReadWord(UINT32 address)
 	}
 
 	if ((address & 0xfff000) == 0x002000) {
-		return c352_read((address & 0x0fff) >> 1);
+		return NamcosC352Read((address & 0x0fff) >> 1);
 	}
 
 	if (address >= 0x510000 && address <= 0x51ffff) {
@@ -660,13 +699,13 @@ static void Namcos11C76WriteByte(UINT32 address, UINT8 data)
 
 	if ((address & 0xfff000) == 0x002000) {
 		UINT32 offset = (address & 0x0fff) >> 1;
-		UINT16 old = c352_read(offset);
+		UINT16 old = NamcosC352Read(offset);
 		if (address & 1) {
 			old = (old & 0x00ff) | (data << 8);
 		} else {
 			old = (old & 0xff00) | data;
 		}
-		c352_write(offset, old);
+		NamcosC352Write(offset, old);
 		return;
 	}
 }
@@ -681,7 +720,7 @@ static void Namcos11C76WriteWord(UINT32 address, UINT16 data)
 	}
 
 	if ((address & 0xfff000) == 0x002000) {
-		c352_write((address & 0x0fff) >> 1, data);
+		NamcosC352Write((address & 0x0fff) >> 1, data);
 		return;
 	}
 }
@@ -690,11 +729,11 @@ static void Namcos11C76Init()
 {
 	M377Init(0, M37702);
 	M377Open(0);
-	M377MapMemory(DrvC76BIOS,   0x00c000, 0x00ffff, MAP_ROM);
-	M377MapMemory(DrvC76ROM,    0x080000, 0x0fffff, MAP_ROM);
-	M377MapMemory(DrvC76ROM,    0x200000, 0x27ffff, MAP_ROM);
-	M377MapMemory(DrvC76ROM,    0x280000, 0x2fffff, MAP_ROM);
-	M377MapMemory(DrvSharedRAM,  0x004000, 0x00bfff, MAP_READ);
+	M377MapMemory(DrvC76BIOS, 0x00c000, 0x00ffff, MAP_ROM);
+	M377MapMemory(DrvC76ROM, 0x080000, 0x0fffff, MAP_ROM);
+	M377MapMemory(DrvC76ROM, 0x200000, 0x27ffff, MAP_ROM);
+	M377MapMemory(DrvC76ROM, 0x280000, 0x2fffff, MAP_ROM);
+	M377MapMemory(DrvSharedRAM, 0x004000, 0x00bfff, MAP_READ);
 	M377SetWritePortHandler(Namcos11C76WritePort);
 	M377SetReadPortHandler(Namcos11C76ReadPortOrAdc);
 	M377SetWriteByteHandler(Namcos11C76WriteByte);
@@ -704,11 +743,12 @@ static void Namcos11C76Init()
 	M377Close();
 
 	c352_init(NAMCOS11_C352_CLOCK, 288, DrvC352ROM, 0x1000000, 0);
-	c352_set_sync(M377TotalCycles, NAMCOS11_C76_CLOCK);
+	c352_set_sync(NamcosC352SyncCycles, NAMCOS11_C76_CLOCK);
 }
 
 static void Namcos11C76Reset()
 {
+
 	DrvC76ExtraCycles = 0;
 	DrvC76IrqTimer = NAMCOS11_C76_CLOCK / 60;
 
@@ -727,13 +767,14 @@ static void Namcos11C76Exit()
 
 static void Namcos11C76NewFrame()
 {
+
 	M377NewFrame();
 }
 
 static void Namcos11C76Run(INT32 cycles)
 {
+
 	M377Open(0);
-	M377SetIdleLoop((DrvDips[2] & 1) ? 0x82 : ~0U, 0xc153, 0xff00, 0);
 
 	while (cycles > 0) {
 		INT32 segment = cycles;
@@ -759,7 +800,6 @@ static void Namcos11C76Run(INT32 cycles)
 			M377SetIRQLine(M37710_LINE_IRQ0, CPU_IRQSTATUS_HOLD);
 			M377SetIRQLine(M37710_LINE_IRQ2, CPU_IRQSTATUS_HOLD);
 		}
-
 	}
 
 	M377Close();
@@ -772,73 +812,39 @@ static UINT8 *Namcos11Scratchpad()
 	return scratch ? scratch : DrvScratchRAM;
 }
 
-static void Namcos11InstructionHook(UINT32 pc)
-{
-	if (pc != 0x1fc201c8) return;
-
-	UINT8 *source = DrvMainROM + 0x028000;
-	UINT8 *sourceEnd = DrvMainROM + 0x080000;
-	UINT8 *destination = DrvMainRAM + 0x010000;
-	UINT8 *destinationEnd = DrvMainRAM + 0x400000;
-
-	while (source < sourceEnd && destination < destinationEnd) {
-		UINT32 flags = *source++;
-
-		if (flags == 0) break;
-
-		while (flags >= 2) {
-			if (flags & 1) {
-				if (source >= sourceEnd) break;
-				*destination++ = *source++;
-			} else {
-				if (source + 1 >= sourceEnd) break;
-
-				UINT32 code = (source[0] << 8) | source[1];
-				source += 2;
-
-				UINT32 offset = code & 0x07ff;
-				UINT32 length = (code >> 11) & 0x1f;
-				if (offset == 0) offset = 0x0800;
-				if (length == 0) length = 0x20;
-
-				if (destination - DrvMainRAM < (INT32)offset || destination + length > destinationEnd) {
-					source = sourceEnd;
-					break;
-				}
-
-				UINT8 *copy = destination - offset;
-				while (length--) *destination++ = *copy++;
-			}
-
-			flags >>= 1;
-		}
-	}
-
-	if (destination == DrvMainRAM + 0x13fb00 && source == DrvMainROM + 0x07ffd0) {
-		memset(destination, 0, 0x14);
-		PsxSetReg(2, 0x0012fb00);
-		PsxSetInstructionHook(NULL);
-	}
-}
-
 static INT32 MemIndex()
 {
 	UINT8 *Next = AllMem;
 
-	DrvMainROM		= Next; Next += 0x0400000;
-	DrvBankROM		= Next; Next += 0x2000000;
-	DrvC76BIOS		= Next; Next += 0x0004000;
-	DrvC76ROM		= Next; Next += 0x0080000;
-	DrvC352ROM		= Next; Next += 0x1000000;
-	DrvMainRAM		= Next; Next += 0x0400000;
-	DrvSharedRAM	= Next; Next += 0x0010000;
-	DrvEEPROM		= Next; Next += 0x0001000;
-	DrvScratchRAM	= Next; Next += 0x0001000;
-	DrvIoRAM		= Next; Next += 0x0000040;
-	DrvGpuVram		= (UINT16*)Next; Next += 1024 * 1024 * sizeof(UINT16);
-	DrvPalette		= (UINT32*)Next; Next += 0x8000 * sizeof(UINT32);
+	DrvMainROM = Next;
+	Next += 0x0400000;
+	DrvBankROM = Next;
+	Next += 0x2000000;
+	DrvC76BIOS = Next;
+	Next += 0x0004000;
+	DrvC76ROM = Next;
+	Next += 0x0080000;
+	DrvC352ROM = Next;
+	Next += 0x1000000;
+	DrvSensorROM = Next;
+	if (DrvFamilyBowl)
+		Next += 0x040000;
+	DrvMainRAM = Next;
+	Next += 0x0400000;
+	DrvSharedRAM = Next;
+	Next += 0x0010000;
+	DrvEEPROM = Next;
+	Next += 0x0001000;
+	DrvScratchRAM = Next;
+	Next += 0x0001000;
+	DrvIoRAM = Next;
+	Next += 0x0000040;
+	DrvGpuVram = (UINT16 *)Next;
+	Next += 1024 * 1024 * sizeof(UINT16);
+	DrvPalette = (UINT32 *)Next;
+	Next += 0x8000 * sizeof(UINT32);
 
-	MemEnd			= Next;
+	MemEnd = Next;
 
 	return 0;
 }
@@ -846,10 +852,6 @@ static INT32 MemIndex()
 static void Namcos11ResetIo()
 {
 	memset(DrvGpuVram, 0, 1024 * 1024 * sizeof(UINT16));
-	DrvGpuVramGeneration++;
-	for (INT32 row = 0; row < 1024; row++) {
-		DrvGpuVramRowGeneration[row] = DrvGpuVramGeneration;
-	}
 	DrvExpBase = 0x00000000;
 	DrvControlRAM0 = 0x00000000;
 	DrvExpConfig = 0x00000000;
@@ -897,7 +899,6 @@ static void Namcos11ResetIo()
 	DrvGpuImageW = 0;
 	DrvGpuImageH = 0;
 	DrvGpuImageCount = 0;
-	DrvGpuImageHardwareUpload = 0;
 	DrvGpuImageCurX = 0;
 	DrvGpuImageCurY = 0;
 	DrvGpuImageColumn = 0;
@@ -956,8 +957,10 @@ static UINT32 Namcos11PsxTotalCycles()
 {
 	INT32 remaining = PsxGetRemainingCycles();
 
-	if (remaining < 0) remaining = 0;
-	if ((UINT32)remaining > DrvPsxRunSegment) remaining = DrvPsxRunSegment;
+	if (remaining < 0)
+		remaining = 0;
+	if ((UINT32)remaining > DrvPsxRunSegment)
+		remaining = DrvPsxRunSegment;
 
 	return DrvPsxRunBaseCycles + (DrvPsxRunSegment - remaining);
 }
@@ -966,14 +969,17 @@ static UINT32 Namcos11PsxRawCycles()
 {
 	INT32 remaining = PsxGetRemainingCycles();
 
-	if (remaining < 0) remaining = 0;
-	if ((UINT32)remaining > DrvPsxRunSegment) remaining = DrvPsxRunSegment;
+	if (remaining < 0)
+		remaining = 0;
+	if ((UINT32)remaining > DrvPsxRunSegment)
+		remaining = DrvPsxRunSegment;
 
 	return DrvPsxRunBaseCycles + (DrvPsxRunSegment - remaining);
 }
 
 static INT32 Namcos11C76TotalCycles()
 {
+
 	INT32 cycles;
 
 	M377Open(0);
@@ -1022,6 +1028,9 @@ static void Namcos11EEPROMWrite(UINT32 address, UINT8 data)
 
 static void Namcos11SyncC76()
 {
+	// Main CPU shared-RAM reads/writes must observe the sound slice first.
+	{
+	}
 	UINT32 psxFrameCycles = Namcos11PsxRawCycles() - DrvPsxFrameStartCycles;
 	INT32 cycles = (((INT64)psxFrameCycles * NAMCOS11_C76_CLOCK) / NAMCOS11_PSX_CPU_CLOCK) - Namcos11C76TotalCycles();
 
@@ -1036,8 +1045,7 @@ static UINT32 Namcos11SioRead(UINT32 address)
 	UINT32 reg = ((address - (sio ? 0x1f801050 : 0x1f801040)) >> 2) & 3;
 	UINT32 data = 0;
 
-	switch (reg)
-	{
+	switch (reg) {
 		case 0:
 			data = DrvSioRxData[sio];
 			DrvSioStatus[sio] &= ~PSX_SIO_STATUS_RX_RDY;
@@ -1065,8 +1073,7 @@ static void Namcos11SioWrite(UINT32 address, UINT32 data, UINT32 mem_mask)
 	INT32 sio = (address >= 0x1f801050) ? 1 : 0;
 	UINT32 reg = ((address - (sio ? 0x1f801050 : 0x1f801040)) >> 2) & 3;
 
-	switch (reg)
-	{
+	switch (reg) {
 		case 0:
 			if (mem_mask & 0x000000ff) {
 				DrvSioTxData[sio] = data & 0xff;
@@ -1120,9 +1127,12 @@ static void Namcos11SioWrite(UINT32 address, UINT32 data, UINT32 mem_mask)
 
 static INT32 Namcos11RootDivider(INT32 counter)
 {
-	if (counter == 0 && (DrvRootMode[counter] & PSX_RC_CLC)) return 5;
-	if (counter == 1 && (DrvRootMode[counter] & PSX_RC_CLC)) return 2150;
-	if (counter == 2 && (DrvRootMode[counter] & PSX_RC_DIV)) return 8;
+	if (counter == 0 && (DrvRootMode[counter] & PSX_RC_CLC))
+		return 5;
+	if (counter == 1 && (DrvRootMode[counter] & PSX_RC_CLC))
+		return 2150;
+	if (counter == 2 && (DrvRootMode[counter] & PSX_RC_DIV))
+		return 8;
 
 	return 1;
 }
@@ -1201,10 +1211,10 @@ static UINT32 Namcos11RootRead(UINT32 address)
 	INT32 counter = (address - 0x1f801100) >> 4;
 	INT32 reg = (address >> 2) & 3;
 
-	if (counter < 0 || counter >= 3) return 0;
+	if (counter < 0 || counter >= 3)
+		return 0;
 
-	switch (reg)
-	{
+	switch (reg) {
 		case 0:
 			return Namcos11RootCurrent(counter);
 
@@ -1226,10 +1236,10 @@ static void Namcos11RootWrite(UINT32 address, UINT32 data)
 	INT32 counter = (address - 0x1f801100) >> 4;
 	INT32 reg = (address >> 2) & 3;
 
-	if (counter < 0 || counter >= 3) return;
+	if (counter < 0 || counter >= 3)
+		return;
 
-	switch (reg)
-	{
+	switch (reg) {
 		case 0:
 			DrvRootCount[counter] = data;
 			DrvRootStart[counter] = Namcos11RootCycles();
@@ -1275,7 +1285,8 @@ static void Namcos11MapBanks()
 
 static void Namcos11SetBank(INT32 bank, UINT16 data)
 {
-	if (bank < 0 || bank >= 8) return;
+	if (bank < 0 || bank >= 8)
+		return;
 
 	if (DrvBankRom64) {
 		DrvBank[bank] = ((((data & 0x00c0) >> 3) + (data & 0x0007)) ^ DrvBankOffset) & 0x1f;
@@ -1288,7 +1299,8 @@ static void Namcos11SetBank(INT32 bank, UINT16 data)
 
 static void Namcos11SetBankOffset(UINT32 address)
 {
-	if (!DrvBankRom64) return;
+	if (!DrvBankRom64)
+		return;
 
 	DrvBankOffset = (((address - 0x1f080000) >> 1) * 16) & 0x10;
 }
@@ -1300,7 +1312,8 @@ static void Namcos11MapRamConfig()
 	PsxMapHandler(0, 0x00000000, 0x1effffff, MAP_READ | MAP_WRITE);
 
 	UINT32 size = 0x0400000;
-	if (size > window) size = window;
+	if (size > window)
+		size = window;
 
 	for (UINT32 start = 0; start < window; start += size) {
 		PsxMapMemory(DrvMainRAM, start, start + size - 1, MAP_RAM);
@@ -1333,13 +1346,26 @@ static void Namcos11MapRomConfig()
 
 static UINT32 Namcos11ReadIo(UINT32 address)
 {
-	switch (address & ~3)
-	{
-		case 0x1f801000: return DrvExpBase;
-		case 0x1f801004: return DrvControlRAM0;
-		case 0x1f801008: return DrvExpConfig;
-		case 0x1f80100c: return DrvMemControl;
-		case 0x1f801010: return DrvRomConfig;
+	// Readback must follow all preceding commands, including VRAM transfers.
+	if (false && !false && (address == 0x1f801810 || address == 0x1f801814)) {
+		UINT32 value = 0;
+		{
+			value = Namcos11ReadIo(address);
+		}
+		return value;
+	}
+
+	switch (address & ~3) {
+		case 0x1f801000:
+			return DrvExpBase;
+		case 0x1f801004:
+			return DrvControlRAM0;
+		case 0x1f801008:
+			return DrvExpConfig;
+		case 0x1f80100c:
+			return DrvMemControl;
+		case 0x1f801010:
+			return DrvRomConfig;
 		case 0x1f801014:
 		case 0x1f801018:
 		case 0x1f80101c:
@@ -1357,13 +1383,16 @@ static UINT32 Namcos11ReadIo(UINT32 address)
 		case 0x1f801058:
 		case 0x1f80105c:
 			return Namcos11SioRead(address & ~3);
-		case 0x1f801060: return DrvRamConfig;
+		case 0x1f801060:
+			return DrvRamConfig;
 		case 0x1f801064:
 		case 0x1f801068:
 		case 0x1f80106c:
 			return DrvControlRAM1[((address & ~3) - 0x1f801064) >> 2];
-		case 0x1f801070: return DrvIrqStatus;
-		case 0x1f801074: return DrvIrqMask;
+		case 0x1f801070:
+			return DrvIrqStatus;
+		case 0x1f801074:
+			return DrvIrqMask;
 		case 0x1f801810:
 			if (DrvGpuReadCount) {
 				UINT32 data = 0;
@@ -1374,17 +1403,22 @@ static UINT32 Namcos11ReadIo(UINT32 address)
 					data |= (UINT32)DrvGpuVram[(y << 10) | x] << (i * 16);
 					DrvGpuReadCount--;
 				}
-				if (DrvGpuReadCount == 0) DrvGpuStatus &= ~(1 << 27);
+				if (DrvGpuReadCount == 0)
+					DrvGpuStatus &= ~(1 << 27);
 				return data;
 			}
 			return DrvGpuInfo;
 		case 0x1f801814:
-			return DrvGpuStatus | ((((DrvGpuStatus & (1 << 22)) && (DrvGpuStatus & (1 << 13))) || (!(DrvGpuStatus & (1 << 22)) && (DrvGpuVpos & 1))) ? (1u << 31) : 0);
+			return DrvGpuStatus |
+			       ((((DrvGpuStatus & (1 << 22)) && (DrvGpuStatus & (1 << 13))) || (!(DrvGpuStatus & (1 << 22)) && (DrvGpuVpos & 1)))
+			            ? (1u << 31)
+						: 0);
 		case 0x1f801820:
 			return 0;
 		case 0x1f801824:
 			return DrvMdecStatus1;
-		case 0xfffe0130: return PsxGetBIU();
+		case 0xfffe0130:
+			return PsxGetBIU();
 	}
 
 	if (address >= 0x1f801080 && address <= 0x1f8010ff) {
@@ -1392,18 +1426,21 @@ static UINT32 Namcos11ReadIo(UINT32 address)
 		UINT32 channel = offset >> 2;
 
 		if (channel < 7) {
-			switch (offset & 3)
-			{
-				case 0: return DrvDmaBase[channel];
-				case 1: return DrvDmaBlock[channel];
+			switch (offset & 3) {
+				case 0:
+					return DrvDmaBase[channel];
+				case 1:
+					return DrvDmaBlock[channel];
 				case 2:
-				case 3: return DrvDmaControl[channel];
+				case 3:
+					return DrvDmaControl[channel];
 			}
 		} else {
-			switch (offset & 3)
-			{
-				case 0: return DrvDmaDpcr;
-				case 1: return DrvDmaDicr;
+			switch (offset & 3) {
+				case 0:
+					return DrvDmaDpcr;
+				case 1:
+					return DrvDmaDicr;
 			}
 		}
 	}
@@ -1433,29 +1470,52 @@ static void Namcos11DmaInterruptUpdate()
 
 static INT32 Namcos11GpuPacketLen(UINT8 command)
 {
-	if (command == 0x00 || command == 0x01) return 1;
-	if (command == 0x02) return 3;
-	if (command >= 0x20 && command <= 0x23) return 4;
-	if (command >= 0x24 && command <= 0x27) return 7;
-	if (command >= 0x28 && command <= 0x2b) return 5;
-	if (command >= 0x2c && command <= 0x2f) return 9;
-	if (command >= 0x30 && command <= 0x33) return 6;
-	if (command >= 0x34 && command <= 0x37) return 9;
-	if (command >= 0x38 && command <= 0x3b) return 8;
-	if (command >= 0x3c && command <= 0x3f) return 12;
-	if (command >= 0x40 && command <= 0x47) return 3;
-	if (command >= 0x50 && command <= 0x57) return 4;
-	if (command >= 0x60 && command <= 0x63) return 3;
-	if (command >= 0x64 && command <= 0x67) return 4;
-	if (command >= 0x68 && command <= 0x6b) return 2;
-	if (command >= 0x6c && command <= 0x6f) return 3;
-	if (command >= 0x70 && command <= 0x73) return 2;
-	if (command >= 0x74 && command <= 0x77) return 3;
-	if (command >= 0x78 && command <= 0x7b) return 2;
-	if (command >= 0x7c && command <= 0x7f) return 3;
-	if (command == 0x80) return 4;
-	if (command == 0xa0 || command == 0xc0) return 3;
-	if (command >= 0xe1 && command <= 0xe6) return 1;
+	if (command == 0x00 || command == 0x01)
+		return 1;
+	if (command == 0x02)
+		return 3;
+	if (command >= 0x20 && command <= 0x23)
+		return 4;
+	if (command >= 0x24 && command <= 0x27)
+		return 7;
+	if (command >= 0x28 && command <= 0x2b)
+		return 5;
+	if (command >= 0x2c && command <= 0x2f)
+		return 9;
+	if (command >= 0x30 && command <= 0x33)
+		return 6;
+	if (command >= 0x34 && command <= 0x37)
+		return 9;
+	if (command >= 0x38 && command <= 0x3b)
+		return 8;
+	if (command >= 0x3c && command <= 0x3f)
+		return 12;
+	if (command >= 0x40 && command <= 0x47)
+		return 3;
+	if (command >= 0x50 && command <= 0x57)
+		return 4;
+	if (command >= 0x60 && command <= 0x63)
+		return 3;
+	if (command >= 0x64 && command <= 0x67)
+		return 4;
+	if (command >= 0x68 && command <= 0x6b)
+		return 2;
+	if (command >= 0x6c && command <= 0x6f)
+		return 3;
+	if (command >= 0x70 && command <= 0x73)
+		return 2;
+	if (command >= 0x74 && command <= 0x77)
+		return 3;
+	if (command >= 0x78 && command <= 0x7b)
+		return 2;
+	if (command >= 0x7c && command <= 0x7f)
+		return 3;
+	if (command == 0x80)
+		return 4;
+	if (command == 0xa0 || command == 0xc0)
+		return 3;
+	if (command >= 0xe1 && command <= 0xe6)
+		return 1;
 
 	return 1;
 }
@@ -1463,22 +1523,9 @@ static INT32 Namcos11GpuPacketLen(UINT8 command)
 static inline void Namcos11GpuWriteVramPixel(UINT32 x, UINT32 y, UINT16 color)
 {
 	UINT16 *pixel = &DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
-	if (DrvGpuCheckStp && (*pixel & 0x8000)) return;
-	*pixel = DrvGpuDrawStp ? (color | 0x8000) : color;
-}
-
-static inline void Namcos11GpuMarkVramRows(INT32 y, INT32 height)
-{
-	if (height <= 0) return;
-	if (height >= 1024) {
-		for (INT32 row = 0; row < 1024; row++) {
-			DrvGpuVramRowGeneration[row] = DrvGpuVramGeneration;
-		}
+	if (DrvGpuCheckStp && (*pixel & 0x8000))
 		return;
-	}
-	for (INT32 row = 0; row < height; row++) {
-		DrvGpuVramRowGeneration[(y + row) & 0x3ff] = DrvGpuVramGeneration;
-	}
+	*pixel = DrvGpuDrawStp ? (color | 0x8000) : color;
 }
 
 static void Namcos11GpuWriteImage(UINT32 data)
@@ -1487,13 +1534,10 @@ static void Namcos11GpuWriteImage(UINT32 data)
 
 	for (INT32 i = 0; i < 2 && DrvGpuImageCount > 0; i++) {
 		const UINT16 color = (UINT16)((i == 0) ? data : (data >> 16));
-		UINT16 *pixel = &DrvGpuVram[(DrvGpuImageCurY << 10) |
-			DrvGpuImageCurX];
+		UINT16 *pixel = &DrvGpuVram[(DrvGpuImageCurY << 10) | DrvGpuImageCurX];
 
-		if (DrvGpuImageColumn == 0) {
-			DrvGpuVramRowGeneration[DrvGpuImageCurY] = DrvGpuVramGeneration;
-		}
-		if (!DrvGpuCheckStp || !(*pixel & 0x8000)) *pixel = color | stp;
+		if (!DrvGpuCheckStp || !(*pixel & 0x8000))
+			*pixel = color | stp;
 		DrvGpuImageCount--;
 		DrvGpuImageCurX = (DrvGpuImageCurX + 1) & 0x3ff;
 		if (++DrvGpuImageColumn == DrvGpuImageW) {
@@ -1504,12 +1548,6 @@ static void Namcos11GpuWriteImage(UINT32 data)
 	}
 
 	if (DrvGpuImageCount == 0) {
-		if (DrvGpuImageHardwareUpload) {
-			DrvOpenGLFrame.UploadVramRect(DrvGpuVram, DrvGpuVramGeneration,
-				DrvGpuVramRowGeneration, DrvGpuImageX, DrvGpuImageY,
-				DrvGpuImageW, DrvGpuImageH);
-			DrvGpuImageHardwareUpload = 0;
-		}
 		DrvGpuPacketPos = 0;
 		DrvGpuPacketLen = 0;
 	}
@@ -1522,7 +1560,6 @@ static void Namcos11GpuFillRect()
 	UINT32 y = DrvGpuPacket[1] >> 16;
 	UINT32 w = DrvGpuPacket[2] & 0xffff;
 	UINT32 h = DrvGpuPacket[2] >> 16;
-	Namcos11GpuMarkVramRows(y, h);
 
 	for (UINT32 yy = 0; yy < h; yy++) {
 		for (UINT32 xx = 0; xx < w; xx++) {
@@ -1539,7 +1576,6 @@ static void Namcos11GpuCopyVram()
 	UINT32 dy = DrvGpuPacket[2] >> 16;
 	UINT32 w = DrvGpuPacket[3] & 0xffff;
 	UINT32 h = DrvGpuPacket[3] >> 16;
-	Namcos11GpuMarkVramRows(dy, h);
 
 	for (UINT32 yy = 0; yy < h; yy++) {
 		for (UINT32 xx = 0; xx < w; xx++) {
@@ -1557,9 +1593,8 @@ static inline UINT16 Namcos11GpuShadeComponent(UINT32 component)
 
 static inline UINT16 Namcos11GpuColor(UINT32 data)
 {
-	return Namcos11GpuShadeComponent(data & 0xff) |
-		(Namcos11GpuShadeComponent((data >> 8) & 0xff) << 5) |
-		(Namcos11GpuShadeComponent((data >> 16) & 0xff) << 10);
+	return Namcos11GpuShadeComponent(data & 0xff) | (Namcos11GpuShadeComponent((data >> 8) & 0xff) << 5) |
+	       (Namcos11GpuShadeComponent((data >> 16) & 0xff) << 10);
 }
 
 static inline INT32 Namcos11GpuS11Coord(UINT32 data)
@@ -1590,7 +1625,8 @@ static inline INT32 Namcos11GpuPolyY(UINT32 data)
 
 static inline void Namcos11GpuPutPixel(INT32 x, INT32 y, UINT16 color)
 {
-	if (x < DrvGpuDrawX1 || x > DrvGpuDrawX2 || y < DrvGpuDrawY1 || y > DrvGpuDrawY2) return;
+	if (x < DrvGpuDrawX1 || x > DrvGpuDrawX2 || y < DrvGpuDrawY1 || y > DrvGpuDrawY2)
+		return;
 
 	Namcos11GpuWriteVramPixel(x, y, color);
 }
@@ -1613,9 +1649,9 @@ struct NamcosFlatRectContext {
 	INT32 semi;
 };
 
-static void Namcos11GpuDrawFlatRectWorker(void *opaque, INT32 begin, INT32 end)
+static void Namcos11GpuDrawFlatRectRows(void *opaque, INT32 begin, INT32 end)
 {
-	NamcosFlatRectContext *context = (NamcosFlatRectContext*)opaque;
+	NamcosFlatRectContext *context = (NamcosFlatRectContext *)opaque;
 	for (INT32 yy = begin; yy < end; yy++) {
 		for (INT32 xx = 0; xx < context->width; xx++) {
 			Namcos11GpuPutSolidPixel(context->x + xx, context->y + yy, context->color, context->semi);
@@ -1625,17 +1661,16 @@ static void Namcos11GpuDrawFlatRectWorker(void *opaque, INT32 begin, INT32 end)
 
 static void Namcos11GpuDrawFlatRect(INT32 width, INT32 height)
 {
-	if (width <= 0 || height <= 0) return;
+	if (width <= 0 || height <= 0)
+		return;
 
 	NamcosFlatRectContext context;
 	context.x = Namcos11GpuX(DrvGpuPacket[1]);
 	context.y = Namcos11GpuY(DrvGpuPacket[1]);
-	Namcos11GpuMarkVramRows(context.y, height);
 	context.width = width;
 	context.color = Namcos11GpuColor(DrvGpuPacket[0]);
 	context.semi = DrvGpuPacket[0] & 0x02000000;
-	DrvPolyThreads.ParallelForWork(height, (INT64)width * height, 32768,
-		Namcos11GpuDrawFlatRectWorker, &context);
+	Namcos11GpuDrawFlatRectRows(&context, 0, height);
 }
 
 static void Namcos11GpuDrawFlatRectVariable()
@@ -1656,22 +1691,25 @@ static void Namcos11GpuDrawLine()
 	INT32 y1 = Namcos11GpuS11Coord(DrvGpuPacket[2] >> 16);
 	INT32 dirtyY1 = y0 < y1 ? y0 : y1;
 	INT32 dirtyY2 = y0 > y1 ? y0 : y1;
-	Namcos11GpuMarkVramRows(dirtyY1 + DrvGpuDrawOffsetY, dirtyY2 - dirtyY1 + 1);
-	INT32 dx = x1 - x0; if (dx < 0) dx = -dx;
-	INT32 dy = y1 - y0; if (dy < 0) dy = -dy;
+	INT32 dx = x1 - x0;
+	if (dx < 0)
+		dx = -dx;
+	INT32 dy = y1 - y0;
+	if (dy < 0)
+		dy = -dy;
 	INT32 length = (dx > dy) ? dx : dy;
 	UINT16 color = Namcos11GpuColor(DrvGpuPacket[0]);
 	INT32 semi = DrvGpuPacket[0] & 0x02000000;
 
-	if (length == 0) length = 1;
+	if (length == 0)
+		length = 1;
 	INT64 x = (INT64)x0 << 16;
 	INT64 y = (INT64)y0 << 16;
 	INT64 stepx = (((INT64)x1 << 16) - x) / length;
 	INT64 stepy = (((INT64)y1 << 16) - y) / length;
 
 	while (length > 0) {
-		Namcos11GpuPutSolidPixel((INT32)(x >> 16) + DrvGpuDrawOffsetX,
-			(INT32)(y >> 16) + DrvGpuDrawOffsetY, color, semi);
+		Namcos11GpuPutSolidPixel((INT32)(x >> 16) + DrvGpuDrawOffsetX, (INT32)(y >> 16) + DrvGpuDrawOffsetY, color, semi);
 		x += stepx;
 		y += stepy;
 		length--;
@@ -1686,15 +1724,19 @@ static void Namcos11GpuDrawGouraudLine()
 	INT32 y1 = Namcos11GpuS11Coord(DrvGpuPacket[3] >> 16);
 	INT32 dirtyY1 = y0 < y1 ? y0 : y1;
 	INT32 dirtyY2 = y0 > y1 ? y0 : y1;
-	Namcos11GpuMarkVramRows(dirtyY1 + DrvGpuDrawOffsetY, dirtyY2 - dirtyY1 + 1);
 	UINT32 c0 = DrvGpuPacket[0] & 0x00ffffff;
 	UINT32 c1 = DrvGpuPacket[2] & 0x00ffffff;
-	INT32 dx = x1 - x0; if (dx < 0) dx = -dx;
-	INT32 dy = y1 - y0; if (dy < 0) dy = -dy;
+	INT32 dx = x1 - x0;
+	if (dx < 0)
+		dx = -dx;
+	INT32 dy = y1 - y0;
+	if (dy < 0)
+		dy = -dy;
 	INT32 length = (dx > dy) ? dx : dy;
 	INT32 semi = DrvGpuPacket[0] & 0x02000000;
 
-	if (length == 0) length = 1;
+	if (length == 0)
+		length = 1;
 	INT64 x = (INT64)x0 << 16;
 	INT64 y = (INT64)y0 << 16;
 	INT64 r = (INT64)(c0 & 0xff) << 16;
@@ -1710,14 +1752,21 @@ static void Namcos11GpuDrawGouraudLine()
 		INT32 rr = (INT32)(r >> 16);
 		INT32 gg = (INT32)(g >> 16);
 		INT32 bb = (INT32)(b >> 16);
-		if (rr < 0) rr = 0; else if (rr > 0xff) rr = 0xff;
-		if (gg < 0) gg = 0; else if (gg > 0xff) gg = 0xff;
-		if (bb < 0) bb = 0; else if (bb > 0xff) bb = 0xff;
-		Namcos11GpuPutSolidPixel((INT32)(x >> 16) + DrvGpuDrawOffsetX,
-			(INT32)(y >> 16) + DrvGpuDrawOffsetY,
-			Namcos11GpuShadeComponent(rr) |
-			(Namcos11GpuShadeComponent(gg) << 5) |
-			(Namcos11GpuShadeComponent(bb) << 10), semi);
+		if (rr < 0)
+			rr = 0;
+		else if (rr > 0xff)
+			rr = 0xff;
+		if (gg < 0)
+			gg = 0;
+		else if (gg > 0xff)
+			gg = 0xff;
+		if (bb < 0)
+			bb = 0;
+		else if (bb > 0xff)
+			bb = 0xff;
+		Namcos11GpuPutSolidPixel(
+		    (INT32)(x >> 16) + DrvGpuDrawOffsetX, (INT32)(y >> 16) + DrvGpuDrawOffsetY,
+		    Namcos11GpuShadeComponent(rr) | (Namcos11GpuShadeComponent(gg) << 5) | (Namcos11GpuShadeComponent(bb) << 10), semi);
 		x += stepx;
 		y += stepy;
 		r += stepr;
@@ -1734,12 +1783,24 @@ static inline INT64 Namcos11GpuEdge64(INT32 ax, INT32 ay, INT32 bx, INT32 by, IN
 
 static inline INT32 Namcos11GpuCullTriangle(INT32 x0, INT32 y0, INT32 x1, INT32 y1, INT32 x2, INT32 y2)
 {
-	INT32 dx01 = x0 - x1; if (dx01 < 0) dx01 = -dx01;
-	INT32 dy01 = y0 - y1; if (dy01 < 0) dy01 = -dy01;
-	INT32 dx12 = x1 - x2; if (dx12 < 0) dx12 = -dx12;
-	INT32 dy12 = y1 - y2; if (dy12 < 0) dy12 = -dy12;
-	INT32 dx20 = x2 - x0; if (dx20 < 0) dx20 = -dx20;
-	INT32 dy20 = y2 - y0; if (dy20 < 0) dy20 = -dy20;
+	INT32 dx01 = x0 - x1;
+	if (dx01 < 0)
+		dx01 = -dx01;
+	INT32 dy01 = y0 - y1;
+	if (dy01 < 0)
+		dy01 = -dy01;
+	INT32 dx12 = x1 - x2;
+	if (dx12 < 0)
+		dx12 = -dx12;
+	INT32 dy12 = y1 - y2;
+	if (dy12 < 0)
+		dy12 = -dy12;
+	INT32 dx20 = x2 - x0;
+	if (dx20 < 0)
+		dx20 = -dx20;
+	INT32 dy20 = y2 - y0;
+	if (dy20 < 0)
+		dy20 = -dy20;
 
 	return dx01 > 1023 || dy01 > 1023 || dx12 > 1023 || dy12 > 1023 || dx20 > 1023 || dy20 > 1023;
 }
@@ -1751,7 +1812,8 @@ static inline UINT16 Namcos11GpuReadRenderPixel(INT32 x, INT32 y)
 
 static inline UINT16 Namcos11GpuBlendColor(UINT16 tex, UINT32 shade, INT32 raw)
 {
-	if (raw) return tex;
+	if (raw)
+		return tex;
 
 	INT32 tr = tex & 0x1f;
 	INT32 tg = (tex >> 5) & 0x1f;
@@ -1763,9 +1825,12 @@ static inline UINT16 Namcos11GpuBlendColor(UINT16 tex, UINT32 shade, INT32 raw)
 	tr = (tr * sr) / 128;
 	tg = (tg * sg) / 128;
 	tb = (tb * sb) / 128;
-	if (tr > 0x1f) tr = 0x1f;
-	if (tg > 0x1f) tg = 0x1f;
-	if (tb > 0x1f) tb = 0x1f;
+	if (tr > 0x1f)
+		tr = 0x1f;
+	if (tg > 0x1f)
+		tg = 0x1f;
+	if (tb > 0x1f)
+		tb = 0x1f;
 
 	return tr | (tg << 5) | (tb << 10) | (tex & 0x8000);
 }
@@ -1780,20 +1845,41 @@ static inline UINT16 Namcos11GpuBlendSemiTransparent(UINT16 foreground, UINT16 b
 	INT32 bb = (background >> 10) & 0x1f;
 	INT32 abr = (tpage >> ((DrvGpuType == 2) ? 5 : 7)) & 3;
 
-	switch (abr)
-	{
-		case 0: fr = (fr >> 1) + (br >> 1); fg = (fg >> 1) + (bg >> 1); fb = (fb >> 1) + (bb >> 1); break;
-		case 1: fr += br; fg += bg; fb += bb; break;
-		case 2: fr = br - fr; fg = bg - fg; fb = bb - fb; break;
-		case 3: fr = (fr >> 2) + br; fg = (fg >> 2) + bg; fb = (fb >> 2) + bb; break;
+	switch (abr) {
+		case 0:
+			fr = (fr >> 1) + (br >> 1);
+			fg = (fg >> 1) + (bg >> 1);
+			fb = (fb >> 1) + (bb >> 1);
+			break;
+		case 1:
+			fr += br;
+			fg += bg;
+			fb += bb;
+			break;
+		case 2:
+			fr = br - fr;
+			fg = bg - fg;
+			fb = bb - fb;
+			break;
+		case 3:
+			fr = (fr >> 2) + br;
+			fg = (fg >> 2) + bg;
+			fb = (fb >> 2) + bb;
+			break;
 	}
 
-	if (fr < 0) fr = 0;
-	if (fr > 0x1f) fr = 0x1f;
-	if (fg < 0) fg = 0;
-	if (fg > 0x1f) fg = 0x1f;
-	if (fb < 0) fb = 0;
-	if (fb > 0x1f) fb = 0x1f;
+	if (fr < 0)
+		fr = 0;
+	if (fr > 0x1f)
+		fr = 0x1f;
+	if (fg < 0)
+		fg = 0;
+	if (fg > 0x1f)
+		fg = 0x1f;
+	if (fb < 0)
+		fb = 0;
+	if (fb > 0x1f)
+		fb = 0x1f;
 
 	return fr | (fg << 5) | (fb << 10);
 }
@@ -1831,8 +1917,7 @@ struct NamcosTextureState {
 	const UINT16 *clutCache;
 };
 
-static inline void Namcos11GpuInitTextureState(NamcosTextureState &state, UINT32 clut, UINT32 tpage,
-	const UINT16 *clutCache)
+static inline void Namcos11GpuInitTextureState(NamcosTextureState &state, UINT32 clut, UINT32 tpage, const UINT16 *clutCache)
 {
 	state.texx = (tpage & 0x0f) << 6;
 	state.interleaved = 0;
@@ -1857,7 +1942,8 @@ static inline void Namcos11GpuInitTextureState(NamcosTextureState &state, UINT32
 
 static inline UINT16 Namcos11GpuFetchTexture(INT32 u, INT32 v, const NamcosTextureState &state)
 {
-	if (state.mode == 3) return 0;
+	if (state.mode == 3)
+		return 0;
 
 	UINT32 x = 0;
 	u &= state.windowW;
@@ -1874,7 +1960,8 @@ static inline UINT16 Namcos11GpuFetchTexture(INT32 u, INT32 v, const NamcosTextu
 		}
 		data = DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
 		data = (data >> ((u & 3) << 2)) & 0x0f;
-		if (state.clutCache) return state.clutCache[data];
+		if (state.clutCache)
+			return state.clutCache[data];
 		x = state.clutX + data;
 		y = state.clutY;
 		return DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
@@ -1889,7 +1976,8 @@ static inline UINT16 Namcos11GpuFetchTexture(INT32 u, INT32 v, const NamcosTextu
 		}
 		data = DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
 		data = (u & 1) ? (data >> 8) : (data & 0xff);
-		if (state.clutCache) return state.clutCache[data];
+		if (state.clutCache)
+			return state.clutCache[data];
 		x = state.clutX + data;
 		y = state.clutY;
 		return DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
@@ -1897,12 +1985,13 @@ static inline UINT16 Namcos11GpuFetchTexture(INT32 u, INT32 v, const NamcosTextu
 
 	x = state.texx + (u & 0xff);
 	data = DrvGpuVram[((y & 0x3ff) << 10) | (x & 0x3ff)];
-	if (data == 0) return 0;
+	if (data == 0)
+		return 0;
 	return data;
 }
 
-static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 points,
-	UINT16 color, INT32 semi, INT32 *spans = NULL, INT32 spanY = 0)
+static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi, INT32 *spans = NULL,
+                                        INT32 spanY = 0)
 {
 	static const INT32 next3[3] = { 1, 2, 0 };
 	static const INT32 prev3[3] = { 2, 0, 1 };
@@ -1918,7 +2007,8 @@ static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 
 		INT32 cull0 = Namcos11GpuCullTriangle(px[0], py[0], px[1], py[1], px[2], py[2]);
 		INT32 cull1 = Namcos11GpuCullTriangle(px[1], py[1], px[2], py[2], px[3], py[3]);
 		if (cull0) {
-			if (cull1) return;
+			if (cull1)
+				return;
 			next = next4b;
 			prev = prev4b;
 			left = 1;
@@ -1933,7 +2023,8 @@ static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 
 	}
 
 	for (INT32 i = left + 1; i < points; i++) {
-		if (py[i] < py[left] || (py[i] == py[left] && px[i] < px[left])) left = i;
+		if (py[i] < py[left] || (py[i] == py[left] && px[i] < px[left]))
+			left = i;
 	}
 	INT32 right = left;
 	INT32 y = py[right];
@@ -1946,12 +2037,14 @@ static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 
 		if (y == py[left]) {
 			while (y == py[prev[left]]) {
 				left = prev[left];
-				if (left == right) break;
+				if (left == right)
+					break;
 			}
 			cx1 = (UINT32)(UINT16)px[left] << 16;
 			left = prev[left];
 			INT32 distance = py[left] - y;
-			if (distance < 1) return;
+			if (distance < 1)
+				return;
 			dx1 = (INT32)(((UINT32)(UINT16)px[left] << 16) - cx1);
 			dx1 /= distance;
 		}
@@ -1959,26 +2052,16 @@ static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 
 		if (y == py[right]) {
 			while (y == py[next[right]]) {
 				right = next[right];
-				if (right == left) break;
+				if (right == left)
+					break;
 			}
 			cx2 = (UINT32)(UINT16)px[right] << 16;
 			right = next[right];
 			INT32 distance = py[right] - y;
-			if (distance < 1) return;
+			if (distance < 1)
+				return;
 			dx2 = (INT32)(((UINT32)(UINT16)px[right] << 16) - cx2);
 			dx2 /= distance;
-		}
-
-		if (y > DrvPolyClipY2) return;
-		if (y < DrvPolyClipY1) {
-			INT32 skip = DrvPolyClipY1 - y;
-			const INT32 edgeRows = ((py[left] < py[right]) ? py[left] : py[right]) - y;
-			if (skip > edgeRows) skip = edgeRows;
-			if (skip < 1) skip = 1;
-			cx1 = NamcosPolyAdvance(cx1, dx1, skip);
-			cx2 = NamcosPolyAdvance(cx2, dx2, skip);
-			y += skip;
-			continue;
 		}
 
 		INT32 x1 = (INT16)(cx1 >> 16);
@@ -1989,12 +2072,13 @@ static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 
 			x2 = swap;
 		}
 		INT32 distance = x2 - x1;
-		if (distance > 0 && y >= clipy1 && y <= clipy2 && y >= DrvPolyClipY1 && y <= DrvPolyClipY2) {
+		if (distance > 0 && y >= clipy1 && y <= clipy2) {
 			if (x1 < clipx1) {
 				distance -= clipx1 - x1;
 				x1 = clipx1;
 			}
-			if (x1 + distance > clipx2 + 1) distance = clipx2 - x1 + 1;
+			if (x1 + distance > clipx2 + 1)
+				distance = clipx2 - x1 + 1;
 			if (spans != NULL && y >= spanY && y < spanY + 1024) {
 				spans[(y - spanY) * 2 + 0] = x1;
 				spans[(y - spanY) * 2 + 1] = x1 + distance;
@@ -2011,44 +2095,9 @@ static void Namcos11GpuDrawFlatPolyCore(const INT32 *px, const INT32 *py, INT32 
 	}
 }
 
-struct NamcosFlatPolyContext {
-	INT32 px[4];
-	INT32 py[4];
-	INT32 points;
-	INT32 y1;
-	UINT16 color;
-	INT32 semi;
-};
-
-static void Namcos11GpuDrawFlatPolyWorker(void *opaque, INT32 begin, INT32 end)
-{
-	NamcosFlatPolyContext *context = (NamcosFlatPolyContext*)opaque;
-	DrvPolyClipY1 = context->y1 + begin;
-	DrvPolyClipY2 = context->y1 + end - 1;
-	Namcos11GpuDrawFlatPolyCore(context->px, context->py, context->points, context->color, context->semi);
-	DrvPolyClipY1 = -0x8000;
-	DrvPolyClipY2 = 0x7fff;
-}
-
 static void Namcos11GpuDrawFlatPolyPass(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
 {
-	NamcosFlatPolyContext context;
-	context.points = points;
-	context.color = color;
-	context.semi = semi;
-	INT32 miny = py[0];
-	INT32 maxy = py[0];
-	for (INT32 i = 0; i < points; i++) {
-		context.px[i] = px[i];
-		context.py[i] = py[i];
-		if (py[i] < miny) miny = py[i];
-		if (py[i] > maxy) maxy = py[i];
-	}
-	context.y1 = miny;
-	Namcos11GpuMarkVramRows(miny, maxy - miny + 1);
-	const UINT64 work = NamcosPolyEstimateWork(px, py, points);
-	DrvPolyThreads.ParallelForWork(maxy - miny + 1, work, 32768,
-		Namcos11GpuDrawFlatPolyWorker, &context);
+	Namcos11GpuDrawFlatPolyCore(px, py, points, color, semi);
 }
 
 static void Namcos11GpuDrawFlatPoly(const INT32 *px, const INT32 *py, INT32 points, UINT16 color, INT32 semi)
@@ -2065,7 +2114,7 @@ static void Namcos11GpuDrawTriangleFlat(INT32 x0, INT32 y0, INT32 x1, INT32 y1, 
 }
 
 static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi,
-	INT32 *spans = NULL, INT32 spanY = 0)
+                                               INT32 *spans = NULL, INT32 spanY = 0)
 {
 	static const INT32 next3[3] = { 1, 2, 0 };
 	static const INT32 prev3[3] = { 2, 0, 1 };
@@ -2081,7 +2130,8 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 		INT32 cull0 = Namcos11GpuCullTriangle(px[0], py[0], px[1], py[1], px[2], py[2]);
 		INT32 cull1 = Namcos11GpuCullTriangle(px[1], py[1], px[2], py[2], px[3], py[3]);
 		if (cull0) {
-			if (cull1) return;
+			if (cull1)
+				return;
 			next = next4b;
 			prev = prev4b;
 			left = 1;
@@ -2096,7 +2146,8 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 	}
 
 	for (INT32 i = left + 1; i < points; i++) {
-		if (py[i] < py[left] || (py[i] == py[left] && px[i] < px[left])) left = i;
+		if (py[i] < py[left] || (py[i] == py[left] && px[i] < px[left]))
+			left = i;
 	}
 	INT32 right = left;
 	INT32 y = py[right];
@@ -2111,7 +2162,8 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 		if (y == py[left]) {
 			while (y == py[prev[left]]) {
 				left = prev[left];
-				if (left == right) break;
+				if (left == right)
+					break;
 			}
 			cx1 = (UINT32)(UINT16)px[left] << 16;
 			cr1 = (pc[left] & 0xff) << 16;
@@ -2119,18 +2171,23 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 			cb1 = ((pc[left] >> 16) & 0xff) << 16;
 			left = prev[left];
 			INT32 distance = py[left] - y;
-			if (distance < 1) return;
+			if (distance < 1)
+				return;
 			dx1 = (INT32)(((UINT32)(UINT16)px[left] << 16) - cx1);
 			dr1 = (INT32)(((pc[left] & 0xff) << 16) - cr1);
 			dg1 = (INT32)((((pc[left] >> 8) & 0xff) << 16) - cg1);
 			db1 = (INT32)((((pc[left] >> 16) & 0xff) << 16) - cb1);
-			dx1 /= distance; dr1 /= distance; dg1 /= distance; db1 /= distance;
+			dx1 /= distance;
+			dr1 /= distance;
+			dg1 /= distance;
+			db1 /= distance;
 		}
 
 		if (y == py[right]) {
 			while (y == py[next[right]]) {
 				right = next[right];
-				if (right == left) break;
+				if (right == left)
+					break;
 			}
 			cx2 = (UINT32)(UINT16)px[right] << 16;
 			cr2 = (pc[right] & 0xff) << 16;
@@ -2138,26 +2195,16 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 			cb2 = ((pc[right] >> 16) & 0xff) << 16;
 			right = next[right];
 			INT32 distance = py[right] - y;
-			if (distance < 1) return;
+			if (distance < 1)
+				return;
 			dx2 = (INT32)(((UINT32)(UINT16)px[right] << 16) - cx2);
 			dr2 = (INT32)(((pc[right] & 0xff) << 16) - cr2);
 			dg2 = (INT32)((((pc[right] >> 8) & 0xff) << 16) - cg2);
 			db2 = (INT32)((((pc[right] >> 16) & 0xff) << 16) - cb2);
-			dx2 /= distance; dr2 /= distance; dg2 /= distance; db2 /= distance;
-		}
-
-		if (y > DrvPolyClipY2) return;
-		if (y < DrvPolyClipY1) {
-			INT32 skip = DrvPolyClipY1 - y;
-			const INT32 edgeRows = ((py[left] < py[right]) ? py[left] : py[right]) - y;
-			if (skip > edgeRows) skip = edgeRows;
-			if (skip < 1) skip = 1;
-			cx1 = NamcosPolyAdvance(cx1, dx1, skip); cr1 = NamcosPolyAdvance(cr1, dr1, skip);
-			cg1 = NamcosPolyAdvance(cg1, dg1, skip); cb1 = NamcosPolyAdvance(cb1, db1, skip);
-			cx2 = NamcosPolyAdvance(cx2, dx2, skip); cr2 = NamcosPolyAdvance(cr2, dr2, skip);
-			cg2 = NamcosPolyAdvance(cg2, dg2, skip); cb2 = NamcosPolyAdvance(cb2, db2, skip);
-			y += skip;
-			continue;
+			dx2 /= distance;
+			dr2 /= distance;
+			dg2 /= distance;
+			db2 /= distance;
 		}
 
 		INT32 x1 = (INT16)(cx1 >> 16);
@@ -2166,13 +2213,15 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 		UINT32 g = cg1;
 		UINT32 b = cb1;
 		if (x1 > x2) {
-			INT32 tx = x1; x1 = x2; x2 = tx;
+			INT32 tx = x1;
+			x1 = x2;
+			x2 = tx;
 			r = cr2;
 			g = cg2;
 			b = cb2;
 		}
 		INT32 distance = x2 - x1;
-		if (distance > 0 && y >= clipy1 && y <= clipy2 && y >= DrvPolyClipY1 && y <= DrvPolyClipY2) {
+		if (distance > 0 && y >= clipy1 && y <= clipy2) {
 			INT32 side1 = x1 == (INT16)(cx1 >> 16);
 			INT32 dr = (INT32)(side1 ? (cr2 - cr1) : (cr1 - cr2)) / distance;
 			INT32 dg = (INT32)(side1 ? (cg2 - cg1) : (cg1 - cg2)) / distance;
@@ -2184,7 +2233,8 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 				distance -= clipx1 - x1;
 				x1 = clipx1;
 			}
-			if (x1 + distance > clipx2 + 1) distance = clipx2 - x1 + 1;
+			if (x1 + distance > clipx2 + 1)
+				distance = clipx2 - x1 + 1;
 			if (spans != NULL) {
 				INT32 *row = spans + (y - spanY) * 8;
 				row[0] = x1;
@@ -2200,57 +2250,28 @@ static void Namcos11GpuDrawGouraudPolyMameCore(const INT32 *px, const INT32 *py,
 					INT32 rr = (r >> 16) & 0xff;
 					INT32 gg = (g >> 16) & 0xff;
 					INT32 bb = (b >> 16) & 0xff;
-					Namcos11GpuPutSolidPixel(x, y, Namcos11GpuShadeComponent(rr) |
-						(Namcos11GpuShadeComponent(gg) << 5) |
-						(Namcos11GpuShadeComponent(bb) << 10), semi);
+					Namcos11GpuPutSolidPixel(
+					    x, y, Namcos11GpuShadeComponent(rr) | (Namcos11GpuShadeComponent(gg) << 5) | (Namcos11GpuShadeComponent(bb) << 10),
+					    semi);
 				}
 			}
 		}
 
-		cx1 += dx1; cr1 += dr1; cg1 += dg1; cb1 += db1;
-		cx2 += dx2; cr2 += dr2; cg2 += dg2; cb2 += db2;
+		cx1 += dx1;
+		cr1 += dr1;
+		cg1 += dg1;
+		cb1 += db1;
+		cx2 += dx2;
+		cr2 += dr2;
+		cg2 += dg2;
+		cb2 += db2;
 		y++;
 	}
 }
 
-struct NamcosGouraudPolyContext {
-	INT32 px[4];
-	INT32 py[4];
-	UINT32 pc[4];
-	INT32 points;
-	INT32 y1;
-	INT32 semi;
-};
-
-static void Namcos11GpuDrawGouraudPolyWorker(void *opaque, INT32 begin, INT32 end)
-{
-	NamcosGouraudPolyContext *context = (NamcosGouraudPolyContext*)opaque;
-	DrvPolyClipY1 = context->y1 + begin;
-	DrvPolyClipY2 = context->y1 + end - 1;
-	Namcos11GpuDrawGouraudPolyMameCore(context->px, context->py, context->pc, context->points, context->semi);
-	DrvPolyClipY1 = -0x8000;
-	DrvPolyClipY2 = 0x7fff;
-}
-
 static void Namcos11GpuDrawGouraudPolyMamePass(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
 {
-	NamcosGouraudPolyContext context;
-	context.points = points;
-	context.semi = semi;
-	INT32 miny = py[0];
-	INT32 maxy = py[0];
-	for (INT32 i = 0; i < points; i++) {
-		context.px[i] = px[i];
-		context.py[i] = py[i];
-		context.pc[i] = pc[i];
-		if (py[i] < miny) miny = py[i];
-		if (py[i] > maxy) maxy = py[i];
-	}
-	context.y1 = miny;
-	Namcos11GpuMarkVramRows(miny, maxy - miny + 1);
-	const UINT64 work = NamcosPolyEstimateWork(px, py, points);
-	DrvPolyThreads.ParallelForWork(maxy - miny + 1, work, 16384,
-		Namcos11GpuDrawGouraudPolyWorker, &context);
+	Namcos11GpuDrawGouraudPolyMameCore(px, py, pc, points, semi);
 }
 
 static void Namcos11GpuDrawGouraudPolyMame(const INT32 *px, const INT32 *py, const UINT32 *pc, INT32 points, INT32 semi)
@@ -2301,9 +2322,9 @@ static void Namcos11GpuDrawFlatQuad()
 	Namcos11GpuDrawFlatPoly(px, py, 4, color, DrvGpuPacket[0] & 0x02000000);
 }
 
-static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
-	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud,
-	const NamcosTextureState &texture, INT32 *spans = NULL, INT32 spanY = 0)
+static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv, const UINT32 *pc,
+                                                INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud,
+                                                const NamcosTextureState &texture, INT32 *spans = NULL, INT32 spanY = 0)
 {
 	static const INT32 next3[3] = { 1, 2, 0 };
 	static const INT32 prev3[3] = { 2, 0, 1 };
@@ -2319,7 +2340,8 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 		INT32 cull0 = Namcos11GpuCullTriangle(px[0], py[0], px[1], py[1], px[2], py[2]);
 		INT32 cull1 = Namcos11GpuCullTriangle(px[1], py[1], px[2], py[2], px[3], py[3]);
 		if (cull0) {
-			if (cull1) return;
+			if (cull1)
+				return;
 			next = next4b;
 			prev = prev4b;
 			left = 1;
@@ -2334,7 +2356,8 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 	}
 
 	for (INT32 i = left + 1; i < points; i++) {
-		if (py[i] < py[left] || (py[i] == py[left] && px[i] < px[left])) left = i;
+		if (py[i] < py[left] || (py[i] == py[left] && px[i] < px[left]))
+			left = i;
 	}
 	INT32 right = left;
 	INT32 y = py[right];
@@ -2351,7 +2374,8 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 		if (y == py[left]) {
 			while (y == py[prev[left]]) {
 				left = prev[left];
-				if (left == right) break;
+				if (left == right)
+					break;
 			}
 			cx1 = (UINT32)(UINT16)px[left] << 16;
 			cr1 = (raw ? 0x80 : (pc[left] & 0xff)) << 16;
@@ -2361,21 +2385,27 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 			cv1 = (UINT32)(UINT16)pv[left] << 16;
 			left = prev[left];
 			INT32 distance = py[left] - y;
-			if (distance < 1) return;
+			if (distance < 1)
+				return;
 			dx1 = (INT32)(((UINT32)(UINT16)px[left] << 16) - cx1);
 			dr1 = raw ? 0 : (INT32)(((pc[left] & 0xff) << 16) - cr1);
 			dg1 = raw ? 0 : (INT32)((((pc[left] >> 8) & 0xff) << 16) - cg1);
 			db1 = raw ? 0 : (INT32)((((pc[left] >> 16) & 0xff) << 16) - cb1);
 			du1 = (INT32)(((UINT32)(UINT16)pu[left] << 16) - cu1);
 			dv1 = (INT32)(((UINT32)(UINT16)pv[left] << 16) - cv1);
-			dx1 /= distance; dr1 /= distance; dg1 /= distance; db1 /= distance;
-			du1 /= distance; dv1 /= distance;
+			dx1 /= distance;
+			dr1 /= distance;
+			dg1 /= distance;
+			db1 /= distance;
+			du1 /= distance;
+			dv1 /= distance;
 		}
 
 		if (y == py[right]) {
 			while (y == py[next[right]]) {
 				right = next[right];
-				if (right == left) break;
+				if (right == left)
+					break;
 			}
 			cx2 = (UINT32)(UINT16)px[right] << 16;
 			cr2 = (raw ? 0x80 : (pc[right] & 0xff)) << 16;
@@ -2385,32 +2415,20 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 			cv2 = (UINT32)(UINT16)pv[right] << 16;
 			right = next[right];
 			INT32 distance = py[right] - y;
-			if (distance < 1) return;
+			if (distance < 1)
+				return;
 			dx2 = (INT32)(((UINT32)(UINT16)px[right] << 16) - cx2);
 			dr2 = raw ? 0 : (INT32)(((pc[right] & 0xff) << 16) - cr2);
 			dg2 = raw ? 0 : (INT32)((((pc[right] >> 8) & 0xff) << 16) - cg2);
 			db2 = raw ? 0 : (INT32)((((pc[right] >> 16) & 0xff) << 16) - cb2);
 			du2 = (INT32)(((UINT32)(UINT16)pu[right] << 16) - cu2);
 			dv2 = (INT32)(((UINT32)(UINT16)pv[right] << 16) - cv2);
-			dx2 /= distance; dr2 /= distance; dg2 /= distance; db2 /= distance;
-			du2 /= distance; dv2 /= distance;
-		}
-
-		const INT32 clippedY = y + DrvGpuDrawOffsetY;
-		if (clippedY > DrvPolyClipY2) return;
-		if (clippedY < DrvPolyClipY1) {
-			INT32 skip = DrvPolyClipY1 - clippedY;
-			const INT32 edgeRows = ((py[left] < py[right]) ? py[left] : py[right]) - y;
-			if (skip > edgeRows) skip = edgeRows;
-			if (skip < 1) skip = 1;
-			cx1 = NamcosPolyAdvance(cx1, dx1, skip); cr1 = NamcosPolyAdvance(cr1, dr1, skip);
-			cg1 = NamcosPolyAdvance(cg1, dg1, skip); cb1 = NamcosPolyAdvance(cb1, db1, skip);
-			cu1 = NamcosPolyAdvance(cu1, du1, skip); cv1 = NamcosPolyAdvance(cv1, dv1, skip);
-			cx2 = NamcosPolyAdvance(cx2, dx2, skip); cr2 = NamcosPolyAdvance(cr2, dr2, skip);
-			cg2 = NamcosPolyAdvance(cg2, dg2, skip); cb2 = NamcosPolyAdvance(cb2, db2, skip);
-			cu2 = NamcosPolyAdvance(cu2, du2, skip); cv2 = NamcosPolyAdvance(cv2, dv2, skip);
-			y += skip;
-			continue;
+			dx2 /= distance;
+			dr2 /= distance;
+			dg2 /= distance;
+			db2 /= distance;
+			du2 /= distance;
+			dv2 /= distance;
 		}
 
 		INT32 x1 = (INT16)(cx1 >> 16);
@@ -2421,7 +2439,9 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 		UINT32 u = cu1;
 		UINT32 v = cv1;
 		if (x1 > x2) {
-			INT32 tx = x1; x1 = x2; x2 = tx;
+			INT32 tx = x1;
+			x1 = x2;
+			x2 = tx;
 			r = cr2;
 			g = cg2;
 			b = cb2;
@@ -2430,7 +2450,7 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 		}
 		INT32 distance = x2 - x1;
 		INT32 drawy = y + DrvGpuDrawOffsetY;
-		if (distance > 0 && drawy >= clipy1 && drawy <= clipy2 && drawy >= DrvPolyClipY1 && drawy <= DrvPolyClipY2) {
+		if (distance > 0 && drawy >= clipy1 && drawy <= clipy2) {
 			INT32 side1 = x1 == (INT16)(cx1 >> 16);
 			INT32 dr = (INT32)(side1 ? (cr2 - cr1) : (cr1 - cr2)) / distance;
 			INT32 dg = (INT32)(side1 ? (cg2 - cg1) : (cg1 - cg2)) / distance;
@@ -2448,7 +2468,8 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 				distance -= clipped;
 				drawx = clipx1;
 			}
-			if (drawx + distance > clipx2 + 1) distance = clipx2 - drawx + 1;
+			if (drawx + distance > clipx2 + 1)
+				distance = clipx2 - drawx + 1;
 			if (spans != NULL) {
 				INT32 *row = spans + (drawy - spanY) * 12;
 				row[0] = drawx;
@@ -2467,36 +2488,30 @@ static void Namcos11GpuDrawTexturedPolyMameCore(const INT32 *px, const INT32 *py
 				for (INT32 x = drawx; distance > 0; x++, distance--, r += dr, g += dg, b += db, u += du, v += dv) {
 					UINT16 texel = Namcos11GpuFetchTexture((UINT16)(u >> 16), (UINT16)(v >> 16), texture);
 					if (texel) {
-						UINT32 shade = gouraud ? ((UINT32)(r >> 16) & 0xff) | (((UINT32)(g >> 16) & 0xff) << 8) | (((UINT32)(b >> 16) & 0xff) << 16) : pc[0];
+						UINT32 shade =
+						    gouraud ? ((UINT32)(r >> 16) & 0xff) | (((UINT32)(g >> 16) & 0xff) << 8) | (((UINT32)(b >> 16) & 0xff) << 16)
+							        : pc[0];
 						Namcos11GpuPutTexturedPixel(x, drawy, texel, Namcos11GpuBlendColor(texel, shade, raw), tpage, semi);
 					}
 				}
 			}
 		}
 
-		cx1 += dx1; cr1 += dr1; cg1 += dg1; cb1 += db1; cu1 += du1; cv1 += dv1;
-		cx2 += dx2; cr2 += dr2; cg2 += dg2; cb2 += db2; cu2 += du2; cv2 += dv2;
+		cx1 += dx1;
+		cr1 += dr1;
+		cg1 += dg1;
+		cb1 += db1;
+		cu1 += du1;
+		cv1 += dv1;
+		cx2 += dx2;
+		cr2 += dr2;
+		cg2 += dg2;
+		cb2 += db2;
+		cu2 += du2;
+		cv2 += dv2;
 		y++;
 	}
 }
-
-struct NamcosTexturedPolyContext {
-	INT32 px[4];
-	INT32 py[4];
-	INT32 pu[4];
-	INT32 pv[4];
-	UINT32 pc[4];
-	INT32 points;
-	INT32 y1;
-	UINT32 clut;
-	UINT32 tpage;
-	INT32 raw;
-	INT32 semi;
-	INT32 gouraud;
-	INT32 clutCount;
-	UINT16 clutCache[256];
-	NamcosTextureState texture;
-};
 
 static INT32 Namcos11GpuBuildClutCache(UINT16 *cache, UINT32 clut, UINT32 tpage)
 {
@@ -2512,51 +2527,18 @@ static INT32 Namcos11GpuBuildClutCache(UINT16 *cache, UINT32 clut, UINT32 tpage)
 	return count;
 }
 
-static void Namcos11GpuDrawTexturedPolyWorker(void *opaque, INT32 begin, INT32 end)
+static void Namcos11GpuDrawTexturedPolyMamePass(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv, const UINT32 *pc,
+                                                INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
 {
-	NamcosTexturedPolyContext *context = (NamcosTexturedPolyContext*)opaque;
-	DrvPolyClipY1 = context->y1 + begin;
-	DrvPolyClipY2 = context->y1 + end - 1;
-	Namcos11GpuDrawTexturedPolyMameCore(context->px, context->py, context->pu, context->pv, context->pc,
-		context->points, context->clut, context->tpage, context->raw, context->semi, context->gouraud,
-		context->texture);
-	DrvPolyClipY1 = -0x8000;
-	DrvPolyClipY2 = 0x7fff;
+	UINT16 clutCache[256];
+	const INT32 clutCount = Namcos11GpuBuildClutCache(clutCache, clut, tpage);
+	NamcosTextureState texture;
+	Namcos11GpuInitTextureState(texture, clut, tpage, clutCount ? clutCache : NULL);
+	Namcos11GpuDrawTexturedPolyMameCore(px, py, pu, pv, pc, points, clut, tpage, raw, semi, gouraud, texture);
 }
 
-static void Namcos11GpuDrawTexturedPolyMamePass(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
-	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
-{
-	NamcosTexturedPolyContext context;
-	context.points = points;
-	context.clut = clut;
-	context.tpage = tpage;
-	context.raw = raw;
-	context.semi = semi;
-	context.gouraud = gouraud;
-	context.clutCount = Namcos11GpuBuildClutCache(context.clutCache, clut, tpage);
-	Namcos11GpuInitTextureState(context.texture, clut, tpage,
-		context.clutCount ? context.clutCache : NULL);
-	INT32 miny = py[0];
-	INT32 maxy = py[0];
-	for (INT32 i = 0; i < points; i++) {
-		context.px[i] = px[i];
-		context.py[i] = py[i];
-		context.pu[i] = pu[i];
-		context.pv[i] = pv[i];
-		context.pc[i] = pc[i];
-		if (py[i] < miny) miny = py[i];
-		if (py[i] > maxy) maxy = py[i];
-	}
-	context.y1 = miny + DrvGpuDrawOffsetY;
-	Namcos11GpuMarkVramRows(context.y1, maxy - miny + 1);
-	const UINT64 work = NamcosPolyEstimateWork(px, py, points);
-	DrvPolyThreads.ParallelForWork(maxy - miny + 1, work, 8192,
-		Namcos11GpuDrawTexturedPolyWorker, &context);
-}
-
-static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv,
-	const UINT32 *pc, INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
+static void Namcos11GpuDrawTexturedPolyMame(const INT32 *px, const INT32 *py, const INT32 *pu, const INT32 *pv, const UINT32 *pc,
+                                            INT32 points, UINT32 clut, UINT32 tpage, INT32 raw, INT32 semi, INT32 gouraud)
 {
 	Namcos11GpuDrawTexturedPolyMamePass(px, py, pu, pv, pc, points, clut, tpage, raw, semi, gouraud);
 }
@@ -2652,17 +2634,17 @@ static void Namcos11GpuDrawTexturedRect(INT32 width, INT32 height)
 		UINT16 clutCache[256];
 		NamcosTextureState texture;
 	};
-	struct NamcosTexturedRectWorker {
+	struct NamcosTexturedRectRows {
 		static void Run(void *opaque, INT32 begin, INT32 end)
 		{
-			NamcosTexturedRectContext *context = (NamcosTexturedRectContext*)opaque;
+			NamcosTexturedRectContext *context = (NamcosTexturedRectContext *)opaque;
 			for (INT32 y = begin; y < end; y++) {
 				for (INT32 x = 0; x < context->width; x++) {
-					UINT16 texel = Namcos11GpuFetchTexture(context->u0 + x * context->du,
-						context->v0 + y * context->dv, context->texture);
+					UINT16 texel = Namcos11GpuFetchTexture(context->u0 + x * context->du, context->v0 + y * context->dv, context->texture);
 					if (texel) {
 						Namcos11GpuPutTexturedPixel(context->x0 + x, context->y0 + y, texel,
-							Namcos11GpuBlendColor(texel, context->color, context->raw), context->tpage, context->semi);
+						                            Namcos11GpuBlendColor(texel, context->color, context->raw), context->tpage,
+						                            context->semi);
 					}
 				}
 			}
@@ -2701,7 +2683,6 @@ static void Namcos11GpuDrawTexturedRect(INT32 width, INT32 height)
 
 	context.x0 = x0;
 	context.y0 = y0;
-	Namcos11GpuMarkVramRows(y0, height);
 	context.u0 = u0;
 	context.v0 = v0;
 	context.width = width;
@@ -2709,109 +2690,14 @@ static void Namcos11GpuDrawTexturedRect(INT32 width, INT32 height)
 	context.dv = dv;
 	context.tpage = tpage;
 	Namcos11GpuInitTextureState(context.texture, clut, tpage, clutCount ? context.clutCache : NULL);
-	DrvPolyThreads.ParallelForWork(height, (INT64)width * height, 8192,
-		NamcosTexturedRectWorker::Run, &context);
-}
-
-static bool Namcos11GpuSynchronizeHardwareVram()
-{
-	return DrvOpenGLFrame.SynchronizeVram(DrvGpuVram, DrvGpuVramGeneration,
-		DrvGpuVramRowGeneration);
-}
-
-static bool Namcos11GpuTryHardwarePacket(UINT8 command)
-{
-	if (!DrvOpenGLFrame.SupportsFullRasterizer()) {
-		DrvGpuImageHardwareUpload = 0;
-		DrvHardwareRasterStreak = 0;
-		return false;
-	}
-	if (command == 0xa0) {
-		DrvGpuImageHardwareUpload = 0;
-		const UINT32 width = DrvGpuPacket[2] & 0xffff;
-		const UINT32 height = DrvGpuPacket[2] >> 16;
-		if (!DrvDisableHardwareRaster && !DrvGpuCheckStp && width > 0 &&
-			height > 0 && width <= 1024 && height <= 1024 &&
-			DrvOpenGLFrame.HasHardwareVram()) {
-			DrvGpuImageHardwareUpload = 1;
-			return false;
-		}
-	}
-	if (command == 0xc0 && !DrvDisableHardwareRaster &&
-		DrvOpenGLFrame.HasHardwareVram()) {
-		const UINT32 width = DrvGpuPacket[2] & 0xffff;
-		const UINT32 height = DrvGpuPacket[2] >> 16;
-		if (width > 0 && height > 0 && width <= 1024 && height <= 1024 &&
-			DrvOpenGLFrame.ReadVramRect(DrvGpuVram, DrvGpuVramGeneration,
-				DrvGpuVramRowGeneration, DrvGpuPacket[1] & 0xffff,
-				DrvGpuPacket[1] >> 16, width, height)) {
-			return false;
-		}
-	}
-	if (DrvDisableHardwareRaster ||
-		!NamcosGlRasterCanSubmitCommand(command) ||
-		(DrvGpuStatus & (1 << 21)) ||
-		!DrvOpenGLFrame.SupportsFullRasterizer()) {
-		if (NamcosGlRasterIsVramCommand(command)) {
-			DrvHardwareRasterStreak = 0;
-			Namcos11GpuSynchronizeHardwareVram();
-		}
-		return false;
-	}
-	// Saturate once hardware submission is eligible.
-	if (DrvHardwareRasterStreak < 8 && ++DrvHardwareRasterStreak < 8) {
-		Namcos11GpuSynchronizeHardwareVram();
-		return false;
-	}
-
-	NamcosGlRasterPacket packet;
-	packet.words = DrvGpuPacket;
-	packet.wordCount = DrvGpuPacketLen;
-	packet.command = command;
-	packet.vram = DrvGpuVram;
-	packet.vramGeneration = &DrvGpuVramGeneration;
-	packet.vramRowGeneration = DrvGpuVramRowGeneration;
-	packet.threadPool = &DrvPolyThreads;
-	packet.state.tpage = DrvGpuTPage;
-	packet.state.textureWindowX = DrvGpuTextureWindowX;
-	packet.state.textureWindowY = DrvGpuTextureWindowY;
-	packet.state.textureWindowW = DrvGpuTextureWindowW;
-	packet.state.textureWindowH = DrvGpuTextureWindowH;
-	packet.state.drawX1 = DrvGpuDrawX1;
-	packet.state.drawY1 = DrvGpuDrawY1;
-	packet.state.drawX2 = DrvGpuDrawX2;
-	packet.state.drawY2 = DrvGpuDrawY2;
-	packet.state.drawOffsetX = DrvGpuDrawOffsetX;
-	packet.state.drawOffsetY = DrvGpuDrawOffsetY;
-	packet.state.drawStp = DrvGpuDrawStp;
-	packet.state.checkStp = DrvGpuCheckStp;
-	packet.state.gpuType = DrvGpuType;
-	const bool submitted = DrvOpenGLFrame.RasterizePacket(&packet);
-	if (!submitted) {
-		DrvHardwareRasterStreak = 0;
-		Namcos11GpuSynchronizeHardwareVram();
-	}
-	return submitted;
+	NamcosTexturedRectRows::Run(&context, 0, height);
 }
 
 static void Namcos11GpuExecutePacket()
 {
 	UINT8 command = DrvGpuPacket[0] >> 24;
-	const bool writesVram = command == 0x02 ||
-		(command >= 0x20 && command <= 0x7f) || command == 0x80;
-	const bool hadHardwareVram = DrvOpenGLFrame.HasHardwareVram();
-	if (writesVram) {
-		DrvGpuVramGeneration++;
-	}
-	if (Namcos11GpuTryHardwarePacket(command)) {
-		DrvGpuPacketPos = 0;
-		DrvGpuPacketLen = 0;
-		return;
-	}
-	if (writesVram && hadHardwareVram) DrvGpuVramGeneration++;
 
-	switch (command)
-	{
+	switch (command) {
 		case 0x02:
 			Namcos11GpuFillRect();
 			break;
@@ -2821,9 +2707,9 @@ static void Namcos11GpuExecutePacket()
 		case 0x22:
 		case 0x23:
 			Namcos11GpuDrawTriangleFlat(Namcos11GpuPolyX(DrvGpuPacket[1]), Namcos11GpuPolyY(DrvGpuPacket[1]),
-				Namcos11GpuPolyX(DrvGpuPacket[2]), Namcos11GpuPolyY(DrvGpuPacket[2]),
-				Namcos11GpuPolyX(DrvGpuPacket[3]), Namcos11GpuPolyY(DrvGpuPacket[3]), Namcos11GpuColor(DrvGpuPacket[0]),
-				DrvGpuPacket[0] & 0x02000000);
+			                            Namcos11GpuPolyX(DrvGpuPacket[2]), Namcos11GpuPolyY(DrvGpuPacket[2]),
+			                            Namcos11GpuPolyX(DrvGpuPacket[3]), Namcos11GpuPolyY(DrvGpuPacket[3]),
+			                            Namcos11GpuColor(DrvGpuPacket[0]), DrvGpuPacket[0] & 0x02000000);
 			break;
 
 		case 0x24:
@@ -2942,14 +2828,12 @@ static void Namcos11GpuExecutePacket()
 			Namcos11GpuDrawTexturedRect(16, 16);
 			break;
 
-		case 0x80:
-		{
+		case 0x80: {
 			Namcos11GpuCopyVram();
 			break;
 		}
 
-		case 0xa0:
-		{
+		case 0xa0: {
 			DrvGpuImageX = DrvGpuPacket[1] & 0xffff;
 			DrvGpuImageY = DrvGpuPacket[1] >> 16;
 			DrvGpuImageW = DrvGpuPacket[2] & 0xffff;
@@ -2958,7 +2842,6 @@ static void Namcos11GpuExecutePacket()
 			DrvGpuImageCurX = DrvGpuImageX & 0x3ff;
 			DrvGpuImageCurY = DrvGpuImageY & 0x3ff;
 			DrvGpuImageColumn = 0;
-			if (DrvGpuImageCount) DrvGpuVramGeneration++;
 			return;
 		}
 
@@ -2968,7 +2851,8 @@ static void Namcos11GpuExecutePacket()
 			DrvGpuReadW = DrvGpuPacket[2] & 0xffff;
 			DrvGpuReadH = DrvGpuPacket[2] >> 16;
 			DrvGpuReadCount = DrvGpuReadW * DrvGpuReadH;
-			if (DrvGpuReadCount) DrvGpuStatus |= 1 << 27;
+			if (DrvGpuReadCount)
+				DrvGpuStatus |= 1 << 27;
 			break;
 
 		case 0xe1:
@@ -2999,7 +2883,9 @@ static void Namcos11GpuExecutePacket()
 
 		case 0xe5:
 			DrvGpuDrawOffsetX = (DrvGpuPacket[0] & 0x400) ? (INT32)(DrvGpuPacket[0] & 2047) - 2048 : (INT32)(DrvGpuPacket[0] & 2047);
-			DrvGpuDrawOffsetY = ((DrvGpuPacket[0] >> ((DrvGpuType == 2) ? 11 : 12)) & 0x400) ? (INT32)((DrvGpuPacket[0] >> ((DrvGpuType == 2) ? 11 : 12)) & 2047) - 2048 : (INT32)((DrvGpuPacket[0] >> ((DrvGpuType == 2) ? 11 : 12)) & 2047);
+			DrvGpuDrawOffsetY = ((DrvGpuPacket[0] >> ((DrvGpuType == 2) ? 11 : 12)) & 0x400)
+			                        ? (INT32)((DrvGpuPacket[0] >> ((DrvGpuType == 2) ? 11 : 12)) & 2047) - 2048
+			                        : (INT32)((DrvGpuPacket[0] >> ((DrvGpuType == 2) ? 11 : 12)) & 2047);
 			break;
 
 		case 0xe6:
@@ -3019,13 +2905,16 @@ static void Namcos11GpuExecutePacket()
 
 static void Namcos11GpuWrite(UINT32 data)
 {
+	// GPU register, packet, texture and rasterizer state has one worker owner.
+	// DMA is dispatched as a batch; nested GP0 calls stay on that worker.
+	;
+
 	if (DrvGpuImageCount) {
 		Namcos11GpuWriteImage(data);
 		return;
 	}
 
 	if (DrvGpuPolyline) {
-		Namcos11GpuSynchronizeHardwareVram();
 		INT32 gouraud = (DrvGpuPolyline & 0x10) != 0;
 		DrvGpuPacket[DrvGpuPacketPos] = data;
 
@@ -3035,7 +2924,6 @@ static void Namcos11GpuWrite(UINT32 data)
 				return;
 			}
 
-			DrvGpuVramGeneration++;
 			Namcos11GpuDrawLine();
 			if ((DrvGpuPacket[3] & 0xf000f000) != 0x50005000) {
 				DrvGpuPacket[1] = DrvGpuPacket[2];
@@ -3044,13 +2932,11 @@ static void Namcos11GpuWrite(UINT32 data)
 				return;
 			}
 		} else {
-			if (DrvGpuPacketPos < 5 &&
-				(DrvGpuPacketPos != 4 || (DrvGpuPacket[4] & 0xf000f000) != 0x50005000)) {
+			if (DrvGpuPacketPos < 5 && (DrvGpuPacketPos != 4 || (DrvGpuPacket[4] & 0xf000f000) != 0x50005000)) {
 				DrvGpuPacketPos++;
 				return;
 			}
 
-			DrvGpuVramGeneration++;
 			Namcos11GpuDrawGouraudLine();
 			if ((DrvGpuPacket[4] & 0xf000f000) != 0x50005000) {
 				DrvGpuPacket[0] = (DrvGpuPacket[0] & 0xff000000) | (DrvGpuPacket[2] & 0x00ffffff);
@@ -3087,8 +2973,11 @@ static void Namcos11GpuWrite(UINT32 data)
 
 static void Namcos11GpuControl(UINT32 data)
 {
-	switch (data >> 24)
-	{
+	// GPU register, packet, texture and rasterizer state has one worker owner.
+	// DMA is dispatched as a batch; nested GP0 calls stay on that worker.
+	;
+
+	switch (data >> 24) {
 		case 0x00:
 			DrvGpuStatus = 0x14802000;
 			DrvGpuTPage = 0;
@@ -3103,7 +2992,6 @@ static void Namcos11GpuControl(UINT32 data)
 			DrvGpuDrawStp = 0;
 			DrvGpuCheckStp = 0;
 			DrvGpuImageCount = 0;
-			DrvGpuImageHardwareUpload = 0;
 			DrvGpuReadCount = 0;
 			DrvGpuDisplayX = 0;
 			DrvGpuDisplayY = 0;
@@ -3166,8 +3054,7 @@ static void Namcos11GpuControl(UINT32 data)
 			break;
 
 		case 0x10:
-			switch (data & 0xff)
-			{
+			switch (data & 0xff) {
 				case 0x03:
 					DrvGpuInfo = DrvGpuDrawX1 | (DrvGpuDrawY1 << ((DrvGpuType == 2) ? 10 : 12));
 					break;
@@ -3198,14 +3085,17 @@ static void Namcos11GpuControl(UINT32 data)
 
 static void Namcos11GpuDmaWrite(UINT32 address, INT32 size)
 {
-	UINT32 *ram = (UINT32*)DrvMainRAM;
+	// GPU register, packet, texture and rasterizer state has one worker owner.
+	// DMA is dispatched as a batch; nested GP0 calls stay on that worker.
+	;
+
+	UINT32 *ram = (UINT32 *)DrvMainRAM;
 	UINT32 mask = 0x3fffff;
 	for (INT32 i = 0; i < size; i++) {
 		UINT32 data = ram[((address & mask) >> 2) & 0x0fffff];
 		Namcos11GpuWrite(data);
 		address += 4;
 	}
-
 }
 
 static void Namcos11DmaFinish(INT32 channel)
@@ -3236,22 +3126,29 @@ static void Namcos11DmaStart(INT32 channel)
 {
 	UINT32 control = DrvDmaControl[channel];
 
-	if ((control & (1 << 24)) == 0) return;
-	if ((DrvDmaDpcr & (1 << (3 + (channel * 4)))) == 0) return;
+	if ((control & (1 << 24)) == 0)
+		return;
+	if ((DrvDmaDpcr & (1 << (3 + (channel * 4)))) == 0)
+		return;
 
 	if ((channel == 0 && control == 0x01000201) || (channel == 1 && control == 0x01000200)) {
 		UINT32 blocks = DrvDmaBlock[channel] >> 16;
-		if (blocks == 0) blocks = 0x10000;
+		if (blocks == 0)
+			blocks = 0x10000;
 		INT32 size = (DrvDmaBlock[channel] & 0xffff) * blocks;
-		if (channel == 0) Namcos11MdecDmaWrite(DrvDmaBase[channel], size);
-		else Namcos11MdecDmaRead(DrvDmaBase[channel], size);
-		if (channel == 1) Namcos11DmaScheduleFinish(channel, 26000 / 4);
-		else Namcos11DmaFinish(channel);
+		if (channel == 0)
+			Namcos11MdecDmaWrite(DrvDmaBase[channel], size);
+		else
+			Namcos11MdecDmaRead(DrvDmaBase[channel], size);
+		if (channel == 1)
+			Namcos11DmaScheduleFinish(channel, 26000 / 4);
+		else
+			Namcos11DmaFinish(channel);
 		return;
 	}
 
 	if (channel == 2 && control == 0x01000401) {
-		UINT32 *ram = (UINT32*)DrvMainRAM;
+		UINT32 *ram = (UINT32 *)DrvMainRAM;
 		UINT32 address = DrvDmaBase[channel] & 0x00ffffff;
 		UINT32 mask = 0x3fffff;
 		UINT32 packets = 0;
@@ -3265,7 +3162,8 @@ static void Namcos11DmaStart(INT32 channel)
 			UINT32 next_address = next & 0x00ffffff;
 			if (next_address != 0x00ffffff) {
 				UINT32 linked = next_address & mask;
-				if (address == ram[linked >> 2] || address == linked) break;
+				if (address == ram[linked >> 2] || address == linked)
+					break;
 			}
 
 			address = next_address;
@@ -3281,7 +3179,8 @@ static void Namcos11DmaStart(INT32 channel)
 		INT32 size = DrvDmaBlock[channel];
 		if (control & 0x200) {
 			UINT32 blocks = DrvDmaBlock[channel] >> 16;
-			if (blocks == 0) blocks = 0x10000;
+			if (blocks == 0)
+				blocks = 0x10000;
 			size = (DrvDmaBlock[channel] & 0xffff) * blocks;
 		}
 		Namcos11GpuDmaWrite(DrvDmaBase[channel], size);
@@ -3290,10 +3189,11 @@ static void Namcos11DmaStart(INT32 channel)
 	}
 
 	if (channel == 2 && control == 0x01000200) {
-		UINT32 *ram = (UINT32*)DrvMainRAM;
+		UINT32 *ram = (UINT32 *)DrvMainRAM;
 		UINT32 address = DrvDmaBase[channel] & 0x3fffff;
 		UINT32 blocks = DrvDmaBlock[channel] >> 16;
-		if (blocks == 0) blocks = 0x10000;
+		if (blocks == 0)
+			blocks = 0x10000;
 		INT32 size = (DrvDmaBlock[channel] & 0xffff) * blocks;
 		for (INT32 i = 0; i < size; i++) {
 			ram[(address & 0x3fffff) >> 2] = Namcos11ReadIo(0x1f801810);
@@ -3304,7 +3204,7 @@ static void Namcos11DmaStart(INT32 channel)
 	}
 
 	if (channel == 6 && control == 0x11000002) {
-		UINT32 *ram = (UINT32*)DrvMainRAM;
+		UINT32 *ram = (UINT32 *)DrvMainRAM;
 		UINT32 address = DrvDmaBase[channel] & 0x3fffff;
 		INT32 size = DrvDmaBlock[channel];
 
@@ -3329,8 +3229,7 @@ static void Namcos11WriteDma(UINT32 address, UINT32 data)
 	UINT32 channel = offset >> 2;
 
 	if (channel < 7) {
-		switch (offset & 3)
-		{
+		switch (offset & 3) {
 			case 0:
 				DrvDmaBase[channel] = data;
 				break;
@@ -3346,8 +3245,7 @@ static void Namcos11WriteDma(UINT32 address, UINT32 data)
 				break;
 		}
 	} else {
-		switch (offset & 3)
-		{
+		switch (offset & 3) {
 			case 0:
 				DrvDmaDpcr = data;
 				break;
@@ -3366,8 +3264,7 @@ static void Namcos11WriteDma(UINT32 address, UINT32 data)
 
 static void Namcos11WriteIo(UINT32 address, UINT32 data)
 {
-	switch (address & ~3)
-	{
+	switch (address & ~3) {
 		case 0x1f801040:
 		case 0x1f801044:
 		case 0x1f801048:
@@ -3476,8 +3373,7 @@ static void Namcos11WriteIoMasked(UINT32 address, UINT32 data, UINT32 mem_mask)
 {
 	address &= ~3;
 
-	switch (address)
-	{
+	switch (address) {
 		case 0x1f801000:
 		case 0x1f801008:
 		case 0x1f801010:
@@ -3529,6 +3425,8 @@ static void Namcos11WriteIoMasked(UINT32 address, UINT32 data, UINT32 mem_mask)
 
 static UINT16 Namcos11KeycusRead(UINT32 address)
 {
+	if (DrvFamilyBowl)
+		return 0xffff; // unpopulated KEYCUS socket
 	UINT32 offset = (address - 0x1fa20000) >> 1;
 	UINT16 result;
 
@@ -3546,63 +3444,82 @@ static UINT16 Namcos11KeycusRead(UINT32 address)
 		if (DrvKeycusP2 == 0) {
 			UINT16 value = (DrvKeycusP1 == 0xfffe) ? 410 : DrvKeycusP1;
 
-			switch (offset)
-			{
-				case 1: return (value / 1) % 10;
-				case 2: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 3: return ((value / 10000) % 10) | (((value / 10) % 10) << 8);
+			switch (offset) {
+				case 1:
+					return (value / 1) % 10;
+				case 2:
+					return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
+				case 3:
+					return ((value / 10000) % 10) | (((value / 10) % 10) << 8);
 			}
 		}
 	} else if (DrvKeycusType == 411) {
-		if (DrvKeycusP2 == 0x0000 && ((((DrvKeycusP1 == 0x0000 || DrvKeycusP1 == 0x0100) && DrvKeycusP3 == 0xff7f)) || DrvKeycusP1 == 0x7256)) {
+		if (DrvKeycusP2 == 0x0000 &&
+		    ((((DrvKeycusP1 == 0x0000 || DrvKeycusP1 == 0x0100) && DrvKeycusP3 == 0xff7f)) || DrvKeycusP1 == 0x7256)) {
 			UINT16 value = (DrvKeycusP1 == 0x7256) ? DrvKeycusP3 : 411;
 
-			switch (offset)
-			{
-				case 0: return ((value / 1) % 10) | (((value / 10) % 10) << 8);
-				case 2: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 8: return (value / 10000) % 10;
+			switch (offset) {
+				case 0:
+					return ((value / 1) % 10) | (((value / 10) % 10) << 8);
+				case 2:
+					return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
+				case 8:
+					return (value / 10000) % 10;
 			}
 		}
 	} else if (DrvKeycusType == 430) {
 		if (DrvKeycusP2 == 0x0000 && ((DrvKeycusP1 == 0xbfff && DrvKeycusP3 == 0x0000) || DrvKeycusP3 == 0xe296)) {
 			UINT16 value = (DrvKeycusP3 == 0xe296) ? DrvKeycusP1 : 430;
 
-			switch (offset)
-			{
-				case 1: return (value / 10000) % 10;
-				case 4: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 5: return ((value / 1) % 10) | (((value / 10) % 10) << 8);
+			switch (offset) {
+				case 1:
+					return (value / 10000) % 10;
+				case 4:
+					return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
+				case 5:
+					return ((value / 1) % 10) | (((value / 10) % 10) << 8);
 			}
 		}
 	} else if (DrvKeycusType == 442) {
-		if (offset == 0 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0000 || DrvKeycusP2 == 0x0021)) return 0x0000;
-		if (offset == 1 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0020 || DrvKeycusP2 == 0x3af2)) return 0x0000;
-		if (offset == 1 && DrvKeycusP1 == 0x0020 && DrvKeycusP2 == 0x0021) return 0xc442;
+		if (offset == 0 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0000 || DrvKeycusP2 == 0x0021))
+			return 0x0000;
+		if (offset == 1 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0020 || DrvKeycusP2 == 0x3af2))
+			return 0x0000;
+		if (offset == 1 && DrvKeycusP1 == 0x0020 && DrvKeycusP2 == 0x0021)
+			return 0xc442;
 	} else if (DrvKeycusType == 443) {
-		if (offset == 0 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0000 || DrvKeycusP2 == 0xffff || DrvKeycusP2 == 0xffe0)) return 0x0020;
-		if (offset == 1 && DrvKeycusP1 == 0x0020 && DrvKeycusP2 == 0xffdf) return 0x0000;
-		if (offset == 1 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0xffff || DrvKeycusP2 == 0xffe0)) return 0xc443;
+		if (offset == 0 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0x0000 || DrvKeycusP2 == 0xffff || DrvKeycusP2 == 0xffe0))
+			return 0x0020;
+		if (offset == 1 && DrvKeycusP1 == 0x0020 && DrvKeycusP2 == 0xffdf)
+			return 0x0000;
+		if (offset == 1 && DrvKeycusP1 == 0x0020 && (DrvKeycusP2 == 0xffff || DrvKeycusP2 == 0xffe0))
+			return 0xc443;
 	} else if (DrvKeycusType == 432) {
-		if (DrvKeycusP1 == 0x0000 && ((((DrvKeycusP3 == 0x0000 || DrvKeycusP3 == 0x00dc) && DrvKeycusP2 == 0xefff)) || DrvKeycusP3 == 0x2f15)) {
+		if (DrvKeycusP1 == 0x0000 &&
+		    ((((DrvKeycusP3 == 0x0000 || DrvKeycusP3 == 0x00dc) && DrvKeycusP2 == 0xefff)) || DrvKeycusP3 == 0x2f15)) {
 			UINT16 value = (DrvKeycusP3 == 0x2f15) ? DrvKeycusP2 : 432;
 
-			switch (offset)
-			{
-				case 2: return ((value / 1) % 10) | (((value / 10) % 10) << 8);
-				case 4: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 6: return ((value / 10000) % 10) | (((value / 100000) % 10) << 8);
+			switch (offset) {
+				case 2:
+					return ((value / 1) % 10) | (((value / 10) % 10) << 8);
+				case 4:
+					return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
+				case 6:
+					return ((value / 10000) % 10) | (((value / 100000) % 10) << 8);
 			}
 		}
 	} else if (DrvKeycusType == 431) {
-		if (DrvKeycusP2 == 0x0000 && ((((DrvKeycusP1 == 0x0000 || DrvKeycusP1 == 0xab50) && DrvKeycusP3 == 0x7fff)) || DrvKeycusP1 == 0x9e61)) {
+		if (DrvKeycusP2 == 0x0000 &&
+		    ((((DrvKeycusP1 == 0x0000 || DrvKeycusP1 == 0xab50) && DrvKeycusP3 == 0x7fff)) || DrvKeycusP1 == 0x9e61)) {
 			UINT16 value = (DrvKeycusP1 == 0x9e61) ? DrvKeycusP3 : 431;
 
-			switch (offset)
-			{
-				case 0: return ((value / 1) % 10) | (((value / 10) % 10) << 8);
-				case 4: return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
-				case 8: return (value / 10000) % 10;
+			switch (offset) {
+				case 0:
+					return ((value / 1) % 10) | (((value / 10) % 10) << 8);
+				case 4:
+					return ((value / 100) % 10) | (((value / 1000) % 10) << 8);
+				case 8:
+					return (value / 10000) % 10;
 			}
 		}
 	} else if (offset == 0 && DrvKeycusP1 == 0x1234 && DrvKeycusP2 == 0x5678 && DrvKeycusP3 == 0x000f) {
@@ -3618,64 +3535,79 @@ static UINT16 Namcos11KeycusRead(UINT32 address)
 static UINT16 Namcos11KeycusLatch(UINT32 offset)
 {
 	if (DrvKeycusType == 409) {
-		switch (offset)
-		{
-			case 1: return DrvKeycusP1;
-			case 3: return DrvKeycusP2;
-			case 7: return DrvKeycusP3;
+		switch (offset) {
+			case 1:
+				return DrvKeycusP1;
+			case 3:
+				return DrvKeycusP2;
+			case 7:
+				return DrvKeycusP3;
 		}
 	} else if (DrvKeycusType == 410) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 2: return DrvKeycusP2;
+		switch (offset) {
+			case 0:
+				return DrvKeycusP1;
+			case 2:
+				return DrvKeycusP2;
 		}
 	} else if (DrvKeycusType == 411) {
-		switch (offset)
-		{
-			case 2: return DrvKeycusP1;
-			case 8: return DrvKeycusP2;
-			case 10: return DrvKeycusP3;
+		switch (offset) {
+			case 2:
+				return DrvKeycusP1;
+			case 8:
+				return DrvKeycusP2;
+			case 10:
+				return DrvKeycusP3;
 		}
 	} else if (DrvKeycusType == 430) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 1: return DrvKeycusP2;
-			case 4: return DrvKeycusP3;
+		switch (offset) {
+			case 0:
+				return DrvKeycusP1;
+			case 1:
+				return DrvKeycusP2;
+			case 4:
+				return DrvKeycusP3;
 		}
 	} else if (DrvKeycusType == 442) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 1: return DrvKeycusP2;
+		switch (offset) {
+			case 0:
+				return DrvKeycusP1;
+			case 1:
+				return DrvKeycusP2;
 		}
 	} else if (DrvKeycusType == 443) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 1: return DrvKeycusP2;
+		switch (offset) {
+			case 0:
+				return DrvKeycusP1;
+			case 1:
+				return DrvKeycusP2;
 		}
 	} else if (DrvKeycusType == 432) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 2: return DrvKeycusP2;
-			case 6: return DrvKeycusP3;
+		switch (offset) {
+			case 0:
+				return DrvKeycusP1;
+			case 2:
+				return DrvKeycusP2;
+			case 6:
+				return DrvKeycusP3;
 		}
 	} else if (DrvKeycusType == 431) {
-		switch (offset)
-		{
-			case 0: return DrvKeycusP1;
-			case 4: return DrvKeycusP2;
-			case 12: return DrvKeycusP3;
+		switch (offset) {
+			case 0:
+				return DrvKeycusP1;
+			case 4:
+				return DrvKeycusP2;
+			case 12:
+				return DrvKeycusP3;
 		}
 	} else {
-		switch (offset)
-		{
-			case 1: return DrvKeycusP1;
-			case 2: return DrvKeycusP2;
-			case 3: return DrvKeycusP3;
+		switch (offset) {
+			case 1:
+				return DrvKeycusP1;
+			case 2:
+				return DrvKeycusP2;
+			case 3:
+				return DrvKeycusP3;
 		}
 	}
 
@@ -3687,64 +3619,103 @@ static void Namcos11KeycusWrite(UINT32 address, UINT16 data)
 	UINT32 offset = (address - 0x1fa20000) >> 1;
 
 	if (DrvKeycusType == 409) {
-		switch (offset)
-		{
-			case 1: DrvKeycusP1 = data; return;
-			case 3: DrvKeycusP2 = data; return;
-			case 7: DrvKeycusP3 = data; return;
+		switch (offset) {
+			case 1:
+				DrvKeycusP1 = data;
+				return;
+			case 3:
+				DrvKeycusP2 = data;
+				return;
+			case 7:
+				DrvKeycusP3 = data;
+				return;
 		}
 	} else if (DrvKeycusType == 410) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 2: DrvKeycusP2 = data; return;
+		switch (offset) {
+			case 0:
+				DrvKeycusP1 = data;
+				return;
+			case 2:
+				DrvKeycusP2 = data;
+				return;
 		}
 	} else if (DrvKeycusType == 411) {
-		switch (offset)
-		{
-			case 2: DrvKeycusP1 = data; return;
-			case 8: DrvKeycusP2 = data; return;
-			case 10: DrvKeycusP3 = data; return;
+		switch (offset) {
+			case 2:
+				DrvKeycusP1 = data;
+				return;
+			case 8:
+				DrvKeycusP2 = data;
+				return;
+			case 10:
+				DrvKeycusP3 = data;
+				return;
 		}
 	} else if (DrvKeycusType == 430) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 1: DrvKeycusP2 = data; return;
-			case 4: DrvKeycusP3 = data; return;
+		switch (offset) {
+			case 0:
+				DrvKeycusP1 = data;
+				return;
+			case 1:
+				DrvKeycusP2 = data;
+				return;
+			case 4:
+				DrvKeycusP3 = data;
+				return;
 		}
 	} else if (DrvKeycusType == 442) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 1: DrvKeycusP2 = data; return;
+		switch (offset) {
+			case 0:
+				DrvKeycusP1 = data;
+				return;
+			case 1:
+				DrvKeycusP2 = data;
+				return;
 		}
 	} else if (DrvKeycusType == 443) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 1: DrvKeycusP2 = data; return;
+		switch (offset) {
+			case 0:
+				DrvKeycusP1 = data;
+				return;
+			case 1:
+				DrvKeycusP2 = data;
+				return;
 		}
 	} else if (DrvKeycusType == 432) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 2: DrvKeycusP2 = data; return;
-			case 6: DrvKeycusP3 = data; return;
+		switch (offset) {
+			case 0:
+				DrvKeycusP1 = data;
+				return;
+			case 2:
+				DrvKeycusP2 = data;
+				return;
+			case 6:
+				DrvKeycusP3 = data;
+				return;
 		}
 	} else if (DrvKeycusType == 431) {
-		switch (offset)
-		{
-			case 0: DrvKeycusP1 = data; return;
-			case 4: DrvKeycusP2 = data; return;
-			case 12: DrvKeycusP3 = data; return;
+		switch (offset) {
+			case 0:
+				DrvKeycusP1 = data;
+				return;
+			case 4:
+				DrvKeycusP2 = data;
+				return;
+			case 12:
+				DrvKeycusP3 = data;
+				return;
 		}
 	} else {
-		switch (offset)
-		{
-			case 1: DrvKeycusP1 = data; return;
-			case 2: DrvKeycusP2 = data; return;
-			case 3: DrvKeycusP3 = data; return;
+		switch (offset) {
+			case 1:
+				DrvKeycusP1 = data;
+				return;
+			case 2:
+				DrvKeycusP2 = data;
+				return;
+			case 3:
+				DrvKeycusP3 = data;
+				return;
 		}
 	}
 }
@@ -3782,7 +3753,8 @@ static UINT8 Namcos11ReadByte(UINT32 address)
 	}
 
 	if (address >= 0x1fa30000 && address <= 0x1fa30fff) {
-		if (address & 1) return 0xff;
+		if (address & 1)
+			return 0xff;
 		return Namcos11EEPROMRead(address);
 	}
 
@@ -3796,21 +3768,24 @@ static UINT16 Namcos11ReadHalf(UINT32 address)
 
 	if (DrvLightgunGame && address >= 0x1f780000 && address <= 0x1f78000f) {
 		UINT32 offset = (address - 0x1f780000) >> 1;
-		UINT16 gun[4] = {
-			(UINT16)(0x00d8 + (BurnGunReturnX(0) * (0x0387 - 0x00d8)) / 0xff),
-			(UINT16)(0x002c + (BurnGunReturnY(0) * (0x011b - 0x002c)) / 0xff),
-			(UINT16)(0x00d8 + (BurnGunReturnX(1) * (0x0387 - 0x00d8)) / 0xff),
-			(UINT16)(0x002c + (BurnGunReturnY(1) * (0x011b - 0x002c)) / 0xff)
-		};
+		UINT16 gun[4] = { (UINT16)(0x00d8 + (BurnGunReturnX(0) * (0x0387 - 0x00d8)) / 0xff),
+		                  (UINT16)(0x002c + (BurnGunReturnY(0) * (0x011b - 0x002c)) / 0xff),
+		                  (UINT16)(0x00d8 + (BurnGunReturnX(1) * (0x0387 - 0x00d8)) / 0xff),
+		                  (UINT16)(0x002c + (BurnGunReturnY(1) * (0x011b - 0x002c)) / 0xff) };
 
-		switch (offset)
-		{
-			case 0: return gun[0];
-			case 2: return gun[1];
-			case 3: return gun[1] + 1;
-			case 4: return gun[2];
-			case 6: return gun[3];
-			case 7: return gun[3] + 1;
+		switch (offset) {
+			case 0:
+				return gun[0];
+			case 2:
+				return gun[1];
+			case 3:
+				return gun[1] + 1;
+			case 4:
+				return gun[2];
+			case 6:
+				return gun[3];
+			case 7:
+				return gun[3] + 1;
 		}
 
 		return 0;
@@ -3946,7 +3921,6 @@ static void Namcos11WriteByte(UINT32 address, UINT8 data)
 		Namcos11WriteIoMasked(io, data << shift, 0xff << shift);
 		return;
 	}
-
 }
 
 static void Namcos11WriteHalf(UINT32 address, UINT16 data)
@@ -4036,7 +4010,6 @@ static void Namcos11WriteHalf(UINT32 address, UINT16 data)
 	if (address >= 0x1fbf6000 && address <= 0x1fbf6003) {
 		return;
 	}
-
 }
 
 static void Namcos11WriteWord(UINT32 address, UINT32 data)
@@ -4056,7 +4029,8 @@ static void Namcos11WriteWord(UINT32 address, UINT32 data)
 
 static INT32 DrvMapMemory()
 {
-	if (PsxInit()) return 1;
+	if (PsxInit())
+		return 1;
 
 	PsxSetReadByteHandler(0, Namcos11ReadByte);
 	PsxSetReadHalfHandler(0, Namcos11ReadHalf);
@@ -4083,173 +4057,156 @@ static INT32 DrvMapMemory()
 }
 
 static struct BurnInputInfo Namcos11InputList[] = {
-	{"P1 Coin",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
-	{"P1 Start",		BIT_DIGITAL,	DrvJoy3 + 2,	"p1 start"	},
-	{"P1 Up",			BIT_DIGITAL,	DrvJoy1 + 0,	"p1 up"		},
-	{"P1 Down",			BIT_DIGITAL,	DrvJoy1 + 1,	"p1 down"	},
-	{"P1 Left",			BIT_DIGITAL,	DrvJoy1 + 2,	"p1 left"	},
-	{"P1 Right",		BIT_DIGITAL,	DrvJoy1 + 3,	"p1 right"	},
-	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy1 + 4,	"p1 fire 1"	},
-	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy1 + 5,	"p1 fire 2"	},
-	{"P1 Button 3",		BIT_DIGITAL,	DrvJoy1 + 6,	"p1 fire 3"	},
-	{"P1 Button 4",		BIT_DIGITAL,	DrvJoy1 + 7,	"p1 fire 4"	},
+	{ "P1 Coin",      BIT_DIGITAL,   DrvJoy3 + 0, "p1 coin"   },
+	{ "P1 Start",     BIT_DIGITAL,   DrvJoy3 + 2, "p1 start"  },
+	{ "P1 Up",        BIT_DIGITAL,   DrvJoy1 + 0, "p1 up"     },
+	{ "P1 Down",      BIT_DIGITAL,   DrvJoy1 + 1, "p1 down"   },
+	{ "P1 Left",      BIT_DIGITAL,   DrvJoy1 + 2, "p1 left"   },
+	{ "P1 Right",     BIT_DIGITAL,   DrvJoy1 + 3, "p1 right"  },
+	{ "P1 Button 1",  BIT_DIGITAL,   DrvJoy1 + 4, "p1 fire 1" },
+	{ "P1 Button 2",  BIT_DIGITAL,   DrvJoy1 + 5, "p1 fire 2" },
+	{ "P1 Button 3",  BIT_DIGITAL,   DrvJoy1 + 6, "p1 fire 3" },
+	{ "P1 Button 4",  BIT_DIGITAL,   DrvJoy1 + 7, "p1 fire 4" },
 
-	{"P2 Coin",			BIT_DIGITAL,	DrvJoy3 + 1,	"p2 coin"	},
-	{"P2 Start",		BIT_DIGITAL,	DrvJoy3 + 3,	"p2 start"	},
-	{"P2 Up",			BIT_DIGITAL,	DrvJoy2 + 0,	"p2 up"		},
-	{"P2 Down",			BIT_DIGITAL,	DrvJoy2 + 1,	"p2 down"	},
-	{"P2 Left",			BIT_DIGITAL,	DrvJoy2 + 2,	"p2 left"	},
-	{"P2 Right",		BIT_DIGITAL,	DrvJoy2 + 3,	"p2 right"	},
-	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy2 + 4,	"p2 fire 1"	},
-	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy2 + 5,	"p2 fire 2"	},
-	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy2 + 6,	"p2 fire 3"	},
-	{"P2 Button 4",		BIT_DIGITAL,	DrvJoy2 + 7,	"p2 fire 4"	},
+	{ "P2 Coin",      BIT_DIGITAL,   DrvJoy3 + 1, "p2 coin"   },
+	{ "P2 Start",     BIT_DIGITAL,   DrvJoy3 + 3, "p2 start"  },
+	{ "P2 Up",        BIT_DIGITAL,   DrvJoy2 + 0, "p2 up"     },
+	{ "P2 Down",      BIT_DIGITAL,   DrvJoy2 + 1, "p2 down"   },
+	{ "P2 Left",      BIT_DIGITAL,   DrvJoy2 + 2, "p2 left"   },
+	{ "P2 Right",     BIT_DIGITAL,   DrvJoy2 + 3, "p2 right"  },
+	{ "P2 Button 1",  BIT_DIGITAL,   DrvJoy2 + 4, "p2 fire 1" },
+	{ "P2 Button 2",  BIT_DIGITAL,   DrvJoy2 + 5, "p2 fire 2" },
+	{ "P2 Button 3",  BIT_DIGITAL,   DrvJoy2 + 6, "p2 fire 3" },
+	{ "P2 Button 4",  BIT_DIGITAL,   DrvJoy2 + 7, "p2 fire 4" },
 
-	{"Service Mode",	BIT_DIGITAL,	DrvJoy3 + 4,	"diag"		},
-	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
-	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
-	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
-	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
-	{"Dip D",			BIT_DIPSWITCH,	DrvDips + 3,	"dip"		},
+	{ "Service Mode", BIT_DIGITAL,   DrvJoy3 + 4, "diag"      },
+	{ "Reset",        BIT_DIGITAL,   &DrvReset,   "reset"     },
+	{ "Dip A",        BIT_DIPSWITCH, DrvDips + 0, "dip"       },
+	{ "Dip B",        BIT_DIPSWITCH, DrvDips + 1, "dip"       },
+	{ "Service",      BIT_DIGITAL,   DrvJoy3 + 5, "service"   },
 };
 
 STDINPUTINFO(Namcos11)
 
 static struct BurnInputInfo Myangel3InputList[] = {
-	{"P1 Coin",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
-	{"P1 Start",		BIT_DIGITAL,	DrvJoy3 + 2,	"p1 start"	},
-	{"P1 Button 1",		BIT_DIGITAL,	DrvJoy1 + 4,	"p1 fire 1"	},
-	{"P1 Button 2",		BIT_DIGITAL,	DrvJoy1 + 5,	"p1 fire 2"	},
-	{"P1 Button 3",		BIT_DIGITAL,	DrvJoy1 + 6,	"p1 fire 3"	},
-	{"P1 Button 4",		BIT_DIGITAL,	DrvJoy1 + 7,	"p1 fire 4"	},
+	{ "P1 Coin",      BIT_DIGITAL,   DrvJoy3 + 0, "p1 coin"   },
+	{ "P1 Start",     BIT_DIGITAL,   DrvJoy3 + 2, "p1 start"  },
+	{ "P1 Button 1",  BIT_DIGITAL,   DrvJoy1 + 4, "p1 fire 1" },
+	{ "P1 Button 2",  BIT_DIGITAL,   DrvJoy1 + 5, "p1 fire 2" },
+	{ "P1 Button 3",  BIT_DIGITAL,   DrvJoy1 + 6, "p1 fire 3" },
+	{ "P1 Button 4",  BIT_DIGITAL,   DrvJoy1 + 7, "p1 fire 4" },
 
-	{"P2 Coin",			BIT_DIGITAL,	DrvJoy3 + 1,	"p2 coin"	},
-	{"P2 Start",		BIT_DIGITAL,	DrvJoy3 + 3,	"p2 start"	},
-	{"P2 Button 1",		BIT_DIGITAL,	DrvJoy2 + 4,	"p2 fire 1"	},
-	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy2 + 5,	"p2 fire 2"	},
-	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy2 + 6,	"p2 fire 3"	},
-	{"P2 Button 4",		BIT_DIGITAL,	DrvJoy2 + 7,	"p2 fire 4"	},
+	{ "P2 Coin",      BIT_DIGITAL,   DrvJoy3 + 1, "p2 coin"   },
+	{ "P2 Start",     BIT_DIGITAL,   DrvJoy3 + 3, "p2 start"  },
+	{ "P2 Button 1",  BIT_DIGITAL,   DrvJoy2 + 4, "p2 fire 1" },
+	{ "P2 Button 2",  BIT_DIGITAL,   DrvJoy2 + 5, "p2 fire 2" },
+	{ "P2 Button 3",  BIT_DIGITAL,   DrvJoy2 + 6, "p2 fire 3" },
+	{ "P2 Button 4",  BIT_DIGITAL,   DrvJoy2 + 7, "p2 fire 4" },
 
-	{"Service Mode",	BIT_DIGITAL,	DrvJoy3 + 4,	"diag"		},
-	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
-	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
-	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
-	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
-	{"Dip D",			BIT_DIPSWITCH,	DrvDips + 3,	"dip"		},
+	{ "Service Mode", BIT_DIGITAL,   DrvJoy3 + 4, "diag"      },
+	{ "Reset",        BIT_DIGITAL,   &DrvReset,   "reset"     },
+	{ "Dip A",        BIT_DIPSWITCH, DrvDips + 0, "dip"       },
+	{ "Dip B",        BIT_DIPSWITCH, DrvDips + 1, "dip"       },
+	{ "Service",      BIT_DIGITAL,   DrvJoy3 + 5, "service"   },
 };
 
 STDINPUTINFO(Myangel3)
 
 static struct BurnInputInfo Ptblank2InputList[] = {
-	{"P1 Coin",			BIT_DIGITAL,	DrvJoy3 + 0,	"p1 coin"	},
-	{"P1 Start",		BIT_DIGITAL,	DrvJoy3 + 2,	"p1 start"	},
-	{"P1 Gun X",		BIT_ANALOG_REL,	(UINT8*)(DrvAnalog + 0), "mouse x-axis"},
-	{"P1 Gun Y",		BIT_ANALOG_REL,	(UINT8*)(DrvAnalog + 1), "mouse y-axis"},
-	{"P1 Trigger",		BIT_DIGITAL,	DrvJoy1 + 4,	"p1 fire 1"	},
+	{ "P1 Coin",      BIT_DIGITAL,    DrvJoy3 + 0,             "p1 coin"      },
+	{ "P1 Start",     BIT_DIGITAL,    DrvJoy3 + 2,             "p1 start"     },
+	{ "P1 Gun X",     BIT_ANALOG_REL, (UINT8*)(DrvAnalog + 0), "mouse x-axis" },
+	{ "P1 Gun Y",     BIT_ANALOG_REL, (UINT8*)(DrvAnalog + 1), "mouse y-axis" },
+	{ "P1 Trigger",   BIT_DIGITAL,    DrvJoy1 + 4,             "p1 fire 1"    },
 
-	{"P2 Coin",			BIT_DIGITAL,	DrvJoy3 + 1,	"p2 coin"	},
-	{"P2 Start",		BIT_DIGITAL,	DrvJoy3 + 3,	"p2 start"	},
-	{"P2 Gun X",		BIT_ANALOG_REL,	(UINT8*)(DrvAnalog + 2), "p2 x-axis"},
-	{"P2 Gun Y",		BIT_ANALOG_REL,	(UINT8*)(DrvAnalog + 3), "p2 y-axis"},
-	{"P2 Trigger",		BIT_DIGITAL,	DrvJoy2 + 4,	"p2 fire 1"	},
+	{ "P2 Coin",      BIT_DIGITAL,    DrvJoy3 + 1,             "p2 coin"      },
+	{ "P2 Start",     BIT_DIGITAL,    DrvJoy3 + 3,             "p2 start"     },
+	{ "P2 Gun X",     BIT_ANALOG_REL, (UINT8*)(DrvAnalog + 2), "p2 x-axis"    },
+	{ "P2 Gun Y",     BIT_ANALOG_REL, (UINT8*)(DrvAnalog + 3), "p2 y-axis"    },
+	{ "P2 Trigger",   BIT_DIGITAL,    DrvJoy2 + 4,             "p2 fire 1"    },
 
-	{"Service",			BIT_DIGITAL,	DrvJoy3 + 5,	"service"	},
-	{"Service Mode",	BIT_DIGITAL,	DrvJoy3 + 4,	"diag"		},
-	{"Reset",			BIT_DIGITAL,	&DrvReset,		"reset"		},
-	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
-	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
-	{"Dip C",			BIT_DIPSWITCH,	DrvDips + 2,	"dip"		},
-	{"Dip D",			BIT_DIPSWITCH,	DrvDips + 3,	"dip"		},
+	{ "Service",      BIT_DIGITAL,    DrvJoy3 + 5,             "service"      },
+	{ "Service Mode", BIT_DIGITAL,    DrvJoy3 + 4,             "diag"         },
+	{ "Reset",        BIT_DIGITAL,    &DrvReset,               "reset"        },
+	{ "Dip A",        BIT_DIPSWITCH,  DrvDips + 0,             "dip"          },
+	{ "Dip B",        BIT_DIPSWITCH,  DrvDips + 1,             "dip"          },
 };
 
 STDINPUTINFO(Ptblank2)
 
-static struct BurnDIPInfo Namcos11DIPList[]=
-{
-	{0x16, 0xff, 0xff, 0xff, NULL},
-	{0x17, 0xff, 0xff, 0xff, NULL},
-	{0x18, 0xff, 0xff, 0x00, NULL},
-	{0x19, 0xff, 0xff, 0x01, NULL},
+static struct BurnDIPInfo Namcos11DIPList[] = {
+	{ 0x16, 0xff, 0xff, 0xff, NULL            },
+	{ 0x17, 0xff, 0xff, 0xff, NULL            },
 
-	{0,    0xfe, 0,    2,    "Rendering Type" },
-	{0x19, 0x01, 0x03, 0x00, "Software"       },
-	{0x19, 0x01, 0x03, 0x01, "OpenGL"         },
+	{ 0,    0xfe, 0,    2,    "DIP1 (Test)"   },
+	{ 0x16, 0x01, 0x02, 0x02, "Off"           },
+	{ 0x16, 0x01, 0x02, 0x00, "On"            },
 
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x18, 0x01, 0x01, 0x00, "Off"},
-	{0x18, 0x01, 0x01, 0x01, "On"},
+	{ 0,    0xfe, 0,    2,    "DIP2 (Freeze)" },
+	{ 0x16, 0x01, 0x01, 0x01, "Off"           },
+	{ 0x16, 0x01, 0x01, 0x00, "On"            },
 };
 
 STDDIPINFO(Namcos11)
 
-static struct BurnDIPInfo Myangel3DIPList[]=
-{
-	{0x0e, 0xff, 0xff, 0xff, NULL},
-	{0x0f, 0xff, 0xff, 0xff, NULL},
-	{0x10, 0xff, 0xff, 0x00, NULL},
-	{0x11, 0xff, 0xff, 0x01, NULL},
+static struct BurnDIPInfo Myangel3DIPList[] = {
+	{ 0x0e, 0xff, 0xff, 0xff, NULL            },
+	{ 0x0f, 0xff, 0xff, 0xff, NULL            },
 
-	{0,    0xfe, 0,    2,    "Rendering Type" },
-	{0x11, 0x01, 0x03, 0x00, "Software"       },
-	{0x11, 0x01, 0x03, 0x01, "OpenGL"         },
+	{ 0,    0xfe, 0,    2,    "DIP1 (Test)"   },
+	{ 0x0e, 0x01, 0x02, 0x02, "Off"           },
+	{ 0x0e, 0x01, 0x02, 0x00, "On"            },
 
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x10, 0x01, 0x01, 0x00, "Off"},
-	{0x10, 0x01, 0x01, 0x01, "On"},
+	{ 0,    0xfe, 0,    2,    "DIP2 (Freeze)" },
+	{ 0x0e, 0x01, 0x01, 0x01, "Off"           },
+	{ 0x0e, 0x01, 0x01, 0x00, "On"            },
 };
 
 STDDIPINFO(Myangel3)
 
-static struct BurnDIPInfo Ptblank2DIPList[]=
-{
-	{0x0d, 0xff, 0xff, 0xff, NULL},
-	{0x0e, 0xff, 0xff, 0xff, NULL},
-	{0x0f, 0xff, 0xff, 0x00, NULL},
-	{0x10, 0xff, 0xff, 0x01, NULL},
+static struct BurnDIPInfo Ptblank2DIPList[] = {
+	{ 0x0d, 0xff, 0xff, 0xff, NULL            },
+	{ 0x0e, 0xff, 0xff, 0xff, NULL            },
 
-	{0,    0xfe, 0,    2,    "Rendering Type" },
-	{0x10, 0x01, 0x03, 0x00, "Software"       },
-	{0x10, 0x01, 0x03, 0x01, "OpenGL"         },
+	{ 0,    0xfe, 0,    2,    "DIP1 (Test)"   },
+	{ 0x0d, 0x01, 0x02, 0x02, "Off"           },
+	{ 0x0d, 0x01, 0x02, 0x00, "On"            },
 
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x0f, 0x01, 0x01, 0x00, "Off"},
-	{0x0f, 0x01, 0x01, 0x01, "On"},
+	{ 0,    0xfe, 0,    2,    "DIP2 (Freeze)" },
+	{ 0x0d, 0x01, 0x01, 0x01, "Off"           },
+	{ 0x0d, 0x01, 0x01, 0x00, "On"            },
 };
 
 STDDIPINFO(Ptblank2)
 
-#define A(a, b, c, d) { a, b, (UINT8*)(c), d }
+#define A(a, b, c, d) { a, b, (UINT8 *)(c), d }
 static struct BurnInputInfo PocketrcInputList[] = {
-	{ "P1 Coin",       BIT_DIGITAL,    DrvJoy3 + 0,  "p1 coin"   },
+	{ "P1 Coin",            BIT_DIGITAL,   DrvJoy3 + 0, "p1 coin"   },
 	A("Steering",      BIT_ANALOG_REL, &DrvAnalog[0], "p1 x-axis"),
 	A("Accelerator",   BIT_ANALOG_REL, &DrvAnalog[1], "p1 fire 1"),
-	{ "Accelerator Button", BIT_DIGITAL, DrvJoy1 + 4, "p1 fire 1" },
-	{ "Service",       BIT_DIGITAL,    DrvJoy3 + 5,  "service"   },
-	{ "Service Mode",  BIT_DIGITAL,    DrvJoy3 + 4,  "diag"      },
-	{ "Reset",         BIT_DIGITAL,    &DrvReset,     "reset"     },
-	{ "Dip A",         BIT_DIPSWITCH,  DrvDips + 0,  "dip"       },
-	{ "Dip B",         BIT_DIPSWITCH,  DrvDips + 1,  "dip"       },
-	{ "Dip C",         BIT_DIPSWITCH,  DrvDips + 2,  "dip"       },
-	{ "Dip D",         BIT_DIPSWITCH,  DrvDips + 3,  "dip"       },
+	{ "Accelerator Button", BIT_DIGITAL,   DrvJoy1 + 4, "p1 fire 1" },
+	{ "Service",            BIT_DIGITAL,   DrvJoy3 + 5, "service"   },
+	{ "Service Mode",       BIT_DIGITAL,   DrvJoy3 + 4, "diag"      },
+	{ "Reset",              BIT_DIGITAL,   &DrvReset,   "reset"     },
+	{ "Dip A",              BIT_DIPSWITCH, DrvDips + 0, "dip"       },
+	{ "Dip B",              BIT_DIPSWITCH, DrvDips + 1, "dip"       },
+	{ "Change View",        BIT_DIGITAL,   DrvJoy1 + 5, "p1 fire 2" },
 };
 #undef A
 
 STDINPUTINFO(Pocketrc)
 
-static struct BurnDIPInfo PocketrcDIPList[]=
-{
-	{0x07, 0xff, 0xff, 0xff, NULL},
-	{0x08, 0xff, 0xff, 0xff, NULL},
-	{0x09, 0xff, 0xff, 0x00, NULL},
-	{0x0a, 0xff, 0xff, 0x01, NULL},
+static struct BurnDIPInfo PocketrcDIPList[] = {
+	{ 0x07, 0xff, 0xff, 0xff, NULL            },
+	{ 0x08, 0xff, 0xff, 0xff, NULL            },
 
-	{0,    0xfe, 0,    2,    "Rendering Type" },
-	{0x0a, 0x01, 0x03, 0x00, "Software"       },
-	{0x0a, 0x01, 0x03, 0x01, "OpenGL"         },
+	{ 0,    0xfe, 0,    2,    "DIP1 (Test)"   },
+	{ 0x07, 0x01, 0x02, 0x02, "Off"           },
+	{ 0x07, 0x01, 0x02, 0x00, "On"            },
 
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x09, 0x01, 0x01, 0x00, "Off"},
-	{0x09, 0x01, 0x01, 0x01, "On"},
+	{ 0,    0xfe, 0,    2,    "DIP2 (Freeze)" },
+	{ 0x07, 0x01, 0x01, 0x01, "Off"           },
+	{ 0x07, 0x01, 0x01, 0x00, "On"            },
 };
 
 STDDIPINFO(Pocketrc)
@@ -4259,29 +4216,38 @@ static INT32 DrvLoadRoms()
 	memset(DrvMainROM, 0xff, 0x0400000);
 	memset(DrvBankROM, 0xff, 0x2000000);
 	memset(DrvC76BIOS, 0xff, 0x0004000);
-	memset(DrvC76ROM,  0xff, 0x0080000);
+	memset(DrvC76ROM, 0xff, 0x0080000);
 	memset(DrvC352ROM, 0xff, 0x1000000);
-	memset(DrvEEPROM,  0xff, 0x0000800);
+	memset(DrvEEPROM, 0xff, 0x0000800);
 
 	INT32 rom;
 	if (DrvMainRomLinear == 1) {
-		if (BurnLoadRom(DrvMainROM + 0x0000000, 0, 1)) return 1;
-		if (BurnLoadRom(DrvMainROM + 0x0200000, 1, 1)) return 1;
+		if (BurnLoadRom(DrvMainROM + 0x0000000, 0, 1))
+			return 1;
+		if (BurnLoadRom(DrvMainROM + 0x0200000, 1, 1))
+			return 1;
 		rom = 2;
 	} else if (DrvMainRomLinear == 2) {
-		if (BurnLoadRom(DrvMainROM + 0x0000000, 0, 2)) return 1;
-		if (BurnLoadRom(DrvMainROM + 0x0000001, 1, 2)) return 1;
+		if (BurnLoadRom(DrvMainROM + 0x0000000, 0, 2))
+			return 1;
+		if (BurnLoadRom(DrvMainROM + 0x0000001, 1, 2))
+			return 1;
 		rom = 2;
 	} else {
-		if (BurnLoadRom(DrvMainROM + 0x0000000, 0, 2)) return 1;
-		if (BurnLoadRom(DrvMainROM + 0x0000001, 1, 2)) return 1;
-		if (BurnLoadRom(DrvMainROM + 0x0200000, 2, 2)) return 1;
-		if (BurnLoadRom(DrvMainROM + 0x0200001, 3, 2)) return 1;
+		if (BurnLoadRom(DrvMainROM + 0x0000000, 0, 2))
+			return 1;
+		if (BurnLoadRom(DrvMainROM + 0x0000001, 1, 2))
+			return 1;
+		if (BurnLoadRom(DrvMainROM + 0x0200000, 2, 2))
+			return 1;
+		if (BurnLoadRom(DrvMainROM + 0x0200001, 3, 2))
+			return 1;
 		rom = 4;
 	}
 	if (DrvBankRomDuplicateHalves) {
-		UINT8 *temp = (UINT8*)BurnMalloc(0x400000);
-		if (temp == NULL) return 1;
+		UINT8 *temp = (UINT8 *)BurnMalloc(0x400000);
+		if (temp == NULL)
+			return 1;
 
 		for (INT32 pair = 0; pair < DrvBankRomPairs; pair++) {
 			UINT32 offset = pair * DrvBankRomPairStride;
@@ -4301,14 +4267,21 @@ static INT32 DrvLoadRoms()
 	} else {
 		for (INT32 pair = 0; pair < DrvBankRomPairs; pair++) {
 			UINT32 offset = pair * DrvBankRomPairStride;
-			if (BurnLoadRom(DrvBankROM + offset + 0, rom++, 2)) return 1;
-			if (BurnLoadRom(DrvBankROM + offset + 1, rom++, 2)) return 1;
+			if (BurnLoadRom(DrvBankROM + offset + 0, rom++, 2))
+				return 1;
+			if (BurnLoadRom(DrvBankROM + offset + 1, rom++, 2))
+				return 1;
 		}
 	}
 
-	if (BurnLoadRom(DrvC76BIOS, rom++, 1)) return 1;
-	if (BurnLoadRom(DrvC76ROM, rom++, 1)) return 1;
-	if (BurnLoadRom(DrvC352ROM + DrvC352LoadOffset, rom++, 1)) return 1;
+	if (BurnLoadRom(DrvC76BIOS, rom++, 1))
+		return 1;
+	if (BurnLoadRom(DrvC76ROM, rom++, 1))
+		return 1;
+	if (BurnLoadRom(DrvC352ROM + DrvC352LoadOffset, rom++, 1))
+		return 1;
+	if (DrvFamilyBowl && BurnLoadRom(DrvSensorROM, rom++, 1))
+		return 1;
 	if (DrvC352WordSwap) {
 		for (UINT32 i = 0; i < 0x400000; i += 2) {
 			UINT8 data = DrvC352ROM[DrvC352LoadOffset + i + 0];
@@ -4326,22 +4299,7 @@ static INT32 DrvLoadRoms()
 static INT32 DrvInit()
 {
 	DrvPaletteHighCol = NULL;
-	DrvHardwareRasterStreak = 0;
-	const char *driverName = BurnDrvGetTextA(DRV_NAME);
-	const bool soulEdgeDriver = driverName != NULL &&
-		strncmp(driverName, "souledge", 8) == 0;
-	const bool xevi3dgDriver = driverName != NULL &&
-		strncmp(driverName, "xevi3dg", 7) == 0;
-	const bool danceyesDriver = driverName != NULL &&
-		strncmp(driverName, "danceyes", 8) == 0;
-	const bool primglexDriver = driverName != NULL &&
-		strncmp(driverName, "primglex", 8) == 0;
-	DrvDisableHardwareRaster = driverName != NULL &&
-		(strncmp(driverName, "tekken", 6) == 0 ||
-		 soulEdgeDriver || strncmp(driverName, "dunkmnia", 8) == 0 ||
-		 xevi3dgDriver || danceyesDriver || primglexDriver ||
-		 strncmp(driverName, "myangel3", 8) == 0);
-	DrvOpenGLCropBottom = soulEdgeDriver || xevi3dgDriver ? 1 : 0;
+	DrvFamilyBowl = !strcmp(BurnDrvGetTextA(DRV_NAME), "fambowl");
 	DrvTestSwitch = 0;
 	DrvTestSwitchLast = 0;
 	DrvBankRom64 = (DrvKeycusType == 443);
@@ -4363,17 +4321,12 @@ static INT32 DrvInit()
 		return 1;
 	}
 
-	PsxSetInstructionHook(DrvUseBootDecompressHook ? Namcos11InstructionHook : NULL);
 	PsxSetExternalInterruptGteCompletion(DrvKeycusType == 409);
 
 	Namcos11C76Init();
 	Namcos11C76Reset();
-	if (DrvLightgunGame) BurnGunInit(2, true);
-	DrvPolyThreads.Configure();
-	if ((DrvDips[3] & 0x03) == 0x01 &&
-		!DrvOpenGLFrame.Probe(nScreenWidth, nScreenHeight)) {
-		DrvDips[3] &= ~0x03;
-	}
+	if (DrvLightgunGame)
+		BurnGunInit(2, true);
 
 	return 0;
 }
@@ -4389,7 +4342,6 @@ static INT32 TekkenInit()
 	DrvC352MirrorSize = 0;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 406;
-	DrvUseBootDecompressHook = 1;
 
 	return DrvInit();
 }
@@ -4405,7 +4357,6 @@ static INT32 Tekken2OldInit()
 	DrvC352MirrorSize = 0;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 406;
-	DrvUseBootDecompressHook = 1;
 
 	return DrvInit();
 }
@@ -4421,7 +4372,6 @@ static INT32 Tekken2Init()
 	DrvC352MirrorSize = 0;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 406;
-	DrvUseBootDecompressHook = 1;
 
 	return DrvInit();
 }
@@ -4437,7 +4387,6 @@ static INT32 DanceyesInit()
 	DrvC352MirrorSize = 0x400000;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 431;
-	DrvUseBootDecompressHook = 0;
 
 	return DrvInit();
 }
@@ -4453,7 +4402,6 @@ static INT32 SouledgeInit()
 	DrvC352MirrorSize = 0x400000;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 409;
-	DrvUseBootDecompressHook = 0;
 
 	return DrvInit();
 }
@@ -4469,7 +4417,6 @@ static INT32 DunkmniaInit()
 	DrvC352MirrorSize = 0x400000;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 410;
-	DrvUseBootDecompressHook = 0;
 
 	return DrvInit();
 }
@@ -4485,7 +4432,6 @@ static INT32 Xevi3dgInit()
 	DrvC352MirrorSize = 0x400000;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 430;
-	DrvUseBootDecompressHook = 0;
 
 	return DrvInit();
 }
@@ -4501,7 +4447,6 @@ static INT32 PrimglexInit()
 	DrvC352MirrorSize = 0x400000;
 	DrvC352WordSwap = 1;
 	DrvKeycusType = 411;
-	DrvUseBootDecompressHook = 0;
 
 	return DrvInit();
 }
@@ -4517,8 +4462,23 @@ static INT32 PocketrcInit()
 	DrvC352MirrorSize = 0x400000;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 432;
-	DrvUseBootDecompressHook = 0;
 
+	return DrvInit();
+}
+
+static INT32 FambowlInit()
+{
+	DrvBankRomDuplicateHalves = 0;
+	DrvGpuDefaultType = 2;
+	DrvMainRomLinear = 1;
+	DrvBankRomPairs = 1;
+	DrvC352LoadOffset = 0;
+	DrvC352MirrorOffset = 0x800000;
+	DrvC352MirrorSize = 0x400000;
+	DrvC352WordSwap = 0;
+	// No KEYCUS is fitted. Do not inherit Pocket Racer's analog inputs
+	// from MAME's placeholder C432 configuration.
+	DrvKeycusType = 0;
 	return DrvInit();
 }
 
@@ -4533,7 +4493,6 @@ static INT32 StarswepInit()
 	DrvC352MirrorSize = 0x400000;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 442;
-	DrvUseBootDecompressHook = 0;
 	DrvFixedCropTop = 16;
 	DrvFixedCropBottom = 10;
 
@@ -4551,7 +4510,6 @@ static INT32 StarswepjInit()
 	DrvC352MirrorSize = 0x400000;
 	DrvC352WordSwap = 0;
 	DrvKeycusType = 442;
-	DrvUseBootDecompressHook = 0;
 	DrvFixedCropTop = 16;
 	DrvFixedCropBottom = 10;
 
@@ -4571,7 +4529,6 @@ static INT32 Myangel3Init()
 	DrvKeycusType = 443;
 	DrvBankRomCompact64 = 0;
 	DrvLightgunGame = 0;
-	DrvUseBootDecompressHook = 0;
 
 	return DrvInit();
 }
@@ -4589,7 +4546,6 @@ static INT32 Ptblank2Init()
 	DrvKeycusType = 443;
 	DrvBankRomCompact64 = 1;
 	DrvLightgunGame = 1;
-	DrvUseBootDecompressHook = 0;
 	DrvFixedCropTop = 12;
 	DrvFixedCropBottom = 10;
 
@@ -4609,7 +4565,6 @@ static INT32 Ptblank2bInit()
 	DrvKeycusType = 443;
 	DrvBankRomCompact64 = 1;
 	DrvLightgunGame = 1;
-	DrvUseBootDecompressHook = 0;
 	DrvFixedCropTop = 12;
 	DrvFixedCropBottom = 10;
 
@@ -4629,7 +4584,6 @@ static INT32 Ptblank2uaInit()
 	DrvKeycusType = 443;
 	DrvBankRomCompact64 = 0;
 	DrvLightgunGame = 1;
-	DrvUseBootDecompressHook = 0;
 	DrvFixedCropTop = 12;
 	DrvFixedCropBottom = 10;
 
@@ -4641,18 +4595,27 @@ static INT32 Namcos11SetResolution()
 	if (DrvNativeWidth == 0) {
 		INT32 nativeHeight;
 		BurnDrvGetVisibleSize(&DrvNativeWidth, &nativeHeight);
+		if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL)
+			DrvNativeWidth = nativeHeight;
 	}
 
 	INT32 height = (DrvGpuScreenHeight >= 480) ? 480 : 240;
 	INT32 width = DrvNativeWidth;
 
-	if (width == nScreenWidth && height == nScreenHeight) return 0;
+	if (width == nScreenWidth && height == nScreenHeight)
+		return 0;
 
 	BurnTransferSetDimensions(width, height);
 	GenericTilesSetClipRaw(0, width, 0, height);
-	BurnDrvSetVisibleSize(width, height);
-	BurnDrvSetAspect(4, 3);
-	if (DrvLightgunGame) BurnGunResolutionChanged();
+	if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) {
+		BurnDrvSetVisibleSize(height, width);
+		BurnDrvSetAspect(3, 4);
+	} else {
+		BurnDrvSetVisibleSize(width, height);
+		BurnDrvSetAspect(4, 3);
+	}
+	if (DrvLightgunGame)
+		BurnGunResolutionChanged();
 	ReinitialiseVideo();
 	BurnTransferRealloc();
 
@@ -4661,17 +4624,23 @@ static INT32 Namcos11SetResolution()
 
 static INT32 DrvExit()
 {
-	DrvOpenGLFrame.Shutdown();
-	DrvPolyThreads.Shutdown();
-	if (DrvLightgunGame) BurnGunExit();
+	// Join workers before releasing CPU maps, C352 buffers, RAM or VRAM.
+	;
+
+	if (DrvLightgunGame)
+		BurnGunExit();
 	DrvLightgunGame = 0;
 	DrvFixedCropTop = 0;
 	DrvFixedCropBottom = 0;
-	DrvOpenGLCropBottom = 0;
-	if (DrvNativeWidth) BurnDrvSetVisibleSize(DrvNativeWidth, 240);
+	if (DrvNativeWidth) {
+		if (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL)
+			BurnDrvSetVisibleSize(240, DrvNativeWidth);
+		else
+			BurnDrvSetVisibleSize(DrvNativeWidth, 240);
+	}
+	DrvFamilyBowl = 0;
 	DrvNativeWidth = 0;
 	DrvBankRomCompact64 = 0;
-	PsxSetInstructionHook(NULL);
 	Namcos11C76Exit();
 	PsxExit();
 	GenericTilesExit();
@@ -4684,6 +4653,7 @@ static INT32 DrvDraw();
 
 static INT32 DrvFrame()
 {
+
 	if (Namcos11SetResolution()) {
 		return 0;
 	}
@@ -4699,7 +4669,6 @@ static INT32 DrvFrame()
 
 	if (DrvReset) {
 		PsxReset();
-		PsxSetInstructionHook(DrvUseBootDecompressHook ? Namcos11InstructionHook : NULL);
 		Namcos11ResetIo();
 		Namcos11MapRamConfig();
 		Namcos11MapRomConfig();
@@ -4721,12 +4690,14 @@ static INT32 DrvFrame()
 	const INT32 nPsxCycles = NAMCOS11_PSX_CPU_CLOCK / 60;
 	const INT32 nC76Cycles = NAMCOS11_C76_CLOCK / 60;
 	INT32 nPsxDone = 0;
-	INT32 nC76Done = DrvC76ExtraCycles;
+	INT32 soundTarget = 0;
 
 	if (DrvC76ExtraCycles > 0) {
-		M377Open(0);
-		M377Idle(DrvC76ExtraCycles);
-		M377Close();
+		{
+			M377Open(0);
+			M377Idle(DrvC76ExtraCycles);
+			M377Close();
+		}
 	}
 
 	for (INT32 i = 0; i < nInterleave; i++) {
@@ -4747,13 +4718,16 @@ static INT32 DrvFrame()
 			Namcos11RootAdvance();
 		}
 
-		nC76Done = Namcos11C76TotalCycles();
-		INT32 nC76Segment = ((i + 1) * nC76Cycles / nInterleave) - nC76Done;
-
-		if (nC76Segment > 0) {
-			Namcos11C76Run(nC76Segment);
-			nC76Done += nC76Segment;
+		// The next PSX slice may overlap this sound slice. Shared-RAM I/O
+		// fences it through SyncC76; wait before reusing the shared job.
+		{
 		}
+		soundTarget = (i + 1) * nC76Cycles / nInterleave;
+		([](void *context) {
+			const INT32 cycles = *static_cast<INT32 *>(context) - Namcos11C76TotalCycles();
+			if (cycles > 0)
+				Namcos11C76Run(cycles);
+		})(&soundTarget);
 
 		if (i == (nInterleave - 1)) {
 			DrvIrqStatus |= 0x0001;
@@ -4761,15 +4735,17 @@ static INT32 DrvFrame()
 		}
 	}
 
-	DrvC76ExtraCycles = Namcos11C76TotalCycles() - nC76Cycles;
-	if (pBurnSoundOut) {
-		c352_update(pBurnSoundOut, nBurnSoundLen);
+	{
 	}
+	DrvC76ExtraCycles = Namcos11C76TotalCycles() - nC76Cycles;
+	if (pBurnSoundOut)
+		c352_update(pBurnSoundOut, nBurnSoundLen);
 
 	if (pBurnDraw) {
 		DrvDraw();
 	}
 
+	;
 	return 0;
 }
 
@@ -4785,7 +4761,6 @@ static void DrvPaletteUpdate()
 	for (INT32 i = 0; i < 0x8000; i++) {
 		DrvPalette[i] = BurnHighCol(pal5bit(i >> 0), pal5bit(i >> 5), pal5bit(i >> 10), 0);
 	}
-	DrvOpenGLFrame.InvalidatePalette();
 }
 
 static void Namcos11GetFixedVerticalCrop(INT32 &top, INT32 &bottom)
@@ -4793,7 +4768,8 @@ static void Namcos11GetFixedVerticalCrop(INT32 &top, INT32 &bottom)
 	top = DrvFixedCropTop;
 	bottom = DrvFixedCropBottom;
 
-	if (DrvKeycusType == 406) top = 10;
+	if (DrvKeycusType == 406)
+		top = 10;
 
 	top = top * nScreenHeight / 240;
 	bottom = bottom * nScreenHeight / 240;
@@ -4809,38 +4785,27 @@ static void Namcos11TransferOutput()
 	context.width = nScreenWidth;
 	context.pitch = nBurnPitch;
 	context.bytesPerPixel = nBurnBpp;
-	DrvPolyThreads.ParallelForWork(nScreenHeight, (INT64)nScreenWidth * nScreenHeight, 24576,
-		NamcosOutputTransferRows, &context);
+	NamcosOutputTransferRows(&context, 0, nScreenHeight);
 }
 
 static INT32 DrvDraw()
 {
+
 	if (DrvPaletteHighCol != BurnHighCol) {
 		DrvPaletteUpdate();
 		DrvPaletteHighCol = BurnHighCol;
 	}
 	pBurnDrvPalette = DrvPalette;
-
 	Namcos11GpuUpdateVisibleArea();
-
-	INT32 cropTop;
-	INT32 cropBottom;
-	Namcos11GetFixedVerticalCrop(cropTop, cropBottom);
-	const INT32 croppedHeight = nScreenHeight - cropTop - cropBottom;
-	const UINT8 renderingType = DrvDips[3] & 0x03;
-	const INT32 openGLCropBottom = renderingType == 0x01 ?
-		DrvOpenGLCropBottom * nScreenHeight / 240 : 0;
-
 	if (DrvGpuStatus & (1 << 23)) {
 		BurnTransferClear();
 		Namcos11TransferOutput();
 		return 0;
 	}
-
-	NamcosFrameConvertContext context;
+	INT32 cropTop, cropBottom;
+	Namcos11GetFixedVerticalCrop(cropTop, cropBottom);
+	NamcosFrameConvertContext context = {};
 	context.vram = DrvGpuVram;
-	context.vramGeneration = DrvGpuVramGeneration;
-	context.vramRowGeneration = DrvGpuVramRowGeneration;
 	context.output = pTransDraw;
 	context.outputWidth = nScreenWidth;
 	context.outputHeight = nScreenHeight;
@@ -4849,60 +4814,21 @@ static INT32 DrvDraw()
 	context.displayX = DrvGpuDisplayX;
 	context.displayY = DrvGpuDisplayY;
 	context.cropTop = cropTop;
-	context.cropHeight = croppedHeight - openGLCropBottom;
-	context.outputShiftX = 0;
-	context.verticalReconstruct2x = 0;
+	context.cropHeight = nScreenHeight - cropTop - cropBottom;
 	context.rgb24 = (DrvGpuStatus & (1 << 21)) ? 1 : 0;
-	context.vertical = 0;
-	context.allowOutputReuse = !DrvLightgunGame;
-	context.threadPool = &DrvPolyThreads;
-	bool converted = false;
-	bool directOutput = false;
-	if (renderingType == 0x01) {
-		if (nBurnBpp == 4) {
-			directOutput = DrvOpenGLFrame.ConvertDirect(&context, pBurnDraw,
-				nBurnPitch, DrvPalette);
-			converted = directOutput;
-		} else if (nBurnBpp == 2) {
-			directOutput = DrvOpenGLFrame.ConvertDirect16(&context, pBurnDraw,
-				nBurnPitch, DrvPalette);
-			converted = directOutput;
-		} else if (nBurnBpp == 3) {
-			directOutput = DrvOpenGLFrame.ConvertDirect24(&context, pBurnDraw,
-				nBurnPitch, DrvPalette);
-			converted = directOutput;
-		}
-		if (!converted) converted = DrvOpenGLFrame.Convert(&context);
-	}
-	const bool uniformGlOutput = directOutput ?
-		NamcosFrameOutputIsUniform(pBurnDraw, nScreenWidth, nScreenHeight,
-			nBurnPitch, nBurnBpp, nBurnBpp == 4) :
-		(converted && NamcosFrameOutputIsUniform((UINT8 *)pTransDraw,
-			nScreenWidth, nScreenHeight, nScreenWidth * 2, 2, true));
-	if (uniformGlOutput) {
-		Namcos11GpuSynchronizeHardwareVram();
-		DrvOpenGLFrame.InvalidatePalette();
-		directOutput = false;
-		converted = false;
-	}
-	if (!converted) {
-		context.displayX = DrvGpuDisplayX;
-		context.displayY = DrvGpuDisplayY;
-		context.cropHeight = croppedHeight;
-		NamcosFramePrepareMaps(&context);
-		DrvPolyThreads.ParallelForWork(nScreenHeight, (INT64)nScreenWidth * nScreenHeight, 24576,
-			NamcosFrameConvertRows, &context);
-	}
-
-	if (!directOutput) Namcos11TransferOutput();
-	if (DrvLightgunGame) BurnGunDrawTargets();
-
+	NamcosFramePrepareMaps(&context);
+	NamcosFrameConvertRows(&context, 0, nScreenHeight);
+	Namcos11TransferOutput();
+	if (DrvLightgunGame)
+		BurnGunDrawTargets();
 	return 0;
 }
 
 static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 {
-	if (nAction & ACB_VOLATILE) Namcos11GpuSynchronizeHardwareVram();
+	// Save/load sees a complete device state, with no worker modifying it.
+	;
+
 	if (nAction & ACB_MEMORY_RAM) {
 		struct BurnArea ba;
 		memset(&ba, 0, sizeof(ba));
@@ -5043,28 +4969,26 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(DrvEEPROMBusyUntil);
 		SCAN_VAR(DrvTestSwitch);
 		SCAN_VAR(DrvTestSwitchLast);
-		if (DrvLightgunGame) BurnGunScan();
+		if (DrvLightgunGame)
+			BurnGunScan();
 	}
 
 	if (nAction & ACB_WRITE) {
-		DrvGpuImageHardwareUpload = 0;
-		DrvGpuVramGeneration++;
-		for (INT32 row = 0; row < 1024; row++) {
-			DrvGpuVramRowGeneration[row] = DrvGpuVramGeneration;
-		}
-		DrvOpenGLFrame.InvalidateVram();
 	}
 
 	return 0;
 }
 
-static struct BurnRomInfo emptyRomDesc[] = { { "", 0, 0, 0 }, };
+static struct BurnRomInfo emptyRomDesc[] = {
+	{ "", 0, 0, 0 },
+};
 
 static struct BurnRomInfo namcoc76RomDesc[] = {
-	{ "c76.bin",		0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
+	{ "c76.bin", 0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
 };
 
 STD_ROM_PICK(namcoc76)
+
 STD_ROM_FN(namcoc76)
 
 static INT32 Namcoc76Init()
@@ -5085,23 +5009,23 @@ struct BurnDriver BurnDrvnamcoc76 = {
 // Tekken (World, TE2/VER.C)
 
 static struct BurnRomInfo tekkenRomDesc[] = {
-	{ "te2verc.2l",		0x100000, 0xa24c8c57, 1 | BRF_PRG  | BRF_ESS }, //  0 maincpu:rom
-	{ "te2verc.2j",		0x100000, 0x3224c298, 1 | BRF_PRG  | BRF_ESS }, //  1
-	{ "te1verb.2k",		0x100000, 0xb9860b29, 1 | BRF_PRG  | BRF_ESS }, //  2
-	{ "te1verb.2f",		0x100000, 0x3dc01aad, 1 | BRF_PRG  | BRF_ESS }, //  3
+	{ "te2verc.2l",   0x100000, 0xa24c8c57, 1 | BRF_PRG | BRF_ESS            }, //  0 maincpu:rom
+	{ "te2verc.2j",   0x100000, 0x3224c298, 1 | BRF_PRG | BRF_ESS            }, //  1
+	{ "te1verb.2k",   0x100000, 0xb9860b29, 1 | BRF_PRG | BRF_ESS            }, //  2
+	{ "te1verb.2f",   0x100000, 0x3dc01aad, 1 | BRF_PRG | BRF_ESS            }, //  3
 
-	{ "te1rom0l.ic5",	0x200000, 0x03786e09, 2 | BRF_PRG  | BRF_ESS }, //  4 bankedroms
-	{ "te1rom0u.ic6",	0x200000, 0x75d91051, 2 | BRF_PRG  | BRF_ESS }, //  5
-	{ "te1rom1l.ic3",	0x200000, 0x81416f8e, 2 | BRF_PRG  | BRF_ESS }, //  6
-	{ "te1rom1u.ic8",	0x200000, 0xfa7ba433, 2 | BRF_PRG  | BRF_ESS }, //  7
-	{ "te1rom2l.ic4",	0x200000, 0x41d77846, 2 | BRF_PRG  | BRF_ESS }, //  8
-	{ "te1rom2u.ic7",	0x200000, 0xa678987e, 2 | BRF_PRG  | BRF_ESS }, //  9
+	{ "te1rom0l.ic5", 0x200000, 0x03786e09, 2 | BRF_PRG | BRF_ESS            }, //  4 bankedroms
+	{ "te1rom0u.ic6", 0x200000, 0x75d91051, 2 | BRF_PRG | BRF_ESS            }, //  5
+	{ "te1rom1l.ic3", 0x200000, 0x81416f8e, 2 | BRF_PRG | BRF_ESS            }, //  6
+	{ "te1rom1u.ic8", 0x200000, 0xfa7ba433, 2 | BRF_PRG | BRF_ESS            }, //  7
+	{ "te1rom2l.ic4", 0x200000, 0x41d77846, 2 | BRF_PRG | BRF_ESS            }, //  8
+	{ "te1rom2u.ic7", 0x200000, 0xa678987e, 2 | BRF_PRG | BRF_ESS            }, //  9
 
-	{ "c76.bin",		0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, // 10 C76 internal BIOS
+	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, // 10 C76 internal BIOS
 
-	{ "te1sprog.6d",	0x040000, 0x849587e9, 4 | BRF_PRG  | BRF_ESS }, // 11 C76 sound data
+	{ "te1sprog.6d",  0x040000, 0x849587e9, 4 | BRF_PRG | BRF_ESS            }, // 11 C76 sound data
 
-	{ "te1wave.8k",		0x200000, 0xfce6c57a, 5 | BRF_SND },           // 12 C352 samples
+	{ "te1wave.8k",   0x200000, 0xfce6c57a, 5 | BRF_SND                      }, // 12 C352 samples
 };
 
 STDROMPICKEXT(tekken, tekken, namcoc76)
@@ -5120,23 +5044,23 @@ struct BurnDriver BurnDrvTekken = {
 // Tekken (World, TE2/VER.B)
 
 static struct BurnRomInfo tekkenbRomDesc[] = {
-	{ "te2verb.2l",		0x100000, 0x246cfbdd, 1 | BRF_PRG  | BRF_ESS }, //  0 maincpu:rom
-	{ "te2verb.2j",		0x100000, 0xdfa83e47, 1 | BRF_PRG  | BRF_ESS }, //  1
-	{ "te1verb.2k",		0x100000, 0xb9860b29, 1 | BRF_PRG  | BRF_ESS }, //  2
-	{ "te1verb.2f",		0x100000, 0x3dc01aad, 1 | BRF_PRG  | BRF_ESS }, //  3
+	{ "te2verb.2l",   0x100000, 0x246cfbdd, 1 | BRF_PRG | BRF_ESS            }, //  0 maincpu:rom
+	{ "te2verb.2j",   0x100000, 0xdfa83e47, 1 | BRF_PRG | BRF_ESS            }, //  1
+	{ "te1verb.2k",   0x100000, 0xb9860b29, 1 | BRF_PRG | BRF_ESS            }, //  2
+	{ "te1verb.2f",   0x100000, 0x3dc01aad, 1 | BRF_PRG | BRF_ESS            }, //  3
 
-	{ "te1rom0l.ic5",	0x200000, 0x03786e09, 2 | BRF_PRG  | BRF_ESS }, //  4 bankedroms
-	{ "te1rom0u.ic6",	0x200000, 0x75d91051, 2 | BRF_PRG  | BRF_ESS }, //  5
-	{ "te1rom1l.ic3",	0x200000, 0x81416f8e, 2 | BRF_PRG  | BRF_ESS }, //  6
-	{ "te1rom1u.ic8",	0x200000, 0xfa7ba433, 2 | BRF_PRG  | BRF_ESS }, //  7
-	{ "te1rom2l.ic4",	0x200000, 0x41d77846, 2 | BRF_PRG  | BRF_ESS }, //  8
-	{ "te1rom2u.ic7",	0x200000, 0xa678987e, 2 | BRF_PRG  | BRF_ESS }, //  9
+	{ "te1rom0l.ic5", 0x200000, 0x03786e09, 2 | BRF_PRG | BRF_ESS            }, //  4 bankedroms
+	{ "te1rom0u.ic6", 0x200000, 0x75d91051, 2 | BRF_PRG | BRF_ESS            }, //  5
+	{ "te1rom1l.ic3", 0x200000, 0x81416f8e, 2 | BRF_PRG | BRF_ESS            }, //  6
+	{ "te1rom1u.ic8", 0x200000, 0xfa7ba433, 2 | BRF_PRG | BRF_ESS            }, //  7
+	{ "te1rom2l.ic4", 0x200000, 0x41d77846, 2 | BRF_PRG | BRF_ESS            }, //  8
+	{ "te1rom2u.ic7", 0x200000, 0xa678987e, 2 | BRF_PRG | BRF_ESS            }, //  9
 
-	{ "c76.bin",		0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, // 10 C76 internal BIOS
+	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, // 10 C76 internal BIOS
 
-	{ "te1sprog.6d",	0x040000, 0x849587e9, 4 | BRF_PRG  | BRF_ESS }, // 11 C76 sound data
+	{ "te1sprog.6d",  0x040000, 0x849587e9, 4 | BRF_PRG | BRF_ESS            }, // 11 C76 sound data
 
-	{ "te1wave.8k",		0x200000, 0xfce6c57a, 5 | BRF_SND },           // 12 C352 samples
+	{ "te1wave.8k",   0x200000, 0xfce6c57a, 5 | BRF_SND                      }, // 12 C352 samples
 };
 
 STDROMPICKEXT(tekkenb, tekkenb, namcoc76)
@@ -5155,23 +5079,23 @@ struct BurnDriver BurnDrvTekkenb = {
 // Tekken (Asia, TE4/VER.C)
 
 static struct BurnRomInfo tekkenacRomDesc[] = {
-	{ "te4verc.2l",		0x100000, 0x7ecb7892, 1 | BRF_PRG  | BRF_ESS }, //  0 maincpu:rom
-	{ "te4verc.2j",		0x100000, 0xeea3365d, 1 | BRF_PRG  | BRF_ESS }, //  1
-	{ "te1verb.2k",		0x100000, 0xb9860b29, 1 | BRF_PRG  | BRF_ESS }, //  2
-	{ "te1verb.2f",		0x100000, 0x3dc01aad, 1 | BRF_PRG  | BRF_ESS }, //  3
+	{ "te4verc.2l",   0x100000, 0x7ecb7892, 1 | BRF_PRG | BRF_ESS            }, //  0 maincpu:rom
+	{ "te4verc.2j",   0x100000, 0xeea3365d, 1 | BRF_PRG | BRF_ESS            }, //  1
+	{ "te1verb.2k",   0x100000, 0xb9860b29, 1 | BRF_PRG | BRF_ESS            }, //  2
+	{ "te1verb.2f",   0x100000, 0x3dc01aad, 1 | BRF_PRG | BRF_ESS            }, //  3
 
-	{ "te1rom0l.ic5",	0x200000, 0x03786e09, 2 | BRF_PRG  | BRF_ESS }, //  4 bankedroms
-	{ "te1rom0u.ic6",	0x200000, 0x75d91051, 2 | BRF_PRG  | BRF_ESS }, //  5
-	{ "te1rom1l.ic3",	0x200000, 0x81416f8e, 2 | BRF_PRG  | BRF_ESS }, //  6
-	{ "te1rom1u.ic8",	0x200000, 0xfa7ba433, 2 | BRF_PRG  | BRF_ESS }, //  7
-	{ "te1rom2l.ic4",	0x200000, 0x41d77846, 2 | BRF_PRG  | BRF_ESS }, //  8
-	{ "te1rom2u.ic7",	0x200000, 0xa678987e, 2 | BRF_PRG  | BRF_ESS }, //  9
+	{ "te1rom0l.ic5", 0x200000, 0x03786e09, 2 | BRF_PRG | BRF_ESS            }, //  4 bankedroms
+	{ "te1rom0u.ic6", 0x200000, 0x75d91051, 2 | BRF_PRG | BRF_ESS            }, //  5
+	{ "te1rom1l.ic3", 0x200000, 0x81416f8e, 2 | BRF_PRG | BRF_ESS            }, //  6
+	{ "te1rom1u.ic8", 0x200000, 0xfa7ba433, 2 | BRF_PRG | BRF_ESS            }, //  7
+	{ "te1rom2l.ic4", 0x200000, 0x41d77846, 2 | BRF_PRG | BRF_ESS            }, //  8
+	{ "te1rom2u.ic7", 0x200000, 0xa678987e, 2 | BRF_PRG | BRF_ESS            }, //  9
 
-	{ "c76.bin",		0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, // 10 C76 internal BIOS
+	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, // 10 C76 internal BIOS
 
-	{ "te1sprog.6d",	0x040000, 0x849587e9, 4 | BRF_PRG  | BRF_ESS }, // 11 C76 sound data
+	{ "te1sprog.6d",  0x040000, 0x849587e9, 4 | BRF_PRG | BRF_ESS            }, // 11 C76 sound data
 
-	{ "te1wave.8k",		0x200000, 0xfce6c57a, 5 | BRF_SND },           // 12 C352 samples
+	{ "te1wave.8k",   0x200000, 0xfce6c57a, 5 | BRF_SND                      }, // 12 C352 samples
 };
 
 STDROMPICKEXT(tekkenac, tekkenac, namcoc76)
@@ -5190,23 +5114,23 @@ struct BurnDriver BurnDrvTekkenac = {
 // Tekken (Japan, TE1/VER.B)
 
 static struct BurnRomInfo tekkenjbRomDesc[] = {
-	{ "te1verb.2l",		0x100000, 0x4291afee, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu:rom
-	{ "te1verb.2j",		0x100000, 0x5c534705, 1 | BRF_PRG | BRF_ESS }, //  1
-	{ "te1verb.2k",		0x100000, 0xb9860b29, 1 | BRF_PRG | BRF_ESS }, //  2
-	{ "te1verb.2f",		0x100000, 0x3dc01aad, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "te1verb.2l",   0x100000, 0x4291afee, 1 | BRF_PRG | BRF_ESS            }, //  0 maincpu:rom
+	{ "te1verb.2j",   0x100000, 0x5c534705, 1 | BRF_PRG | BRF_ESS            }, //  1
+	{ "te1verb.2k",   0x100000, 0xb9860b29, 1 | BRF_PRG | BRF_ESS            }, //  2
+	{ "te1verb.2f",   0x100000, 0x3dc01aad, 1 | BRF_PRG | BRF_ESS            }, //  3
 
-	{ "te1rom0l.ic5",	0x200000, 0x03786e09, 2 | BRF_PRG | BRF_ESS }, //  4 bankedroms
-	{ "te1rom0u.ic6",	0x200000, 0x75d91051, 2 | BRF_PRG | BRF_ESS }, //  5
-	{ "te1rom1l.ic3",	0x200000, 0x81416f8e, 2 | BRF_PRG | BRF_ESS }, //  6
-	{ "te1rom1u.ic8",	0x200000, 0xfa7ba433, 2 | BRF_PRG | BRF_ESS }, //  7
-	{ "te1rom2l.ic4",	0x200000, 0x41d77846, 2 | BRF_PRG | BRF_ESS }, //  8
-	{ "te1rom2u.ic7",	0x200000, 0xa678987e, 2 | BRF_PRG | BRF_ESS }, //  9
+	{ "te1rom0l.ic5", 0x200000, 0x03786e09, 2 | BRF_PRG | BRF_ESS            }, //  4 bankedroms
+	{ "te1rom0u.ic6", 0x200000, 0x75d91051, 2 | BRF_PRG | BRF_ESS            }, //  5
+	{ "te1rom1l.ic3", 0x200000, 0x81416f8e, 2 | BRF_PRG | BRF_ESS            }, //  6
+	{ "te1rom1u.ic8", 0x200000, 0xfa7ba433, 2 | BRF_PRG | BRF_ESS            }, //  7
+	{ "te1rom2l.ic4", 0x200000, 0x41d77846, 2 | BRF_PRG | BRF_ESS            }, //  8
+	{ "te1rom2u.ic7", 0x200000, 0xa678987e, 2 | BRF_PRG | BRF_ESS            }, //  9
 
-	{ "c76.bin",		0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, // 10 C76 internal BIOS
+	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, // 10 C76 internal BIOS
 
-	{ "te1sprog.6d",	0x040000, 0x849587e9, 4 | BRF_PRG | BRF_ESS }, // 11 C76 sound data
+	{ "te1sprog.6d",  0x040000, 0x849587e9, 4 | BRF_PRG | BRF_ESS            }, // 11 C76 sound data
 
-	{ "te1wave.8k",		0x200000, 0xfce6c57a, 5 | BRF_SND },           // 12 C352 samples
+	{ "te1wave.8k",   0x200000, 0xfce6c57a, 5 | BRF_SND                      }, // 12 C352 samples
 };
 
 STDROMPICKEXT(tekkenjb, tekkenjb, namcoc76)
@@ -5231,8 +5155,11 @@ struct BurnDriver BurnDrvTekkenjb = {
 	{ "tes1rom2u.ic4", 0x200000, 0x8a1561b8, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "tes1rom3l.ic9", 0x200000, 0xd5ac0f18, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "tes1rom3u.ic1", 0x200000, 0x44ed509d, 2 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "c76.bin",       0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, \
+\
 	{ "tes1sprog.6d",  0x040000, 0xaf18759f, 4 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "tes1wave.8k",   0x400000, 0x34a34eab, 5 | BRF_SND }
 
 // Tekken 2 Ver.B (World, TES2/VER.D)
@@ -5430,6 +5357,7 @@ struct BurnDriver BurnDrvTekken2ua = {
 	{ "so1rom2l.ic7", 0x200000, 0x37c1f66e, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "so1rom3u.ic1", 0x200000, 0xf11bd521, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "so1rom3l.ic9", 0x200000, 0x84465bcc, 2 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }
 
 // Soul Edge Ver. II (Asia, SO4/VER.C)
@@ -5441,7 +5369,7 @@ static struct BurnRomInfo souledgeRomDesc[] = {
 	{ "so1verc.2f",   0x100000, 0x8cffe1c3, 1 | BRF_PRG | BRF_ESS },
 	SOULEDGE_COMMON_DATA_ROMS,
 	{ "so1sprogc.6d", 0x040000, 0x2bbc118c, 4 | BRF_PRG | BRF_ESS },
-	{ "so1wave.8k",   0x400000, 0x0e68836b, 5 | BRF_SND }
+	{ "so1wave.8k",   0x400000, 0x0e68836b, 5 | BRF_SND           }
 };
 
 STDROMPICKEXT(souledge, souledge, namcoc76)
@@ -5466,7 +5394,7 @@ static struct BurnRomInfo souledgeucRomDesc[] = {
 	{ "so1verc.2f",   0x100000, 0x8cffe1c3, 1 | BRF_PRG | BRF_ESS },
 	SOULEDGE_COMMON_DATA_ROMS,
 	{ "so1sprogc.6d", 0x040000, 0x2bbc118c, 4 | BRF_PRG | BRF_ESS },
-	{ "so1wave.8k",   0x400000, 0x0e68836b, 5 | BRF_SND }
+	{ "so1wave.8k",   0x400000, 0x0e68836b, 5 | BRF_SND           }
 };
 
 STDROMPICKEXT(souledgeuc, souledgeuc, namcoc76)
@@ -5491,7 +5419,7 @@ static struct BurnRomInfo souledgeaRomDesc[] = {
 	{ "so2vera.2f",  0x100000, 0xc035b71b, 1 | BRF_PRG | BRF_ESS },
 	SOULEDGE_COMMON_DATA_ROMS,
 	{ "so1sprog.6d", 0x040000, 0xf6f682b7, 4 | BRF_PRG | BRF_ESS },
-	{ "so1wave.8k",  0x400000, 0x0e68836b, 5 | BRF_SND }
+	{ "so1wave.8k",  0x400000, 0x0e68836b, 5 | BRF_SND           }
 };
 
 STDROMPICKEXT(souledgea, souledgea, namcoc76)
@@ -5516,7 +5444,7 @@ static struct BurnRomInfo souledgeuaRomDesc[] = {
 	{ "so1vera.2f",  0x100000, 0xc035b71b, 1 | BRF_PRG | BRF_ESS },
 	SOULEDGE_COMMON_DATA_ROMS,
 	{ "so1sprog.6d", 0x040000, 0xf6f682b7, 4 | BRF_PRG | BRF_ESS },
-	{ "so1wave.8k",  0x400000, 0x0e68836b, 5 | BRF_SND }
+	{ "so1wave.8k",  0x400000, 0x0e68836b, 5 | BRF_SND           }
 };
 
 STDROMPICKEXT(souledgeua, souledgeua, namcoc76)
@@ -5541,7 +5469,7 @@ static struct BurnRomInfo souledgejaRomDesc[] = {
 	{ "so1vera.2f",  0x100000, 0xc035b71b, 1 | BRF_PRG | BRF_ESS },
 	SOULEDGE_COMMON_DATA_ROMS,
 	{ "so1sprog.6d", 0x040000, 0xf6f682b7, 4 | BRF_PRG | BRF_ESS },
-	{ "so1wave.8k",  0x400000, 0x0e68836b, 5 | BRF_SND }
+	{ "so1wave.8k",  0x400000, 0x0e68836b, 5 | BRF_SND           }
 };
 
 STDROMPICKEXT(souledgeja, souledgeja, namcoc76)
@@ -5564,8 +5492,11 @@ struct BurnDriver BurnDrvSouledgeja = {
 	{ "dm1rom0u.ic6", 0x400000, 0xc16b47c5, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "dm1rom1l.ic3", 0x400000, 0x20dd3294, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "dm1rom1u.ic8", 0x400000, 0x01e905d3, 2 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, \
+\
 	{ "dm1sprog.6d",  0x040000, 0xde1cbc78, 4 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "dm1wave.8k",   0x400000, 0x883d7455, 5 | BRF_SND }
 
 // Dunk Mania (World, DM2/VER.C)
@@ -5619,12 +5550,14 @@ struct BurnDriver BurnDrvDunkmniajc = {
 #define XEVI3DG_COMMON_ROMS \
 	{ "xv31vera.2k",    0x100000, 0x3d58138e, 1 | BRF_PRG  | BRF_ESS }, \
 	{ "xv31vera.2f",    0x100000, 0x9e8780a2, 1 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "xv31rom0l.ic5",  0x200000, 0x24e1e262, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "xv31rom0u.ic6",  0x200000, 0xcae38ef3, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "xv31rom1l.ic3",  0x200000, 0x46b4cb72, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "xv31rom1u.ic8",  0x200000, 0xbe0eb5d1, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "xv31rom2l.ic4",  0x200000, 0x8403a277, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "xv31rom2u.ic7",  0x200000, 0xecf70432, 2 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "c76.bin",        0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }
 
 // Xevious 3D/G (World, XV32/VER.B)
@@ -5634,7 +5567,7 @@ static struct BurnRomInfo xevi3dgRomDesc[] = {
 	{ "xv32verb.2j",  0x100000, 0xc096dd18, 1 | BRF_PRG | BRF_ESS },
 	XEVI3DG_COMMON_ROMS,
 	{ "xv31sprog.6d", 0x040000, 0xe50b856a, 4 | BRF_PRG | BRF_ESS },
-	{ "xv31wave.8k",  0x400000, 0x14f25ddd, 5 | BRF_SND }
+	{ "xv31wave.8k",  0x400000, 0x14f25ddd, 5 | BRF_SND           }
 };
 
 STDROMPICKEXT(xevi3dg, xevi3dg, namcoc76)
@@ -5657,7 +5590,7 @@ static struct BurnRomInfo xevi3dgaRomDesc[] = {
 	{ "xv32vera.2j",  0x100000, 0x21e20037, 1 | BRF_PRG | BRF_ESS },
 	XEVI3DG_COMMON_ROMS,
 	{ "xv31sprog.6d", 0x040000, 0x7e9fc6a0, 4 | BRF_PRG | BRF_ESS },
-	{ "xv31wave.8k",  0x400000, 0x14f25ddd, 5 | BRF_SND }
+	{ "xv31wave.8k",  0x400000, 0x14f25ddd, 5 | BRF_SND           }
 };
 
 STDROMPICKEXT(xevi3dga, xevi3dga, namcoc76)
@@ -5680,7 +5613,7 @@ static struct BurnRomInfo xevi3dgjRomDesc[] = {
 	{ "xv31vera.2j",  0x100000, 0xdf95373a, 1 | BRF_PRG | BRF_ESS },
 	XEVI3DG_COMMON_ROMS,
 	{ "xv31sprog.6d", 0x040000, 0xe50b856a, 4 | BRF_PRG | BRF_ESS },
-	{ "xv31wave.8k",  0x400000, 0x14f25ddd, 5 | BRF_SND }
+	{ "xv31wave.8k",  0x400000, 0x14f25ddd, 5 | BRF_SND           }
 };
 
 STDROMPICKEXT(xevi3dgj, xevi3dgj, namcoc76)
@@ -5701,15 +5634,18 @@ struct BurnDriver BurnDrvXevi3dgj = {
 // Prime Goal EX (Japan, PG1/VER.A)
 
 static struct BurnRomInfo primglexRomDesc[] = {
-	{ "pg1vera.2l",   0x100000, 0xfc15fd1a, 1 | BRF_PRG  | BRF_ESS },
-	{ "pg1vera.2j",   0x100000, 0x79955553, 1 | BRF_PRG  | BRF_ESS },
-	{ "pg1rom0u.ic5", 0x400000, 0x2a503f2f, 2 | BRF_PRG  | BRF_ESS },
-	{ "pg1rom0l.ic6", 0x400000, 0x54cef992, 2 | BRF_PRG  | BRF_ESS },
-	{ "pg1rom1u.ic3", 0x400000, 0x1ee41152, 2 | BRF_PRG  | BRF_ESS },
-	{ "pg1rom1l.ic8", 0x400000, 0x59b5a71c, 2 | BRF_PRG  | BRF_ESS },
+	{ "pg1vera.2l",   0x100000, 0xfc15fd1a, 1 | BRF_PRG | BRF_ESS            },
+	{ "pg1vera.2j",   0x100000, 0x79955553, 1 | BRF_PRG | BRF_ESS            },
+
+	{ "pg1rom0u.ic5", 0x400000, 0x2a503f2f, 2 | BRF_PRG | BRF_ESS            },
+	{ "pg1rom0l.ic6", 0x400000, 0x54cef992, 2 | BRF_PRG | BRF_ESS            },
+	{ "pg1rom1u.ic3", 0x400000, 0x1ee41152, 2 | BRF_PRG | BRF_ESS            },
+	{ "pg1rom1l.ic8", 0x400000, 0x59b5a71c, 2 | BRF_PRG | BRF_ESS            },
+
 	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
-	{ "pg1sprog.6d",  0x040000, 0xe7c3396d, 4 | BRF_PRG  | BRF_ESS },
-	{ "pg1wave.8k",   0x400000, 0xfc9ad9eb, 5 | BRF_SND }
+
+	{ "pg1sprog.6d",  0x040000, 0xe7c3396d, 4 | BRF_PRG | BRF_ESS            },
+	{ "pg1wave.8k",   0x400000, 0xfc9ad9eb, 5 | BRF_SND                      }
 };
 
 STDROMPICKEXT(primglex, primglex, namcoc76)
@@ -5734,8 +5670,11 @@ struct BurnDriver BurnDrvPrimglex = {
 	{ "dc1rom2u.ic7", 0x200000, 0x24514dc6, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "dc1rom3l.ic1", 0x200000, 0xa76bcd4c, 2 | BRF_PRG  | BRF_ESS }, \
 	{ "dc1rom3u.ic9", 0x200000, 0x1405d123, 2 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, \
+\
 	{ "dc1sprog.6d",  0x040000, 0x96cd7788, 4 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "dc1wave.8k",   0x400000, 0x8ba0f6a7, 5 | BRF_SND }
 
 // Dancing Eyes (World, DC2/VER.B)
@@ -5812,13 +5751,16 @@ struct BurnDriver BurnDrvDanceyesj = {
 // Pocket Racer (Japan, PKR1/VER.B)
 
 static struct BurnRomInfo pocketrcRomDesc[] = {
-	{ "pkr1verb.2l",   0x100000, 0x300d906a, 1 | BRF_PRG  | BRF_ESS },
-	{ "pkr1verb.2j",   0x100000, 0xd5f47526, 1 | BRF_PRG  | BRF_ESS },
-	{ "pkr1rom0l.ic5", 0x200000, 0x6c9b074c, 2 | BRF_PRG  | BRF_ESS },
-	{ "pkr1rom0u.ic6", 0x200000, 0xa55c0906, 2 | BRF_PRG  | BRF_ESS },
+	{ "pkr1verb.2l",   0x100000, 0x300d906a, 1 | BRF_PRG | BRF_ESS            },
+	{ "pkr1verb.2j",   0x100000, 0xd5f47526, 1 | BRF_PRG | BRF_ESS            },
+
+	{ "pkr1rom0l.ic5", 0x200000, 0x6c9b074c, 2 | BRF_PRG | BRF_ESS            },
+	{ "pkr1rom0u.ic6", 0x200000, 0xa55c0906, 2 | BRF_PRG | BRF_ESS            },
+
 	{ "c76.bin",       0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
-	{ "pkr1verb.6d",   0x040000, 0x9bf08992, 4 | BRF_PRG  | BRF_ESS },
-	{ "pkr1wave.8k",   0x400000, 0x72517c46, 5 | BRF_SND }
+
+	{ "pkr1verb.6d",   0x040000, 0x9bf08992, 4 | BRF_PRG | BRF_ESS            },
+	{ "pkr1wave.8k",   0x400000, 0x72517c46, 5 | BRF_SND                      }
 };
 
 STDROMPICKEXT(pocketrc, pocketrc, namcoc76)
@@ -5836,14 +5778,48 @@ struct BurnDriver BurnDrvPocketrc = {
 
 // Star Sweep (World, STP2/VER.A)
 
+// Family Bowl (Japan, FB1/VER.A V1.00)
+// MAME 0.289 marks this not working: C76 external data/serial behavior and
+// the H8/3002 sensor board are unresolved. SYSTEM11_MiSTer also excludes it.
+static struct BurnRomInfo fambowlRomDesc[] = {
+	{ "fb1_vera.1j",   0x200000, 0x1a3c7317, 1 | BRF_PRG | BRF_ESS            },
+	{ "fb1_vera.1l",   0x200000, 0x63393cbc, 1 | BRF_PRG | BRF_ESS            },
+
+	{ "fb1_rom0l.ic5", 0x400000, 0x0bb1dee3, 2 | BRF_PRG | BRF_ESS            },
+	{ "fb1_rom0u.ic6", 0x400000, 0xe735b2eb, 2 | BRF_PRG | BRF_ESS            },
+
+	{ "c76.bin",       0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
+
+	{ "fb1_spr0.ic5",  0x080000, 0x4325439f, 4 | BRF_PRG | BRF_ESS            },
+
+	{ "fb1_wave0a.8k", 0x400000, 0xef45939f, 5 | BRF_SND                      },
+
+	{ "fb1_vera.7e",   0x040000, 0x452794c4, 6 | BRF_PRG | BRF_ESS            },
+};
+
+STDROMPICKEXT(fambowl, fambowl, namcoc76)
+STD_ROM_FN(fambowl)
+
+struct BurnDriver BurnDrvFambowl = {
+	"fambowl", NULL, "namcoc76", NULL, "1997",
+	"Family Bowl (Japan, FB1/VER.A V1.00)\0", "C76 communication and sensor board not emulated", "Namco", "Namco System 11",
+	NULL, NULL, NULL, NULL,
+	BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED, 2, HARDWARE_MISC_POST90S, GBF_SPORTSMISC, 0,
+	NULL, fambowlRomInfo, fambowlRomName, NULL, NULL, NULL, NULL, Namcos11InputInfo, Namcos11DIPInfo,
+	FambowlInit, DrvExit, DrvFrame, DrvDraw, DrvScan, NULL, 0x8000,
+	240, 640, 3, 4
+};
+
 static struct BurnRomInfo starswepRomDesc[] = {
-	{ "stp2vera.2l", 0x100000, 0xa03f4bac, 1 | BRF_PRG  | BRF_ESS },
-	{ "stp2vera.2j", 0x100000, 0x590da032, 1 | BRF_PRG  | BRF_ESS },
-	{ "stp2vera.2k", 0x100000, 0xac8717d5, 1 | BRF_PRG  | BRF_ESS },
-	{ "stp2vera.2f", 0x100000, 0x42733309, 1 | BRF_PRG  | BRF_ESS },
+	{ "stp2vera.2l", 0x100000, 0xa03f4bac, 1 | BRF_PRG | BRF_ESS            },
+	{ "stp2vera.2j", 0x100000, 0x590da032, 1 | BRF_PRG | BRF_ESS            },
+	{ "stp2vera.2k", 0x100000, 0xac8717d5, 1 | BRF_PRG | BRF_ESS            },
+	{ "stp2vera.2f", 0x100000, 0x42733309, 1 | BRF_PRG | BRF_ESS            },
+
 	{ "c76.bin",     0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
-	{ "stp2vera.6d", 0x040000, 0x08aaaf6a, 4 | BRF_PRG  | BRF_ESS },
-	{ "stp1wave.8k", 0x400000, 0x18f30e92, 5 | BRF_SND }
+
+	{ "stp2vera.6d", 0x040000, 0x08aaaf6a, 4 | BRF_PRG | BRF_ESS            },
+	{ "stp1wave.8k", 0x400000, 0x18f30e92, 5 | BRF_SND                      }
 };
 
 STDROMPICKEXT(starswep, starswep, namcoc76)
@@ -5862,11 +5838,13 @@ struct BurnDriver BurnDrvStarswep = {
 // Star Sweep (Japan, STP1/VER.A)
 
 static struct BurnRomInfo starswepjRomDesc[] = {
-	{ "stp1vera.1j",  0x200000, 0xef83e126, 1 | BRF_PRG  | BRF_ESS },
-	{ "stp1vera.1l",  0x200000, 0x0ee7fe1e, 1 | BRF_PRG  | BRF_ESS },
+	{ "stp1vera.1j",  0x200000, 0xef83e126, 1 | BRF_PRG | BRF_ESS            },
+	{ "stp1vera.1l",  0x200000, 0x0ee7fe1e, 1 | BRF_PRG | BRF_ESS            },
+
 	{ "c76.bin",      0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
-	{ "stp1sprog.7e", 0x040000, 0x08aaaf6a, 4 | BRF_PRG  | BRF_ESS },
-	{ "stp1wave.8k",  0x400000, 0x18f30e92, 5 | BRF_SND }
+
+	{ "stp1sprog.7e", 0x040000, 0x08aaaf6a, 4 | BRF_PRG | BRF_ESS            },
+	{ "stp1wave.8k",  0x400000, 0x18f30e92, 5 | BRF_SND                      }
 };
 
 STDROMPICKEXT(starswepj, starswepj, namcoc76)
@@ -5885,17 +5863,19 @@ struct BurnDriver BurnDrvStarswepj = {
 // Kosodate Quiz My Angel 3 (Japan, KQT1/VER.A)
 
 static struct BurnRomInfo myangel3RomDesc[] = {
-	{ "kqt1vera.1j",    0x200000, 0xdf7aef8a, 1 | BRF_PRG  | BRF_ESS },
-	{ "kqt1vera.1l",    0x200000, 0xffc51c01, 1 | BRF_PRG  | BRF_ESS },
+	{ "kqt1vera.1j",   0x200000, 0xdf7aef8a, 1 | BRF_PRG | BRF_ESS            },
+	{ "kqt1vera.1l",   0x200000, 0xffc51c01, 1 | BRF_PRG | BRF_ESS            },
 
-	{ "kqt1prg0l.ic2",  0x800000, 0xd67eee66, 2 | BRF_PRG  | BRF_ESS },
-	{ "kqt1prg0u.ic5",  0x800000, 0x4d1c7bf3, 2 | BRF_PRG  | BRF_ESS },
-	{ "kqt1prg1l.ic3",  0x800000, 0x298d8eeb, 2 | BRF_PRG  | BRF_ESS },
-	{ "kqt1prg1u.ic6",  0x800000, 0x911783db, 2 | BRF_PRG  | BRF_ESS },
+	{ "kqt1prg0l.ic2", 0x800000, 0xd67eee66, 2 | BRF_PRG | BRF_ESS            },
+	{ "kqt1prg0u.ic5", 0x800000, 0x4d1c7bf3, 2 | BRF_PRG | BRF_ESS            },
+	{ "kqt1prg1l.ic3", 0x800000, 0x298d8eeb, 2 | BRF_PRG | BRF_ESS            },
+	{ "kqt1prg1u.ic6", 0x800000, 0x911783db, 2 | BRF_PRG | BRF_ESS            },
 
-	{ "c76.bin",        0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
-	{ "kqt1sprog.7e",   0x040000, 0xbb1888a6, 4 | BRF_PRG  | BRF_ESS },
-	{ "kqt1wave.8k",    0x400000, 0x92ca8e4f, 5 | BRF_SND },
+	{ "c76.bin",       0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
+
+	{ "kqt1sprog.7e",  0x040000, 0xbb1888a6, 4 | BRF_PRG | BRF_ESS            },
+
+	{ "kqt1wave.8k",   0x400000, 0x92ca8e4f, 5 | BRF_SND                      },
 };
 
 STDROMPICKEXT(myangel3, myangel3, namcoc76)
@@ -5919,7 +5899,9 @@ struct BurnDriver BurnDrvMyangel3 = {
 
 #define PTBLANK2_SOUND_ROMS \
 	{ "c76.bin",     0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS }, \
+\
 	{ "gnb1vera.6d", 0x040000, 0x6461ae77, 4 | BRF_PRG  | BRF_ESS }, \
+\
 	{ "gnb1wave.8k", 0x400000, 0x4e19d9d6, 5 | BRF_SND }
 
 // Point Blank 2 (World, GNB2/VER.A)
@@ -5949,12 +5931,13 @@ struct BurnDriver BurnDrvPtblank2a = {
 // Point Blank 2 (World, GNB2/VER.A alt)
 
 static struct BurnRomInfo ptblank2bRomDesc[] = {
-	{ "gnb2vera.1j", 0x200000, 0xdf0bc5f0, 1 | BRF_PRG  | BRF_ESS },
-	{ "gnb2vera.1l", 0x200000, 0x8a274d96, 1 | BRF_PRG  | BRF_ESS },
+	{ "gnb2vera.1j", 0x200000, 0xdf0bc5f0, 1 | BRF_PRG | BRF_ESS            },
+	{ "gnb2vera.1l", 0x200000, 0x8a274d96, 1 | BRF_PRG | BRF_ESS            },
 	PTBLANK2_DATA_ROMS,
 	{ "c76.bin",     0x004000, 0x399faac7, 3 | BRF_BIOS | BRF_PRG | BRF_ESS },
-	{ "gnb1vera.7e", 0x040000, 0x6461ae77, 4 | BRF_PRG  | BRF_ESS },
-	{ "gnb1wave.8k", 0x400000, 0x4e19d9d6, 5 | BRF_SND }
+
+	{ "gnb1vera.7e", 0x040000, 0x6461ae77, 4 | BRF_PRG | BRF_ESS            },
+	{ "gnb1wave.8k", 0x400000, 0x4e19d9d6, 5 | BRF_SND                      }
 };
 
 STDROMPICKEXT(ptblank2b, ptblank2b, namcoc76)
@@ -5973,10 +5956,10 @@ struct BurnDriver BurnDrvPtblank2b = {
 // Point Blank 2 (World, unknown version)
 
 static struct BurnRomInfo ptblank2cRomDesc[] = {
-	{ "gnb2verx.2l", 0x100000, 0xc2a02ccf, 1 | BRF_PRG  | BRF_ESS },
-	{ "gnb2verx.2j", 0x100000, 0x96abd746, 1 | BRF_PRG  | BRF_ESS },
-	{ "gnb1vera.2k", 0x100000, 0xe6335e4e, 1 | BRF_PRG  | BRF_ESS },
-	{ "gnb1vera.2f", 0x100000, 0x2bb7eb6d, 1 | BRF_PRG  | BRF_ESS },
+	{ "gnb2verx.2l", 0x100000, 0xc2a02ccf, 1 | BRF_PRG | BRF_ESS },
+	{ "gnb2verx.2j", 0x100000, 0x96abd746, 1 | BRF_PRG | BRF_ESS },
+	{ "gnb1vera.2k", 0x100000, 0xe6335e4e, 1 | BRF_PRG | BRF_ESS },
+	{ "gnb1vera.2f", 0x100000, 0x2bb7eb6d, 1 | BRF_PRG | BRF_ESS },
 	PTBLANK2_DATA_ROMS,
 	PTBLANK2_SOUND_ROMS
 };

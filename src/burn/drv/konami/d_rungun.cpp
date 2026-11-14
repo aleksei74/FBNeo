@@ -8,16 +8,7 @@
 #include "konamiic.h"
 #include "k054539.h"
 #include "dtimer.h"
-#include <condition_variable>
 #include <math.h>
-#include <mutex>
-#include <thread>
-
-#if defined(_WIN32)
-#include <windows.h>
-#elif defined(__linux__) || defined(__ANDROID__)
-#include <unistd.h>
-#endif
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -92,269 +83,6 @@ static const INT32 RNG_VISIBLE_X = 88;
 static const INT32 RNG_VISIBLE_Y = 24;
 static const INT32 RUNGUN_SOUND_GAIN = 8;
 
-static UINT32 RungunDetectLogicalProcessors()
-{
-	static const UINT32 detected = []() -> UINT32 {
-		UINT32 cores = 0;
-
-#if defined(_WIN32)
-		typedef DWORD (WINAPI *GetActiveProcessorCountProc)(WORD);
-		HMODULE kernel32 = GetModuleHandleA("kernel32.dll");
-		GetActiveProcessorCountProc getActiveProcessorCount = kernel32 ?
-			(GetActiveProcessorCountProc)GetProcAddress(kernel32, "GetActiveProcessorCount") : NULL;
-
-		if (getActiveProcessorCount) {
-			cores = (UINT32)getActiveProcessorCount(0xffff);
-		}
-
-		if (cores == 0) {
-			SYSTEM_INFO info;
-			GetSystemInfo(&info);
-			cores = (UINT32)info.dwNumberOfProcessors;
-		}
-#elif defined(__linux__) || defined(__ANDROID__)
-		const long online = sysconf(_SC_NPROCESSORS_ONLN);
-		if (online > 0) cores = (UINT32)online;
-#endif
-
-		if (cores == 0) cores = std::thread::hardware_concurrency();
-		if (cores == 0) cores = 1;
-
-		return cores;
-	}();
-
-	return detected;
-}
-
-static bool RungunMulticoreEnabled()
-{
-#if defined(_WIN32) || defined(__linux__) || defined(__ANDROID__)
-	return RungunDetectLogicalProcessors() >= 4;
-#else
-	return false;
-#endif
-}
-
-class RungunSoundWorker
-{
-public:
-	RungunSoundWorker(INT32 chip_index)
-		: chip(chip_index), active(false), stop(false), pending(false), generation(0),
-		  buffer(NULL), length(0)
-	{
-	}
-
-	~RungunSoundWorker()
-	{
-		Shutdown();
-	}
-
-	void Configure()
-	{
-		Shutdown();
-
-		if (!RungunMulticoreEnabled()) return;
-
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			active = true;
-			stop = false;
-			pending = false;
-			generation = 0;
-		}
-
-		worker = std::thread(&RungunSoundWorker::Run, this);
-	}
-
-	void Shutdown()
-	{
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			if (!active && !worker.joinable()) return;
-			stop = true;
-			generation++;
-		}
-		work.notify_one();
-
-		if (worker.joinable()) worker.join();
-
-		std::lock_guard<std::mutex> lock(mutex);
-		active = false;
-		stop = false;
-		pending = false;
-		buffer = NULL;
-		length = 0;
-	}
-
-	bool Dispatch(INT16 *output, INT32 samples)
-	{
-		if (!active || samples < 96 || samples > 4096) return false;
-		// Update returns immediately while the chip is disabled; avoid waking a worker.
-		if ((K054539Read(chip, 0x22f) & 1) == 0) return false;
-
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			buffer = output;
-			length = samples;
-			pending = true;
-			generation++;
-		}
-		work.notify_one();
-
-		return true;
-	}
-
-	void Wait()
-	{
-		std::unique_lock<std::mutex> lock(mutex);
-		done.wait(lock, [this]() { return !pending; });
-	}
-
-private:
-	void Run()
-	{
-		UINT32 observed = 0;
-
-		for (;;) {
-			INT16 *output;
-			INT32 samples;
-
-			{
-				std::unique_lock<std::mutex> lock(mutex);
-				work.wait(lock, [this, observed]() {
-					return stop || generation != observed;
-				});
-				if (stop) return;
-
-				observed = generation;
-				output = buffer;
-				samples = length;
-			}
-
-			memset(output, 0, samples * 2 * sizeof(INT16));
-			K054539Update(chip, output, samples);
-
-			{
-				std::lock_guard<std::mutex> lock(mutex);
-				pending = false;
-			}
-			done.notify_one();
-		}
-	}
-
-	std::thread worker;
-	std::mutex mutex;
-	std::condition_variable work;
-	std::condition_variable done;
-	INT32 chip;
-	bool active;
-	bool stop;
-	bool pending;
-	UINT32 generation;
-	INT16 *buffer;
-	INT32 length;
-};
-
-static RungunSoundWorker RungunSoundThread0(0);
-static RungunSoundWorker RungunSoundThread1(1);
-
-class RungunPsacWorker
-{
-public:
-	RungunPsacWorker()
-		: stopping(false), active(false), pending(false), chip(0)
-	{
-	}
-
-	~RungunPsacWorker()
-	{
-		Shutdown();
-	}
-
-	void Configure(bool enable)
-	{
-		if (!enable) {
-			Shutdown();
-			return;
-		}
-
-		std::lock_guard<std::mutex> lock(mutex);
-		if (active) return;
-
-		stopping = false;
-		active = true;
-		worker = std::thread(&RungunPsacWorker::Run, this);
-	}
-
-	bool Dispatch(INT32 chip_index)
-	{
-		std::lock_guard<std::mutex> lock(mutex);
-		if (!active || pending) return false;
-
-		chip = chip_index;
-		pending = true;
-		wake.notify_one();
-		return true;
-	}
-
-	void Wait()
-	{
-		std::unique_lock<std::mutex> lock(mutex);
-		done.wait(lock, [this]() { return !pending; });
-	}
-
-	void Shutdown()
-	{
-		{
-			std::lock_guard<std::mutex> lock(mutex);
-			if (!active) return;
-			stopping = true;
-			wake.notify_one();
-		}
-
-		if (worker.joinable()) worker.join();
-
-		std::lock_guard<std::mutex> lock(mutex);
-		active = false;
-		pending = false;
-		stopping = false;
-	}
-
-private:
-	void Run()
-	{
-		for (;;) {
-			INT32 work_chip;
-
-			{
-				std::unique_lock<std::mutex> lock(mutex);
-				wake.wait(lock, [this]() { return stopping || pending; });
-				if (stopping && !pending) break;
-				work_chip = chip;
-			}
-
-			K053936PredrawTiles2(work_chip, DrvGfxROMExp0);
-
-			{
-				std::lock_guard<std::mutex> lock(mutex);
-				pending = false;
-			}
-			done.notify_one();
-		}
-	}
-
-	std::thread worker;
-	std::mutex mutex;
-	std::condition_variable wake;
-	std::condition_variable done;
-	bool stopping;
-	bool active;
-	bool pending;
-	INT32 chip;
-};
-
-static RungunPsacWorker RungunPsacThread;
-
 static INT32 RungunDualOutputEnabled()
 {
 	return is_dual_screen || (DrvDips[1] & 0x10);
@@ -365,7 +93,8 @@ static void RungunCheckScreenSize()
 	INT32 dual = RungunDualOutputEnabled();
 	INT32 width = dual ? 768 : 384;
 
-	if (width == nScreenWidth) return;
+	if (width == nScreenWidth)
+		return;
 
 	BurnTransferSetDimensions(width, 224);
 	GenericTilesSetClipRaw(0, width, 0, 224);
@@ -376,116 +105,105 @@ static void RungunCheckScreenSize()
 	KonamiAllocateBitmaps();
 }
 
-enum {
-	RNG_EEPROM_RESET = 0,
-	RNG_EEPROM_START,
-	RNG_EEPROM_COMMAND,
-	RNG_EEPROM_READ,
-	RNG_EEPROM_WRITE
-};
+enum { RNG_EEPROM_RESET = 0, RNG_EEPROM_START, RNG_EEPROM_COMMAND, RNG_EEPROM_READ, RNG_EEPROM_WRITE };
 
 static struct BurnInputInfo RungunInputList[] = {
-	{"P1 Coin",       BIT_DIGITAL,   DrvJoy1 + 0,  "p1 coin"	},
-	{"P1 Start",      BIT_DIGITAL,   DrvJoy2 + 7,  "p1 start"	},
-	{"P1 Up",         BIT_DIGITAL,   DrvJoy2 + 2,  "p1 up"		},
-	{"P1 Down",       BIT_DIGITAL,   DrvJoy2 + 3,  "p1 down"	},
-	{"P1 Left",       BIT_DIGITAL,   DrvJoy2 + 0,  "p1 left"	},
-	{"P1 Right",      BIT_DIGITAL,   DrvJoy2 + 1,  "p1 right"	},
-	{"P1 Button 1",   BIT_DIGITAL,   DrvJoy2 + 4,  "p1 fire 1"	},
-	{"P1 Button 2",   BIT_DIGITAL,   DrvJoy2 + 5,  "p1 fire 2"	},
-	{"P1 Button 3",   BIT_DIGITAL,   DrvJoy2 + 6,  "p1 fire 3"	},
+	{ "P1 Coin",     BIT_DIGITAL,   DrvJoy1 + 0, "p1 coin"   },
+	{ "P1 Start",    BIT_DIGITAL,   DrvJoy2 + 7, "p1 start"  },
+	{ "P1 Up",       BIT_DIGITAL,   DrvJoy2 + 2, "p1 up"     },
+	{ "P1 Down",     BIT_DIGITAL,   DrvJoy2 + 3, "p1 down"   },
+	{ "P1 Left",     BIT_DIGITAL,   DrvJoy2 + 0, "p1 left"   },
+	{ "P1 Right",    BIT_DIGITAL,   DrvJoy2 + 1, "p1 right"  },
+	{ "P1 Button 1", BIT_DIGITAL,   DrvJoy2 + 4, "p1 fire 1" },
+	{ "P1 Button 2", BIT_DIGITAL,   DrvJoy2 + 5, "p1 fire 2" },
+	{ "P1 Button 3", BIT_DIGITAL,   DrvJoy2 + 6, "p1 fire 3" },
 
-	{"P2 Coin",       BIT_DIGITAL,   DrvJoy1 + 1,  "p2 coin"	},
-	{"P2 Start",      BIT_DIGITAL,   DrvJoy3 + 7,  "p2 start"	},
-	{"P2 Up",         BIT_DIGITAL,   DrvJoy3 + 2,  "p2 up"		},
-	{"P2 Down",       BIT_DIGITAL,   DrvJoy3 + 3,  "p2 down"	},
-	{"P2 Left",       BIT_DIGITAL,   DrvJoy3 + 0,  "p2 left"	},
-	{"P2 Right",      BIT_DIGITAL,   DrvJoy3 + 1,  "p2 right"	},
-	{"P2 Button 1",   BIT_DIGITAL,   DrvJoy3 + 4,  "p2 fire 1"	},
-	{"P2 Button 2",   BIT_DIGITAL,   DrvJoy3 + 5,  "p2 fire 2"	},
-	{"P2 Button 3",   BIT_DIGITAL,   DrvJoy3 + 6,  "p2 fire 3"	},
+	{ "P2 Coin",     BIT_DIGITAL,   DrvJoy1 + 1, "p2 coin"   },
+	{ "P2 Start",    BIT_DIGITAL,   DrvJoy3 + 7, "p2 start"  },
+	{ "P2 Up",       BIT_DIGITAL,   DrvJoy3 + 2, "p2 up"     },
+	{ "P2 Down",     BIT_DIGITAL,   DrvJoy3 + 3, "p2 down"   },
+	{ "P2 Left",     BIT_DIGITAL,   DrvJoy3 + 0, "p2 left"   },
+	{ "P2 Right",    BIT_DIGITAL,   DrvJoy3 + 1, "p2 right"  },
+	{ "P2 Button 1", BIT_DIGITAL,   DrvJoy3 + 4, "p2 fire 1" },
+	{ "P2 Button 2", BIT_DIGITAL,   DrvJoy3 + 5, "p2 fire 2" },
+	{ "P2 Button 3", BIT_DIGITAL,   DrvJoy3 + 6, "p2 fire 3" },
 
-	{"P3 Coin",       BIT_DIGITAL,   DrvJoy1 + 2,  "p3 coin"	},
-	{"P3 Start",      BIT_DIGITAL,   DrvJoy4 + 7,  "p3 start"	},
-	{"P3 Up",         BIT_DIGITAL,   DrvJoy4 + 2,  "p3 up"		},
-	{"P3 Down",       BIT_DIGITAL,   DrvJoy4 + 3,  "p3 down"	},
-	{"P3 Left",       BIT_DIGITAL,   DrvJoy4 + 0,  "p3 left"	},
-	{"P3 Right",      BIT_DIGITAL,   DrvJoy4 + 1,  "p3 right"	},
-	{"P3 Button 1",   BIT_DIGITAL,   DrvJoy4 + 4,  "p3 fire 1"	},
-	{"P3 Button 2",   BIT_DIGITAL,   DrvJoy4 + 5,  "p3 fire 2"	},
-	{"P3 Button 3",   BIT_DIGITAL,   DrvJoy4 + 6,  "p3 fire 3"	},
+	{ "P3 Coin",     BIT_DIGITAL,   DrvJoy1 + 2, "p3 coin"   },
+	{ "P3 Start",    BIT_DIGITAL,   DrvJoy4 + 7, "p3 start"  },
+	{ "P3 Up",       BIT_DIGITAL,   DrvJoy4 + 2, "p3 up"     },
+	{ "P3 Down",     BIT_DIGITAL,   DrvJoy4 + 3, "p3 down"   },
+	{ "P3 Left",     BIT_DIGITAL,   DrvJoy4 + 0, "p3 left"   },
+	{ "P3 Right",    BIT_DIGITAL,   DrvJoy4 + 1, "p3 right"  },
+	{ "P3 Button 1", BIT_DIGITAL,   DrvJoy4 + 4, "p3 fire 1" },
+	{ "P3 Button 2", BIT_DIGITAL,   DrvJoy4 + 5, "p3 fire 2" },
+	{ "P3 Button 3", BIT_DIGITAL,   DrvJoy4 + 6, "p3 fire 3" },
 
-	{"P4 Coin",       BIT_DIGITAL,   DrvJoy1 + 3,  "p4 coin"	},
-	{"P4 Start",      BIT_DIGITAL,   DrvJoy5 + 7,  "p4 start"	},
-	{"P4 Up",         BIT_DIGITAL,   DrvJoy5 + 2,  "p4 up"		},
-	{"P4 Down",       BIT_DIGITAL,   DrvJoy5 + 3,  "p4 down"	},
-	{"P4 Left",       BIT_DIGITAL,   DrvJoy5 + 0,  "p4 left"	},
-	{"P4 Right",      BIT_DIGITAL,   DrvJoy5 + 1,  "p4 right"	},
-	{"P4 Button 1",   BIT_DIGITAL,   DrvJoy5 + 4,  "p4 fire 1"	},
-	{"P4 Button 2",   BIT_DIGITAL,   DrvJoy5 + 5,  "p4 fire 2"	},
-	{"P4 Button 3",   BIT_DIGITAL,   DrvJoy5 + 6,  "p4 fire 3"	},
+	{ "P4 Coin",     BIT_DIGITAL,   DrvJoy1 + 3, "p4 coin"   },
+	{ "P4 Start",    BIT_DIGITAL,   DrvJoy5 + 7, "p4 start"  },
+	{ "P4 Up",       BIT_DIGITAL,   DrvJoy5 + 2, "p4 up"     },
+	{ "P4 Down",     BIT_DIGITAL,   DrvJoy5 + 3, "p4 down"   },
+	{ "P4 Left",     BIT_DIGITAL,   DrvJoy5 + 0, "p4 left"   },
+	{ "P4 Right",    BIT_DIGITAL,   DrvJoy5 + 1, "p4 right"  },
+	{ "P4 Button 1", BIT_DIGITAL,   DrvJoy5 + 4, "p4 fire 1" },
+	{ "P4 Button 2", BIT_DIGITAL,   DrvJoy5 + 5, "p4 fire 2" },
+	{ "P4 Button 3", BIT_DIGITAL,   DrvJoy5 + 6, "p4 fire 3" },
 
-	{"Reset",         BIT_DIGITAL,   &DrvReset,    "reset"		},
-	{"Service 1",     BIT_DIGITAL,   DrvJoy1 + 4,  "service"	},
-	{"Service 2",     BIT_DIGITAL,   DrvJoy1 + 5,  "service"	},
-	{"Service 3",     BIT_DIGITAL,   DrvJoy1 + 6,  "service"	},
-	{"Service 4",     BIT_DIGITAL,   DrvJoy1 + 7,  "service"	},
-	{"Dip A",         BIT_DIPSWITCH, DrvDips + 0,  "dip"		},
-	{"Dip B",         BIT_DIPSWITCH, DrvDips + 1,  "dip"		},
-	{"Dip C",         BIT_DIPSWITCH, DrvDips + 2,  "dip"		},
+	{ "Reset",       BIT_DIGITAL,   &DrvReset,   "reset"     },
+	{ "Service 1",   BIT_DIGITAL,   DrvJoy1 + 4, "service"   },
+	{ "Service 2",   BIT_DIGITAL,   DrvJoy1 + 5, "service"   },
+	{ "Service 3",   BIT_DIGITAL,   DrvJoy1 + 6, "service"   },
+	{ "Service 4",   BIT_DIGITAL,   DrvJoy1 + 7, "service"   },
+	{ "Dip A",       BIT_DIPSWITCH, DrvDips + 0, "dip"       },
+	{ "Dip B",       BIT_DIPSWITCH, DrvDips + 1, "dip"       },
+	{ "Dip C",       BIT_DIPSWITCH, DrvDips + 2, "dip"       },
 };
 
 STDINPUTINFO(Rungun)
 
 static struct BurnDIPInfo RungunDIPList[] = {
-	{0x29, 0xff, 0xff, 0x00, NULL},
-	{0x2a, 0xff, 0xff, 0x8c, NULL},
-	{0x2b, 0xff, 0xff, 0x00, NULL},
+	{ 0x29, 0xff, 0xff, 0x00, NULL                },
+	{ 0x2a, 0xff, 0xff, 0x8c, NULL                },
+	{ 0x2b, 0xff, 0xff, 0x00, NULL                },
 
-	{0   , 0xfe, 0   ,    2, "Freeze"				},
-	{0x29, 0x01, 0x01, 0x00, "Off"					},
-	{0x29, 0x01, 0x01, 0x01, "On"					},
+	{ 0,    0xfe, 0,    2,    "Freeze"            },
+	{ 0x29, 0x01, 0x01, 0x00, "Off"               },
+	{ 0x29, 0x01, 0x01, 0x01, "On"                },
 
-	{0   , 0xfe, 0   ,    2, "Bit2 (Unknown)"		},
-	{0x2a, 0x01, 0x04, 0x04, "Off"					},
-	{0x2a, 0x01, 0x04, 0x00, "On"					},
+	{ 0,    0xfe, 0,    2,    "Bit2 (Unknown)"    },
+	{ 0x2a, 0x01, 0x04, 0x04, "Off"               },
+	{ 0x2a, 0x01, 0x04, 0x00, "On"                },
 
-	{0   , 0xfe, 0   ,    2, "Service Mode"			},
-	{0x2a, 0x01, 0x08, 0x08, "Off"					},
-	{0x2a, 0x01, 0x08, 0x00, "On"					},
+	{ 0,    0xfe, 0,    2,    "Service Mode"      },
+	{ 0x2a, 0x01, 0x08, 0x08, "Off"               },
+	{ 0x2a, 0x01, 0x08, 0x00, "On"                },
 
-	{0   , 0xfe, 0   ,    2, "Monitors"				},
-	{0x2a, 0x01, 0x10, 0x00, "1"					},
-	{0x2a, 0x01, 0x10, 0x10, "2"					},
+	{ 0,    0xfe, 0,    2,    "Monitors"          },
+	{ 0x2a, 0x01, 0x10, 0x00, "1"                 },
+	{ 0x2a, 0x01, 0x10, 0x10, "2"                 },
 
-	{0   , 0xfe, 0   ,    2, "Number of players"	},
-	{0x2a, 0x01, 0x20, 0x00, "2"					},
-	{0x2a, 0x01, 0x20, 0x20, "4"					},
+	{ 0,    0xfe, 0,    2,    "Number of players" },
+	{ 0x2a, 0x01, 0x20, 0x00, "2"                 },
+	{ 0x2a, 0x01, 0x20, 0x20, "4"                 },
 
-	{0   , 0xfe, 0   ,    2, "Sound Output"			},
-	{0x2a, 0x01, 0x40, 0x40, "Mono"					},
-	{0x2a, 0x01, 0x40, 0x00, "Stereo"				},
+	{ 0,    0xfe, 0,    2,    "Sound Output"      },
+	{ 0x2a, 0x01, 0x40, 0x40, "Mono"              },
+	{ 0x2a, 0x01, 0x40, 0x00, "Stereo"            },
 
-	{0   , 0xfe, 0   ,    2, "Bit7 (Unknown)"		},
-	{0x2a, 0x01, 0x80, 0x80, "Off"					},
-	{0x2a, 0x01, 0x80, 0x00, "On"					},
-
-	{0   , 0xfe, 0   ,    2, "Speed Hack"			},
-	{0x2b, 0x01, 0x01, 0x00, "Off"					},
-	{0x2b, 0x01, 0x01, 0x01, "On"					},
+	{ 0,    0xfe, 0,    2,    "Bit7 (Unknown)"    },
+	{ 0x2a, 0x01, 0x80, 0x80, "Off"               },
+	{ 0x2a, 0x01, 0x80, 0x00, "On"                },
 };
 
 STDDIPINFO(Rungun)
 
 static void DrvPaletteUpdate(INT32 bank)
 {
-	UINT16 *p = (UINT16*)(DrvPalRAM + (bank * 0x800));
+	UINT16 *p = (UINT16 *)(DrvPalRAM + (bank * 0x800));
 
-	for (INT32 i = 0; i < 0x400; i++)
-	{
+	for (INT32 i = 0; i < 0x400; i++) {
 		UINT16 d = BURN_ENDIAN_SWAP_INT16(p[i]);
-		UINT8 r = (d >>  0) & 0x1f;
-		UINT8 g = (d >>  5) & 0x1f;
+		UINT8 r = (d >> 0) & 0x1f;
+		UINT8 g = (d >> 5) & 0x1f;
 		UINT8 b = (d >> 10) & 0x1f;
 
 		DrvPalette[i] = BurnHighCol(r << 3, g << 3, b << 3, 0);
@@ -542,35 +260,102 @@ static void k054321_update_volume()
 
 static void k054321_main_write(UINT8 offset, UINT8 data)
 {
-	switch (offset & 0x1f)
-	{
+	switch (offset & 0x1f) {
 		case 0x00:
 			k054321_active = data;
 			k054321_update_volume();
-		return;
+			return;
 
 		case 0x02:
 			k054321_volume = 0;
 			k054321_update_volume();
-		return;
+			return;
 
 		case 0x03:
 			if (data && k054321_volume < 64) {
 				k054321_volume++;
 				k054321_update_volume();
 			}
-		return;
+			return;
 
 		case 0x06:
 		case 0x0c:
 			soundlatch[0] = data;
-		return;
+			return;
 
 		case 0x07:
 		case 0x0e:
 			soundlatch[1] = data;
-		return;
+			return;
 	}
+}
+
+static bool rungun_frame_active;
+extern int FBA_LuaRunning();
+static void RungunRenderSound();
+struct RungunSoundCommand {
+	enum Kind { Slice, Write, Mute, Irq, Finish } kind;
+	INT32 value;
+};
+
+static INT32 rungun_sound_cycles, rungun_timer_cycles;
+static void RungunApplySound(const RungunSoundCommand &command)
+{
+	switch (command.kind) {
+		case RungunSoundCommand::Slice:
+			// Preserve the driver's fixed Z80 slice and timer's cumulative
+			// target, including the NMI callback's original extra cycles.
+			rungun_sound_cycles += ZetRun((8000000 / 60) / 264);
+			rungun_timer_cycles += timerRun(command.value - rungun_timer_cycles);
+			break;
+		case RungunSoundCommand::Write:
+			k054321_main_write(command.value >> 8, command.value & 0xff);
+			break;
+		case RungunSoundCommand::Mute:
+			sound_mute = command.value;
+			k054321_update_volume();
+			break;
+		case RungunSoundCommand::Irq:
+			ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
+			break;
+		case RungunSoundCommand::Finish:
+			nExtraCycles[1] = rungun_sound_cycles - 8000000 / 60;
+			ZetClose();
+			// No register/timer access can race either PCM chip's global
+			// mixer context. Graphics is independent and may overlap this.
+			{
+				RungunRenderSound();
+			}
+			break;
+	}
+}
+
+static void RungunOpenSound()
+{
+	ZetNewFrame();
+	timerNewFrame();
+	ZetOpen(0);
+	rungun_sound_cycles = nExtraCycles[1];
+	rungun_timer_cycles = 0;
+}
+
+static void RungunPostSound(RungunSoundCommand::Kind kind, INT32 value = 0)
+{
+	const RungunSoundCommand command = { kind, value };
+	RungunApplySound(command);
+}
+
+static UINT8 RungunSoundReply()
+{
+	return soundlatch[2];
+}
+
+static void RungunBeginFrame()
+{
+	if (FBA_LuaRunning())
+		;
+	rungun_frame_active = false;
+	RungunOpenSound();
 }
 
 static void rng_eeprom_reset()
@@ -609,17 +394,17 @@ static void rng_eeprom_write(INT32 di, INT32 cs, INT32 clk)
 		return;
 	}
 
-	if (!rng_eeprom_cs || old_clk || !rng_eeprom_clk) return;
+	if (!rng_eeprom_cs || old_clk || !rng_eeprom_clk)
+		return;
 
-	switch (rng_eeprom_state)
-	{
+	switch (rng_eeprom_state) {
 		case RNG_EEPROM_START:
 			if (rng_eeprom_di) {
 				rng_eeprom_state = RNG_EEPROM_COMMAND;
 				rng_eeprom_bits = 0;
 				rng_eeprom_cmd = 0;
 			}
-		break;
+			break;
 
 		case RNG_EEPROM_COMMAND:
 			rng_eeprom_cmd = (rng_eeprom_cmd << 1) | rng_eeprom_di;
@@ -643,7 +428,7 @@ static void rng_eeprom_write(INT32 di, INT32 cs, INT32 clk)
 					rng_eeprom_do = 1;
 				}
 			}
-		break;
+			break;
 
 		case RNG_EEPROM_READ:
 			if ((rng_eeprom_bits & 7) == 0) {
@@ -654,7 +439,7 @@ static void rng_eeprom_write(INT32 di, INT32 cs, INT32 clk)
 
 			rng_eeprom_do = (rng_eeprom_shift >> 31) & 1;
 			rng_eeprom_bits++;
-		break;
+			break;
 
 		case RNG_EEPROM_WRITE:
 			rng_eeprom_shift = (rng_eeprom_shift << 1) | rng_eeprom_di;
@@ -665,7 +450,7 @@ static void rng_eeprom_write(INT32 di, INT32 cs, INT32 clk)
 				rng_eeprom_state = RNG_EEPROM_RESET;
 				rng_eeprom_do = 1;
 			}
-		break;
+			break;
 	}
 }
 
@@ -677,7 +462,8 @@ static void sound_bank_map(UINT8 data)
 
 static void sound_ctrl_write(UINT8 data)
 {
-	if ((sound_ctrl ^ data) & 7) sound_bank_map(data);
+	if ((sound_ctrl ^ data) & 7)
+		sound_bank_map(data);
 	sound_ctrl = data;
 
 	if ((data & 0x10) == 0) {
@@ -687,14 +473,17 @@ static void sound_ctrl_write(UINT8 data)
 
 static UINT8 __fastcall rungun_sound_read(UINT16 address)
 {
-	if (address >= 0xe000 && address <= 0xe22f) return K054539Read(0, address & 0x3ff);
-	if (address >= 0xe230 && address <= 0xe3ff) return DrvZ80ExtRAM0[address - 0xe230];
-	if (address >= 0xe400 && address <= 0xe62f) return K054539Read(1, address & 0x3ff);
-	if (address >= 0xe630 && address <= 0xe7ff) return DrvZ80ExtRAM1[address - 0xe630];
+	if (address >= 0xe000 && address <= 0xe22f)
+		return K054539Read(0, address & 0x3ff);
+	if (address >= 0xe230 && address <= 0xe3ff)
+		return DrvZ80ExtRAM0[address - 0xe230];
+	if (address >= 0xe400 && address <= 0xe62f)
+		return K054539Read(1, address & 0x3ff);
+	if (address >= 0xe630 && address <= 0xe7ff)
+		return DrvZ80ExtRAM1[address - 0xe630];
 
 	if (address >= 0xf000 && address <= 0xf003) {
-		switch (address & 3)
-		{
+		switch (address & 3) {
 			case 0x02:
 				ZetSetIRQLine(0, CPU_IRQSTATUS_NONE);
 				return soundlatch[0];
@@ -747,8 +536,8 @@ static void __fastcall rungun_sound_write(UINT16 address, UINT8 data)
 
 static void sprite_dma_copy(INT32 src_bank)
 {
-	UINT16 *dst = (UINT16*)K053247Ram;
-	UINT16 *src = (UINT16*)DrvSprRAM;
+	UINT16 *dst = (UINT16 *)K053247Ram;
+	UINT16 *src = (UINT16 *)DrvSprRAM;
 	INT32 src_offset = (src_bank & 1) * 0x1000;
 
 	for (INT32 i = 0; i < 0x1000 / 2; i++) {
@@ -763,21 +552,20 @@ static void sprite_dma_trigger()
 
 static UINT16 sysregs_read(INT32 offset)
 {
-	UINT16 *sys = (UINT16*)DrvSysRegs;
+	UINT16 *sys = (UINT16 *)DrvSysRegs;
 	UINT16 data = BURN_ENDIAN_SWAP_INT16(sys[offset & 0xf]);
 
-	switch ((offset & 0xf) << 1)
-	{
+	switch ((offset & 0xf) << 1) {
 		case 0x00:
 			return (DrvInputs[1] & 0xff) | ((DrvInputs[3] & 0xff) << 8);
 
 		case 0x02:
 			return (DrvInputs[2] & 0xff) | ((DrvInputs[4] & 0xff) << 8);
 
-		case 0x04:
-		{
+		case 0x04: {
 			UINT16 field = (~nCurrentFrame & 1) << 9;
-			if (single_screen_mode) field = 0x0200;
+			if (single_screen_mode)
+				field = 0x0200;
 			return (DrvInputs[0] & 0x00ff) | ((DrvDips[0] & 1) << 8) | field | 0x0c00;
 		}
 
@@ -790,7 +578,7 @@ static UINT16 sysregs_read(INT32 offset)
 
 static UINT16 __fastcall rungun_psac_read_word(UINT32 address)
 {
-	return BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvPsacRAM + video_mux_bank * 0x100000 + (address & 0xfffe))));
+	return BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvPsacRAM + video_mux_bank * 0x100000 + (address & 0xfffe))));
 }
 
 static UINT8 __fastcall rungun_psac_read_byte(UINT32 address)
@@ -800,7 +588,7 @@ static UINT8 __fastcall rungun_psac_read_byte(UINT32 address)
 
 static void __fastcall rungun_psac_write_word(UINT32 address, UINT16 data)
 {
-	*((UINT16*)(DrvPsacRAM + video_mux_bank * 0x100000 + (address & 0xfffe))) = BURN_ENDIAN_SWAP_INT16(data);
+	*((UINT16 *)(DrvPsacRAM + video_mux_bank * 0x100000 + (address & 0xfffe))) = BURN_ENDIAN_SWAP_INT16(data);
 }
 
 static void __fastcall rungun_psac_write_byte(UINT32 address, UINT8 data)
@@ -817,47 +605,49 @@ static void sprite_bank_map(INT32 bank)
 
 static void sysregs_write(INT32 offset, UINT16 data, INT32 access_high, INT32 access_low)
 {
-	UINT16 *sys = (UINT16*)DrvSysRegs;
+	UINT16 *sys = (UINT16 *)DrvSysRegs;
 	UINT16 old = BURN_ENDIAN_SWAP_INT16(sys[offset & 0xf]);
 	UINT16 combined = old;
 
-	if (access_high) combined = (combined & 0x00ff) | (data & 0xff00);
-	if (access_low) combined = (combined & 0xff00) | (data & 0x00ff);
+	if (access_high)
+		combined = (combined & 0x00ff) | (data & 0xff00);
+	if (access_low)
+		combined = (combined & 0xff00) | (data & 0x00ff);
 
 	sys[offset & 0xf] = BURN_ENDIAN_SWAP_INT16(combined);
 
-	switch ((offset & 0xf) << 1)
-	{
+	switch ((offset & 0xf) << 1) {
 		case 0x08:
-		if (access_low) {
-			rng_eeprom_write((combined >> 0) & 1, (combined >> 1) & 1, (combined >> 2) & 1);
-			INT32 bank = (combined >> 7) & 1;
-			if (bank != spriteram_bank) sprite_bank_map(bank);
-			spriteram_bank = bank;
-			video_mux_bank = ((combined >> 7) & 1) ^ 1;
-		}
+			if (access_low) {
+				rng_eeprom_write((combined >> 0) & 1, (combined >> 1) & 1, (combined >> 2) & 1);
+				INT32 bank = (combined >> 7) & 1;
+				if (bank != spriteram_bank)
+					sprite_bank_map(bank);
+				spriteram_bank = bank;
+				video_mux_bank = ((combined >> 7) & 1) ^ 1;
+			}
 
 			if (access_high) {
 				irq5_enable = (combined >> 10) & 1;
 				single_screen_mode = (combined >> 12) & 1;
 				video_priority_mode = (combined >> 14) & 1;
-				if (!irq5_enable) SekSetIRQLine(5, CPU_IRQSTATUS_NONE);
+				if (!irq5_enable)
+					SekSetIRQLine(5, CPU_IRQSTATUS_NONE);
 			}
-		return;
+			return;
 
 		case 0x0c:
 			K053246_set_OBJCHA_line((combined & 0x04) ? 1 : 0);
-			sound_mute = (combined & 0x08) ? 0 : 1;
-			k054321_update_volume();
+			RungunPostSound(RungunSoundCommand::Mute, (combined & 0x08) ? 0 : 1);
 			roz_rombase = (combined >> 4) & 0x0f;
-		return;
+			return;
 	}
 }
 
 static UINT16 __fastcall rungun_main_read_word(UINT32 address)
 {
 	if (address >= 0x300000 && address <= 0x3007ff) {
-		return BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvPalRAM + ((address & 0x7fe) + (video_mux_bank * 0x800)))));
+		return BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvPalRAM + ((address & 0x7fe) + (video_mux_bank * 0x800)))));
 	}
 
 	if (address >= 0x400000 && address <= 0x43ffff) {
@@ -871,20 +661,21 @@ static UINT16 __fastcall rungun_main_read_word(UINT32 address)
 
 	if (address >= 0x4c0000 && address <= 0x4c001f) {
 		INT32 offset = (address & 0x1f) >> 1;
-		if (offset < 0x0e) return ccu_regs[offset];
+		if (offset < 0x0e)
+			return ccu_regs[offset];
 
 		INT32 scanline = (SekTotalCycles() * 264) / (16000000 / 60);
 		INT32 vct = (scanline - ccu_vc) & 0x1ff;
 
-		if (offset == 0x0e) return (vct >> 8) & 1;
+		if (offset == 0x0e)
+			return (vct >> 8) & 1;
 		return vct & 0xff;
 	}
 
 	if (address >= 0x580000 && address <= 0x58001f) {
-		switch ((address & 0x1f) >> 1)
-		{
+		switch ((address & 0x1f) >> 1) {
 			case 0x0a:
-				return soundlatch[2] << 8;
+				return RungunSoundReply() << 8;
 		}
 
 		return 0x0000;
@@ -895,19 +686,19 @@ static UINT16 __fastcall rungun_main_read_word(UINT32 address)
 	}
 
 	if (address >= 0x600000 && address <= 0x601fff) {
-		return BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvSprRAM + (spriteram_bank * 0x2000) + (address & 0x1ffe))));
+		return BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvSprRAM + (spriteram_bank * 0x2000) + (address & 0x1ffe))));
 	}
 
 	if (address >= 0x6c0000 && address <= 0x6cffff) {
-		return BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvPsacRAM + (video_mux_bank * 0x100000) + (address & 0xfffe))));
+		return BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvPsacRAM + (video_mux_bank * 0x100000) + (address & 0xfffe))));
 	}
 
 	if (address >= 0x700000 && address <= 0x7007ff) {
-		return BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvK053936Line + (address & 0x7fe))));
+		return BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvK053936Line + (address & 0x7fe))));
 	}
 
 	if (address >= 0x740000 && address <= 0x741fff) {
-		return BURN_ENDIAN_SWAP_INT16(*((UINT16*)(DrvTtlRAM + (video_mux_bank * 0x2000) + (address & 0x1ffe))));
+		return BURN_ENDIAN_SWAP_INT16(*((UINT16 *)(DrvTtlRAM + (video_mux_bank * 0x2000) + (address & 0x1ffe))));
 	}
 
 	return 0xffff;
@@ -917,7 +708,8 @@ static UINT8 __fastcall rungun_main_read_byte(UINT32 address)
 {
 	if (address >= 0x400000 && address <= 0x43ffff) {
 		// The graphics ROM is connected only to the low byte of the word bus.
-		if ((address & 1) == 0) return 0;
+		if ((address & 1) == 0)
+			return 0;
 		UINT32 addr = ((address & 0x3ffff) >> 1) + (roz_rombase * 0x20000);
 		return DrvGfxROM0[addr & 0x3fffff];
 	}
@@ -927,16 +719,15 @@ static UINT8 __fastcall rungun_main_read_byte(UINT32 address)
 	}
 
 	if (address >= 0x580000 && address <= 0x58001f) {
-		if (address & 1) return 0;
+		if (address & 1)
+			return 0;
 
-		switch ((address & 0x1f) >> 1)
-		{
+		switch ((address & 0x1f) >> 1) {
 			case 0x0a: {
-				UINT8 data = soundlatch[2];
+				UINT8 data = RungunSoundReply();
 
 				if ((DrvDips[2] & 0x01) && irq5_enable && (data & 0x80)) {
-					switch (SekGetPC(-1))
-					{
+					switch (SekGetPC(-1)) {
 						case 0x025e40: // EAA 1993 10.8
 						case 0x025b80: // EAA 1993 10.4
 						case 0x02d4d6: // EAA 1993 9.10
@@ -967,7 +758,7 @@ static UINT8 __fastcall rungun_main_read_byte(UINT32 address)
 static void __fastcall rungun_main_write_word(UINT32 address, UINT16 data)
 {
 	if (address >= 0x300000 && address <= 0x3007ff) {
-		*((UINT16*)(DrvPalRAM + ((address & 0x7fe) + (video_mux_bank * 0x800)))) = BURN_ENDIAN_SWAP_INT16(data);
+		*((UINT16 *)(DrvPalRAM + ((address & 0x7fe) + (video_mux_bank * 0x800)))) = BURN_ENDIAN_SWAP_INT16(data);
 		return;
 	}
 
@@ -977,7 +768,7 @@ static void __fastcall rungun_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (address >= 0x540000 && address <= 0x540001) {
-		ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
+		RungunPostSound(RungunSoundCommand::Irq);
 		return;
 	}
 
@@ -997,7 +788,7 @@ static void __fastcall rungun_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (address >= 0x580000 && address <= 0x58001f) {
-		k054321_main_write((address & 0x1f) >> 1, data >> 8);
+		RungunPostSound(RungunSoundCommand::Write, (((address & 0x1f) >> 1) << 8) | (data >> 8));
 		return;
 	}
 
@@ -1007,7 +798,7 @@ static void __fastcall rungun_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (address >= 0x600000 && address <= 0x601fff) {
-		*((UINT16*)(DrvSprRAM + (spriteram_bank * 0x2000) + (address & 0x1ffe))) = BURN_ENDIAN_SWAP_INT16(data);
+		*((UINT16 *)(DrvSprRAM + (spriteram_bank * 0x2000) + (address & 0x1ffe))) = BURN_ENDIAN_SWAP_INT16(data);
 		return;
 	}
 
@@ -1017,22 +808,22 @@ static void __fastcall rungun_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (address >= 0x680000 && address <= 0x68001f) {
-		*((UINT16*)(DrvK053936Ctrl + (address & 0x1e))) = BURN_ENDIAN_SWAP_INT16(data);
+		*((UINT16 *)(DrvK053936Ctrl + (address & 0x1e))) = BURN_ENDIAN_SWAP_INT16(data);
 		return;
 	}
 
 	if (address >= 0x6c0000 && address <= 0x6cffff) {
-		*((UINT16*)(DrvPsacRAM + (video_mux_bank * 0x100000) + (address & 0xfffe))) = BURN_ENDIAN_SWAP_INT16(data);
+		*((UINT16 *)(DrvPsacRAM + (video_mux_bank * 0x100000) + (address & 0xfffe))) = BURN_ENDIAN_SWAP_INT16(data);
 		return;
 	}
 
 	if (address >= 0x700000 && address <= 0x7007ff) {
-		*((UINT16*)(DrvK053936Line + (address & 0x7fe))) = BURN_ENDIAN_SWAP_INT16(data);
+		*((UINT16 *)(DrvK053936Line + (address & 0x7fe))) = BURN_ENDIAN_SWAP_INT16(data);
 		return;
 	}
 
 	if (address >= 0x740000 && address <= 0x741fff) {
-		*((UINT16*)(DrvTtlRAM + (video_mux_bank * 0x2000) + (address & 0x1ffe))) = BURN_ENDIAN_SWAP_INT16(data);
+		*((UINT16 *)(DrvTtlRAM + (video_mux_bank * 0x2000) + (address & 0x1ffe))) = BURN_ENDIAN_SWAP_INT16(data);
 		return;
 	}
 }
@@ -1051,15 +842,16 @@ static void __fastcall rungun_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if (address >= 0x580000 && address <= 0x58001f) {
-		if (address & 1) return;
+		if (address & 1)
+			return;
 
-		k054321_main_write((address & 0x1f) >> 1, data);
+		RungunPostSound(RungunSoundCommand::Write, (((address & 0x1f) >> 1) << 8) | data);
 		return;
 	}
 
 	if (address >= 0x540000 && address <= 0x540001) {
 		if ((address & 1) == 0) {
-			ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
+			RungunPostSound(RungunSoundCommand::Irq);
 		}
 		return;
 	}
@@ -1122,6 +914,7 @@ static void __fastcall rungun_main_write_byte(UINT32 address, UINT8 data)
 
 static void DrvDoReset()
 {
+	rungun_frame_active = false;
 	memset(AllRam, 0, RamEnd - AllRam);
 
 	SekOpen(0);
@@ -1166,41 +959,64 @@ static void DrvDoReset()
 	DrvPrevDips[0] = DrvDips[0];
 	DrvPrevDips[1] = DrvDips[1];
 	// The Monitors DIP can enable dual output for the ordinary ROM sets too.
-	RungunPsacThread.Configure(RungunDualOutputEnabled() && RungunMulticoreEnabled());
+	;
 }
 
 static INT32 MemIndex()
 {
 	UINT8 *Next = AllMem;
 
-	Drv68KROM       = Next; Next += 0x300000;
-	DrvZ80ROM       = Next; Next += 0x030000;
-	DrvGfxROM0      = Next; Next += 0x400000;
-	DrvGfxROM1      = Next; Next += 0x800000;
-	DrvGfxROM2      = Next; Next += 0x040000;
-	DrvGfxROMExp0   = Next; Next += 0x400000;
-	DrvGfxROMExp1   = Next; Next += 0x1000000;
-	DrvSndROM       = Next; Next += 0x400000;
-	DrvEEPROM       = Next; Next += 0x000080;
-	DrvPalette      = (UINT32*)Next; Next += 0x400 * sizeof(UINT32);
-	DrvDualLeftBitmap  = (UINT32*)Next; Next += 384 * 224 * sizeof(UINT32);
-	DrvDualRightBitmap = (UINT32*)Next; Next += 384 * 224 * sizeof(UINT32);
+	Drv68KROM = Next;
+	Next += 0x300000;
+	DrvZ80ROM = Next;
+	Next += 0x030000;
+	DrvGfxROM0 = Next;
+	Next += 0x400000;
+	DrvGfxROM1 = Next;
+	Next += 0x800000;
+	DrvGfxROM2 = Next;
+	Next += 0x040000;
+	DrvGfxROMExp0 = Next;
+	Next += 0x400000;
+	DrvGfxROMExp1 = Next;
+	Next += 0x1000000;
+	DrvSndROM = Next;
+	Next += 0x400000;
+	DrvEEPROM = Next;
+	Next += 0x000080;
+	DrvPalette = (UINT32 *)Next;
+	Next += 0x400 * sizeof(UINT32);
+	DrvDualLeftBitmap = (UINT32 *)Next;
+	Next += 384 * 224 * sizeof(UINT32);
+	DrvDualRightBitmap = (UINT32 *)Next;
+	Next += 384 * 224 * sizeof(UINT32);
 
-	AllRam          = Next;
-	Drv68KRAM       = Next; Next += 0x020000;
-	DrvZ80RAM       = Next; Next += 0x002000;
-	DrvZ80ExtRAM0   = Next; Next += 0x000200;
-	DrvZ80ExtRAM1   = Next; Next += 0x000200;
-	DrvPalRAM       = Next; Next += 0x001000;
-	DrvSysRegs      = Next; Next += 0x000020;
-	DrvSprRAM       = Next; Next += 0x004000;
-	DrvPsacRAM      = Next; Next += 0x200000;
-	DrvTtlRAM       = Next; Next += 0x004000;
-	DrvK053936Ctrl  = Next; Next += 0x000020;
-	DrvK053936Line  = Next; Next += 0x000800;
-	RamEnd          = Next;
+	AllRam = Next;
+	Drv68KRAM = Next;
+	Next += 0x020000;
+	DrvZ80RAM = Next;
+	Next += 0x002000;
+	DrvZ80ExtRAM0 = Next;
+	Next += 0x000200;
+	DrvZ80ExtRAM1 = Next;
+	Next += 0x000200;
+	DrvPalRAM = Next;
+	Next += 0x001000;
+	DrvSysRegs = Next;
+	Next += 0x000020;
+	DrvSprRAM = Next;
+	Next += 0x004000;
+	DrvPsacRAM = Next;
+	Next += 0x200000;
+	DrvTtlRAM = Next;
+	Next += 0x004000;
+	DrvK053936Ctrl = Next;
+	Next += 0x000020;
+	DrvK053936Line = Next;
+	Next += 0x000800;
+	RamEnd = Next;
 
-	MemEnd          = Next;
+	MemEnd = Next;
 
 	return 0;
 }
@@ -1220,29 +1036,30 @@ static void RungunBuildTextCoverage()
 static INT32 DrvGfxDecode()
 {
 	static INT32 Plane[4] = { 0, 1, 2, 3 };
-	static INT32 XOffs[16] = { STEP16(0,4) };
-	static INT32 YOffs[16] = { STEP16(0,16*4) };
-	static INT32 XOffs8[8] = { STEP8(0,4) };
-	static INT32 YOffs8[8] = { STEP8(0,8*4) };
+	static INT32 XOffs[16] = { STEP16(0, 4) };
+	static INT32 YOffs[16] = { STEP16(0, 16 * 4) };
+	static INT32 XOffs8[8] = { STEP8(0, 4) };
+	static INT32 YOffs8[8] = { STEP8(0, 8 * 4) };
 	static INT32 RngPlane[4] = { 24, 16, 8, 0 };
-	static INT32 RngXOffs[16] = { STEP8(0,1), STEP8(32,1) };
-	static INT32 RngYOffs[16] = { STEP16(0,64) };
+	static INT32 RngXOffs[16] = { STEP8(0, 1), STEP8(32, 1) };
+	static INT32 RngYOffs[16] = { STEP16(0, 64) };
 
-	UINT8 *sprtmp = (UINT8*)BurnMalloc(0x800000);
-	if (sprtmp == NULL) return 1;
-	UINT8 *tmp = (UINT8*)BurnMalloc(0x400000);
+	UINT8 *sprtmp = (UINT8 *)BurnMalloc(0x800000);
+	if (sprtmp == NULL)
+		return 1;
+	UINT8 *tmp = (UINT8 *)BurnMalloc(0x400000);
 	if (tmp == NULL) {
 		BurnFree(sprtmp);
 		return 1;
 	}
 
 	memcpy(sprtmp, DrvGfxROM1, 0x800000);
-	GfxDecode(0x10000, 4, 16, 16, RngPlane, RngXOffs, RngYOffs, 16*16*4, sprtmp, DrvGfxROMExp1);
+	GfxDecode(0x10000, 4, 16, 16, RngPlane, RngXOffs, RngYOffs, 16 * 16 * 4, sprtmp, DrvGfxROMExp1);
 
 	memcpy(tmp, DrvGfxROM0, 0x400000);
-	GfxDecode(0x4000, 4, 16, 16, Plane, XOffs, YOffs, 16*16*4, tmp, DrvGfxROMExp0);
+	GfxDecode(0x4000, 4, 16, 16, Plane, XOffs, YOffs, 16 * 16 * 4, tmp, DrvGfxROMExp0);
 	memcpy(tmp, DrvGfxROM2, 0x020000);
-	GfxDecode(0x1000, 4, 8, 8, Plane, XOffs8, YOffs8, 8*8*4, tmp, DrvGfxROM2);
+	GfxDecode(0x1000, 4, 8, 8, Plane, XOffs8, YOffs8, 8 * 8 * 4, tmp, DrvGfxROM2);
 	RungunBuildTextCoverage();
 
 	BurnFree(sprtmp);
@@ -1260,64 +1077,79 @@ static void RungunPatch68K(UINT32 address, const UINT8 *data, INT32 length)
 
 static INT32 DrvLoadRoms()
 {
-	UINT8 *tmp = (UINT8*)BurnMalloc(0x100000);
-	if (tmp == NULL) return 1;
+	UINT8 *tmp = (UINT8 *)BurnMalloc(0x100000);
+	if (tmp == NULL)
+		return 1;
 	const char *drvname = BurnDrvGetTextA(DRV_NAME);
 	const bool is_prototype_eaa = (strcmp(drvname, "rungunb") == 0) || (strcmp(drvname, "rungunbd") == 0);
 
-	if (BurnLoadRom(Drv68KROM + 0x000001, 0, 2)) return 1;
-	if (BurnLoadRom(Drv68KROM + 0x000000, 1, 2)) return 1;
+	if (BurnLoadRom(Drv68KROM + 0x000001, 0, 2))
+		return 1;
+	if (BurnLoadRom(Drv68KROM + 0x000000, 1, 2))
+		return 1;
 
-	if (BurnLoadRom(DrvZ80ROM + 0x000000, 2, 1)) return 1;
+	if (BurnLoadRom(DrvZ80ROM + 0x000000, 2, 1))
+		return 1;
 	memcpy(DrvZ80ROM + 0x020000, DrvZ80ROM + 0x010000, 0x010000);
 	memcpy(DrvZ80ROM + 0x010000, DrvZ80ROM + 0x000000, 0x010000);
 
 	BurnRomInfo ri;
 	BurnDrvGetRomInfo(&ri, 3);
 	memset(tmp, 0xff, 0x100000);
-	if (BurnLoadRom(tmp, 3, 1)) return 1;
+	if (BurnLoadRom(tmp, 3, 1))
+		return 1;
 	if (ri.nLen <= 0x80000) {
-		for (INT32 i = 0; i < 0x80000; i++) Drv68KROM[0x100001 + (i * 2)] = tmp[i];
+		for (INT32 i = 0; i < 0x80000; i++)
+			Drv68KROM[0x100001 + (i * 2)] = tmp[i];
 	} else {
-		for (INT32 i = 0; i < 0x80000; i++) Drv68KROM[0x200001 + (i * 2)] = tmp[i];
-		for (INT32 i = 0; i < 0x80000; i++) Drv68KROM[0x100001 + (i * 2)] = tmp[0x80000 + i];
+		for (INT32 i = 0; i < 0x80000; i++)
+			Drv68KROM[0x200001 + (i * 2)] = tmp[i];
+		for (INT32 i = 0; i < 0x80000; i++)
+			Drv68KROM[0x100001 + (i * 2)] = tmp[0x80000 + i];
 	}
 
 	BurnDrvGetRomInfo(&ri, 4);
 	memset(tmp, 0xff, 0x100000);
-	if (BurnLoadRom(tmp, 4, 1)) return 1;
+	if (BurnLoadRom(tmp, 4, 1))
+		return 1;
 	if (ri.nLen <= 0x80000) {
-		for (INT32 i = 0; i < 0x80000; i++) Drv68KROM[0x100000 + (i * 2)] = tmp[i];
+		for (INT32 i = 0; i < 0x80000; i++)
+			Drv68KROM[0x100000 + (i * 2)] = tmp[i];
 	} else {
-		for (INT32 i = 0; i < 0x80000; i++) Drv68KROM[0x200000 + (i * 2)] = tmp[i];
-		for (INT32 i = 0; i < 0x80000; i++) Drv68KROM[0x100000 + (i * 2)] = tmp[0x80000 + i];
+		for (INT32 i = 0; i < 0x80000; i++)
+			Drv68KROM[0x200000 + (i * 2)] = tmp[i];
+		for (INT32 i = 0; i < 0x80000; i++)
+			Drv68KROM[0x100000 + (i * 2)] = tmp[0x80000 + i];
 	}
 
 	if (is_prototype_eaa) {
 		Drv68KROM[0x100000 + (0x73beb * 2)] = 0xde;
 
-		static const UINT8 check_jump[] = {
-			0x4e, 0xf9, 0x00, 0x20, 0x72, 0xe2
-		};
-		static const UINT8 check_patch[] = {
-			0xb0, 0x55, 0x67, 0x12, 0x0c, 0x40, 0xf6, 0xa8,
-			0x67, 0x0c, 0x0c, 0x40, 0x9a, 0xa5, 0x67, 0x06,
-			0x4e, 0xf9, 0x00, 0x02, 0xd8, 0xbe, 0x4e, 0xf9,
-			0x00, 0x02, 0xd8, 0xce
-		};
+		static const UINT8 check_jump[] = { 0x4e, 0xf9, 0x00, 0x20, 0x72, 0xe2 };
+		static const UINT8 check_patch[] = { 0xb0, 0x55, 0x67, 0x12, 0x0c, 0x40, 0xf6, 0xa8, 0x67, 0x0c, 0x0c, 0x40, 0x9a, 0xa5,
+		                                     0x67, 0x06, 0x4e, 0xf9, 0x00, 0x02, 0xd8, 0xbe, 0x4e, 0xf9, 0x00, 0x02, 0xd8, 0xce };
 		RungunPatch68K(0x02d8b8, check_jump, sizeof(check_jump));
 		RungunPatch68K(0x2072e2, check_patch, sizeof(check_patch));
 	}
 
-	if (BurnLoadRom(DrvGfxROM0 + 0x000000, 5, 1)) return 1;
-	if (BurnLoadRomExt(DrvGfxROM1 + 0x000000, 6, 8, LD_GROUP(2))) return 1;
-	if (BurnLoadRomExt(DrvGfxROM1 + 0x000002, 7, 8, LD_GROUP(2))) return 1;
-	if (BurnLoadRomExt(DrvGfxROM1 + 0x000004, 8, 8, LD_GROUP(2))) return 1;
-	if (BurnLoadRomExt(DrvGfxROM1 + 0x000006, 9, 8, LD_GROUP(2))) return 1;
-	if (BurnLoadRom(DrvGfxROM2 + 0x000000, 10, 1)) return 1;
-	if (BurnLoadRom(DrvSndROM + 0x000000, 11, 1)) return 1;
-	if (BurnLoadRom(DrvSndROM + 0x200000, 12, 1)) return 1;
-	if (BurnLoadRom(DrvEEPROM + 0x000000, 13, 1)) return 1;
+	if (BurnLoadRom(DrvGfxROM0 + 0x000000, 5, 1))
+		return 1;
+	if (BurnLoadRomExt(DrvGfxROM1 + 0x000000, 6, 8, LD_GROUP(2)))
+		return 1;
+	if (BurnLoadRomExt(DrvGfxROM1 + 0x000002, 7, 8, LD_GROUP(2)))
+		return 1;
+	if (BurnLoadRomExt(DrvGfxROM1 + 0x000004, 8, 8, LD_GROUP(2)))
+		return 1;
+	if (BurnLoadRomExt(DrvGfxROM1 + 0x000006, 9, 8, LD_GROUP(2)))
+		return 1;
+	if (BurnLoadRom(DrvGfxROM2 + 0x000000, 10, 1))
+		return 1;
+	if (BurnLoadRom(DrvSndROM + 0x000000, 11, 1))
+		return 1;
+	if (BurnLoadRom(DrvSndROM + 0x200000, 12, 1))
+		return 1;
+	if (BurnLoadRom(DrvEEPROM + 0x000000, 13, 1))
+		return 1;
 
 	BurnFree(tmp);
 
@@ -1330,8 +1162,10 @@ static INT32 DrvInitCommon(INT32 dual)
 
 	BurnAllocMemIndex();
 
-	if (DrvLoadRoms()) return 1;
-	if (DrvGfxDecode()) return 1;
+	if (DrvLoadRoms())
+		return 1;
+	if (DrvGfxDecode())
+		return 1;
 
 	SekInit(0, 0x68000);
 	SekOpen(0);
@@ -1383,7 +1217,8 @@ static INT32 DrvInitCommon(INT32 dual)
 	K053936SetOffset(1, 34 - RNG_VISIBLE_X, 9 - RNG_VISIBLE_Y);
 
 	K054539Init(0, 18432000, DrvSndROM, 0x400000);
-	K054539SetFlags(0, K054539_UPDATE_AT_KEYON);
+	// RUNGUN: NMI input consumes timer edges, not the legacy chip index.
+	K054539SetFlags(0, K054539_UPDATE_AT_KEYON | K054539_TIMER_EDGES);
 	K054539SetIRQCallback(0, sound_nmi_callback);
 	K054539SetRoute(0, BURN_SND_K054539_ROUTE_1, 1.00, BURN_SND_ROUTE_RIGHT);
 	K054539SetRoute(0, BURN_SND_K054539_ROUTE_2, 1.00, BURN_SND_ROUTE_LEFT);
@@ -1391,8 +1226,6 @@ static INT32 DrvInitCommon(INT32 dual)
 	K054539SetFlags(1, K054539_UPDATE_AT_KEYON);
 	K054539SetRoute(1, BURN_SND_K054539_ROUTE_1, 0.60, BURN_SND_ROUTE_RIGHT);
 	K054539SetRoute(1, BURN_SND_K054539_ROUTE_2, 0.60, BURN_SND_ROUTE_LEFT);
-	RungunSoundThread0.Configure();
-	RungunSoundThread1.Configure();
 
 	RungunCheckScreenSize();
 	DrvDoReset();
@@ -1412,9 +1245,7 @@ static INT32 RungunDualInit()
 
 static INT32 DrvExit()
 {
-	RungunPsacThread.Shutdown();
-	RungunSoundThread0.Shutdown();
-	RungunSoundThread1.Shutdown();
+	rungun_frame_active = false;
 	GenericTilesExit();
 	K053247Exit();
 	K053936Exit();
@@ -1435,12 +1266,12 @@ static void DrvRenderScreen(INT32 bank, INT32 xoffs)
 
 	if (!video_priority_mode) {
 		K053936PredrawTiles2(bank, DrvGfxROMExp0);
-		K053936Draw(bank, (UINT16*)DrvK053936Ctrl, (UINT16*)DrvK053936Line, K053936_DRAW_CLIP | 1);
+		K053936Draw(bank, (UINT16 *)DrvK053936Ctrl, (UINT16 *)DrvK053936Line, K053936_DRAW_CLIP | 1);
 		K053247SpritesRender();
 	} else {
 		K053247SpritesRender();
 		K053936PredrawTiles2(bank, DrvGfxROMExp0);
-		K053936Draw(bank, (UINT16*)DrvK053936Ctrl, (UINT16*)DrvK053936Line, K053936_DRAW_CLIP | 1);
+		K053936Draw(bank, (UINT16 *)DrvK053936Ctrl, (UINT16 *)DrvK053936Line, K053936_DRAW_CLIP | 1);
 	}
 
 	UINT8 *lvram = DrvTtlRAM + (bank * 0x2000);
@@ -1453,7 +1284,8 @@ static void DrvRenderScreen(INT32 bank, INT32 xoffs)
 
 	for (INT32 row = 0; row < 32; row++) {
 		INT32 sy = row * 8 - RNG_VISIBLE_Y;
-		if (sy < -7 || sy >= nScreenHeight) continue;
+		if (sy < -7 || sy >= nScreenHeight)
+			continue;
 
 		for (INT32 col = first_col; col < end_col; col++) {
 			INT32 sx = col * 8 - RNG_VISIBLE_X + xoffs;
@@ -1461,7 +1293,8 @@ static void DrvRenderScreen(INT32 bank, INT32 xoffs)
 			INT32 offs = row * 64 + col;
 			INT32 attr = (lvram[(offs << 2) + 0] & 0xf0) >> 4;
 			INT32 code = ((lvram[(offs << 2) + 0] & 0x0f) << 8) | lvram[(offs << 2) + 2];
-			if (!RungunTextCoverage[code]) continue;
+			if (!RungunTextCoverage[code])
+				continue;
 			UINT8 *gfx = DrvGfxROM2 + (code * 0x40);
 
 			if (sx >= 0 && sx + 7 < nScreenWidth && sy >= 0 && sy + 7 < nScreenHeight) {
@@ -1471,7 +1304,8 @@ static void DrvRenderScreen(INT32 bank, INT32 xoffs)
 
 					for (INT32 x = 0; x < 8; x++) {
 						UINT8 pen = src[x];
-						if (pen) dst[x] = DrvPalette[(attr << 4) | pen];
+						if (pen)
+							dst[x] = DrvPalette[(attr << 4) | pen];
 					}
 				}
 				continue;
@@ -1479,12 +1313,14 @@ static void DrvRenderScreen(INT32 bank, INT32 xoffs)
 
 			for (INT32 y = 0; y < 8; y++) {
 				INT32 yy = sy + y;
-				if (yy < 0 || yy >= nScreenHeight) continue;
+				if (yy < 0 || yy >= nScreenHeight)
+					continue;
 
 				UINT32 *dst = konami_bitmap32 + (yy * nScreenWidth);
 				for (INT32 x = 0; x < 8; x++) {
 					INT32 xx = sx + x;
-					if (xx < 0 || xx >= nScreenWidth) continue;
+					if (xx < 0 || xx >= nScreenWidth)
+						continue;
 
 					UINT8 pen = gfx[(y * 8) + x];
 					if (pen) {
@@ -1510,7 +1346,6 @@ static void DrvRenderDualScreen()
 {
 	INT32 screen_width = nScreenWidth;
 	INT32 bank = single_screen_mode ? 0 : (nCurrentFrame & 1);
-	bool threaded_psac = !single_screen_mode && RungunPsacThread.Dispatch(bank ^ 1);
 
 	nScreenWidth = 384;
 	GenericTilesSetClipRaw(0, 384, 0, 224);
@@ -1534,8 +1369,6 @@ static void DrvRenderDualScreen()
 		memcpy(dst + 384, DrvDualRightBitmap + (y * 384), 384 * sizeof(UINT32));
 		dst[383] = BurnHighCol(0, 0, 0, 0);
 	}
-
-	if (threaded_psac) RungunPsacThread.Wait();
 }
 
 static INT32 DrvDraw()
@@ -1552,6 +1385,50 @@ static INT32 DrvDraw()
 	return 0;
 }
 
+static void RungunRenderSound()
+{
+	bool buffered_sound = false;
+
+	if (pBurnSoundOut && nBurnSoundLen <= 4096) {
+		INT32 samples = nBurnSoundLen * 2;
+
+		memset(RungunSoundBuffer0, 0, samples * sizeof(INT16));
+		K054539Update(0, RungunSoundBuffer0, nBurnSoundLen);
+		memset(RungunSoundBuffer1, 0, samples * sizeof(INT16));
+		K054539Update(1, RungunSoundBuffer1, nBurnSoundLen);
+		buffered_sound = true;
+	}
+
+	if (pBurnSoundOut) {
+		if (buffered_sound) {
+
+			for (INT32 i = 0; i < nBurnSoundLen * 2; i++) {
+				INT32 mixed = RungunSoundBuffer0[i] + RungunSoundBuffer1[i];
+				// Gain is 8: the INT16 sum fits INT32 after scaling; clip once.
+				INT32 sample = mixed * RUNGUN_SOUND_GAIN;
+				if (sample > 32767)
+					sample = 32767;
+				if (sample < -32768)
+					sample = -32768;
+				pBurnSoundOut[i] = sample;
+			}
+		} else {
+			BurnSoundClear();
+			K054539Update(0, pBurnSoundOut, nBurnSoundLen);
+			K054539Update(1, pBurnSoundOut, nBurnSoundLen);
+
+			for (INT32 i = 0; i < nBurnSoundLen * 2; i++) {
+				INT32 sample = pBurnSoundOut[i] * RUNGUN_SOUND_GAIN;
+				if (sample > 32767)
+					sample = 32767;
+				if (sample < -32768)
+					sample = -32768;
+				pBurnSoundOut[i] = sample;
+			}
+		}
+	}
+}
+
 static INT32 DrvFrame()
 {
 	if (DrvReset || DrvPrevDips[0] != DrvDips[0] || DrvPrevDips[1] != DrvDips[1]) {
@@ -1560,8 +1437,7 @@ static INT32 DrvFrame()
 	}
 
 	SekNewFrame();
-	ZetNewFrame();
-	timerNewFrame();
+	RungunBeginFrame();
 
 	DrvInputs[0] = 0xffff;
 	DrvInputs[1] = 0xffff;
@@ -1578,14 +1454,12 @@ static INT32 DrvFrame()
 	}
 
 	INT32 nInterleave = 264;
-	INT32 nCyclesTotal[3] = { 16000000 / 60, 8000000 / 60, 18432000 / 60 };
-	INT32 nCyclesDone[3] = { nExtraCycles[0], nExtraCycles[1], 0 };
+	INT32 nCyclesTotal[1] = { 16000000 / 60 };
+	INT32 nCyclesDone[1] = { nExtraCycles[0] };
 
 	SekOpen(0);
-	ZetOpen(0);
 
-	for (INT32 i = 0; i < nInterleave; i++)
-	{
+	for (INT32 i = 0; i < nInterleave; i++) {
 		CPU_RUN(0, Sek);
 		if (i == 248) {
 			current_display_bank = nCurrentFrame & 1;
@@ -1595,71 +1469,19 @@ static INT32 DrvFrame()
 			}
 		}
 
-		{
-			INT32 cycles = nCyclesTotal[1] / nInterleave;
-			nCyclesDone[1] += ZetRun(cycles);
-		}
-
-		CPU_RUN(2, timer);
+		RungunPostSound(RungunSoundCommand::Slice, (i + 1) * (18432000 / 60) / nInterleave);
 	}
 
-	ZetClose();
 	SekClose();
 
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
-	nExtraCycles[1] = nCyclesDone[1] - nCyclesTotal[1];
 
-	bool buffered_sound = false;
-	bool threaded_sound0 = false;
-	bool threaded_sound1 = false;
-
-	if (pBurnSoundOut && nBurnSoundLen <= 4096) {
-		INT32 samples = nBurnSoundLen * 2;
-
-		threaded_sound0 = RungunSoundThread0.Dispatch(RungunSoundBuffer0, nBurnSoundLen);
-		threaded_sound1 = RungunSoundThread1.Dispatch(RungunSoundBuffer1, nBurnSoundLen);
-		if (!threaded_sound0) {
-			memset(RungunSoundBuffer0, 0, samples * sizeof(INT16));
-			K054539Update(0, RungunSoundBuffer0, nBurnSoundLen);
-		}
-		if (!threaded_sound1) {
-			memset(RungunSoundBuffer1, 0, samples * sizeof(INT16));
-			K054539Update(1, RungunSoundBuffer1, nBurnSoundLen);
-		}
-		buffered_sound = true;
-	}
-
-	if (pBurnDraw) {
-		DrvDraw();
-	}
-
-	if (pBurnSoundOut) {
-		if (buffered_sound) {
-			if (threaded_sound0) RungunSoundThread0.Wait();
-			if (threaded_sound1) RungunSoundThread1.Wait();
-
-			for (INT32 i = 0; i < nBurnSoundLen * 2; i++) {
-				INT32 mixed = RungunSoundBuffer0[i] + RungunSoundBuffer1[i];
-				// Gain is 8: the INT16 sum fits INT32 after scaling; clip once.
-				INT32 sample = mixed * RUNGUN_SOUND_GAIN;
-				if (sample > 32767) sample = 32767;
-				if (sample < -32768) sample = -32768;
-				pBurnSoundOut[i] = sample;
-			}
-		} else {
-			BurnSoundClear();
-			K054539Update(0, pBurnSoundOut, nBurnSoundLen);
-			K054539Update(1, pBurnSoundOut, nBurnSoundLen);
-
-			for (INT32 i = 0; i < nBurnSoundLen * 2; i++) {
-				INT32 sample = pBurnSoundOut[i] * RUNGUN_SOUND_GAIN;
-				if (sample > 32767) sample = 32767;
-				if (sample < -32768) sample = -32768;
-				pBurnSoundOut[i] = sample;
-			}
-		}
-	}
-
+	([](void *) {
+		if (pBurnDraw)
+			DrvDraw();
+	})(NULL);
+	RungunPostSound(RungunSoundCommand::Finish);
+	rungun_frame_active = false;
 	return 0;
 }
 
@@ -1717,6 +1539,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 		ZetOpen(0);
 		sound_bank_map(sound_ctrl);
 		ZetClose();
+		sound_mute = (BURN_ENDIAN_SWAP_INT16(((UINT16 *)DrvSysRegs)[6]) & 0x08) ? 0 : 1;
+		k054321_update_volume();
 	}
 
 	return 0;
@@ -1725,41 +1549,50 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 #define RUNGUN_COMMON_EAA \
 	{ "247b01.23n",    0x100000, 0x2d774f27, 1 | BRF_PRG | BRF_ESS }, \
 	{ "247b02.21n",    0x100000, 0xd088c9de, 1 | BRF_PRG | BRF_ESS }, \
+\
 	{ "247a13",        0x200000, 0xc5a8ef29, 3 | BRF_GRA }, \
+\
 	{ "247-a11",       0x200000, 0xc3f60854, 4 | BRF_GRA }, \
 	{ "247-a08",       0x200000, 0x3e315eef, 4 | BRF_GRA }, \
 	{ "247-a09",       0x200000, 0x5ca7bc06, 4 | BRF_GRA }, \
 	{ "247-a10",       0x200000, 0xa5ccd243, 4 | BRF_GRA }, \
+\
 	{ "247-a12",       0x020000, 0x57a8d26e, 5 | BRF_GRA }, \
+\
 	{ "247-a06",       0x200000, 0xb8b2a67e, 6 | BRF_SND }, \
 	{ "247-a07",       0x200000, 0x0108142d, 6 | BRF_SND }
 
 #define RUNGUN_COMMON_UAB \
 	{ "247a01",        0x080000, 0x8341cf7d, 1 | BRF_PRG | BRF_ESS }, \
 	{ "247a02",        0x080000, 0xf5ef3f45, 1 | BRF_PRG | BRF_ESS }, \
+\
 	{ "247a13",        0x200000, 0xc5a8ef29, 3 | BRF_GRA }, \
+\
 	{ "247-a11",       0x200000, 0xc3f60854, 4 | BRF_GRA }, \
 	{ "247-a08",       0x200000, 0x3e315eef, 4 | BRF_GRA }, \
 	{ "247-a09",       0x200000, 0x5ca7bc06, 4 | BRF_GRA }, \
 	{ "247-a10",       0x200000, 0xa5ccd243, 4 | BRF_GRA }, \
+\
 	{ "247-a12",       0x020000, 0x57a8d26e, 5 | BRF_GRA }, \
+\
 	{ "247-a06",       0x200000, 0xb8b2a67e, 6 | BRF_SND }, \
 	{ "247-a07",       0x200000, 0x0108142d, 6 | BRF_SND }
 
 // Run and Gun (ver EAA 1993 10.8)
 
 static struct BurnRomInfo rungunRomDesc[] = {
-	{ "247eaa03.bin",  0x080000, 0xf5c91ec0, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247eaa04.bin",  0x080000, 0x0e62471f, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247eaa03.bin", 0x080000, 0xf5c91ec0, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247eaa04.bin", 0x080000, 0x0e62471f, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "247a05",        0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "247a05",       0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "rungun.nv",     0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "rungun.nv",    0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungun)
+
 STD_ROM_FN(rungun)
 
 struct BurnDriver BurnDrvRungun = {
@@ -1775,17 +1608,18 @@ struct BurnDriver BurnDrvRungun = {
 // Run and Gun (ver EAA 1993 10.8) (dual screen with demux adapter)
 
 static struct BurnRomInfo rungundRomDesc[] = {
-	{ "247eaa03.bin",  0x080000, 0xf5c91ec0, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247eaa04.bin",  0x080000, 0x0e62471f, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247eaa03.bin", 0x080000, 0xf5c91ec0, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247eaa04.bin", 0x080000, 0x0e62471f, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "247a05",        0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "247a05",       0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "rungun.nv",     0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "rungun.nv",    0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungund)
+
 STD_ROM_FN(rungund)
 
 struct BurnDriver BurnDrvRungund = {
@@ -1801,17 +1635,18 @@ struct BurnDriver BurnDrvRungund = {
 // Run and Gun (ver EAA 1993 10.4)
 
 static struct BurnRomInfo rungunaRomDesc[] = {
-	{ "247eaa03.rom",  0x080000, 0xfec3e1d6, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247eaa04.rom",  0x080000, 0x1b556af9, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247eaa03.rom", 0x080000, 0xfec3e1d6, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247eaa04.rom", 0x080000, 0x1b556af9, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "1.13g",         0x020000, 0xc0b35df9, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "1.13g",        0x020000, 0xc0b35df9, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "runguna.nv",    0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "runguna.nv",   0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(runguna)
+
 STD_ROM_FN(runguna)
 
 struct BurnDriver BurnDrvRunguna = {
@@ -1827,17 +1662,18 @@ struct BurnDriver BurnDrvRunguna = {
 // Run and Gun (ver EAA 1993 10.4) (dual screen with demux adapter)
 
 static struct BurnRomInfo rungunadRomDesc[] = {
-	{ "247eaa03.rom",  0x080000, 0xfec3e1d6, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247eaa04.rom",  0x080000, 0x1b556af9, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247eaa03.rom", 0x080000, 0xfec3e1d6, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247eaa04.rom", 0x080000, 0x1b556af9, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "1.13g",         0x020000, 0xc0b35df9, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "1.13g",        0x020000, 0xc0b35df9, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "runguna.nv",    0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "runguna.nv",   0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungunad)
+
 STD_ROM_FN(rungunad)
 
 struct BurnDriver BurnDrvRungunad = {
@@ -1853,17 +1689,18 @@ struct BurnDriver BurnDrvRungunad = {
 // Run and Gun (ver EAA 1993 9.10, prototype?)
 
 static struct BurnRomInfo rungunbRomDesc[] = {
-	{ "4.18n",         0x080000, 0xd6515edb, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "5.16n",         0x080000, 0xf2f03eec, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "4.18n",      0x080000, 0xd6515edb, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "5.16n",      0x080000, 0xf2f03eec, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "1.13g",         0x020000, 0xc0b35df9, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "1.13g",      0x020000, 0xc0b35df9, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "runguna.nv",    0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "runguna.nv", 0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungunb)
+
 STD_ROM_FN(rungunb)
 
 struct BurnDriver BurnDrvRungunb = {
@@ -1879,17 +1716,18 @@ struct BurnDriver BurnDrvRungunb = {
 // Run and Gun (ver EAA 1993 9.10, prototype?) (dual screen with demux adapter)
 
 static struct BurnRomInfo rungunbdRomDesc[] = {
-	{ "4.18n",         0x080000, 0xd6515edb, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "5.16n",         0x080000, 0xf2f03eec, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "4.18n",      0x080000, 0xd6515edb, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "5.16n",      0x080000, 0xf2f03eec, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "1.13g",         0x020000, 0xc0b35df9, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "1.13g",      0x020000, 0xc0b35df9, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "runguna.nv",    0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "runguna.nv", 0x000080, 0x7bbf0e3c, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungunbd)
+
 STD_ROM_FN(rungunbd)
 
 struct BurnDriver BurnDrvRungunbd = {
@@ -1905,17 +1743,18 @@ struct BurnDriver BurnDrvRungunbd = {
 // Run and Gun (ver UBA 1993 10.8)
 
 static struct BurnRomInfo rungunubaRomDesc[] = {
-	{ "247uba03.bin",  0x080000, 0xc24d7500, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247uba04.bin",  0x080000, 0x3f255a4a, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247uba03.bin", 0x080000, 0xc24d7500, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247uba04.bin", 0x080000, 0x3f255a4a, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "247a05",        0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "247a05",       0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "rungunua.nv",   0x000080, 0x9890d304, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "rungunua.nv",  0x000080, 0x9890d304, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungunuba)
+
 STD_ROM_FN(rungunuba)
 
 struct BurnDriver BurnDrvRungunuba = {
@@ -1931,17 +1770,18 @@ struct BurnDriver BurnDrvRungunuba = {
 // Run and Gun (ver UBA 1993 10.8) (dual screen with demux adapter)
 
 static struct BurnRomInfo rungunubadRomDesc[] = {
-	{ "247uba03.bin",  0x080000, 0xc24d7500, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247uba04.bin",  0x080000, 0x3f255a4a, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247uba03.bin", 0x080000, 0xc24d7500, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247uba04.bin", 0x080000, 0x3f255a4a, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "247a05",        0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "247a05",       0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "rungunua.nv",   0x000080, 0x9890d304, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "rungunua.nv",  0x000080, 0x9890d304, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungunubad)
+
 STD_ROM_FN(rungunubad)
 
 struct BurnDriver BurnDrvRungunubad = {
@@ -1957,17 +1797,18 @@ struct BurnDriver BurnDrvRungunubad = {
 // Slam Dunk (ver JAA 1993 10.8)
 
 static struct BurnRomInfo slmdunkjRomDesc[] = {
-	{ "247jaa03.bin",  0x020000, 0x87572078, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247jaa04.bin",  0x020000, 0xaa105e00, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247jaa03.bin", 0x020000, 0x87572078, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247jaa04.bin", 0x020000, 0xaa105e00, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "247a05",        0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "247a05",       0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "slmdunkj.nv",   0x000080, 0x531d27bd, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "slmdunkj.nv",  0x000080, 0x531d27bd, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(slmdunkj)
+
 STD_ROM_FN(slmdunkj)
 
 struct BurnDriver BurnDrvSlmdunkj = {
@@ -1983,17 +1824,18 @@ struct BurnDriver BurnDrvSlmdunkj = {
 // Slam Dunk (ver JAA 1993 10.8) (dual screen with demux adapter)
 
 static struct BurnRomInfo slmdunkjdRomDesc[] = {
-	{ "247jaa03.bin",  0x020000, 0x87572078, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247jaa04.bin",  0x020000, 0xaa105e00, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247jaa03.bin", 0x020000, 0x87572078, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247jaa04.bin", 0x020000, 0xaa105e00, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "247a05",        0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "247a05",       0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_EAA,
 
-	{ "slmdunkj.nv",   0x000080, 0x531d27bd, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "slmdunkj.nv",  0x000080, 0x531d27bd, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(slmdunkjd)
+
 STD_ROM_FN(slmdunkjd)
 
 struct BurnDriver BurnDrvSlmdunkjd = {
@@ -2009,17 +1851,18 @@ struct BurnDriver BurnDrvSlmdunkjd = {
 // Run and Gun (ver UAB 1993 10.12, dedicated twin cabinet)
 
 static struct BurnRomInfo rungunuabdRomDesc[] = {
-	{ "247uab03.bin",  0x080000, 0xf259fd11, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247uab04.bin",  0x080000, 0xb918cf5a, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247uab03.bin", 0x080000, 0xf259fd11, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247uab04.bin", 0x080000, 0xb918cf5a, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "247a05",        0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "247a05",       0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_UAB,
 
-	{ "rungunu.nv",    0x000080, 0xd501f579, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "rungunu.nv",   0x000080, 0xd501f579, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungunuabd)
+
 STD_ROM_FN(rungunuabd)
 
 struct BurnDriver BurnDrvRungunuabd = {
@@ -2035,17 +1878,18 @@ struct BurnDriver BurnDrvRungunuabd = {
 // Run and Gun (ver UAB 1993 9.10, dedicated twin cabinet)
 
 static struct BurnRomInfo rungunuaadRomDesc[] = {
-	{ "247uaa03.bin",  0x080000, 0xa05f4cd0, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
-	{ "247uaa04.bin",  0x080000, 0xebb11bef, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "247uaa03.bin", 0x080000, 0xa05f4cd0, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "247uaa04.bin", 0x080000, 0xebb11bef, 1 | BRF_PRG | BRF_ESS }, //  1
 
-	{ "247a05",        0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+	{ "247a05",       0x020000, 0x64e85430, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	RUNGUN_COMMON_UAB,
 
-	{ "rungunu.nv",    0x000080, 0xd501f579, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
+	{ "rungunu.nv",   0x000080, 0xd501f579, 7 | BRF_PRG | BRF_ESS }, // 13 EEPROM
 };
 
 STD_ROM_PICK(rungunuaad)
+
 STD_ROM_FN(rungunuaad)
 
 struct BurnDriver BurnDrvRungunuaad = {

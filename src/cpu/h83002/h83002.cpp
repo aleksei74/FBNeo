@@ -28,9 +28,15 @@
 #define INLINE static inline
 #define U64(value) value##ULL
 
-static h83xx_state h8_state;
-static h83002_read8_handler h8_read;
-static h83002_write8_handler h8_write;
+// Separate device contexts for the System 12 sound and link-board H8s.
+// Context selection is synchronous; these are emulated CPUs, not host workers.
+static h83xx_state h8_states[2];
+static h83002_read8_handler h8_reads[2];
+static h83002_write8_handler h8_writes[2];
+static INT32 h8_active;
+#define h8_state h8_states[h8_active]
+#define h8_read h8_reads[h8_active]
+#define h8_write h8_writes[h8_active]
 static void h8_3002_InterruptRequest(h83xx_state *h8, UINT8 source, UINT8 state);
 
 static void h8_sci0_receive_next()
@@ -489,17 +495,30 @@ static void h8_check_irqs(h83xx_state *h8)
 #define H8_ADDR_MASK 0xffffff
 #include "h83002_ops.h"
 
-void H83002Init(h83002_read8_handler read, h83002_write8_handler write)
+void H83002Open(INT32 index)
 {
+	if (index >= 0 && index < 2) h8_active = index;
+}
+
+void H83002InitIndexed(INT32 index, h83002_read8_handler read, h83002_write8_handler write)
+{
+	if (index < 0 || index >= 2) return;
+	H83002Open(index);
 	h8_read = read;
 	h8_write = write;
 	memset(&h8_state, 0, sizeof(h8_state));
 }
 
+void H83002Init(h83002_read8_handler read, h83002_write8_handler write)
+{
+	H83002InitIndexed(0, read, write);
+}
+
 void H83002Exit()
 {
-	h8_read = NULL;
-	h8_write = NULL;
+	memset(h8_reads, 0, sizeof(h8_reads));
+	memset(h8_writes, 0, sizeof(h8_writes));
+	h8_active = 0;
 }
 
 void H83002Reset()
@@ -648,7 +667,13 @@ void H83002SCI1Receive(UINT8 data)
 INT32 H83002Scan(INT32 nAction)
 {
 	if (nAction & ACB_DRIVER_DATA) {
-		SCAN_VAR(h8_state);
+		char stateName[] = "h8_state";
+		char linkCpuName[] = "H8 link CPU";
+		BurnArea ba = {};
+		ba.Data = &h8_state;
+		ba.nLen = sizeof(h8_state);
+		ba.szName = h8_active ? linkCpuName : stateName;
+		BurnAcb(&ba);
 	}
 	return 0;
 }

@@ -18834,3 +18834,127 @@ struct BurnDriver BurnDrvCpsVhuntk = {
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
 	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
 };
+
+// Korean translations imported from DsNo's 2026-11-14 source snapshot.
+static struct BurnRomInfo Vhunt2kRomDesc[] = {
+	{ "vh2k.03a",      0x080000, 0xa843d4a6, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vh2k.04a",      0x080000, 0x9b107d2c, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vh2j.05",       0x080000, 0xde34f624, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vh2j.06",       0x080000, 0x6a3b9897, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vh2j.07",       0x080000, 0xb021c029, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vh2j.08",       0x080000, 0xac873dff, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vh2j.09",       0x080000, 0xeaefce9c, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vh2j.10",       0x080000, 0x11730952, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+
+	{ "vh2k.13m",      0x400000, 0xb3615dc2, CPS2_GFX | BRF_GRA },
+	{ "vh2k.15m",      0x400000, 0xc66b8d62, CPS2_GFX | BRF_GRA },
+	{ "vh2k.17m",      0x400000, 0x32cadfcc, CPS2_GFX | BRF_GRA },
+	{ "vh2k.19m",      0x400000, 0x25405487, CPS2_GFX | BRF_GRA },
+	{ "vh2.14m",       0x400000, 0xcd09bd63, CPS2_GFX | BRF_GRA },
+	{ "vh2.16m",       0x400000, 0xe0182c15, CPS2_GFX | BRF_GRA },
+	{ "vh2.18m",       0x400000, 0x778dc4f6, CPS2_GFX | BRF_GRA },
+	{ "vh2.20m",       0x400000, 0x605d9d1d, CPS2_GFX | BRF_GRA },
+
+	{ "vh2.01",        0x020000, 0x67b9f779, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
+	{ "vh2.02",        0x020000, 0xaaf15fcb, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
+
+	{ "vh2.11m",       0x400000, 0x38922efd, CPS2_QSND | BRF_SND },
+	{ "vh2.12m",       0x400000, 0x6e2430af, CPS2_QSND | BRF_SND },
+
+	{ "vhunt2.key",    0x000014, 0x61306b20, CPS2_ENCRYPTION_KEY },
+};
+
+STD_ROM_PICK(Vhunt2k)
+STD_ROM_FN(Vhunt2k)
+
+struct BurnDriver BurnDrvCpsVhunt2k = {
+	"vhunt2k", "vhunt2", NULL, NULL, "2026",
+	"Vampire Hunter 2: Darkstalkers Revenge (Korean Translation 970929)\0", NULL, "Capcom", "CPS2",
+	L"Vampire Hunter 2: Darkstalkers Revenge (Korean Translation 970929)\0\uBC40\uD30C\uC774\uC5B4 \uD5CC\uD130 2: \uB2E4\uD06C\uC2A4\uD1A0\uCEE4\uC2A4 \uB9AC\uBCA4\uC9C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970929)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_DSTLK,
+	NULL, Vhunt2kRomInfo, Vhunt2kRomName, NULL, NULL, NULL, NULL, Cps2FightingInputInfo, NULL,
+	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+static struct BurnRomInfo VsavkRomDesc[] = {
+	{ "vm3k.03d",      0x080000, 0xb3a06aed, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vm3k.04d",      0x080000, 0x88967d2a, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vm3j.05a",      0x080000, 0x95ce88d5, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vm3j.06b",      0x080000, 0x2c4297e0, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vm3j.07b",      0x080000, 0xa38aaae7, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vm3j.08a",      0x080000, 0x5773e5c9, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vm3k.09b",      0x080000, 0x4e746d71, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vm3j.10b",      0x080000, 0x434518e9, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+
+	{ "vm3k.13m",      0x400000, 0xe147b8d8, CPS2_GFX | BRF_GRA },
+	{ "vm3k.15m",      0x400000, 0xac15e017, CPS2_GFX | BRF_GRA },
+	{ "vm3k.17m",      0x400000, 0xa16688e7, CPS2_GFX | BRF_GRA },
+	{ "vm3k.19m",      0x400000, 0x97fdaa80, CPS2_GFX | BRF_GRA },
+	{ "vm3k.14m",      0x400000, 0xe3e4e0b8, CPS2_GFX | BRF_GRA },
+	{ "vm3k.16m",      0x400000, 0x9453e505, CPS2_GFX | BRF_GRA },
+	{ "vm3k.18m",      0x400000, 0x0173d1c9, CPS2_GFX | BRF_GRA },
+	{ "vm3k.20m",      0x400000, 0xd8094fc0, CPS2_GFX | BRF_GRA },
+
+	{ "vm3.01",        0x020000, 0xf778769b, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
+	{ "vm3.02",        0x020000, 0xcc09faa1, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
+
+	{ "vm3.11m",       0x400000, 0xe80e956e, CPS2_QSND | BRF_SND },
+	{ "vm3.12m",       0x400000, 0x9cd71557, CPS2_QSND | BRF_SND },
+
+	{ "vsavj.key",     0x000014, 0x36d28ab8, CPS2_ENCRYPTION_KEY },
+};
+
+STD_ROM_PICK(Vsavk)
+STD_ROM_FN(Vsavk)
+
+struct BurnDriver BurnDrvCpsVsavk = {
+	"vsavk", "vsav", NULL, NULL, "2026",
+	"Vampire Savior: The Lord of Vampire (Korean Translation 970519)\0", NULL, "Capcom", "CPS2",
+	L"Vampire Savior: The Lord of Vampire (Korean Translation 970519)\0\uBC40\uD30C\uC774\uC5B4 \uC138\uC774\uBE44\uC5B4: \uB354 \uB85C\uB4DC \uC624\uBE0C \uBC40\uD30C\uC774\uC5B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970519)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_DSTLK,
+	NULL, VsavkRomInfo, VsavkRomName, NULL, NULL, NULL, NULL, Cps2FightingInputInfo, NULL,
+	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+static struct BurnRomInfo Vsav2kRomDesc[] = {
+	{ "vs2k.03",       0x080000, 0x45719363, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vs2k.04",       0x080000, 0x3653f581, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vs2j.05",       0x080000, 0x61979638, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vs2j.06",       0x080000, 0xf37c5bc2, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vs2j.07",       0x080000, 0x8f885809, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vs2j.08",       0x080000, 0x2018c120, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vs2j.09",       0x080000, 0xfac3c217, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "vs2j.10",       0x080000, 0xeb490213, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+
+	{ "vs2k.13m",      0x400000, 0x0f67c433, CPS2_GFX | BRF_GRA },
+	{ "vs2k.15m",      0x400000, 0xc17a750f, CPS2_GFX | BRF_GRA },
+	{ "vs2k.17m",      0x400000, 0x16f40316, CPS2_GFX | BRF_GRA },
+	{ "vs2k.19m",      0x400000, 0x9ec1d6e5, CPS2_GFX | BRF_GRA },
+	{ "vs2.14m",       0x400000, 0xcd09bd63, CPS2_GFX | BRF_GRA },
+	{ "vs2.16m",       0x400000, 0xe0182c15, CPS2_GFX | BRF_GRA },
+	{ "vs2.18m",       0x400000, 0x778dc4f6, CPS2_GFX | BRF_GRA },
+	{ "vs2.20m",       0x400000, 0x605d9d1d, CPS2_GFX | BRF_GRA },
+
+	{ "vs2.01",        0x020000, 0x35190139, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
+	{ "vs2.02",        0x020000, 0xc32dba09, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
+
+	{ "vs2.11m",       0x400000, 0xd67e47b7, CPS2_QSND | BRF_SND },
+	{ "vs2.12m",       0x400000, 0x6d020a14, CPS2_QSND | BRF_SND },
+
+	{ "vsav2.key",     0x000014, 0x289028ce, CPS2_ENCRYPTION_KEY },
+};
+
+STD_ROM_PICK(Vsav2k)
+STD_ROM_FN(Vsav2k)
+
+struct BurnDriver BurnDrvCpsVsav2k = {
+	"vsav2k", "vsav2", NULL, NULL, "2026",
+	"Vampire Savior 2: The Lord of Vampire (Korean Translation 970913)\0", NULL, "Capcom", "CPS2",
+	L"Vampire Savior 2: The Lord of Vampire (Korean Translation 970913)\0\uBC40\uD30C\uC774\uC5B4 \uC138\uC774\uBE44\uC5B4 2: \uB354 \uB85C\uB4DC \uC624\uBE0C \uBC40\uD30C\uC774\uC5B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 970913)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_VSFIGHT, FBF_DSTLK,
+	NULL, Vsav2kRomInfo, Vsav2kRomName, NULL, NULL, NULL, NULL, Cps2FightingInputInfo, NULL,
+	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};

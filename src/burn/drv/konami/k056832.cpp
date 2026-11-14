@@ -3,6 +3,7 @@
 
 #include "tiles_generic.h"
 #include "konamiic.h"
+#include "gx_fpga_blend.h"
 
 #define K056832_FLIPY	0x00002
 #define K056832_FLIPX	0x00001
@@ -251,6 +252,9 @@ void K056832SetAlphaTileMode(INT32 enable)
 {
 	K056832AlphaTileMode = enable;
 }
+
+// GX mode 3 follows MiSTer's per-pixel mix routing, rather than the last tile.
+INT32 K056832GetAlphaTileMode() { return K056832AlphaTileMode; }
 
 INT32 K056832GetLastAlphaTileMixCode()
 {
@@ -706,7 +710,10 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 		sx -= scrollx;
 		if (sx < -7) sx += 512;
 		if (tilemap_flip & 1) sx = (512 - 8) - sx;
-		if (sx < (minx-7) || sx > maxx) continue;
+		// A 512-pixel page repeats across the visible raster, including GX 576px.
+		while (sx + 7 < minx) sx += 512;
+		while (sx - 512 + 7 >= minx) sx -= 512;
+		for (; sx <= maxx; sx += 512) {
 
 		{ // speed-up
 			// y is calculated in the tile blitter (see "// blitter" below)
@@ -755,10 +762,26 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 		flip &= (attr >> smptr->flips) & 3;
 		INT32 color = (attr & smptr->palm1) | (attr >> smptr->pals2 & smptr->palm2);
 		INT32 g_flags = flip & 3;
+		INT32 gx_mix_color = color;
 		INT32 mix_code = (K056832AlphaTileMode == 2) ? ((attr >> 4) & 3) : ((attr >> 6) & 3);
-		INT32 category = (K056832AlphaTileMode && mix_code) ? 1 : 0;
+		INT32 category = (K056832AlphaTileMode && K056832AlphaTileMode != 3 && mix_code) ? 1 : 0;
 		if (category) {
 			K056832LastAlphaTileMixCode = mix_code;
+		}
+
+		if (K056832AlphaTileMode == 3) {
+			// rtl/video/gx_mixer.v alpha_of: additive uses the written level;
+			// alpha-over inverts it. Decode REG3 colour lanes before VINMIX.
+			INT32 von = (K055555ReadRegister(K55_VINMIX_ON) >> (layer * 2)) & 3;
+			INT32 vin = (K055555ReadRegister(K55_BLEND_ENABLES) >> (layer * 2)) & 3;
+			INT32 mix = (((gx_mix_color >> 4) & 3) & ~von) | (vin & von);
+			alpha_enable = 0; alpha_additive = 0; alpha = 255;
+			if (mix) {
+                unsigned setting=GxFpgaAlpha(mix,K054338_read_register(K338_REG_PBLEND),K054338_read_register(K338_REG_PBLEND+1));
+                alpha_additive=setting&0x100;
+                alpha=setting&255;
+                alpha_enable=alpha_additive || alpha!=255;
+			}
 		}
 
 		m_callback(layer, &code, &color, &g_flags);
@@ -822,7 +845,9 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 									src = m_alpha_tile_callback(layer, code, color, pxl, xx, yy, &pixel_alpha, src);
 								}
 
-								if (alpha_additive)
+								if (K056832AlphaTileMode == 3)
+									dst[xx] = GxFpgaBlend(dst[xx], src, alpha | (alpha_additive ? 0x100 : 0));
+								else if (alpha_additive)
 									dst[xx] = additive_blend(dst[xx], K056832ApplyBrightness(pal[pxl]), alpha);
 								else
 									dst[xx] = alpha_blend(dst[xx], K056832ApplyBrightness(pal[pxl]), alpha);
@@ -848,6 +873,7 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 				}
 			}
 		}
+		} // visible copies of this page tile
 	}
 }
 
@@ -1188,62 +1214,31 @@ void K056832Draw(INT32 layer, UINT32 flags, UINT32 priority)
 				else
 					dx = ((INT32)BURN_ENDIAN_SWAP_INT16(p_scroll_data[sdat_offs])<<16 | (INT32)BURN_ENDIAN_SWAP_INT16(p_scroll_data[sdat_offs + 1])) + corr;
 
-				if ((INT32)last_dx == dx) { if (last_visible) draw_layer_internal(layer, tmap, clip_data, tmap_scrollx, tmap_scrolly, flags, priority, is_linemap); continue; }
+				if (colspan == 1 && (INT32)last_dx == dx) { if (last_visible) draw_layer_internal(layer, tmap, clip_data, tmap_scrollx, tmap_scrolly, flags, priority, is_linemap); continue; }
 				last_dx = dx;
 
-				if (colspan > 1)
-				{
-					//sx = (UINT32)dx % width;
-					sx = (UINT32)dx & (width-1);
+                tmap_scrollx = dx;
+                if (colspan > 1) {
+                    // Place each page in screen coordinates, then visit all of its
+                    // wrapped copies intersecting the raster. GX can display 576
+                    // pixels: a page can occur at BOTH edges of the same scanline.
+                    sx = (UINT32)dx % width;
+                    tx = flipx ? sx - (c + 1) * K056832_PAGE_WIDTH : c * K056832_PAGE_WIDTH - sx;
+                    while (tx + K056832_PAGE_WIDTH <= cminx) tx += width;
+                    while (tx - width + K056832_PAGE_WIDTH > cminx) tx -= width;
+                    for (; tx <= cmaxx; tx += width) {
+                        clip_data[0] = tx < cminx ? cminx : tx;
+                        clip_data[1] = tx + K056832_PAGE_WIDTH - 1;
+                        if (clip_data[1] > cmaxx) clip_data[1] = cmaxx;
+                        draw_layer_internal(layer, tmap, clip_data, tmap_scrollx, tmap_scrolly, flags, priority, is_linemap);
+                    }
+                    continue;
+                }
 
-					//tx = c * K056832_PAGE_WIDTH;
-					tx = c << 9;
-
-					if (!flipx)
-					{
-						// handle right-edge wraparoundness and cull off-screen tilemaps
-						if ((c == 0) && (sx > width - K056832_PAGE_WIDTH)) sx -= width;
-						if ((sx + K056832_PAGE_WIDTH <= tx) || (sx - K056832_PAGE_WIDTH >= tx))
-							{ last_visible = 0; continue; }
-
-						// switch frame of reference and clip x
-						if ((tx -= sx) <= 0) { clipw = K056832_PAGE_WIDTH + tx; clipx = 0; }
-						else { clipw = K056832_PAGE_WIDTH - tx; clipx = tx; }
-					}
-					else
-					{
-						tx += K056832_PAGE_WIDTH;
-
-						// handle left-edge wraparoundness and cull off-screen tilemaps
-						if ((c == colspan-1) && (sx < K056832_PAGE_WIDTH)) sx += width;
-						if ((sx + K056832_PAGE_WIDTH <= tx) || (sx - K056832_PAGE_WIDTH >= tx))
-							{ last_visible = 0; continue; }
-
-						// switch frame of reference and clip y
-						if ((tx -= sx) >= 0) { clipw = K056832_PAGE_WIDTH - tx; clipx = 0; }
-						else { clipw = K056832_PAGE_WIDTH + tx; clipx = -tx; }
-					}
-				}
-				else { clipw = K056832_PAGE_WIDTH; clipx = 0; }
-
-				last_visible = 1;
-
-				dminx = clipx;
-				dmaxx = clipx + clipw - 1;
-
-				clip_data[0] = (dminx < cminx ) ? cminx : dminx;
-				clip_data[1] = (dmaxx > cmaxx ) ? cmaxx : dmaxx;
-
-				// soccer superstars visible area is >512 pixels, this causes problems with the logic because
-				// the tilemaps are 512 pixels across.  Assume that if the limits were set as below that we
-				// want the tilemap to be drawn on the right hand side..  this is probably not the correct
-				// logic, but it works.
-				if ((clip_data[0]>0) && (clip_data[1]==511))
-					clip_data[1]=cmaxx;
-
-				tmap_scrollx = dx;
-
-				draw_layer_internal(layer, tmap, clip_data, tmap_scrollx, tmap_scrolly, flags, priority, is_linemap);
+                last_visible = 1;
+                clip_data[0] = cminx;
+                clip_data[1] = cmaxx;
+                draw_layer_internal(layer, tmap, clip_data, tmap_scrollx, tmap_scrolly, flags, priority, is_linemap);
 			}
 		}
 	}

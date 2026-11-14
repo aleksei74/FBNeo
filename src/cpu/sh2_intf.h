@@ -71,3 +71,9 @@ extern struct cpu_core_config Sh2Config;
 // depreciate this and use BurnTimerAttach directly!
 #define BurnTimerAttachSh2(clock)	\
 	BurnTimerAttach(&Sh2Config, clock)
+
+// Optional vector acknowledge for boards with a separate interrupt controller.
+void Sh2SetIRQCallback(int (*callback)(int));
+
+// SH7014 has a full 32-bit address space, unlike SH7604 aliases.
+void Sh2SetAddressMask(UINT32 mask);

@@ -1,6 +1,6 @@
-LOCAL_PATH := $(call my-dir)
+LOCAL_PATH := $(abspath $(call my-dir))
 
-MAIN_FBNEO_DIR := $(LOCAL_PATH)/../../..
+MAIN_FBNEO_DIR := $(abspath $(LOCAL_PATH)/../../..)
 
 INCLUDE_CPLUSPLUS11_FILES := 0
 INCLUDE_7Z_SUPPORT        := 1
@@ -16,12 +16,6 @@ SUPPORT_LARGE_FILES       := 1
 
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
   HAVE_NEON               := 1
-  USE_CYCLONE             := 1
-  # see https://github.com/finalburnneo/FBNeo/issues/2201
-  SUPPORT_LARGE_FILES     := 0
-endif
-
-ifeq ($(TARGET_ARCH_ABI),x86)
   # see https://github.com/finalburnneo/FBNeo/issues/2201
   SUPPORT_LARGE_FILES     := 0
 endif
@@ -30,6 +24,7 @@ CFLAGS      :=
 CXXFLAGS    :=
 LDFLAGS     :=
 SOURCES_C   :=
+SOURCES_S   :=
 SOURCES_CXX :=
 FBNEO_DEFINES :=
 
@@ -42,7 +37,7 @@ COMMON_FLAGS := -DUSE_SPEEDHACKS -D__LIBRETRO__ -DANDROID -Wno-write-strings -DL
 # Build shared library including static C module
 include $(CLEAR_VARS)
 LOCAL_MODULE       := retro
-LOCAL_SRC_FILES    := $(SOURCES_C) $(SOURCES_S) $(SOURCES_CXX)
+LOCAL_SRC_FILES    := $(patsubst $(MAIN_FBNEO_DIR)/%,../../../%,$(SOURCES_C) $(SOURCES_S) $(SOURCES_CXX))
 LOCAL_C_INCLUDES   := $(INCLUDE_DIRS)
 LOCAL_CFLAGS       := $(CFLAGS) $(COMMON_FLAGS)
 LOCAL_CPPFLAGS     := $(CXXFLAGS) $(COMMON_FLAGS) -Wno-narrowing
@@ -51,6 +46,13 @@ LOCAL_LDLIBS       := $(LDFLAGS) -lEGL -lGLESv2
 LOCAL_CPP_FEATURES := exceptions rtti
 LOCAL_DISABLE_FORMAT_STRING_CHECKS := true
 LOCAL_ARM_MODE := arm
+LOCAL_SHORT_COMMANDS := true
+# NDK r18 writes response files through a quoted shell echo. Preserve the
+# literal quotes in string macros through both shell and response-file parsing.
+ifeq ($(LOCAL_SHORT_COMMANDS),true)
+LOCAL_CFLAGS := $(subst ",\\",$(LOCAL_CFLAGS))
+LOCAL_CPPFLAGS := $(subst ",\\",$(LOCAL_CPPFLAGS))
+endif
 
 ifeq ($(TARGET_ARCH_ABI),armeabi-v7a)
   LOCAL_ARM_MODE := arm

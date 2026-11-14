@@ -144,7 +144,7 @@ enum {
 #define Q	0x00000100
 #define M	0x00000200
 
-#define AM	0xc7ffffff
+#define AM	(pSh2Ext->addressMask)
 
 #define FLAGS	(M|Q|I|S|T)
 
@@ -180,6 +180,7 @@ typedef struct
 	pSh2WriteLongHandler WriteLong[SH2_MAXHANDLER];
 	
 	unsigned char * opbase;
+	UINT32 addressMask;
 	int suspend;
 
 	// external dma requests (DREQ0/1)
@@ -524,6 +525,7 @@ int Sh2Init(int nCount)
 		sh2 = & (pSh2Ext->sh2);
 
 		sh2->sh2_eat_cycles = 1;
+		pSh2Ext->addressMask = 0xc7ffffff;
 
 		Sh2MapHandler(SH2_MAXHANDLER - 1, 0xE0000000, 0xFFFFFFFF, 0x07);
 		Sh2MapHandler(SH2_MAXHANDLER - 2, 0x40000000, 0xBFFFFFFF, 0x07);
@@ -813,7 +815,10 @@ SH2_INLINE void sh2_exception(/*const char *message,*/ int irqline)
 		}
 		else
 		{
-			if(sh2->m[0x38] & 0x00010000)
+			if (sh2->irq_callback) {
+				vector = sh2->irq_callback(irqline);
+			}
+			else if(sh2->m[0x38] & 0x00010000)
 			{
 				//vector = sh2->irq_callback(irqline);
 				//LOG(("SH-2 #%d exception #%d (external vector: $%x) after [%s]\n", cpu_getactivecpu(), irqline, vector, message));
@@ -3592,4 +3597,14 @@ int Sh2Scan(int nAction)
 	}
 	
 	return 0;
+}
+
+void Sh2SetIRQCallback(int (*callback)(int))
+{
+	sh2->irq_callback = callback;
+}
+
+void Sh2SetAddressMask(UINT32 mask)
+{
+	pSh2Ext->addressMask = mask;
 }

@@ -31042,278 +31042,6 @@ struct BurnDriver BurnDrvWrldrc32 = {
 
 // NAM-1975 (Korean Translation)
 
-// Unique Neo Geo Korean translation and hack drivers retained from the Oct 2026 ROM archive.
-
-static struct BurnRomInfo mahretsukRomDesc[] = {
-	{ "004-p1k.p1",   0x080000, 0x3475c3ed, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
-
-	{ "004-s1k.s1",   0x020000, 0xc6777dd5, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
-
-	{ "004-c1k.c1",   0x080000, 0x9faa127b, 3 | BRF_GRA },           //  2 Sprite data 		/ MB834200
-	{ "004-c2k.c2",   0x080000, 0x4a1b4b1a, 3 | BRF_GRA },           //  3 					/ MB834200
-	{ "004-c3k.c3",   0x080000, 0x2ff4dbac, 3 | BRF_GRA },           //  4 					/ MB834200
-	{ "004-c4k.c4",   0x080000, 0x652e8090, 3 | BRF_GRA },           //  5 					/ MB834200
-
-	{ "004-m1.m1",    0x020000, 0xc71fbb3b, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code 		/ TC531001
-
-	{ "004-v11.v11",  0x080000, 0xb2fb2153, 5 | BRF_SND },           //  7 Sound data 		/ CXK384001
-	{ "004-v12.v12",  0x080000, 0x8503317b, 5 | BRF_SND },           //  8 					/ CXK384001
-	{ "004-v21.v21",  0x080000, 0x4999fb27, 6 | BRF_SND },           //  9 					/ CXK384001
-	{ "004-v22.v22",  0x080000, 0x776fa2a2, 6 | BRF_SND },           // 10 					/ CXK384001
-	{ "004-v23.v23",  0x080000, 0xb3e7eeea, 6 | BRF_SND },           // 11 					/ CXK384001
-};
-
-STDROMPICKEXT(mahretsuk, mahretsuk, neogeo)
-STD_ROM_FN(mahretsuk)
-
-struct BurnDriver BurnDrvMahretsuk = {
-	"mahretsuk", "mahretsu", "neogeo", NULL, "2026",
-	"Mahjong Kyo Retsuden (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"Mahjong Kyo Retsuden (Korean Translation)\0\uB9C8\uC791\uAD11\uC5F4\uC804 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_MAHJONG, GBF_MAHJONG, 0,
-	NULL, mahretsukRomInfo, mahretsukRomName, NULL, NULL, NULL, NULL, neomahjongInputInfo, neomahjongDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 304, 224, 4, 3
-};
-
-static struct BurnRomInfo mahretsuuhRomDesc[] = {
-	{ "004-p1uh.p1",  0x080000, 0x0f1a7c2c, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
-
-	{ "004-s1.s1",    0x020000, 0x2bd05a06, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
-
-	{ "004-c1.c1",    0x080000, 0xf1ae16bc, 3 | BRF_GRA },           //  2 Sprite data 		/ MB834200
-	{ "004-c2.c2",    0x080000, 0xbdc13520, 3 | BRF_GRA },           //  3 					/ MB834200
-	{ "004-c3.c3",    0x080000, 0x9c571a37, 3 | BRF_GRA },           //  4 					/ MB834200
-	{ "004-c4.c4",    0x080000, 0x7e81cb29, 3 | BRF_GRA },           //  5 					/ MB834200
-
-	{ "004-m1.m1",    0x020000, 0xc71fbb3b, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code 		/ TC531001
-
-	{ "004-v11.v11",  0x080000, 0xb2fb2153, 5 | BRF_SND },           //  7 Sound data 		/ CXK384001
-	{ "004-v12.v12",  0x080000, 0x8503317b, 5 | BRF_SND },           //  8 					/ CXK384001
-	{ "004-v21.v21",  0x080000, 0x4999fb27, 6 | BRF_SND },           //  9 					/ CXK384001
-	{ "004-v22.v22",  0x080000, 0x776fa2a2, 6 | BRF_SND },           // 10 					/ CXK384001
-	{ "004-v23.v23",  0x080000, 0xb3e7eeea, 6 | BRF_SND },           // 11 					/ CXK384001
-};
-
-STDROMPICKEXT(mahretsuuh, mahretsuuh, neogeo)
-STD_ROM_FN(mahretsuuh)
-
-struct BurnDriver BurnDrvMahretsuuh = {
-	"mahretsuuh", "mahretsu", "neogeo", NULL, "2026",
-	"Mahjong Kyo Retsuden (Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
-	L"\u9EBB\u96C0\u72C2\u5217\u4F1D\0Mahjong Kyo Retsuden (Uncensored Hack)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_MAHJONG, GBF_MAHJONG, 0,
-	NULL, mahretsuuhRomInfo, mahretsuuhRomName, NULL, NULL, NULL, NULL, neomahjongInputInfo, neomahjongDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 304, 224, 4, 3
-};
-
-static struct BurnRomInfo roboarmykRomDesc[] = {
-	{ "032-p1k.p1",   0x080000, 0x75960a2b, 1 | BRF_ESS | BRF_PRG }, //  0 68K code / D27C4000
-
-	{ "032-s1k.s1",   0x020000, 0xd8413e2f, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
-
-	{ "032-c1k.c1",   0x100000, 0xe6bb14bf, 3 | BRF_GRA },           //  2 Sprite data / TC538200
-	{ "032-c2k.c2",   0x100000, 0x198640b3, 3 | BRF_GRA },           //  3 / TC538200
-	{ "032-c3k.c3",   0x080000, 0x03c8fa36, 3 | BRF_GRA },           //  4 / TC534200
-	{ "032-c4k.c4",   0x080000, 0x629bf54a, 3 | BRF_GRA },           //  5 / TC534200
-
-	{ "032-m1.m1",    0x020000, 0x35ec952d, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code / TC531001
-
-	{ "032-v1.v1",    0x100000, 0x63791533, 5 | BRF_SND },           //  7 Sound data / TC538200
-	{ "032-v2.v2",    0x100000, 0xeb95de70, 5 | BRF_SND },           //  8 / TC538200
-};
-
-STDROMPICKEXT(roboarmyk, roboarmyk, neogeo)
-STD_ROM_FN(roboarmyk)
-
-struct BurnDriver BurnDrvRoboarmyk = {
-	"roboarmyk", "roboarmy", "neogeo", NULL, "2026",
-	"Robo Army (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
-	L"Robo Army (Korean Translation)\0\uB85C\uBCF4 \uC544\uBBF8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
-	NULL, roboarmykRomInfo, roboarmykRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 304, 224, 4, 3
-};
-
-static struct BurnRomInfo neobombekRomDesc[] = {
-	{ "093-p1k.p1",   0x100000, 0x2b26fd21, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
-
-	{ "093-s1k.s1",   0x020000, 0xe004378a, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
-
-	{ "093-c1k.c1",   0x400000, 0xb772815c, 3 | BRF_GRA },           //  2 Sprite data		/ TC5332205
-	{ "093-c2k.c2",   0x400000, 0x1eb201ec, 3 | BRF_GRA },           //  3 					/ TC5332205
-	{ "093-c3k.c3",   0x080000, 0xc92b6d28, 3 | BRF_GRA },           //  4 					/ TC534200
-	{ "093-c4k.c4",   0x080000, 0x4fbbbcc1, 3 | BRF_GRA },           //  5 					/ TC534200
-
-	{ "093-m1.m1",    0x020000, 0xe81e780b, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code			/ TC531001
-
-	{ "093-v1.v1",    0x400000, 0x02abd4b0, 5 | BRF_SND },           //  7 Sound data		/ TC5332204
-	{ "093-v2.v2",    0x200000, 0xa92b8b3d, 5 | BRF_SND },           //  8 					/ TC5316200
-};
-
-STDROMPICKEXT(neobombek, neobombek, neogeo)
-STD_ROM_FN(neobombek)
-
-struct BurnDriver BurnDrvNeobombek = {
-	"neobombek", "neobombe", "neogeo", NULL, "2026",
-	"Neo Bomberman (Korean Translation)\0", NULL, "Hudson", "Neo Geo MVS",
-	L"Neo Bomberman (Korean Translation)\0\uB124\uC624 \uBD04\uBC84\uB9E8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_MAZE, 0,
-	NULL, neobombekRomInfo, neobombekRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 304, 224, 4, 3
-};
-
-static struct BurnRomInfo ninjamaskRomDesc[] = {
-	{ "217-p1k.p1",   0x100000, 0x1f829f3c, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
-	{ "217-p2k.sp2",  0x200000, 0xc5718899, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
-
-	{ "217-s1k.s1",   0x020000, 0x65106065, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
-
-	{ "217-c1k.c1",   0x400000, 0x8bf83955, 3 | BRF_GRA },           //  3 Sprite data 		/ TC5332205
-	{ "217-c2k.c2",   0x400000, 0x5e2e0cf7, 3 | BRF_GRA },           //  4 					/ TC5332205
-	{ "217-c3.c3",    0x400000, 0x59e8525f, 3 | BRF_GRA },           //  5 					/ TC5332205
-	{ "217-c4.c4",    0x400000, 0x8521add2, 3 | BRF_GRA },           //  6 					/ TC5332205
-	{ "217-c5.c5",    0x400000, 0xfb1896e5, 3 | BRF_GRA },           //  7 					/ TC5332205
-	{ "217-c6.c6",    0x400000, 0x1c98c54b, 3 | BRF_GRA },           //  8 					/ TC5332205
-	{ "217-c7k.c7",   0x400000, 0xbf49c97e, 3 | BRF_GRA },           //  9 					/ TC5332205
-	{ "217-c8k.c8",   0x400000, 0x7e044583, 3 | BRF_GRA },           // 10 					/ TC5332205
-
-	{ "217-m1.m1",    0x020000, 0xd00fb2af, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/ TC531001
-
-	{ "217-v1.v1",    0x400000, 0x1c34e013, 5 | BRF_SND },           // 12 Sound data 		/ TC5332204
-	{ "217-v2.v2",    0x200000, 0x22f1c681, 5 | BRF_SND },           // 13 					/ TC5316200
-};
-
-STDROMPICKEXT(ninjamask, ninjamask, neogeo)
-STD_ROM_FN(ninjamask)
-
-struct BurnDriver BurnDrvNinjamask = {
-	"ninjamask", "ninjamas", "neogeo", NULL, "2026",
-	"Ninja Master's - Haoh-ninpo-cho (Korean Translation)\0", NULL, "ADK / SNK", "Neo Geo MVS",
-	L"Ninja Master's - Haoh-ninpo-cho (Korean Translation)\0\uB2CC\uC790 \uB9C8\uC2A4\uD130\uC988 - \uD328\uC655\uC778\uBC95\uCCA9 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
-	NULL, ninjamaskRomInfo, ninjamaskRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 320, 224, 4, 3
-};
-
-static struct BurnRomInfo twinsprikRomDesc[] = {
-	{ "224-p1k.p1",   0x200000, 0x9140e8d5, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
-
-	{ "224-s1k.s1",   0x020000, 0xc1d0f635, 2 | BRF_GRA },           //  1 Text layer tiles
-
-	{ "224-c1k.c1",   0x400000, 0x3e0a41e4, 3 | BRF_GRA },           //  2 Sprite data
-	{ "224-c2k.c2",   0x400000, 0x07c4e785, 3 | BRF_GRA },           //  3
-	{ "224-c3k.c3",   0x100000, 0x1a05b283, 3 | BRF_GRA },           //  4
-	{ "224-c4k.c4",   0x100000, 0x70773990, 3 | BRF_GRA },           //  5
-
-	{ "224-m1.m1",    0x020000, 0x364d6f96, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code
-
-	{ "224-v1.v1",    0x400000, 0xff57f088, 5 | BRF_SND },           //  7 Sound data
-	{ "224-v2.v2",    0x200000, 0x7ad26599, 5 | BRF_SND },           //  8
-};
-
-STDROMPICKEXT(twinsprik, twinsprik, neogeo)
-STD_ROM_FN(twinsprik)
-
-struct BurnDriver BurnDrvTwinsprik = {
-	"twinsprik", "twinspri", "neogeo", NULL, "2026",
-	"Twinkle Star Sprites (Korean Translation)\0", NULL, "ADK / SNK", "Neo Geo MVS",
-	L"Twinkle Star Sprites (Korean Translation)\0\uD2B8\uC719\uD074 \uC2A4\uD0C0 \uC2A4\uD504\uB77C\uC774\uCE20 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_VERSHOOT, 0,
-	NULL, twinsprikRomInfo, twinsprikRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 304, 224, 4, 3
-};
-
-static struct BurnRomInfo ganryukRomDesc[] = {
-	{ "252-p1k.p1",   0x200000, 0xffabe34e, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
-
-	{ "252-c1k.c1",   0x800000, 0x23ceceec, 3 | BRF_GRA },           //  1 Sprite data
-	{ "252-c2k.c2",   0x800000, 0x8354c4f2, 3 | BRF_GRA },           //  2
-
-	{ "252-m1.m1",    0x020000, 0x30cc4099, 4 | BRF_ESS | BRF_PRG }, //  3 Z80 code
-
-	{ "252-v1.v1",    0x400000, 0xe5946733, 5 | BRF_SND },           //  4 Sound data
-};
-
-STDROMPICKEXT(ganryuk, ganryuk, neogeo)
-STD_ROM_FN(ganryuk)
-
-struct BurnDriver BurnDrvGanryuk = {
-	"ganryuk", "ganryu", "neogeo", NULL, "2026",
-	"Ganryu / Musashi Ganryuki (Korean Translation)\0", NULL, "Visco", "Neo Geo MVS",
-	L"Ganryu / Musashi Ganryuki (Korean Translation)\0\uAC04\uB958 / \uBB34\uC0AC\uC2DC \uAC04\uB958\uD0A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP | HARDWARE_SNK_CMC42, GBF_SCRFIGHT, 0,
-	NULL, ganryukRomInfo, ganryukRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 304, 224, 4, 3
-};
-
-static struct BurnRomInfo sengoku3kRomDesc[] = {
-	{ "261-ph1k.p1",  0x200000, 0x3797fcc3, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
-
-	{ "261-c1k.c1",   0x800000, 0xfc993cd5, 3 | BRF_GRA },           //  1 Sprite data
-	{ "261-c2k.c2",   0x800000, 0xea4584f0, 3 | BRF_GRA },           //  2
-	{ "261-c3k.c3",   0x800000, 0xaa8639e4, 3 | BRF_GRA },           //  3
-	{ "261-c4k.c4",   0x800000, 0x98f1555a, 3 | BRF_GRA },           //  4
-
-	{ "261-m1.m1",    0x080000, 0x7d501c39, 4 | BRF_ESS | BRF_PRG }, //  5 Z80 code
-
-	{ "261-v1.v1",    0x400000, 0x64c30081, 5 | BRF_SND },           //  6 Sound data
-	{ "261-v2.v2",    0x400000, 0x392a9c47, 5 | BRF_SND },           //  7
-	{ "261-v3.v3",    0x400000, 0xc1a7ebe3, 5 | BRF_SND },           //  8
-	{ "261-v4.v4",    0x200000, 0x9000d085, 5 | BRF_SND },           //  9
-};
-
-STDROMPICKEXT(sengoku3k, sengoku3k, neogeo)
-STD_ROM_FN(sengoku3k)
-
-struct BurnDriver BurnDrvSengoku3k = {
-	"sengoku3k", "sengoku3", "neogeo", NULL, "2026",
-	"Sengoku 3 / Sengoku Densho 2001 (Korean Translation)\0", NULL, "Noise Factory / SNK", "Neo Geo MVS",
-	L"Sengoku 3 / Sengoku Densho 2001 (Korean Translation)\0\uC13C\uACE0\uCFE0 3 / \uC804\uAD6D\uC804\uC2B9 2001 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42 | HARDWARE_SNK_SWAPP, GBF_SCRFIGHT, 0,
-	NULL, sengoku3kRomInfo, sengoku3kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 320, 224, 4, 3
-};
-
-static struct BurnRomInfo svckRomDesc[] = {
-	{ "269-p1k.p1",   0x400000, 0xbffb7fa0, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
-	{ "269-p2k.p2",   0x400000, 0x2472b6cc, 1 | BRF_ESS | BRF_PRG }, //  1
-
-	{ "269-c1rk.c1",  0x800000, 0xb36cc4ab, 3 | BRF_GRA },           //  2 Sprite data
-	{ "269-c2rk.c2",  0x800000, 0x3a99c36e, 3 | BRF_GRA },           //  3
-	{ "269-c3rk.c3",  0x800000, 0xe64ae3a1, 3 | BRF_GRA },           //  4
-	{ "269-c4rk.c4",  0x800000, 0xaf80ce9d, 3 | BRF_GRA },           //  5
-	{ "269-c5rk.c5",  0x800000, 0xee7648ee, 3 | BRF_GRA },           //  6
-	{ "269-c6rk.c6",  0x800000, 0x2fb3f044, 3 | BRF_GRA },           //  7
-	{ "269-c7rk.c7",  0x800000, 0x697e0a24, 3 | BRF_GRA },           //  8
-	{ "269-c8rk.c8",  0x800000, 0xeee1510b, 3 | BRF_GRA },           //  9
-
-	{ "269-m1.m1",    0x080000, 0xf6819d00, 4 | BRF_ESS | BRF_PRG }, //  10 Z80 code
-
-	{ "269-v1.v1",    0x800000, 0xc659b34c, 5 | BRF_SND },           // 11 Sound data
-	{ "269-v2.v2",    0x800000, 0xdd903835, 5 | BRF_SND },           // 12
-};
-
-STDROMPICKEXT(svck, svck, neogeo)
-STD_ROM_FN(svck)
-
-struct BurnDriver BurnDrvSvck = {
-	"svck", "svc", "neogeo", NULL, "2026",
-	"SNK vs. Capcom - SVC Chaos (Korean Translation)\0", NULL, "Playmore / Capcom", "Neo Geo MVS",
-	L"SNK vs. Capcom - SVC Chaos (Korean Translation)\0SNK vs. Capcom - SVC \uCE74\uC624\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ALTERNATE_TEXT | HARDWARE_SNK_P32 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_KOF | FBF_SF,
-	NULL, svckRomInfo, svckRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
-	svcpcbInit, NeoPVCExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
-	0x1000, 304, 224, 4, 3
-};
-
 static struct BurnRomInfo nam1975kRomDesc[] = {
 	{ "001-p1k.p1",   0x080000, 0xdfead2c2, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ MB834200
 
@@ -31347,6 +31075,74 @@ struct BurnDriver BurnDrvNam1975k = {
 	NULL, nam1975kRomInfo, nam1975kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, nam1975kDIPInfo,
 	Nam1975Init, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
+};
+
+// Mahjong Kyo Retsuden (Korean Translation)
+
+static struct BurnRomInfo mahretsukRomDesc[] = {
+	{ "004-p1k.p1",   0x080000, 0x3475c3ed, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
+
+	{ "004-s1k.s1",   0x020000, 0xc6777dd5, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "004-c1k.c1",   0x080000, 0x9faa127b, 3 | BRF_GRA },           //  2 Sprite data 		/ MB834200
+	{ "004-c2k.c2",   0x080000, 0x4a1b4b1a, 3 | BRF_GRA },           //  3 					/ MB834200
+	{ "004-c3k.c3",   0x080000, 0x2ff4dbac, 3 | BRF_GRA },           //  4 					/ MB834200
+	{ "004-c4k.c4",   0x080000, 0x652e8090, 3 | BRF_GRA },           //  5 					/ MB834200
+
+	{ "004-m1.m1",    0x020000, 0xc71fbb3b, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code 		/ TC531001
+
+	{ "004-v11.v11",  0x080000, 0xb2fb2153, 5 | BRF_SND },           //  7 Sound data 		/ CXK384001
+	{ "004-v12.v12",  0x080000, 0x8503317b, 5 | BRF_SND },           //  8 					/ CXK384001
+	{ "004-v21.v21",  0x080000, 0x4999fb27, 6 | BRF_SND },           //  9 					/ CXK384001
+	{ "004-v22.v22",  0x080000, 0x776fa2a2, 6 | BRF_SND },           // 10 					/ CXK384001
+	{ "004-v23.v23",  0x080000, 0xb3e7eeea, 6 | BRF_SND },           // 11 					/ CXK384001
+};
+
+STDROMPICKEXT(mahretsuk, mahretsuk, neogeo)
+STD_ROM_FN(mahretsuk)
+
+struct BurnDriver BurnDrvMahretsuk = {
+	"mahretsuk", "mahretsu", "neogeo", NULL, "2026",
+	"Mahjong Kyo Retsuden (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Mahjong Kyo Retsuden (Korean Translation)\0\uB9C8\uC791\uAD11\uC5F4\uC804 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_MAHJONG, GBF_MAHJONG, 0,
+	NULL, mahretsukRomInfo, mahretsukRomName, NULL, NULL, NULL, NULL, neomahjongInputInfo, neomahjongDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Mahjong Kyo Retsuden (Uncensored Hack)
+
+static struct BurnRomInfo mahretsuuhRomDesc[] = {
+	{ "004-p1uh.p1",  0x080000, 0x0f1a7c2c, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC534200
+
+	{ "004-s1.s1",    0x020000, 0x2bd05a06, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "004-c1.c1",    0x080000, 0xf1ae16bc, 3 | BRF_GRA },           //  2 Sprite data 		/ MB834200
+	{ "004-c2.c2",    0x080000, 0xbdc13520, 3 | BRF_GRA },           //  3 					/ MB834200
+	{ "004-c3.c3",    0x080000, 0x9c571a37, 3 | BRF_GRA },           //  4 					/ MB834200
+	{ "004-c4.c4",    0x080000, 0x7e81cb29, 3 | BRF_GRA },           //  5 					/ MB834200
+
+	{ "004-m1.m1",    0x020000, 0xc71fbb3b, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code 		/ TC531001
+
+	{ "004-v11.v11",  0x080000, 0xb2fb2153, 5 | BRF_SND },           //  7 Sound data 		/ CXK384001
+	{ "004-v12.v12",  0x080000, 0x8503317b, 5 | BRF_SND },           //  8 					/ CXK384001
+	{ "004-v21.v21",  0x080000, 0x4999fb27, 6 | BRF_SND },           //  9 					/ CXK384001
+	{ "004-v22.v22",  0x080000, 0x776fa2a2, 6 | BRF_SND },           // 10 					/ CXK384001
+	{ "004-v23.v23",  0x080000, 0xb3e7eeea, 6 | BRF_SND },           // 11 					/ CXK384001
+};
+
+STDROMPICKEXT(mahretsuuh, mahretsuuh, neogeo)
+STD_ROM_FN(mahretsuuh)
+
+struct BurnDriver BurnDrvMahretsuuh = {
+	"mahretsuuh", "mahretsu", "neogeo", NULL, "2026",
+	"Mahjong Kyo Retsuden (Uncensored Hack)\0", NULL, "SNK", "Neo Geo MVS",
+	L"\u9EBB\u96C0\u72C2\u5217\u4F1D\0Mahjong Kyo Retsuden (Uncensored Hack)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_MAHJONG, GBF_MAHJONG, 0,
+	NULL, mahretsuuhRomInfo, mahretsuuhRomName, NULL, NULL, NULL, NULL, neomahjongInputInfo, neomahjongDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
 };
 
 // Magician Lord (Korean Translation)
@@ -31575,6 +31371,37 @@ struct BurnDriver BurnDrvLegendosk = {
 	L"Legend of Success Joe / Ashitano Joe Densetsu\0\uB808\uC804\uB4DC \uC624\uBE0C \uC11D\uC138\uC2A4 \uC8E0 / \uB0B4\uC77C\uC758 \uC8E0 \uC804\uC124 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
 	NULL, legendoskRomInfo, legendoskRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
+// Robo Army (Korean Translation)
+
+static struct BurnRomInfo roboarmykRomDesc[] = {
+	{ "032-p1k.p1",   0x080000, 0x75960a2b, 1 | BRF_ESS | BRF_PRG }, //  0 68K code / D27C4000
+
+	{ "032-s1k.s1",   0x020000, 0xd8413e2f, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "032-c1k.c1",   0x100000, 0xe6bb14bf, 3 | BRF_GRA },           //  2 Sprite data / TC538200
+	{ "032-c2k.c2",   0x100000, 0x198640b3, 3 | BRF_GRA },           //  3 / TC538200
+	{ "032-c3k.c3",   0x080000, 0x03c8fa36, 3 | BRF_GRA },           //  4 / TC534200
+	{ "032-c4k.c4",   0x080000, 0x629bf54a, 3 | BRF_GRA },           //  5 / TC534200
+
+	{ "032-m1.m1",    0x020000, 0x35ec952d, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code / TC531001
+
+	{ "032-v1.v1",    0x100000, 0x63791533, 5 | BRF_SND },           //  7 Sound data / TC538200
+	{ "032-v2.v2",    0x100000, 0xeb95de70, 5 | BRF_SND },           //  8 / TC538200
+};
+
+STDROMPICKEXT(roboarmyk, roboarmyk, neogeo)
+STD_ROM_FN(roboarmyk)
+
+struct BurnDriver BurnDrvRoboarmyk = {
+	"roboarmyk", "roboarmy", "neogeo", NULL, "2026",
+	"Robo Army (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
+	L"Robo Army (Korean Translation)\0\uB85C\uBCF4 \uC544\uBBF8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_SCRFIGHT, 0,
+	NULL, roboarmykRomInfo, roboarmykRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
 };
@@ -32548,6 +32375,37 @@ struct BurnDriver BurnDrvRbff1uh = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Neo Bomberman (Korean Translation)
+
+static struct BurnRomInfo neobombekRomDesc[] = {
+	{ "093-p1k.p1",   0x100000, 0x2b26fd21, 1 | BRF_ESS | BRF_PRG }, //  0 68K code			/ TC538200
+
+	{ "093-s1k.s1",   0x020000, 0xe004378a, 2 | BRF_GRA },           //  1 Text layer tiles / TC531000
+
+	{ "093-c1k.c1",   0x400000, 0xb772815c, 3 | BRF_GRA },           //  2 Sprite data		/ TC5332205
+	{ "093-c2k.c2",   0x400000, 0x1eb201ec, 3 | BRF_GRA },           //  3 					/ TC5332205
+	{ "093-c3k.c3",   0x080000, 0xc92b6d28, 3 | BRF_GRA },           //  4 					/ TC534200
+	{ "093-c4k.c4",   0x080000, 0x4fbbbcc1, 3 | BRF_GRA },           //  5 					/ TC534200
+
+	{ "093-m1.m1",    0x020000, 0xe81e780b, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code			/ TC531001
+
+	{ "093-v1.v1",    0x400000, 0x02abd4b0, 5 | BRF_SND },           //  7 Sound data		/ TC5332204
+	{ "093-v2.v2",    0x200000, 0xa92b8b3d, 5 | BRF_SND },           //  8 					/ TC5316200
+};
+
+STDROMPICKEXT(neobombek, neobombek, neogeo)
+STD_ROM_FN(neobombek)
+
+struct BurnDriver BurnDrvNeobombek = {
+	"neobombek", "neobombe", "neogeo", NULL, "2026",
+	"Neo Bomberman (Korean Translation)\0", NULL, "Hudson", "Neo Geo MVS",
+	L"Neo Bomberman (Korean Translation)\0\uB124\uC624 \uBD04\uBC84\uB9E8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_MAZE, 0,
+	NULL, neobombekRomInfo, neobombekRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Art of Fighting 3 - The Path of the Warrior / Art of Fighting - Ryuuko no Ken Gaiden (Korean Translation)
 
 static struct BurnRomInfo aof3krRomDesc[] = {
@@ -32749,6 +32607,42 @@ struct BurnDriver BurnDrvKof96kr = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Ninja Master's - Haoh-ninpo-cho (Korean Translation)
+
+static struct BurnRomInfo ninjamaskRomDesc[] = {
+	{ "217-p1k.p1",   0x100000, 0x1f829f3c, 1 | BRF_ESS | BRF_PRG }, //  0 68K code 		/ TC538200
+	{ "217-p2k.sp2",  0x200000, 0xc5718899, 1 | BRF_ESS | BRF_PRG }, //  1 					/ TC5316200
+
+	{ "217-s1k.s1",   0x020000, 0x65106065, 2 | BRF_GRA },           //  2 Text layer tiles / TC531000
+
+	{ "217-c1k.c1",   0x400000, 0x8bf83955, 3 | BRF_GRA },           //  3 Sprite data 		/ TC5332205
+	{ "217-c2k.c2",   0x400000, 0x5e2e0cf7, 3 | BRF_GRA },           //  4 					/ TC5332205
+	{ "217-c3.c3",    0x400000, 0x59e8525f, 3 | BRF_GRA },           //  5 					/ TC5332205
+	{ "217-c4.c4",    0x400000, 0x8521add2, 3 | BRF_GRA },           //  6 					/ TC5332205
+	{ "217-c5.c5",    0x400000, 0xfb1896e5, 3 | BRF_GRA },           //  7 					/ TC5332205
+	{ "217-c6.c6",    0x400000, 0x1c98c54b, 3 | BRF_GRA },           //  8 					/ TC5332205
+	{ "217-c7k.c7",   0x400000, 0xbf49c97e, 3 | BRF_GRA },           //  9 					/ TC5332205
+	{ "217-c8k.c8",   0x400000, 0x7e044583, 3 | BRF_GRA },           // 10 					/ TC5332205
+
+	{ "217-m1.m1",    0x020000, 0xd00fb2af, 4 | BRF_ESS | BRF_PRG }, // 11 Z80 code			/ TC531001
+
+	{ "217-v1.v1",    0x400000, 0x1c34e013, 5 | BRF_SND },           // 12 Sound data 		/ TC5332204
+	{ "217-v2.v2",    0x200000, 0x22f1c681, 5 | BRF_SND },           // 13 					/ TC5316200
+};
+
+STDROMPICKEXT(ninjamask, ninjamask, neogeo)
+STD_ROM_FN(ninjamask)
+
+struct BurnDriver BurnDrvNinjamask = {
+	"ninjamask", "ninjamas", "neogeo", NULL, "2026",
+	"Ninja Master's - Haoh-ninpo-cho (Korean Translation)\0", NULL, "ADK / SNK", "Neo Geo MVS",
+	L"Ninja Master's - Haoh-ninpo-cho (Korean Translation)\0\uB2CC\uC790 \uB9C8\uC2A4\uD130\uC988 - \uD328\uC655\uC778\uBC95\uCCA9 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, 0,
+	NULL, ninjamaskRomInfo, ninjamaskRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
+};
+
 // Samurai Shodown IV - Amakusa's Revenge / Samurai Spirits - Amakusa Kourin (Korean Translation)
 
 static struct BurnRomInfo samsho4krRomDesc[] = {
@@ -32895,6 +32789,37 @@ struct BurnDriver BurnDrvRbffspeckr = {
 	NULL, rbffspeckrRomInfo, rbffspeckrRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 320, 224, 4, 3
+};
+
+// Twinkle Star Sprites (Korean Translation)
+
+static struct BurnRomInfo twinsprikRomDesc[] = {
+	{ "224-p1k.p1",   0x200000, 0x9140e8d5, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+
+	{ "224-s1k.s1",   0x020000, 0xc1d0f635, 2 | BRF_GRA },           //  1 Text layer tiles
+
+	{ "224-c1k.c1",   0x400000, 0x3e0a41e4, 3 | BRF_GRA },           //  2 Sprite data
+	{ "224-c2k.c2",   0x400000, 0x07c4e785, 3 | BRF_GRA },           //  3
+	{ "224-c3k.c3",   0x100000, 0x1a05b283, 3 | BRF_GRA },           //  4
+	{ "224-c4k.c4",   0x100000, 0x70773990, 3 | BRF_GRA },           //  5
+
+	{ "224-m1.m1",    0x020000, 0x364d6f96, 4 | BRF_ESS | BRF_PRG }, //  6 Z80 code
+
+	{ "224-v1.v1",    0x400000, 0xff57f088, 5 | BRF_SND },           //  7 Sound data
+	{ "224-v2.v2",    0x200000, 0x7ad26599, 5 | BRF_SND },           //  8
+};
+
+STDROMPICKEXT(twinsprik, twinsprik, neogeo)
+STD_ROM_FN(twinsprik)
+
+struct BurnDriver BurnDrvTwinsprik = {
+	"twinsprik", "twinspri", "neogeo", NULL, "2026",
+	"Twinkle Star Sprites (Korean Translation)\0", NULL, "ADK / SNK", "Neo Geo MVS",
+	L"Twinkle Star Sprites (Korean Translation)\0\uD2B8\uC719\uD074 \uC2A4\uD0C0 \uC2A4\uD504\uB77C\uC774\uCE20 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP, GBF_VERSHOOT, 0,
+	NULL, twinsprikRomInfo, twinsprikRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
 };
 
 // Waku Waku 7 (Korean Translation)
@@ -33418,6 +33343,41 @@ struct BurnDriver BurnDrvNeocup98k = {
 	0x1000, 320, 224, 4, 3
 };
 
+// Shock Troopers - 2nd Squad
+
+static struct BurnRomInfo shocktr2kRomDesc[] = {
+	{ "246-p1k.p1",   0x100000, 0x59834964, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "246-p2k.sp2",  0x400000, 0xcd77e78b, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "246-s1k.s1",   0x020000, 0xa2e1e6c9, 2 | BRF_GRA },           //  2 Text layer tiles
+
+	{ "246-c1k.c1",   0x800000, 0xbd2783d0, 3 | BRF_GRA },           //  3 Sprite data
+	{ "246-c2k.c2",   0x800000, 0xe0c4efbe, 3 | BRF_GRA },           //  4
+	{ "246-c3k.c3",   0x800000, 0xa2232d42, 3 | BRF_GRA },           //  5
+	{ "246-c4k.c4",   0x800000, 0xf1d7ea6c, 3 | BRF_GRA },           //  6
+	{ "246-c5k.c5",   0x800000, 0x441b5e32, 3 | BRF_GRA },           //  7
+	{ "246-c6k.c6",   0x800000, 0x846afc05, 3 | BRF_GRA },           //  8
+
+	{ "246-m1.m1",    0x020000, 0xd0604ad1, 4 | BRF_ESS | BRF_PRG }, // 10 Z80 code
+
+	{ "246-v1.v1",    0x400000, 0x16986fc6, 5 | BRF_SND },           // 10 Sound data
+	{ "246-v2.v2",    0x400000, 0xada41e83, 5 | BRF_SND },           // 11
+	{ "246-v3.v3",    0x200000, 0xa05ba5db, 5 | BRF_SND },           // 12
+};
+
+STDROMPICKEXT(shocktr2k, shocktr2k, neogeo)
+STD_ROM_FN(shocktr2k)
+
+struct BurnDriver BurnDrvShocktr2k = {
+	"shocktr2k", "shocktr2", "neogeo", NULL, "2026",
+	"Shock Troopers - 2nd Squad (Korean Translation)\0", NULL, "Saurus", "Neo Geo MVS",
+	L"Shock Troopers - 2nd Squad (Korean Translation)\0\uC1FC\uD06C \uD2B8\uB8E8\uD37C\uC2A4 - \uC138\uCEE8\uB4DC \uC2A4\uCFFC\uB4DC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_RUNGUN, 0,
+	NULL, shocktr2kRomInfo, shocktr2kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Battle Flip Shot (Korean Translation)
 
 static struct BurnRomInfo flipshotkRomDesc[] = {
@@ -33553,6 +33513,32 @@ struct BurnDriver BurnDrvKof99uh = {
 	0x1000, 304, 224, 4, 3
 };
 
+// Ganryu / Musashi Ganryuki (Korean Translation)
+
+static struct BurnRomInfo ganryukRomDesc[] = {
+	{ "252-p1k.p1",   0x200000, 0xffabe34e, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+
+	{ "252-c1k.c1",   0x800000, 0x23ceceec, 3 | BRF_GRA },           //  1 Sprite data
+	{ "252-c2k.c2",   0x800000, 0x8354c4f2, 3 | BRF_GRA },           //  2
+
+	{ "252-m1.m1",    0x020000, 0x30cc4099, 4 | BRF_ESS | BRF_PRG }, //  3 Z80 code
+
+	{ "252-v1.v1",    0x400000, 0xe5946733, 5 | BRF_SND },           //  4 Sound data
+};
+
+STDROMPICKEXT(ganryuk, ganryuk, neogeo)
+STD_ROM_FN(ganryuk)
+
+struct BurnDriver BurnDrvGanryuk = {
+	"ganryuk", "ganryu", "neogeo", NULL, "2026",
+	"Ganryu / Musashi Ganryuki (Korean Translation)\0", NULL, "Visco", "Neo Geo MVS",
+	L"Ganryu / Musashi Ganryuki (Korean Translation)\0\uAC04\uB958 / \uBB34\uC0AC\uC2DC \uAC04\uB958\uD0A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_SWAPP | HARDWARE_SNK_CMC42, GBF_SCRFIGHT, 0,
+	NULL, ganryukRomInfo, ganryukRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // Garou - Mark of the Wolves (Korean Translation)
 
 static struct BurnRomInfo garouhkRomDesc[] = {
@@ -33581,7 +33567,7 @@ STDROMPICKEXT(garouhk, garouhk, neogeo)
 STD_ROM_FN(garouhk)
 
 struct BurnDriver BurnDrvGarouhk = {
-	"garouhk", "garou", "neogeo", NULL, "1999",
+	"garouhk", "garou", "neogeo", NULL, "2026",
 	"Garou - Mark of the Wolves (Korean Translation)\0", NULL, "SNK", "Neo Geo MVS",
 	L"Garou\0\u9913\u72FC - Mark of the Wolves (Korean Translation)\0\uC544\uB791 - \uB9C8\uD06C \uC624\uBE0C \uB354 \uC6B8\uBE0C\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42 | HARDWARE_SNK_SMA_PROTECTION, GBF_VSFIGHT, FBF_FATFURY,
@@ -33696,6 +33682,37 @@ struct BurnDriver BurnDrvKof2kuh = {
 	NULL, kof2kuhRomInfo, kof2kuhRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
 	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
 	0x1000, 304, 224, 4, 3
+};
+
+// Sengoku 3 / Sengoku Densho 2001 (Korean Translation)
+
+static struct BurnRomInfo sengoku3kRomDesc[] = {
+	{ "261-ph1k.p1",  0x200000, 0x3797fcc3, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+
+	{ "261-c1k.c1",   0x800000, 0xfc993cd5, 3 | BRF_GRA },           //  1 Sprite data
+	{ "261-c2k.c2",   0x800000, 0xea4584f0, 3 | BRF_GRA },           //  2
+	{ "261-c3k.c3",   0x800000, 0xaa8639e4, 3 | BRF_GRA },           //  3
+	{ "261-c4k.c4",   0x800000, 0x98f1555a, 3 | BRF_GRA },           //  4
+
+	{ "261-m1.m1",    0x080000, 0x7d501c39, 4 | BRF_ESS | BRF_PRG }, //  5 Z80 code
+
+	{ "261-v1.v1",    0x400000, 0x64c30081, 5 | BRF_SND },           //  6 Sound data
+	{ "261-v2.v2",    0x400000, 0x392a9c47, 5 | BRF_SND },           //  7
+	{ "261-v3.v3",    0x400000, 0xc1a7ebe3, 5 | BRF_SND },           //  8
+	{ "261-v4.v4",    0x200000, 0x9000d085, 5 | BRF_SND },           //  9
+};
+
+STDROMPICKEXT(sengoku3k, sengoku3k, neogeo)
+STD_ROM_FN(sengoku3k)
+
+struct BurnDriver BurnDrvSengoku3k = {
+	"sengoku3k", "sengoku3", "neogeo", NULL, "2026",
+	"Sengoku 3 / Sengoku Densho 2001 (Korean Translation)\0", NULL, "Noise Factory / SNK", "Neo Geo MVS",
+	L"Sengoku 3 / Sengoku Densho 2001 (Korean Translation)\0\uC13C\uACE0\uCFE0 3 / \uC804\uAD6D\uC804\uC2B9 2001 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC42 | HARDWARE_SNK_SWAPP, GBF_SCRFIGHT, 0,
+	NULL, sengoku3kRomInfo, sengoku3kRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	NeoInit, NeoExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 320, 224, 4, 3
 };
 
 // The King of Fighters 2001 (AES Uncensored Hack)
@@ -33836,6 +33853,40 @@ struct BurnDriver BurnDrvMslug5uh = {
 	0x1000, 304, 224, 4, 3
 };
 
+// SNK vs. Capcom - SVC Chaos (Korean Translation)
+
+static struct BurnRomInfo svckRomDesc[] = {
+	{ "269-p1k.p1",   0x400000, 0xbffb7fa0, 1 | BRF_ESS | BRF_PRG }, //  0 68K code
+	{ "269-p2k.p2",   0x400000, 0x2472b6cc, 1 | BRF_ESS | BRF_PRG }, //  1
+
+	{ "269-c1rk.c1",  0x800000, 0xb36cc4ab, 3 | BRF_GRA },           //  2 Sprite data
+	{ "269-c2rk.c2",  0x800000, 0x3a99c36e, 3 | BRF_GRA },           //  3
+	{ "269-c3rk.c3",  0x800000, 0xe64ae3a1, 3 | BRF_GRA },           //  4
+	{ "269-c4rk.c4",  0x800000, 0xaf80ce9d, 3 | BRF_GRA },           //  5
+	{ "269-c5rk.c5",  0x800000, 0xee7648ee, 3 | BRF_GRA },           //  6
+	{ "269-c6rk.c6",  0x800000, 0x2fb3f044, 3 | BRF_GRA },           //  7
+	{ "269-c7rk.c7",  0x800000, 0x697e0a24, 3 | BRF_GRA },           //  8
+	{ "269-c8rk.c8",  0x800000, 0xeee1510b, 3 | BRF_GRA },           //  9
+
+	{ "269-m1.m1",    0x080000, 0xf6819d00, 4 | BRF_ESS | BRF_PRG }, //  10 Z80 code
+
+	{ "269-v1.v1",    0x800000, 0xc659b34c, 5 | BRF_SND },           // 11 Sound data
+	{ "269-v2.v2",    0x800000, 0xdd903835, 5 | BRF_SND },           // 12
+};
+
+STDROMPICKEXT(svck, svck, neogeo)
+STD_ROM_FN(svck)
+
+struct BurnDriver BurnDrvSvck = {
+	"svck", "svc", "neogeo", NULL, "2026",
+	"SNK vs. Capcom - SVC Chaos (Korean Translation)\0", NULL, "Playmore / Capcom", "Neo Geo MVS",
+	L"SNK vs. Capcom - SVC Chaos (Korean Translation)\0SNK vs. Capcom - SVC \uCE74\uC624\uC2A4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ALTERNATE_TEXT | HARDWARE_SNK_P32 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_KOF | FBF_SF,
+	NULL, svckRomInfo, svckRomName, NULL, NULL, NULL, NULL, neogeoInputInfo, neogeoDIPInfo,
+	svcpcbInit, NeoPVCExit, NeoFrame, NeoRender, NeoScan, &NeoRecalcPalette,
+	0x1000, 304, 224, 4, 3
+};
+
 // SNK vs. Capcom - SVC Chaos (AES Uncensored Hack)
 
 static struct BurnRomInfo svcuhRomDesc[] = {
@@ -33896,7 +33947,7 @@ STDROMPICKEXT(samsho5k, samsho5k, neogeo)
 STD_ROM_FN(samsho5k)
 
 struct BurnDriver BurnDrvSamsho5k = {
-	"samsho5k", "samsho5", "neogeo", NULL, "2003",
+	"samsho5k", "samsho5", "neogeo", NULL, "2026",
 	"Samurai Shodown V / Samurai Spirits Zero (Korean Translation)\0", NULL, "Yuki Enterprise / SNK Playmore", "Neo Geo MVS",
 	L"Samurai Shodown V / Samurai Spirits Zero (Korean Translation)\0\uC0AC\uBB34\uB77C\uC774 \uC1FC\uB2E4\uC6B4 V / \uC0AC\uBB34\uB77C\uC774 \uC2A4\uD53C\uB9AC\uCE20 \uC81C\uB85C (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_SAMSHO,
@@ -34040,7 +34091,7 @@ STDROMPICKEXT(samsh5spuh, samsh5spuh, neogeo)
 STD_ROM_FN(samsh5spuh)
 
 struct BurnDriver BurnDrvSamsh5spuh = {
-	"samsh5spuh", "samsh5sp", "neogeo", NULL, "2004",
+	"samsh5spuh", "samsh5sp", "neogeo", NULL, "2024",
 	"Samurai Shodown V Special / Samurai Spirits Zero Special (AES Uncensored Hack)\0", NULL, "Yuki Enterprise / SNK Playmore", "Neo Geo MVS",
 	L"Samurai Shodown V Special\0\u30B5\u30E0\u30E9\u30A4\u30B9\u30D4\u30EA\u30C3\u30C4\u96F6 Special (AES Uncensored Hack)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO | HARDWARE_SNK_CMC50 | HARDWARE_SNK_ENCRYPTED_M1, GBF_VSFIGHT, FBF_SAMSHO,
@@ -34109,7 +34160,7 @@ STDROMPICKEXT(samsh5pfk, samsh5pfk, neogeo)
 STD_ROM_FN(samsh5pfk)
 
 struct BurnDriver BurnDrvSamsh5pfk = {
-	"samsh5pfk", "samsh5sp", "neogeo", NULL, "2020",
+	"samsh5pfk", "samsh5sp", "neogeo", NULL, "2026",
 	"Samurai Shodown V Perfect / Samurai Spirits Zero Perfect (Korean Translation)\0", NULL, "bootleg", "Neo Geo MVS",
 	L"Samurai Shodown V Perfect / Samurai Spirits Zero Perfect (Korean Translation)\0\uC0AC\uBB34\uB77C\uC774 \uC1FC\uB2E4\uC6B4 V \uD37C\uD399\uD2B8 / \uC0AC\uBB34\uB77C\uC774 \uC2A4\uD53C\uB9AC\uCE20 \uC81C\uB85C \uD37C\uD399\uD2B8 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_PREFIX_CARTRIDGE | HARDWARE_SNK_NEOGEO, GBF_VSFIGHT, FBF_SAMSHO,
