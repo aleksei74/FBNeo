@@ -5,21 +5,11 @@ static const void FUNCNAME(BLIT_PARAMS)
 	UINT32* gfx2;
 	int y, yf;
 
-#if BLENDED == 1
-#if TINT == 0 && ((_SMODE == 0 && (_DMODE == 0 || _DMODE == 1 || _DMODE == 5)) || (_SMODE == 2 && _DMODE == 0))
-#define FAST_BLEND_LUT 1
-#else
-#define FAST_BLEND_LUT 0
-#endif
-#else
-#define FAST_BLEND_LUT 0
-#endif
-
-#if REALLY_SIMPLE == 0 && FAST_BLEND_LUT == 0
+#if REALLY_SIMPLE == 0
 	colour_t s_clr;
 #endif
 
-#if BLENDED == 1 && FAST_BLEND_LUT == 0
+#if BLENDED == 1
 	colour_t d_clr;
 
 #if _SMODE == 2
@@ -102,21 +92,23 @@ static const void FUNCNAME(BLIT_PARAMS)
 #if BLENDED == 1
 #if _SMODE == 0
 #if _DMODE == 0
-	const UINT8* blend_table = epic12_blend_s0_d0 + ((s_alpha * 0x20 + d_alpha) * 0x400);
+	const UINT8* salpha_table = epic12_device_colrtable[s_alpha];
+	const UINT8* dalpha_table = epic12_device_colrtable[d_alpha];
 #endif
 
 #if _DMODE == 5
-	const UINT8* blend_table = epic12_blend_s0_d5 + s_alpha * 0x400;
+	const UINT8* salpha_table = epic12_device_colrtable[s_alpha];
 #endif
 #if _DMODE == 1
-	const UINT8* blend_table = epic12_blend_s0_d1 + s_alpha * 0x400;
+	const UINT8* salpha_table = epic12_device_colrtable[s_alpha];
 #endif
 
 #endif
 
 #if _SMODE == 2
 #if _DMODE == 0
-	const UINT8* blend_table = epic12_blend_s2_d0 + d_alpha * 0x400;
+
+	const UINT8* dalpha_table = epic12_device_colrtable[d_alpha];
 #endif
 #endif
 #endif
@@ -137,66 +129,6 @@ static const void FUNCNAME(BLIT_PARAMS)
 			gfx2 += (src_x+startx);
 		#endif
 
-#if REALLY_SIMPLE == 1 && TRANSPARENT == 0 && FLIPX == 0
-		const int copy_width = dimx - startx;
-		if (copy_width > 0) {
-			if (bmp + copy_width <= gfx2 || gfx2 + copy_width <= bmp) {
-				memcpy(bmp, gfx2, copy_width * sizeof(UINT32));
-			} else {
-				const UINT32 *end = bmp + copy_width;
-				while (bmp < end) {
-					*bmp++ = *gfx2++;
-				}
-			}
-		}
-#elif REALLY_SIMPLE == 1 && TRANSPARENT == 1 && FLIPX == 0
-		const int copy_width = dimx - startx;
-		if (copy_width > 0) {
-			if (bmp + copy_width <= gfx2 || gfx2 + copy_width <= bmp) {
-				const UINT32 *end8 = gfx2 + (copy_width & ~7);
-				while (gfx2 < end8) {
-					const UINT32 p0 = gfx2[0];
-					const UINT32 p1 = gfx2[1];
-					const UINT32 p2 = gfx2[2];
-					const UINT32 p3 = gfx2[3];
-					const UINT32 p4 = gfx2[4];
-					const UINT32 p5 = gfx2[5];
-					const UINT32 p6 = gfx2[6];
-					const UINT32 p7 = gfx2[7];
-					const UINT32 opaque = (p0 & p1 & p2 & p3 & p4 & p5 & p6 & p7) & 0x20000000;
-					const UINT32 visible = (p0 | p1 | p2 | p3 | p4 | p5 | p6 | p7) & 0x20000000;
-
-					if (opaque) {
-						memcpy(bmp, gfx2, 8 * sizeof(UINT32));
-					} else if (visible) {
-						if (p0 & 0x20000000) bmp[0] = p0;
-						if (p1 & 0x20000000) bmp[1] = p1;
-						if (p2 & 0x20000000) bmp[2] = p2;
-						if (p3 & 0x20000000) bmp[3] = p3;
-						if (p4 & 0x20000000) bmp[4] = p4;
-						if (p5 & 0x20000000) bmp[5] = p5;
-						if (p6 & 0x20000000) bmp[6] = p6;
-						if (p7 & 0x20000000) bmp[7] = p7;
-					}
-
-					gfx2 += 8;
-					bmp += 8;
-				}
-
-				const UINT32 *end = gfx2 + (copy_width & 7);
-				while (gfx2 < end) {
-					const UINT32 value = *gfx2++;
-					if (value & 0x20000000) *bmp = value;
-					bmp++;
-				}
-			} else {
-				const UINT32 *end = bmp + copy_width;
-				while (bmp < end) {
-					#include "epic12pixel.inc"
-				}
-			}
-		}
-#else
 #if 1
 		const UINT32* end = bmp+(dimx-startx);
 #else
@@ -227,7 +159,6 @@ static const void FUNCNAME(BLIT_PARAMS)
 		{
 			#include "epic12pixel.inc"
 		}
-#endif
 
 	}
 
@@ -235,4 +166,3 @@ static const void FUNCNAME(BLIT_PARAMS)
 }
 
 #undef LOOP_INCREMENTS
-#undef FAST_BLEND_LUT

@@ -100,29 +100,6 @@ static void (*M377_write16)(UINT32,UINT16) = NULL;
 static UINT8  (*M377_ioread8)(UINT32) = NULL;
 static void (*M377_iowrite8)(UINT32,UINT8) = NULL;
 
-static UINT32 M377_idle_address = ~0U;
-static UINT32 M377_idle_pc = ~0U;
-static UINT16 M377_idle_mask = 0;
-static UINT16 M377_idle_value = 0;
-
-void M377SetIdleLoop(UINT32 address, UINT32 pc, UINT16 mask, UINT16 value)
-{
-	M377_idle_address = address & address_mask;
-	M377_idle_pc = pc & address_mask;
-	M377_idle_mask = mask;
-	M377_idle_value = value;
-}
-
-static inline UINT16 M377CheckIdleLoop(UINT32 address, UINT16 data)
-{
-	if (M377_idle_mask && address == M377_idle_address && M377GetPC() == M377_idle_pc &&
-		(data & M377_idle_mask) == M377_idle_value) {
-		M377RunEnd();
-	}
-
-	return data;
-}
-
 void M377SetWritePortHandler(void (*write)(UINT32,UINT8))
 {
 	M377_iowrite8 = write;
@@ -212,10 +189,10 @@ static UINT16 program_read_word_16le(UINT32 a)
 #endif
 
 #ifdef LSB_FIRST
-		return M377CheckIdleLoop(a, (flag & MEM_ENDISWAP) ? ENDISWAP16(*z) : *z);
+		return (flag & MEM_ENDISWAP) ? ENDISWAP16(*z) : *z;
 #else
 		//printf("C 0x%x - flag: %d\n", (flag & MEM_ENDISWAP) ? *z : BURN_ENDIAN_SWAP_INT16(*z), flag);
-		return M377CheckIdleLoop(a, (flag & MEM_ENDISWAP) ? *z : BURN_ENDIAN_SWAP_INT16(*z));
+		return (flag & MEM_ENDISWAP) ? *z : BURN_ENDIAN_SWAP_INT16(*z);
 #endif
 	}
 
@@ -798,10 +775,6 @@ static void m37710_recalc_timer(int timer)
 static void m37710_adc_cb()
 {
 	INT32 line = m377.m37710_regs[0x1e] & 0x07;
-
-	m377.m37710_regs[0x20 + (line * 2)] = io_read_byte(M37710_ADC0_L + (line * 2));
-	m377.m37710_regs[0x21 + (line * 2)] = io_read_byte(M37710_ADC0_H + (line * 2));
-
 	if (m377.m37710_regs[0x1e] & 0x10) {
 		m377.m37710_regs[0x1e] = (m377.m37710_regs[0x1e] & 0xf8) | ((line + 1) & 0x07);
 	}
@@ -877,37 +850,37 @@ static UINT8 m37710_internal_r(int offset)
 
 		// A-D regs
 		case 0x20:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC0_L);
 		case 0x21:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC0_H);
 		case 0x22:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC1_L);
 		case 0x23:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC1_H);
 		case 0x24:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC2_L);
 		case 0x25:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC2_H);
 		case 0x26:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC3_L);
 		case 0x27:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC3_H);
 		case 0x28:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC4_L);
 		case 0x29:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC4_H);
 		case 0x2a:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC5_L);
 		case 0x2b:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC5_H);
 		case 0x2c:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC6_L);
 		case 0x2d:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC6_H);
 		case 0x2e:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC7_L);
 		case 0x2f:
-			return m377.m37710_regs[offset];
+			return io_read_byte(M37710_ADC7_H);
 
 		// UART control (not hooked up yet)
 		case 0x34: case 0x3c:
@@ -1016,14 +989,14 @@ static void m37710_internal_w(int offset, UINT8 data)
 		case 0x76: case 0x77: case 0x78: case 0x79: case 0x7a: case 0x7b: case 0x7c:
 			//bprintf(0, _T("Internal Interrupt Control %x\n"), offset);
 			//m37710_set_irq_line(offset, (data & 8) ? HOLD_LINE : CLEAR_LINE);
-			m37710i_update_irqs();
+			//m37710i_update_irqs();
 			break;
 
 		// external interrupt control
 		case 0x7d: case 0x7e: case 0x7f:
 			//bprintf(0, _T("External Interrupt Control %x\n"), offset);
 			//m37710_set_irq_line(offset, (data & 8) ? HOLD_LINE : CLEAR_LINE);
-			m37710i_update_irqs();
+			//m37710i_update_irqs();
 
 			// level-sense interrupts are not implemented yet
 			//if (data & 0x20) logerror("error M37710: INT%d level-sense\n",offset-0x7d);
@@ -1535,7 +1508,6 @@ void M377Init(INT32 cpunum, INT32 cputype)
 
 	memset(&m377, 0, sizeof(m377));
 	memset(internal_ram, 0, 0x800);
-	M377SetIdleLoop(~0U, ~0U, 0, 0);
 
 	m377.subtype = cputype;
 
@@ -1550,8 +1522,6 @@ void M377Init(INT32 cpunum, INT32 cputype)
 
 void M377Exit()
 {
-	M377SetIdleLoop(~0U, ~0U, 0, 0);
-
 	for (INT32 i = 0; i < 3; i++) {
 		BurnFree(mem[i]);
 	}

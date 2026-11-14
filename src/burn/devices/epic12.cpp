@@ -10,8 +10,8 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "tiles_generic.h"
 #include "sh4_intf.h"
 #include "thready.h"
-#include "epic12_threads.h"
 #include "rectangle.h"
+#include <math.h> // floor()
 
 static const int EP1C_VRAM_CLK_NANOSEC = 13;
 static const int EP1C_SRAM_CLK_NANOSEC = 20;
@@ -76,18 +76,7 @@ static UINT8 epic12_device_colrtable[0x20][0x40];
 static UINT8 epic12_device_colrtable_rev[0x20][0x40];
 static UINT8 epic12_device_colrtable_add[0x20][0x20];
 
-// Cache the final 5-bit channel result for the blend modes used most heavily
-// by the games. Each draw selects one 32x32 slice, keeping the active table
-// small while removing dependent multiply/add table lookups per pixel.
-static UINT8 epic12_blend_s0_d0[0x20 * 0x20 * 0x20 * 0x20];
-static UINT8 epic12_blend_s0_d1[0x20 * 0x20 * 0x20];
-static UINT8 epic12_blend_s0_d5[0x20 * 0x20 * 0x20];
-static UINT8 epic12_blend_s2_d0[0x20 * 0x20 * 0x20];
-static INT32 epic12_color_tables_initialized;
-
 static UINT16 *pal16 = NULL; // palette lut for 16bpp video emulation
-static UINT32 *upload_palette = NULL;
-static Epic12ThreadPool epic12_threads;
 
 #include "epic12.h"
 
@@ -318,11 +307,9 @@ static void run_blitter_cb()
 void epic12_exit()
 {
 	thready.exit();
-	epic12_threads.Shutdown();
 
 	BurnFree(m_bitmaps);
 	BurnFree(m_ram16_copy);
-	BurnFree(upload_palette);
 
 	if (pal16) {
 		BurnFree(pal16);
@@ -338,17 +325,11 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	m_ram16 = ram;
 
 	m_ram16_copy = (UINT16*)BurnMalloc(ram_size);
-	upload_palette = (UINT32*)BurnMalloc(0x10000 * sizeof(UINT32));
-	for (UINT32 pixel = 0; pixel < 0x10000; pixel++) {
-		upload_palette[pixel] = ((pixel & 0x8000) << 14) | ((pixel & 0x7c00) << 9) |
-			((pixel & 0x03e0) << 6) | ((pixel & 0x001f) << 3);
-	}
 
 	dips = dippy;
 
 	m_gfx_size = 0x2000 * 0x1000;
 	m_bitmaps = (UINT32*)BurnMalloc (m_gfx_size * 4);
-	epic12_threads.Configure();
 
 	m_clip.set(0, 0x2000-1, 0, 0x1000-1);
 
@@ -404,75 +385,28 @@ void epic12_set_blitter_sleep_on_busy(INT32 busysleep_on)
 
 void epic12_reset()
 {
-	if (!epic12_color_tables_initialized)
+	// cache table to avoid divides in blit code, also pre-clamped
+	int x,y;
+	for (y=0;y<0x40;y++)
 	{
-		// Cache tables are immutable after construction.
-		for (int y = 0; y < 0x40; y++)
+		for (x=0;x<0x20;x++)
 		{
-			for (int x = 0; x < 0x20; x++)
-			{
-				epic12_device_colrtable[x][y] = (x*y) / 0x1f;
-				if (epic12_device_colrtable[x][y]>0x1f) epic12_device_colrtable[x][y] = 0x1f;
+			epic12_device_colrtable[x][y] = (x*y) / 0x1f;
+			if (epic12_device_colrtable[x][y]>0x1f) epic12_device_colrtable[x][y] = 0x1f;
 
-				epic12_device_colrtable_rev[x^0x1f][y] = (x*y) / 0x1f;
-				if (epic12_device_colrtable_rev[x^0x1f][y]>0x1f) epic12_device_colrtable_rev[x^0x1f][y] = 0x1f;
-			}
+			epic12_device_colrtable_rev[x^0x1f][y] = (x*y) / 0x1f;
+			if (epic12_device_colrtable_rev[x^0x1f][y]>0x1f) epic12_device_colrtable_rev[x^0x1f][y] = 0x1f;
 		}
+	}
 
-		// Preclamped add table.
-		for (int y = 0; y < 0x20; y++)
+	// preclamped add table
+	for (y=0;y<0x20;y++)
+	{
+		for (x=0;x<0x20;x++)
 		{
-			for (int x = 0; x < 0x20; x++)
-			{
-				epic12_device_colrtable_add[x][y] = (x+y);
-				if (epic12_device_colrtable_add[x][y]>0x1f) epic12_device_colrtable_add[x][y] = 0x1f;
-			}
+			epic12_device_colrtable_add[x][y] = (x+y);
+			if (epic12_device_colrtable_add[x][y]>0x1f) epic12_device_colrtable_add[x][y] = 0x1f;
 		}
-
-		for (int alpha = 0; alpha < 0x20; alpha++)
-		{
-			UINT8 *s0d1 = epic12_blend_s0_d1 + alpha * 0x400;
-			UINT8 *s0d5 = epic12_blend_s0_d5 + alpha * 0x400;
-			UINT8 *s2d0 = epic12_blend_s2_d0 + alpha * 0x400;
-
-			for (int source = 0; source < 0x20; source++)
-			{
-				const int source_base = source << 5;
-				for (int dest = 0; dest < 0x20; dest++)
-				{
-					const int index = source_base | dest;
-					s0d1[index] = epic12_device_colrtable_add
-						[epic12_device_colrtable[alpha][source]]
-						[epic12_device_colrtable[source][dest]];
-					s0d5[index] = epic12_device_colrtable_add
-						[epic12_device_colrtable[alpha][source]]
-						[epic12_device_colrtable_rev[source][dest]];
-					s2d0[index] = epic12_device_colrtable_add
-						[epic12_device_colrtable[dest][source]]
-						[epic12_device_colrtable[alpha][dest]];
-				}
-			}
-		}
-
-		for (int s_alpha = 0; s_alpha < 0x20; s_alpha++)
-		{
-			for (int d_alpha = 0; d_alpha < 0x20; d_alpha++)
-			{
-				UINT8 *table = epic12_blend_s0_d0 + ((s_alpha * 0x20 + d_alpha) * 0x400);
-				for (int source = 0; source < 0x20; source++)
-				{
-					const int source_base = source << 5;
-					for (int dest = 0; dest < 0x20; dest++)
-					{
-						table[source_base | dest] = epic12_device_colrtable_add
-							[epic12_device_colrtable[s_alpha][source]]
-							[epic12_device_colrtable[d_alpha][dest]];
-					}
-				}
-			}
-		}
-
-		epic12_color_tables_initialized = 1;
 	}
 
 	m_blitter_busy = 0;
@@ -502,72 +436,33 @@ static inline UINT16 READ_NEXT_WORD(UINT32 *addr)
 
 static inline UINT16 COPY_NEXT_WORD(UINT32 *addr)
 {
-	const UINT32 offset = (*addr & m_main_rammask) >> 1;
-	const UINT16 data = m_ram16[offset];
-	m_ram16_copy[offset] = data;
+	const UINT16 data = m_ram16[((*addr & m_main_rammask) >> 1)];
+	m_ram16_copy[((*addr & m_main_rammask) >> 1)] = data;
 
 	*addr += 2;
 
 	return data;
 }
 
-static void COPY_NEXT_WORDS(UINT32 *addr, UINT32 words)
-{
-	const UINT32 ram_words = m_main_ramsize >> 1;
-
-	while (words)
-	{
-		const UINT32 offset = (*addr & m_main_rammask) >> 1;
-		const UINT32 available = ram_words - offset;
-		const UINT32 chunk = (words < available) ? words : available;
-
-		memcpy(m_ram16_copy + offset, m_ram16 + offset, chunk * sizeof(UINT16));
-		*addr += chunk * sizeof(UINT16);
-		words -= chunk;
-	}
-}
-
-static inline const UINT16 *READ_WORD_BLOCK(UINT32 *addr, UINT32 words, UINT16 *wrapped)
-{
-	const UINT32 ram_words = m_main_ramsize >> 1;
-	const UINT32 offset = (*addr & m_main_rammask) >> 1;
-
-	if (words <= ram_words - offset) {
-		*addr += words * sizeof(UINT16);
-		return m_ram16_copy + offset;
-	}
-
-	for (UINT32 i = 0; i < words; i++) {
-		wrapped[i] = READ_NEXT_WORD(addr);
-	}
-	return wrapped;
-}
-
-static inline const UINT16 *COPY_WORD_BLOCK(UINT32 *addr, UINT32 words, UINT16 *wrapped)
-{
-	const UINT32 ram_words = m_main_ramsize >> 1;
-	const UINT32 offset = (*addr & m_main_rammask) >> 1;
-
-	if (words <= ram_words - offset) {
-		memcpy(m_ram16_copy + offset, m_ram16 + offset, words * sizeof(UINT16));
-		*addr += words * sizeof(UINT16);
-		return m_ram16_copy + offset;
-	}
-
-	for (UINT32 i = 0; i < words; i++) {
-		wrapped[i] = COPY_NEXT_WORD(addr);
-	}
-	return wrapped;
-}
-
 static void gfx_upload_shadow_copy(UINT32 *addr)
 {
-	UINT16 wrapped[8];
-	const UINT16 *command = COPY_WORD_BLOCK(addr, 8, wrapped);
-	const UINT32 dimx = (command[6] & 0x1fff) + 1;
-	const UINT32 dimy = (command[7] & 0x0fff) + 1;
+	COPY_NEXT_WORD(addr);
+	COPY_NEXT_WORD(addr);
+	COPY_NEXT_WORD(addr);
+	COPY_NEXT_WORD(addr);
+	COPY_NEXT_WORD(addr);
+	COPY_NEXT_WORD(addr);
 
-	COPY_NEXT_WORDS(addr, dimx * dimy);
+	const UINT32 dimx = (COPY_NEXT_WORD(addr) & 0x1fff) + 1;
+	const UINT32 dimy = (COPY_NEXT_WORD(addr) & 0x0fff) + 1;
+
+	for (UINT32 y = 0; y < dimy; y++)
+	{
+		for (UINT32 x = 0; x < dimx; x++)
+		{
+			COPY_NEXT_WORD(addr);
+		}
+	}
 
 	// Time spent on uploads is mostly due to Main RAM accesses.
 	// The Blitter will send BREQ requests to the SH-3, to access Main RAM
@@ -582,42 +477,28 @@ static void gfx_upload_shadow_copy(UINT32 *addr)
 	m_blit_idle_op_bytes = 0;
 }
 
-static void gfx_upload_pixels(UINT32 *dst, UINT32 *addr, UINT32 pixels)
-{
-	const UINT32 ram_words = m_main_ramsize >> 1;
-
-	while (pixels)
-	{
-		const UINT32 offset = (*addr & m_main_rammask) >> 1;
-		const UINT32 available = ram_words - offset;
-		const UINT32 chunk = (pixels < available) ? pixels : available;
-		const UINT16 *src = m_ram16_copy + offset;
-
-		for (UINT32 i = 0; i < chunk; i++) {
-			dst[i] = upload_palette[src[i]];
-		}
-
-		dst += chunk;
-		*addr += chunk * sizeof(UINT16);
-		pixels -= chunk;
-	}
-}
-
 static void gfx_upload(UINT32 *addr)
 {
-	UINT32 y, dst_x_start, dst_y_start, dimx, dimy;
+	UINT32 x,y, dst_p,dst_x_start,dst_y_start, dimx,dimy;
 	UINT32 *dst;
-	UINT16 wrapped[8];
-	const UINT16 *command = READ_WORD_BLOCK(addr, 8, wrapped);
 
-	dst_x_start = command[4];
-	dst_y_start = command[5];
+	// 0x20000000
+	READ_NEXT_WORD(addr);
+	READ_NEXT_WORD(addr);
 
+	// 0x99999999
+	READ_NEXT_WORD(addr);
+	READ_NEXT_WORD(addr);
+
+	dst_x_start = READ_NEXT_WORD(addr);
+	dst_y_start = READ_NEXT_WORD(addr);
+
+	dst_p = 0;
 	dst_x_start &= 0x1fff;
 	dst_y_start &= 0x0fff;
 
-	dimx = (command[6] & 0x1fff) + 1;
-	dimy = (command[7] & 0x0fff) + 1;
+	dimx = (READ_NEXT_WORD(addr) & 0x1fff) + 1;
+	dimy = (READ_NEXT_WORD(addr) & 0x0fff) + 1;
 
 	//bprintf(0, _T("GFX COPY: DST %02X,%02X,%03X DIM %02X,%03X\n"), dst_p,dst_x_start,dst_y_start, dimx,dimy);
 
@@ -627,7 +508,15 @@ static void gfx_upload(UINT32 *addr)
 		dst = m_bitmaps + (dst_y_start + y) * 0x2000;
 
 		dst += dst_x_start;
-		gfx_upload_pixels(dst, addr, dimx);
+
+		for (x = 0; x < dimx; x++)
+		{
+			UINT16 pendat = READ_NEXT_WORD(addr);
+			// real hw would upload the gfxword directly, but our VRAM is 32-bit, so convert it.
+			//dst[dst_x_start + x] = pendat;
+			*dst++ = ((pendat&0x8000)<<14) | ((pendat&0x7c00)<<9) | ((pendat&0x03e0)<<6) | ((pendat&0x001f)<<3);  // --t- ---- rrrr r--- gggg g--- bbbb b---  format
+			//dst[dst_x_start + x] = ((pendat&0x8000)<<14) | ((pendat&0x7c00)<<6) | ((pendat&0x03e0)<<3) | ((pendat&0x001f)<<0);  // --t- ---- ---r rrrr ---g gggg ---b bbbb  format
+		}
 	}
 }
 
@@ -745,31 +634,35 @@ static epic12_device_blitfunction epic12_device_f1_ti0_tr0_blit_funcs[] =
 */
 inline UINT16 calculate_vram_accesses(UINT16 start_x, UINT16 start_y, UINT16 dimx, UINT16 dimy)
 {
-	const UINT32 x_chunks = (dimx + 31) >> 5;
-	const UINT32 y_chunks = (dimy + 31) >> 5;
-	const UINT32 x_tail = ((dimx - 1) & 31) + 1;
-	const UINT32 y_tail = ((dimy - 1) & 31) + 1;
-	const UINT32 x_offset = start_x & 31;
-	const UINT32 y_offset = start_y & 31;
-
-	const UINT32 x_crossings = x_offset ?
-		(x_chunks - 1 + ((x_offset + x_tail) > 32)) : 0;
-	const UINT32 y_crossings = y_offset ?
-		(y_chunks - 1 + ((y_offset + y_tail) > 32)) : 0;
-
-	return (UINT16)((x_chunks + x_crossings) * (y_chunks + y_crossings));
+	int x_rows = 0;
+	int num_vram_rows = 0;
+	for (int x_pixels = dimx; x_pixels > 0; x_pixels -= 32)
+	{
+		x_rows++;
+		if (((start_x & 31) + MIN(32, x_pixels)) > 32)
+			x_rows++;  // Drawing across multiple horizontal VRAM row boundaries.
+	}
+	for (int y_pixels = dimy; y_pixels > 0; y_pixels -= 32)
+	{
+		num_vram_rows += x_rows;
+		if (((start_y & 31) + MIN(32, y_pixels)) > 32)
+			num_vram_rows += x_rows;  // Drawing across multiple vertical VRAM row boundaries.	
+	}
+	return num_vram_rows;
 }
 
 static void gfx_draw_shadow_copy(UINT32 *addr)
 {
-	UINT16 wrapped[10];
-	const UINT16 *command = COPY_WORD_BLOCK(addr, 10, wrapped);
-	UINT16 src_x_start = command[2];
-	UINT16 src_y_start = command[3];
-	UINT16 dst_x_start = command[4];
-	UINT16 dst_y_start = command[5];
-	UINT16 src_dimx = (command[6] & 0x1fff) + 1;
-	UINT16 src_dimy = (command[7] & 0x0fff) + 1;
+	COPY_NEXT_WORD(addr);
+	COPY_NEXT_WORD(addr);
+	UINT16 src_x_start = COPY_NEXT_WORD(addr);
+	UINT16 src_y_start = COPY_NEXT_WORD(addr);
+	UINT16 dst_x_start = COPY_NEXT_WORD(addr);
+	UINT16 dst_y_start = COPY_NEXT_WORD(addr);
+	UINT16 src_dimx = (COPY_NEXT_WORD(addr) & 0x1fff) + 1;
+	UINT16 src_dimy = (COPY_NEXT_WORD(addr) & 0x0fff) + 1;
+	COPY_NEXT_WORD(addr);
+	COPY_NEXT_WORD(addr);
 
 	// Calculate Blitter delay for the Draw operation.
 	// On real hardware, the Blitter will read operations into a FIFO queue
@@ -835,19 +728,17 @@ static void gfx_draw(UINT32 *addr)
 	int trans,blend, s_mode, d_mode;
 	clr_t tint_clr;
 	int tinted = 0;
-	UINT16 wrapped[10];
-	const UINT16 *command = READ_WORD_BLOCK(addr, 10, wrapped);
 
-	UINT16 attr        = command[0];
-	UINT16 alpha       = command[1];
-	UINT16 src_x       = command[2];
-	UINT16 src_y       = command[3];
-	UINT16 dst_x_start = command[4];
-	UINT16 dst_y_start = command[5];
-	UINT16 w           = command[6];
-	UINT16 h           = command[7];
-	UINT16 tint_r      = command[8];
-	UINT16 tint_gb     = command[9];
+	UINT16 attr     =   READ_NEXT_WORD(addr);
+	UINT16 alpha    =   READ_NEXT_WORD(addr);
+	UINT16 src_x    =   READ_NEXT_WORD(addr);
+	UINT16 src_y    =   READ_NEXT_WORD(addr);
+	UINT16 dst_x_start  =   READ_NEXT_WORD(addr);
+	UINT16 dst_y_start  =   READ_NEXT_WORD(addr);
+	UINT16 w        =   READ_NEXT_WORD(addr);
+	UINT16 h        =   READ_NEXT_WORD(addr);
+	UINT16 tint_r   =   READ_NEXT_WORD(addr);
+	UINT16 tint_gb  =   READ_NEXT_WORD(addr);
 
 	// 0: +alpha
 	// 1: +source
@@ -901,7 +792,6 @@ static void gfx_draw(UINT32 *addr)
 	// surprisingly frequent, need to verify if it produces a worthwhile speedup tho.
 	if ((s_mode==0 && s_alpha==0x1f) && (d_mode==4 && d_alpha==0x1f))
 		blend = 0;
-
 
 	if (tinted)
 	{
@@ -1162,7 +1052,7 @@ static void gfx_exec_write(UINT32 data)
 				{
 					m_blitter_busy = 1;
 					int delay = epic12_device_blit_delay*(15 * m_delay_scale / 50);
-					INT32 cycles = (INT32)(((UINT64)delay * sh4_get_cpu_speed()) / 1000000000ULL);
+					INT32 cycles = (INT32)((double)((double)delay / 1000000000) * sh4_get_cpu_speed());
 
 					//bprintf(0, _T("old_blitter_delay  %d   cycles  %d\n"),delay, cycles);
 
@@ -1175,7 +1065,7 @@ static void gfx_exec_write(UINT32 data)
 			} else {  // new method (buffis)
 				// Every EP1C_VRAM_H_LINE_PERIOD_NANOSEC, the Blitter will block other operations, due
 				// to fetching a horizontal line from VRAM for output.
-				m_blit_delay_ns += (m_blit_delay_ns / EP1C_VRAM_H_LINE_PERIOD_NANOSEC) * EP1C_VRAM_H_LINE_DURATION_NANOSEC;
+				m_blit_delay_ns += floor( m_blit_delay_ns / EP1C_VRAM_H_LINE_PERIOD_NANOSEC ) * EP1C_VRAM_H_LINE_DURATION_NANOSEC;
 
 				// Check if Blitter takes longer than a frame to render.
 				// In practice, there's a bit less time than this to allow for lack of slowdown but
@@ -1185,7 +1075,7 @@ static void gfx_exec_write(UINT32 data)
 
 				m_blitter_busy = 1;
 
-				INT32 cycles = (INT32)((m_blit_delay_ns * (UINT64)sh4_get_cpu_speed()) / 1000000000ULL);
+				INT32 cycles = (INT32)((double)((double)m_blit_delay_ns / 1000000000) * sh4_get_cpu_speed());
 
 				//bprintf(0, _T("new blit_delay  %I64d   cycles  %d\n"),m_blit_delay_ns, cycles);
 
@@ -1203,105 +1093,95 @@ static void pal16_check_init()
 	if (nBurnBpp < 3 && !pal16) {
 		pal16 = (UINT16 *)BurnMalloc((1 << 24) * sizeof (UINT16));
 
-		struct Pal16Context {
-			UINT16 *palette;
-		} context = { pal16 };
-
-		epic12_threads.ParallelFor(1 << 24, 1 << 18,
-			[](void *opaque, INT32 begin, INT32 end) {
-				Pal16Context *palette_context = (Pal16Context*)opaque;
-				for (INT32 i = begin; i < end; i++) {
-					palette_context->palette[i] = BurnHighCol(i >> 16, (i >> 8) & 0xff, i & 0xff, 0);
-				}
-			}, &context);
+		for (INT32 i = 0; i < (1 << 24); i++) {
+			pal16[i] = BurnHighCol(i / 0x10000, (i / 0x100) & 0xff, i & 0xff, 0);
+		}
 	}
 }
 
-struct Epic12DisplayContext {
-	UINT8 *destination;
-	UINT32 *source;
-	INT32 scrollx;
-	INT32 scrolly;
-	INT32 width;
-	INT32 pitch;
-	INT32 bytesPerPixel;
-};
-
-static void epic12_draw_screen_rows(void *opaque, INT32 begin, INT32 end)
+static void epic12_draw_screen16_24bpp()
 {
-	Epic12DisplayContext *context = (Epic12DisplayContext*)opaque;
+	INT32 scrollx = -m_gfx_scroll_x;
+	INT32 scrolly = -m_gfx_scroll_y;
+
+	UINT8  *dst = (UINT8  *)pBurnDraw;
+	UINT32 *src = (UINT32 *)m_bitmaps;
 	const INT32 heightmask = 0x1000 - 1;
 	const INT32 widthmask  = 0x2000 - 1;
 
-	for (INT32 y = begin; y < end; y++)
+	for (INT32 y = 0; y < nScreenHeight; y++)
 	{
-		UINT32 *source = &context->source[((y - context->scrolly) & heightmask) * 0x2000];
-		UINT8 *destination = context->destination + y * context->pitch;
-		INT32 sourceX = (-context->scrollx) & widthmask;
-		const INT32 first = ((0x2000 - sourceX) < context->width) ?
-			(0x2000 - sourceX) : context->width;
-		const INT32 second = context->width - first;
+		UINT32 *s0 = &src[((y - scrolly) & heightmask) * 0x2000];
+		INT32 sx;
 
-		switch (context->bytesPerPixel) {
-			case 2: {
-				UINT16 *output = (UINT16*)destination;
-				for (INT32 x = 0; x < first; x++) {
-					output[x] = pal16[source[sourceX + x] & 0xffffff];
-				}
-				for (INT32 x = 0; x < second; x++) {
-					output[first + x] = pal16[source[x] & 0xffffff];
+		switch (nBurnBpp) {
+			case 2: // 16bpp
+				for (INT32 x = 0; x < nScreenWidth; x++, dst += nBurnBpp)
+				{
+					sx = x - scrollx;
+					PutPix(dst, pal16[s0[sx & widthmask]&((1<<24)-1)]);
 				}
 				break;
-			}
-
-			case 3: {
-				for (INT32 x = 0; x < first; x++) {
-					const UINT32 color = source[sourceX + x];
-					UINT8 *pixel = destination + x * 3;
-					pixel[0] = color & 0xff;
-					pixel[1] = (color >> 8) & 0xff;
-					pixel[2] = color >> 16;
-				}
-				for (INT32 x = 0; x < second; x++) {
-					const UINT32 color = source[x];
-					UINT8 *pixel = destination + (first + x) * 3;
-					pixel[0] = color & 0xff;
-					pixel[1] = (color >> 8) & 0xff;
-					pixel[2] = color >> 16;
+			case 3: // 24bpp
+				for (INT32 x = 0; x < nScreenWidth; x++, dst += nBurnBpp)
+				{
+					sx = x - scrollx;
+					PutPix(dst, s0[sx & widthmask]);
 				}
 				break;
-			}
-
-			case 4: {
-				memcpy(destination, source + sourceX, first * sizeof(UINT32));
-				if (second) {
-					memcpy(destination + first * sizeof(UINT32), source,
-						second * sizeof(UINT32));
-				}
-				break;
-			}
 		}
 	}
 }
 
 void epic12_draw_screen(UINT8 &recalc_palette)
 {
-	if (nBurnBpp != 4 && recalc_palette) {
-		pal16_check_init();
-		recalc_palette = 0;
+	INT32 scrollx = -m_gfx_scroll_x;
+	INT32 scrolly = -m_gfx_scroll_y;
+
+	if (nBurnBpp != 4) {
+		if (recalc_palette) {
+			pal16_check_init();
+			recalc_palette = 0;
+		}
+
+		epic12_draw_screen16_24bpp();
+		return;
 	}
 
-	Epic12DisplayContext context = {
-		pBurnDraw,
-		m_bitmaps,
-		-(INT32)m_gfx_scroll_x,
-		-(INT32)m_gfx_scroll_y,
-		nScreenWidth,
-		nBurnPitch,
-		nBurnBpp
-	};
-	epic12_threads.ParallelFor(nScreenHeight, 64, epic12_draw_screen_rows, &context);
+	UINT32 *dst = (UINT32 *)pBurnDraw;
+	UINT32 *src = (UINT32 *)m_bitmaps;
+	const INT32 heightmask = 0x1000 - 1;
+	const INT32 widthmask  = 0x2000 - 1;
+
+	for (INT32 y = 0; y < nScreenHeight; y++)
+	{
+		UINT32 *s0 = &src[((y - scrolly) & heightmask) * 0x2000];
+		UINT32 *d0 = dst + (y * nScreenWidth);
+		INT32 sx;
+		for (INT32 x = 0; x < nScreenWidth; x+=16)
+		{
+			sx = x - scrollx;
+			d0[x + 0] = s0[((sx + 0)) & widthmask];
+			d0[x + 1] = s0[((sx + 1)) & widthmask];
+			d0[x + 2] = s0[((sx + 2)) & widthmask];
+			d0[x + 3] = s0[((sx + 3)) & widthmask];
+			d0[x + 4] = s0[((sx + 4)) & widthmask];
+			d0[x + 5] = s0[((sx + 5)) & widthmask];
+			d0[x + 6] = s0[((sx + 6)) & widthmask];
+			d0[x + 7] = s0[((sx + 7)) & widthmask];
+			d0[x + 8] = s0[((sx + 8)) & widthmask];
+			d0[x + 9] = s0[((sx + 9)) & widthmask];
+			d0[x +10] = s0[((sx +10)) & widthmask];
+			d0[x +11] = s0[((sx +11)) & widthmask];
+			d0[x +12] = s0[((sx +12)) & widthmask];
+			d0[x +13] = s0[((sx +13)) & widthmask];
+			d0[x +14] = s0[((sx +14)) & widthmask];
+			d0[x +15] = s0[((sx +15)) & widthmask];
+		}
+	}
 }
+
+
 
 // 0x18000000 - 0x18000057
 
@@ -1392,3 +1272,4 @@ void epic12_scan(INT32 nAction, INT32 *pnMin)
 	}
 	thready.scan();
 }
+

@@ -71,6 +71,7 @@ void __fastcall cps3SndWriteWord(UINT32 addr, UINT16 data)
 	
 	if (addr < 0x200) {
 		chip->voice[addr >> 5].regs[(addr>>1) & 0xf] = data;
+		//bprintf(PRINT_NORMAL, _T("SND Attempt to write word value %4x to Chip[%02d][%02d] %s\n"), data, addr >> 5, (addr>>2) & 7, (addr & 0x02) ? "lo" : "hi" );
 	} else
 	if (addr == 0x200) {
 		UINT16 key = data;
@@ -109,6 +110,7 @@ INT32 cps3SndInit(UINT8 * sndrom)
 		if (nBurnSoundRate) {
 			//chip->delta = 37286.9 / nBurnSoundRate;
 			chip->delta = (CPS3_SND_BUFFER_SIZE << CPS3_SND_LINEAR_SHIFT) / nBurnSoundLen;
+			//bprintf(0, _T("BurnSnd %08x, %d, %d\n"), chip->delta, chip->burnlen, nBurnSoundLen);
 		}
 		
 		chip->gain[BURN_SND_CPS3SND_ROUTE_1] = 1.00;
@@ -147,16 +149,6 @@ void cps3SndUpdate()
 	BurnSoundClear();
 	INT8 * base = (INT8 *)chip->rombase;
 	cps3_voice *vptr = &chip->voice[0];
-	const bool directStereo =
-		chip->gain[BURN_SND_CPS3SND_ROUTE_1] == 1.0 &&
-		chip->gain[BURN_SND_CPS3SND_ROUTE_2] == 1.0 &&
-		chip->output_dir[BURN_SND_CPS3SND_ROUTE_1] == BURN_SND_ROUTE_LEFT &&
-		chip->output_dir[BURN_SND_CPS3SND_ROUTE_2] == BURN_SND_ROUTE_RIGHT;
-	const INT32 route1 = chip->output_dir[BURN_SND_CPS3SND_ROUTE_1];
-	const INT32 route2 = chip->output_dir[BURN_SND_CPS3SND_ROUTE_2];
-	const double gain1 = chip->gain[BURN_SND_CPS3SND_ROUTE_1];
-	const double gain2 = chip->gain[BURN_SND_CPS3SND_ROUTE_2];
-	const INT32 soundLen = nBurnSoundLen;
 
 	for(INT32 i=0; i<CPS3_VOICES; i++, vptr++) {
 		if (chip->key & (1 << i)) {
@@ -177,57 +169,49 @@ void cps3SndUpdate()
 			/* Go through the buffer and add voice contributions */
 			INT16 * buffer = (INT16 *)pBurnSoundOut;
 
-			if (directStereo) {
-				for (INT32 j = 0; j < soundLen; j++) {
-					pos += frac >> 12;
-					frac &= 0xfff;
+			for (INT32 j=0; j<nBurnSoundLen; j++) {
+				INT32 sample;
 
-					if (start + pos >= end) {
-						if (vptr->regs[5]) {
-							pos = loop - start;
-						} else {
-							// Don't force key off [hap 5/31/14].
-							break;
-						}
+				pos += (frac >> 12);
+				frac &= 0xfff;
+
+				if (start + pos >= end) {
+					if (vptr->regs[5]) {
+						pos = loop - start;
+					} else {
+					//	chip->key &= ~(1 << i);
+					//	don't force key off [hap 5/31/14]
+						break;
 					}
-
-					const INT32 sample = base[(start + pos) ^ 1];
-					frac += step;
-
-					buffer[0] = BURN_SND_CLIP(((sample * vol_r) >> 8) + buffer[0]);
-					buffer[1] = BURN_SND_CLIP(((sample * vol_l) >> 8) + buffer[1]);
-					buffer += 2;
 				}
-			} else {
-				for (INT32 j = 0; j < soundLen; j++) {
-					pos += frac >> 12;
-					frac &= 0xfff;
 
-					if (start + pos >= end) {
-						if (vptr->regs[5]) {
-							pos = loop - start;
-						} else {
-							// Don't force key off [hap 5/31/14].
-							break;
-						}
-					}
+				// 8bit sample store with 16bit bigend ???
+				sample = base[(start + pos) ^ 1];
+				frac += step;
 
-					const INT32 sample = base[(start + pos) ^ 1];
-					const INT32 sample_l = (sample * vol_l) >> 8;
-					const INT32 sample_r = (sample * vol_r) >> 8;
-					frac += step;
-
-					INT32 left = 0;
-					INT32 right = 0;
-					if (route1 & BURN_SND_ROUTE_LEFT) left += (INT32)(sample_l * gain1);
-					if (route1 & BURN_SND_ROUTE_RIGHT) right += (INT32)(sample_l * gain1);
-					if (route2 & BURN_SND_ROUTE_LEFT) left += (INT32)(sample_r * gain2);
-					if (route2 & BURN_SND_ROUTE_RIGHT) right += (INT32)(sample_r * gain2);
-
-					buffer[0] = BURN_SND_CLIP(right + buffer[0]);
-					buffer[1] = BURN_SND_CLIP(left + buffer[1]);
-					buffer += 2;
+				INT32 nLeftSample = 0, nRightSample = 0;
+				
+				if ((chip->output_dir[BURN_SND_CPS3SND_ROUTE_1] & BURN_SND_ROUTE_LEFT) == BURN_SND_ROUTE_LEFT) {
+					nLeftSample += (INT32)(((sample * vol_l) >> 8) * chip->gain[BURN_SND_CPS3SND_ROUTE_1]);
 				}
+				if ((chip->output_dir[BURN_SND_CPS3SND_ROUTE_1] & BURN_SND_ROUTE_RIGHT) == BURN_SND_ROUTE_RIGHT) {
+					nRightSample += (INT32)(((sample * vol_l) >> 8) * chip->gain[BURN_SND_CPS3SND_ROUTE_1]);
+				}
+				
+				if ((chip->output_dir[BURN_SND_CPS3SND_ROUTE_2] & BURN_SND_ROUTE_LEFT) == BURN_SND_ROUTE_LEFT) {
+					nLeftSample += (INT32)(((sample * vol_r) >> 8) * chip->gain[BURN_SND_CPS3SND_ROUTE_2]);
+				}
+				if ((chip->output_dir[BURN_SND_CPS3SND_ROUTE_2] & BURN_SND_ROUTE_RIGHT) == BURN_SND_ROUTE_RIGHT) {
+					nRightSample += (INT32)(((sample * vol_r) >> 8) * chip->gain[BURN_SND_CPS3SND_ROUTE_2]);
+				}
+
+				nLeftSample = BURN_SND_CLIP(nLeftSample + buffer[1]); 
+				nRightSample = BURN_SND_CLIP(nRightSample + buffer[0]);
+				
+				buffer[0] = nRightSample;
+				buffer[1] = nLeftSample;
+
+				buffer += 2;
 			}
 
 
@@ -248,3 +232,4 @@ INT32 cps3SndScan(INT32 nAction)
 	}
 	return 0;
 }
+

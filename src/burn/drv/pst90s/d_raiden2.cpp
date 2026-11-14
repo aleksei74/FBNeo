@@ -1,95 +1,12 @@
 // FB Neo Raiden II driver module
 // Based on MAME driver Olivier Galibert, Angelo Salese, David Haywood, Tomasz Slanina
 
-// Load standard headers before tiles_generic.h installs Libretro stdio macros.
-#include <chrono>
-#include <cstdio>
-#include <cstdlib>
-#include <algorithm>
-
 #include "tiles_generic.h"
 #include "nec_intf.h"
 #include "z80_intf.h"
 #include "seibusnd.h"
 #include "eeprom.h"
 #include "bitswap.h"
-#include "epic12_threads.h"
-
-// Opt-in wall-time diagnostics; no clocks or file I/O during normal frames.
-static struct Raiden2FrameProfile {
-	bool initialized;
-	FILE *file;
-	INT32 frames, drawn, sounded;
-	double cpu, sound, draw;
-	INT32 cpu_samples;
-	double v30, z80_timer;
-	unsigned long long sort_calls, sort_entries;
-	unsigned long long trig_calls;
-	unsigned long long ram_clear_bytes;
-	std::chrono::steady_clock::time_point last;
-
-	void Begin()
-	{
-		if (!initialized) {
-			initialized = true;
-			const char *path = std::getenv("FBNEO_RAIDEN_PROFILE");
-			if (path && *path) {
-				file = fopen(path, "w");
-				if (file) {
-					fprintf(file, "frames,drawn,sounded,cpu_timer_ms,sound_mix_ms,draw_ms,sort_calls,sort_entries,cpu_samples,v30_sample_ms,z80_timer_sample_ms,trig_calls,ram_clear_bytes\n");
-					fflush(file);
-				}
-			}
-		}
-		if (file) last = std::chrono::steady_clock::now();
-	}
-
-	double Elapsed()
-	{
-		const auto now = std::chrono::steady_clock::now();
-		const double ms = std::chrono::duration<double, std::milli>(now - last).count();
-		last = now;
-		return ms;
-	}
-
-	void Flush()
-	{
-		if (file && frames) {
-			fprintf(file, "%d,%d,%d,%.6f,%.6f,%.6f,%llu,%llu,%d,%.6f,%.6f,%llu,%llu\n", frames, drawn, sounded,
-				cpu / frames, sound / frames, draw / frames, sort_calls, sort_entries, cpu_samples,
-				cpu_samples ? v30 / cpu_samples : 0, cpu_samples ? z80_timer / cpu_samples : 0, trig_calls, ram_clear_bytes);
-			fflush(file);
-		}
-		frames = drawn = sounded = 0;
-		cpu = sound = draw = 0;
-		sort_calls = sort_entries = 0;
-		trig_calls = 0;
-		ram_clear_bytes = 0;
-		cpu_samples = 0;
-		v30 = z80_timer = 0;
-	}
-
-	void End(bool has_sound, bool has_draw)
-	{
-		if (!file) return;
-		draw += Elapsed();
-		frames++;
-		sounded += has_sound;
-		drawn += has_draw;
-		if (frames == 120) Flush();
-	}
-
-	void Close()
-	{
-		Flush();
-		if (file) fclose(file);
-		file = NULL;
-		initialized = false;
-	}
-} Raiden2Profile;
-
-static Epic12ThreadPool Raiden2Threads;
-static bool Raiden2ThreadsReady = false;
 
 #if defined _MSC_VER
  #define _USE_MATH_DEFINES
@@ -114,14 +31,11 @@ static UINT8 *DrvBgRAM;
 static UINT8 *DrvFgRAM;
 static UINT8 *DrvMgRAM;
 static UINT8 *DrvSprRAM;
-static UINT8 *DrvSprBuf;
 static UINT8 *DrvPalRAM;
 static UINT8 *DrvTransTab;
-static UINT8 *DrvSpriteTransTab;
 
 static UINT32 *bitmap32;
 static UINT8 *DrvAlphaTable;
-static UINT8 DrvAlphaPalette[0x80]; // 0: opaque, 1: mixed, 2: all visible pens blend
 
 static UINT8 *scroll;
 
@@ -141,7 +55,6 @@ static UINT8 DrvReset;
 static HoldCoin<4> hold_coin;
 
 static UINT16 prg_bank = 0;
-static INT32 mapped_prg_offset = -1, mapped_prg_end = 0;
 static UINT8 mg_bank = 0;
 static UINT8 bg_bank = 0;
 static UINT8 fg_bank = 0;
@@ -747,21 +660,8 @@ static UINT32 r2dx_i_sdist;
 static INT32  r2dx_gameselect;
 static INT32  r2dx_okibank;
 
-static double cop_sine[256], cop_cosine[256];
-
-static void cop_init_trig()
-{
-	// Use the original expression, including its rounding at cardinal angles.
-	for (INT32 i = 0; i < 256; i++) {
-		const double angle = i * M_PI / 128;
-		cop_sine[i] = sin(angle);
-		cop_cosine[i] = cos(angle);
-	}
-}
-
 static void SeibuCopReset()
 {
-	cop_init_trig();
 	memset (cop_regs, 0, 8 * sizeof(UINT32));
 	cop_itoa = 0;
 	cop_status = 0;
@@ -1025,8 +925,8 @@ static void cop_cmd_write(INT32 offset, UINT16 data)
 
 	case 0x2208:
 	case 0x2288: { // 2208 0005 f5df 0020 - 0f8a 0b8a 0388 0b9a 0b9a 0a9a 0000 0000
-		INT32 dx = (INT16)VezReadWord(cop_regs[0]+0x12);
-		INT32 dy = (INT16)VezReadWord(cop_regs[0]+0x16);
+		INT32 dx = VezReadWord(cop_regs[0]+0x12);
+		INT32 dy = VezReadWord(cop_regs[0]+0x16);
 
 		if(!dy) {
 			cop_status |= 0x8000;
@@ -1045,8 +945,8 @@ static void cop_cmd_write(INT32 offset, UINT16 data)
 
 	case 0x2a05: { // 2a05 0006 ebeb 0028 - 09af 0a82 0082 0a8f 018e 0000 0000 0000
 		INT32 delta = VezReadWord(cop_regs[1] + 0x1e + offset*4);
-		VezWriteWord(cop_regs[0] + 4+2  + offset*4, VezReadWord(cop_regs[0] + 4+2  + offset*4) + delta);
-		VezWriteWord(cop_regs[0] + 0x1e + offset*4, VezReadWord(cop_regs[0] + 0x1e + offset*4) + delta);
+		VezWriteLong(cop_regs[0] + 4+2  + offset*4, VezReadWord(cop_regs[0] + 4+2  + offset*4) + delta);
+		VezWriteLong(cop_regs[0] + 0x1e + offset*4, VezReadWord(cop_regs[0] + 0x1e + offset*4) + delta);
 		break;
 	}
 
@@ -1122,40 +1022,43 @@ static void cop_cmd_write(INT32 offset, UINT16 data)
 	}
 
 	case 0x8100: { // 8100 0007 fdfb 0080 - 0b9a 0b88 0888 0000 0000 0000 0000 0000
-		if (Raiden2Profile.file) Raiden2Profile.trig_calls++;
 		INT32 raw_angle = (VezReadWord(cop_regs[0]+(0x34)) & 0xff);
+		double angle = raw_angle * M_PI / 128;
 		double amp = (65536 >> 5)*(VezReadWord(cop_regs[0]+(0x36)) & 0xff);
 		INT32 res;
 		/* TODO: up direction, why? (check machine/seicop.c) */
 		if(raw_angle == 0xc0)
 			amp*=2;
-		res = INT32(amp*cop_sine[raw_angle]) << cop_scale;
+		res = INT32(amp*sin(angle)) << cop_scale;
 		VezWriteLong(cop_regs[0] + 16, res);
 		break;
 	}
 
 	case 0x8900: { // 8900 0007 fdfb 0088 - 0b9a 0b8a 088a 0000 0000 0000 0000 0000
-		if (Raiden2Profile.file) Raiden2Profile.trig_calls++;
 		INT32 raw_angle = (VezReadWord(cop_regs[0]+(0x34)) & 0xff);
+		double angle = raw_angle * M_PI / 128;
 		double amp = (65536 >> 5)*(VezReadWord(cop_regs[0]+(0x36)) & 0xff);
 		INT32 res;
 		/* TODO: left direction, why? (check machine/seicop.c) */
 		if(raw_angle == 0x80)
 			amp*=2;
-		res = INT32(amp*cop_cosine[raw_angle]) << cop_scale;
+		res = INT32(amp*cos(angle)) << cop_scale;
 		VezWriteLong(cop_regs[0] + 20, res);
 		break;
 	}
 
 	case 0x5205:   // 5205 0006 fff7 0050 - 0180 02e0 03a0 00a0 03a0 0000 0000 0000
+	//      fprintf(stderr, "sprcpt 5205 %04x %04x %04x %08x %08x\n", cop_regs[0], cop_regs[1], cop_regs[3], VezReadLong(cop_regs[0]), VezReadLong(cop_regs[3]));
 		VezWriteLong(cop_regs[1], VezReadLong(cop_regs[0]));
 		break;
 
 	case 0x5a05:   // 5a05 0006 fff7 0058 - 0180 02e0 03a0 00a0 03a0 0000 0000 0000
+	//      fprintf(stderr, "sprcpt 5a05 %04x %04x %04x %08x %08x\n", cop_regs[0], cop_regs[1], cop_regs[3], VezReadLong(cop_regs[0]), VezReadLong(cop_regs[3]));
 		VezWriteLong(cop_regs[1], VezReadLong(cop_regs[0]));
 		break;
 
 	case 0xf205:   // f205 0006 fff7 00f0 - 0182 02e0 03c0 00c0 03c0 0000 0000 0000
+	//      fprintf(stderr, "sprcpt f205 %04x %04x %04x %08x %08x\n", cop_regs[0]+4, cop_regs[1], cop_regs[3], VezReadLong(cop_regs[0]+4), VezReadLong(cop_regs[3]));
 		VezWriteLong(cop_regs[2], VezReadLong(cop_regs[0]+4));
 		break;
 
@@ -1202,6 +1105,8 @@ static void cop_cmd_write(INT32 offset, UINT16 data)
 		break;
 	}
 
+	//default:
+	//	logerror("pcall %04x (%04x:%04x) [%x %x %x %x]\n", data, rps(), rpc(), cop_regs[0], cop_regs[1], cop_regs[2], cop_regs[3]);
 	}
 }
 
@@ -1213,8 +1118,6 @@ static UINT8 fade_table(INT32 v)
 	return (low * (high | (high >> 5)) + 0x210) >> 10;
 }
 
-static inline void palette_write_dma_word(INT32 entry, UINT16 value);
-
 static void cop_dma_trigger_write(UINT16)
 {
 	switch(cop_dma_mode) {
@@ -1224,9 +1127,16 @@ static void cop_dma_trigger_write(UINT16)
 		   Raiden 2 uses this DMA with cop_dma_dst == 0xfffe, effectively changing the order of the uploaded VRAMs.
 		   Also the size is used for doing a sprite limit trickery.
 		*/
-		INT32 rsize = ((0x80 - cop_dma_size[cop_dma_mode]) & 0x7f) +1;
+		static INT32 rsize = ((0x80 - cop_dma_size[cop_dma_mode]) & 0x7f) +1;
 
 		sprites_cur_start = 0x1000 - (rsize << 5);
+		#if 0
+		INT32 rsize = 32*(0x7f-cop_dma_size);
+		INT32 radr = 64*cop_dma_adr - rsize;
+		for(INT32 i=0; i<rsize; i+=2)
+			sprites[i/2] = VezReadWord(radr+i);
+		sprites_cur_start = rsize;
+		#endif
 		break;
 	}
 	case 0x82: {
@@ -1237,48 +1147,7 @@ static void cop_dma_trigger_write(UINT16)
 		dst = (cop_dma_dst[cop_dma_mode] << 6);
 		size = ((cop_dma_size[cop_dma_mode] << 5) - (cop_dma_dst[cop_dma_mode] << 6) + 0x20)/2;
 
-		// II/DX map reads above 0x800 directly. Restrict writes to palette RAM
-		// so neither reads nor writes can change COP registers during this path.
-		const UINT32 relative = cop_dma_adr_rel * 0x400;
-		if (game_select <= 1 && src >= 0x800 && src < 0x100000 &&
-			relative < 0x100000 - src && size <= (0x100000 - src - relative) / 2 &&
-			dst >= 0x1f000 && dst < 0x20000 && size <= (0x20000 - dst) / 2) {
-			// Amortize the two brightness curves across large palette transfers.
-			if (size >= 64) {
-				UINT8 source_fade[32], target_fade[32];
-				for (INT32 pen = 0; pen < 32; pen++) {
-					source_fade[pen] = fade_table((pen << 5) | (pal_brightness_val ^ 0x1f));
-					target_fade[pen] = fade_table((pen << 5) | pal_brightness_val);
-				}
-				for (i = 0; i < size; i++) {
-					const UINT16 target = VezReadWord(src + relative);
-					const UINT16 source = VezReadWord(src);
-					const UINT16 b = (source_fade[(source >> 10) & 31] + target_fade[(target >> 10) & 31]) & 31;
-					const UINT16 g = (source_fade[(source >> 5) & 31] + target_fade[(target >> 5) & 31]) & 31;
-					const UINT16 r = (source_fade[source & 31] + target_fade[target & 31]) & 31;
-					palette_write_dma_word(dst - 0x1f000, (b << 10) | (g << 5) | r);
-					src += 2;
-					dst += 2;
-				}
-				break;
-			}
-			for (i = 0; i < size; i++) {
-				const UINT16 target = VezReadWord(src + relative);
-				const UINT16 source = VezReadWord(src);
-				const INT32 brightness = pal_brightness_val;
-				const INT32 b = fade_table(((source & 0x7c00) >> 5) | (brightness ^ 0x1f));
-				const INT32 bt = fade_table(((target & 0x7c00) >> 5) | brightness);
-				const INT32 g = fade_table((source & 0x03e0) | (brightness ^ 0x1f));
-				const INT32 gt = fade_table((target & 0x03e0) | brightness);
-				const INT32 r = fade_table(((source & 0x001f) << 5) | (brightness ^ 0x1f));
-				const INT32 rt = fade_table(((target & 0x001f) << 5) | brightness);
-				palette_write_dma_word(dst - 0x1f000, (((b + bt) & 0x1f) << 10) |
-					(((g + gt) & 0x1f) << 5) | ((r + rt) & 0x1f));
-				src += 2;
-				dst += 2;
-			}
-			break;
-		}
+	//	printf("%08x %08x %08x\n",src,dst,size);
 
 		for(i = 0;i < size;i++)
 		{
@@ -1317,17 +1186,7 @@ static void cop_dma_trigger_write(UINT16)
 		dst = (cop_dma_dst[cop_dma_mode] << 6);
 		size = ((cop_dma_size[cop_dma_mode] << 5) - (cop_dma_dst[cop_dma_mode] << 6) + 0x20)/2;
 
-		// Preserve word-by-word overlap semantics; only bypass plain palette writes.
-		if (game_select <= 1 && src >= 0x800 && src < 0x100000 &&
-			size <= (0x100000 - src) / 2 && dst >= 0x1f000 && dst < 0x20000 &&
-			size <= (0x20000 - dst) / 2) {
-			for (i = 0; i < size; i++) {
-				palette_write_dma_word(dst - 0x1f000, VezReadWord(src));
-				src += 2;
-				dst += 2;
-			}
-			break;
-		}
+	//	printf("%08x %08x %08x\n",src,dst,size);
 
 		for(i = 0;i < size;i++)
 		{
@@ -1348,20 +1207,7 @@ static void cop_dma_trigger_write(UINT16)
 		address = (cop_dma_src[cop_dma_mode] << 6);
 		length = (cop_dma_size[cop_dma_mode]+1) << 5;
 
-		// Only plain II/DX RAM: retain handlers and wrapping for all other ranges.
-		if (game_select <= 1 &&
-			((address >= 0x800 && address < 0xc000 && length <= 0xc000 - address) ||
-			 (address >= 0xf800 && address < 0x1f000 && length <= 0x1f000 - address))) {
-			const UINT32 value = UINT32(cop_dma_v1) | (UINT32(cop_dma_v2) << 16);
-			if (value == 0) {
-				if (Raiden2Profile.file) Raiden2Profile.ram_clear_bytes += length;
-				memset(DrvMainRAM + address, 0, length);
-			} else {
-				// DMA addresses are 64-byte aligned and lengths are multiples of 32.
-				std::fill_n((UINT32*)(DrvMainRAM + address), length / 4, BURN_ENDIAN_SWAP_INT32(value));
-			}
-			break;
-		}
+	//	printf("%08x %08x\n",address,length);
 
 		for (i=address;i<address+length;i+=4)
 		{
@@ -1410,30 +1256,33 @@ static void merge(cop_sortstr arr[], cop_sortstr left[], int left_size, cop_sort
 	}
 }
 
-static void mergeSort(cop_sortstr arr[], int size, int ascending, cop_sortstr scratch[]) {
+static void mergeSort(cop_sortstr arr[], int size, int ascending) {
 	if (size <= 1)
 		return;
 
 	int mid = size / 2;
-	// Both children finish before the shared scratch space is reused.
-	mergeSort(arr, mid, ascending, scratch);
-	mergeSort(arr + mid, size - mid, ascending, scratch);
-	memcpy(scratch, arr, size * sizeof(cop_sortstr));
-	merge(arr, scratch, mid, scratch + mid, size - mid, ascending);
+	cop_sortstr* left  = (cop_sortstr*)BurnMalloc(mid          * sizeof(cop_sortstr));
+	cop_sortstr* right = (cop_sortstr*)BurnMalloc((size - mid) * sizeof(cop_sortstr));
+
+	for (int i = 0; i < mid; i++)
+		left[i] = arr[i];
+
+	for (int i = mid; i < size; i++)
+		right[i - mid] = arr[i];
+
+	mergeSort(left,  mid,        ascending);
+	mergeSort(right, size - mid, ascending);
+	merge(arr, left, mid, right, size - mid, ascending);
+
+	BurnFree(left);
+	BurnFree(right);
 }
 
 static void cop_sort_dma_trig_write(UINT16 data)
 {
-	if (Raiden2Profile.file) {
-		Raiden2Profile.sort_calls++;
-		Raiden2Profile.sort_entries += data;
-	}
 	UINT16 sort_size = data;
-	if (!sort_size) return;
 
-	cop_sortstr *ss = (cop_sortstr*)BurnMalloc(2 * sort_size * sizeof(cop_sortstr));
-	if (!ss) return;
-	cop_sortstr *scratch = ss + sort_size;
+	cop_sortstr *ss = (cop_sortstr*)BurnMalloc(sort_size * sizeof(cop_sortstr));
 
 	for (INT32 i = 0; i < sort_size; i++) {
 		ss[i].data = VezReadWord(cop_sort_lookup + (i << 1));
@@ -1441,9 +1290,9 @@ static void cop_sort_dma_trig_write(UINT16 data)
 	}
 
 	switch (cop_sort_param) {
-		case 1: mergeSort(ss, sort_size, 1, scratch); // <
+		case 1: mergeSort(ss, sort_size, 1); // <
 			break;
-		case 2: mergeSort(ss, sort_size, 0, scratch); // >
+		case 2: mergeSort(ss, sort_size, 0); // >
 			break;
 	}
 
@@ -1467,22 +1316,13 @@ static void raiden2_crtc_write(INT32 offset, UINT8 data)
 	}
 }
 
-static void map_prg_bank(INT32 offset, INT32 end)
-{
-	// Derived host mapping only; reset/restore must invalidate it.
-	if (game_select <= 1 && mapped_prg_offset == offset && mapped_prg_end == end) return;
-	VezMapArea(0x20000, end, 0, DrvMainROM + offset);
-	VezMapArea(0x20000, end, 2, DrvMainROM + offset);
-	mapped_prg_offset = offset;
-	mapped_prg_end = end;
-}
-
 static void raiden2_bankswitch(INT32 bank)
 {
 	prg_bank = bank;
 	bank = (~(bank >> 15) & 1) * 0x20000;
 
-	map_prg_bank(bank, 0x3ffff);
+	VezMapArea(0x20000, 0x3ffff, 0, DrvMainROM + bank);
+	VezMapArea(0x20000, 0x3ffff, 2, DrvMainROM + bank);
 }
 
 static void rd2_cop_write(UINT16 offset, UINT8 data)
@@ -1496,7 +1336,7 @@ static void rd2_cop_write(UINT16 offset, UINT8 data)
 		return; // sound comms
 	}
 
-	if ((offset & 1) == 0) return; // Dispatch word commands after the high-byte write.
+	if ((offset & 1) == 0) return; // necessary??
 
 	UINT16 *copram = (UINT16*)DrvMainRAM;
 	UINT16 dataword = BURN_ENDIAN_SWAP_INT16(copram[(offset & 0x7fe)/2]);
@@ -1687,7 +1527,7 @@ static UINT8 rd2_cop_read(UINT16 offset)
 		break;*/
 		case 0x582:
 		case 0x584:
-		case 0x586:
+		case 0x586: //bprintf(0, _T("offset[%X]"), offset);
 			ret = cop_hit_val[(offset-0x582)/2];
 		break;
 
@@ -1750,14 +1590,6 @@ static inline void palette_update_entry(INT32 entry)
 	DrvPalette[entry/2] = (r*0x10000)+(g*0x100)+b;
 }
 
-static inline void palette_write_dma_word(INT32 entry, UINT16 value)
-{
-	// Only the range-checked II/DX DMA path calls this; no byte-write side effects.
-	DrvPalRAM[entry] = value & 0xff;
-	DrvPalRAM[entry + 1] = value >> 8;
-	palette_update_entry(entry);
-}
-
 static void __fastcall raiden2_main_write(UINT32 address, UINT8 data)
 {
 	if ((address & 0xff000) == 0x1f000) {
@@ -1775,8 +1607,7 @@ static void __fastcall raiden2_main_write(UINT32 address, UINT8 data)
 	{
 		case 0x068e:
 		case 0x068f:
-			memcpy(DrvSprBuf, DrvSprRAM, 0x1000);
-		return;
+		return;		// nop
 	}
 
 	if ((address & 0xffc00) == 0x00400) {
@@ -1791,7 +1622,8 @@ static void raidendx_bankswitch(INT32 bank)
 
 	bank = ((bank >> 12) + 16) * 0x10000;
 
-	map_prg_bank(bank, 0x2ffff);
+	VezMapArea(0x20000, 0x2ffff, 0, DrvMainROM + bank);
+	VezMapArea(0x20000, 0x2ffff, 2, DrvMainROM + bank);
 }
 
 static void __fastcall raidendx_main_write(UINT32 address, UINT8 data)
@@ -1808,9 +1640,7 @@ static void __fastcall raidendx_main_write(UINT32 address, UINT8 data)
 	}
 	
 	if (address >= 0x00600 && address <= 0x0064f) {
-		DrvMainRAM[address] = data;
 		raiden2_crtc_write(BITSWAP08(address & 0x7f, 7,6,4,5,3,2,1,0), data);
-		return; // Do not dispatch the unswapped CRTC address through the COP handler.
 	}
 
 	switch (address)
@@ -1828,8 +1658,7 @@ static void __fastcall raidendx_main_write(UINT32 address, UINT8 data)
 		
 		case 0x068e:
 		case 0x068f:
-			memcpy(DrvSprBuf, DrvSprRAM, 0x1000);
-		return;
+		return;		// nop
 	}
 
 	if ((address & 0xffc00) == 0x00400) {
@@ -2365,7 +2194,6 @@ static UINT8 __fastcall r2dx_main_read(UINT32 address)
 
 static INT32 DrvDoReset()
 {
-	mapped_prg_offset = -1;
 	memset (AllRam, 0, RamEnd - AllRam);
 
 	VezOpen(0);
@@ -2428,7 +2256,6 @@ static INT32 MemIndex()
 	DrvGfxROM2		= Next; Next += 0x1000000;
 
 	DrvTransTab		= Next; Next += 0x800000 / 0x100;
-	DrvSpriteTransTab	= Next; Next += 0x10000 / 8;
 
 	MSM6295ROM		= Next;
 	DrvSndROM0		= Next; Next += 0x100000;
@@ -2455,7 +2282,6 @@ static INT32 MemIndex()
 	SeibuZ80RAM		= Next; Next += 0x000800;
 
 	scroll			= Next; Next += 0x00000c;
-	DrvSprBuf		= Next; Next += (game_select <= 1 ? 0x001000 : 0);
 
 	RamEnd			= Next;
 
@@ -2473,9 +2299,7 @@ static void DrvCreateAlphaTable(INT32 raiden2_alpha)
 		DrvAlphaTable[0x5de] = 1;
 		DrvAlphaTable[0x75c] = 1;
 
-		memset (DrvAlphaTable + 0x3c0, 1, 0x10);
-		memset (DrvAlphaTable + 0x3d0, 1, 0x10);
-		memset (DrvAlphaTable + 0x3f0, 1, 0x10);
+		memset (DrvAlphaTable + 0x3c0, 1, 0x30);
 		memset (DrvAlphaTable + 0x4f8, 1, 0x08);
 		memset (DrvAlphaTable + 0x5c8, 1, 0x08);
 		memset (DrvAlphaTable + 0x5e8, 1, 0x08);
@@ -2494,9 +2318,6 @@ static void DrvCreateAlphaTable(INT32 raiden2_alpha)
 		memset (DrvAlphaTable + 0x76c, 1, 0x03);
 		memset (DrvAlphaTable + 0x77d, 1, 0x02);
 		memset (DrvAlphaTable + 0x7c8, 1, 0x08);
-
-		// Pen 15 is transparent, not a blending entry.
-		for (INT32 i = 0x0f; i < 0x800; i += 0x10) DrvAlphaTable[i] = 0;
 	}
 	else if (raiden2_alpha == 0) // zero team
 	{
@@ -2505,29 +2326,10 @@ static void DrvCreateAlphaTable(INT32 raiden2_alpha)
 		DrvAlphaTable[0x52e] = 1;
 		DrvAlphaTable[0x5de] = 1;
 	}
-
-	// Immutable during rendering; pen 15 is transparent regardless of its table entry.
-	for (INT32 palette = 0; palette < 0x80; palette++) {
-		DrvAlphaPalette[palette] = 0;
-		bool all = true;
-		for (INT32 pen = 0; pen < 15; pen++) {
-			DrvAlphaPalette[palette] |= DrvAlphaTable[palette * 16 + pen];
-			if (!DrvAlphaTable[palette * 16 + pen]) all = false;
-		}
-		if (all) DrvAlphaPalette[palette] = 2;
-	}
 }
 
 static void DrvCreateTransTab()
 {
-	memset(DrvSpriteTransTab, 0, 0x10000 / 8);
-	for (INT32 code = 0; code < 0x10000; code++) {
-		const UINT8 *gfx = DrvGfxROM2 + code * 0x100;
-		INT32 pixel = 0;
-		while (pixel < 0x100 && gfx[pixel] == 15) pixel++;
-		if (pixel == 0x100) DrvSpriteTransTab[code >> 3] |= 1 << (code & 7);
-	}
-
 	memset (DrvTransTab, 1, 0x800000/0x100);
 
 	for (INT32 i = 0; i < 0x800000; i+=0x100) {
@@ -2804,7 +2606,9 @@ static void raiden2_common_map()
 {
 	VezInit(0, V30_TYPE);
 	VezOpen(0);
-	VezMapArea(0x00000, 0x007ff, 2, DrvMainRAM); // Fetch only; data accesses use handlers.
+//	VezMapArea(0x00000, 0x007ff, 0, DrvMainRAM);
+//	VezMapArea(0x00000, 0x007ff, 1, DrvMainRAM); // handler
+	VezMapArea(0x00000, 0x007ff, 2, DrvMainRAM); // fetch (map shift is 11 bits (800))
 	VezMapArea(0x00800, 0x0bfff, 0, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x0bfff, 1, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x0bfff, 2, DrvMainRAM + 0x00800);
@@ -2827,6 +2631,7 @@ static void raiden2_common_map()
 	VezMapArea(0x0f800, 0x1efff, 1, DrvMainRAM + 0x0f800);
 	VezMapArea(0x0f800, 0x1efff, 2, DrvMainRAM + 0x0f800);
 	VezMapArea(0x1f000, 0x1ffff, 0, DrvPalRAM);
+//	VezMapArea(0x1f000, 0x1ffff, 1, DrvPalRAM); // handler
 	VezMapArea(0x1f000, 0x1ffff, 2, DrvPalRAM);
 	VezMapArea(0x20000, 0xfffff, 0, DrvMainROM + 0x20000);
 	VezMapArea(0x20000, 0xfffff, 2, DrvMainROM + 0x20000);
@@ -2839,7 +2644,9 @@ static void zeroteam_common_map()
 {
 	VezInit(0, V30_TYPE);
 	VezOpen(0);
-	VezMapArea(0x00000, 0x007ff, 2, DrvMainRAM); // Fetch only; data accesses use handlers.
+//	VezMapArea(0x00000, 0x007ff, 0, DrvMainRAM);
+//	VezMapArea(0x00000, 0x007ff, 1, DrvMainRAM); // handler
+	VezMapArea(0x00000, 0x007ff, 2, DrvMainRAM); // fetch (map shift is 11 bits (800))
 	VezMapArea(0x00800, 0x0b7ff, 0, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x0b7ff, 1, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x0b7ff, 2, DrvMainRAM + 0x00800);
@@ -2856,6 +2663,7 @@ static void zeroteam_common_map()
 	VezMapArea(0x0d000, 0x0dfff, 1, DrvTxRAM);
 	VezMapArea(0x0d000, 0x0dfff, 2, DrvTxRAM);
 	VezMapArea(0x0e000, 0x0efff, 0, DrvPalRAM);
+//	VezMapArea(0x0e000, 0x0efff, 1, DrvPalRAM); // handler
 	VezMapArea(0x0e000, 0x0efff, 2, DrvPalRAM);
 	VezMapArea(0x0f000, 0x0ffff, 0, DrvSprRAM);
 	VezMapArea(0x0f000, 0x0ffff, 1, DrvSprRAM);
@@ -2874,7 +2682,9 @@ static void xsedae_common_map()
 {
 	VezInit(0, V30_TYPE);
 	VezOpen(0);
-	VezMapArea(0x00000, 0x007ff, 2, DrvMainRAM); // Fetch only; data accesses use handlers.
+//	VezMapArea(0x00000, 0x007ff, 0, DrvMainRAM);
+//	VezMapArea(0x00000, 0x007ff, 1, DrvMainRAM); // handler
+	VezMapArea(0x00000, 0x007ff, 2, DrvMainRAM); // fetch (map shift is 11 bits (800))
 	VezMapArea(0x00800, 0x0b7ff, 0, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x0b7ff, 1, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x0b7ff, 2, DrvMainRAM + 0x00800);
@@ -2891,6 +2701,7 @@ static void xsedae_common_map()
 	VezMapArea(0x0d000, 0x0dfff, 1, DrvTxRAM);
 	VezMapArea(0x0d000, 0x0dfff, 2, DrvTxRAM);
 	VezMapArea(0x0e000, 0x0efff, 0, DrvPalRAM);
+//	VezMapArea(0x0e000, 0x0efff, 1, DrvPalRAM); // handler
 	VezMapArea(0x0e000, 0x0efff, 2, DrvPalRAM);
 	VezMapArea(0x0f000, 0x0ffff, 0, DrvSprRAM);
 	VezMapArea(0x0f000, 0x0ffff, 1, DrvSprRAM);
@@ -3067,7 +2878,9 @@ static INT32 RaidendxInit()
 
 	VezInit(0, V30_TYPE);
 	VezOpen(0);
-	VezMapArea(0x00000, 0x007ff, 2, DrvMainRAM); // Fetch only; data accesses use handlers.
+//	VezMapArea(0x00000, 0x007ff, 0, DrvMainRAM);
+//	VezMapArea(0x00000, 0x007ff, 1, DrvMainRAM); // handler
+	VezMapArea(0x00000, 0x007ff, 2, DrvMainRAM); // fetch (map shift is 11 bits (800))
 	VezMapArea(0x00800, 0x0bfff, 0, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x0bfff, 1, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x0bfff, 2, DrvMainRAM + 0x00800);
@@ -3090,6 +2903,7 @@ static INT32 RaidendxInit()
 	VezMapArea(0x0f800, 0x1efff, 1, DrvMainRAM + 0x0f800);
 	VezMapArea(0x0f800, 0x1efff, 2, DrvMainRAM + 0x0f800);
 	VezMapArea(0x1f000, 0x1ffff, 0, DrvPalRAM);
+//	VezMapArea(0x1f000, 0x1ffff, 1, DrvPalRAM); // handler
 	VezMapArea(0x1f000, 0x1ffff, 2, DrvPalRAM);
 	VezMapArea(0x20000, 0x2ffff, 0, DrvMainROM + 0x100000);
 	VezMapArea(0x20000, 0x2ffff, 2, DrvMainROM + 0x100000);
@@ -3251,6 +3065,8 @@ static INT32 R2dxInit()
 
 	VezInit(0, V33_TYPE);
 	VezOpen(0);
+//	VezMapArea(0x00000, 0x007ff, 0, DrvMainRAM);
+//	VezMapArea(0x00000, 0x007ff, 1, DrvMainRAM); // handler
 	VezMapArea(0x00000, 0x1ffff, 2, DrvMainRAM + 0x00000);
 	VezMapArea(0x00800, 0x1ffff, 0, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x1ffff, 1, DrvMainRAM + 0x00800);
@@ -3315,6 +3131,8 @@ static INT32 NzeroteamInit()
 
 	VezInit(0, V33_TYPE);
 	VezOpen(0);
+//	VezMapArea(0x00000, 0x007ff, 0, DrvMainRAM);
+//	VezMapArea(0x00000, 0x007ff, 1, DrvMainRAM); // handler
 	VezMapArea(0x00000, 0x1ffff, 2, DrvMainRAM + 0x00000);
 	VezMapArea(0x00800, 0x1ffff, 0, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x1ffff, 1, DrvMainRAM + 0x00800);
@@ -3391,6 +3209,8 @@ static INT32 Zerotm2kInit()
 
 	VezInit(0, V33_TYPE);
 	VezOpen(0);
+//	VezMapArea(0x00000, 0x007ff, 0, DrvMainRAM);
+//	VezMapArea(0x00000, 0x007ff, 1, DrvMainRAM); // handler
 	VezMapArea(0x00000, 0x1ffff, 2, DrvMainRAM + 0x00000);
 	VezMapArea(0x00800, 0x1ffff, 0, DrvMainRAM + 0x00800);
 	VezMapArea(0x00800, 0x1ffff, 1, DrvMainRAM + 0x00800);
@@ -3416,10 +3236,6 @@ static INT32 Zerotm2kInit()
 
 static INT32 DrvExit()
 {
-	mapped_prg_offset = -1;
-	Raiden2Profile.Close();
-	Raiden2Threads.Shutdown();
-	Raiden2ThreadsReady = false;
 	GenericTilesExit();
 
 	VezExit();
@@ -3447,135 +3263,153 @@ static inline UINT32 alpha_blend(UINT32 d, UINT32 s)
 		((((s & 0x00ff00) * 0x7f) + ((d & 0x00ff00) * 0x81)) & 0x00ff0000)) / 0x100;
 }
 
-static inline UINT32 alpha_blend_weighted(UINT32 d, UINT32 rb, UINT32 g)
-{
-	return (((rb + ((d & 0xff00ff) * 0x81)) & 0xff00ff00) +
-		((g + ((d & 0x00ff00) * 0x81)) & 0x00ff0000)) / 0x100;
-}
-
-static void draw_tile_rows(const UINT8 *gfx, INT32 size, INT32 flip, INT32 color,
-	INT32 sx, INT32 sy, INT32 begin, INT32 end)
-{
-	INT32 left = sx < 0 ? 0 : sx;
-	INT32 right = sx + size < nScreenWidth ? sx + size : nScreenWidth;
-	INT32 top = sy > begin ? sy : begin;
-	INT32 bottom = sy + size < end ? sy + size : end;
-	if (left >= right || top >= bottom) return;
-
-	const UINT32 *pal = DrvPalette + color;
-	const UINT8 *alpha = DrvAlphaTable + color;
-	const INT32 xstep = (flip & (size - 1)) ? -1 : 1;
-	// Flip masks reverse whole 8/16-pixel rows, so advance from the clipped first row.
-	const INT32 ystep = (flip & (size * (size - 1))) ? -size : size;
-	INT32 row_offset = ((top - sy) * size + left - sx) ^ flip;
-	UINT32 *dst = bitmap32 + top * nScreenWidth + left;
-	if (!DrvAlphaPalette[color >> 4]) {
-		for (INT32 y = top; y < bottom; y++, dst += nScreenWidth, row_offset += ystep) {
-			INT32 offset = row_offset;
-			for (INT32 x = 0; x < right - left; x++, offset += xstep) {
-				INT32 pixel = gfx[offset];
-				if (pixel != 15) dst[x] = pal[pixel];
-			}
-		}
-		return;
-	}
-	// Amortize setup only across substantial fully blended tile fragments.
-	if (DrvAlphaPalette[color >> 4] == 2 && (right - left) * (bottom - top) >= 64) {
-		UINT32 source_rb[16], source_g[16];
-		for (INT32 pen = 0; pen < 15; pen++) {
-			source_rb[pen] = (pal[pen] & 0xff00ff) * 0x7f;
-			source_g[pen] = (pal[pen] & 0x00ff00) * 0x7f;
-		}
-		for (INT32 y = top; y < bottom; y++, dst += nScreenWidth, row_offset += ystep) {
-			INT32 offset = row_offset;
-			for (INT32 x = 0; x < right - left; x++, offset += xstep) {
-				INT32 pixel = gfx[offset];
-				if (pixel != 15) dst[x] = alpha_blend_weighted(dst[x], source_rb[pixel], source_g[pixel]);
-			}
-		}
-		return;
-	}
-	for (INT32 y = top; y < bottom; y++, dst += nScreenWidth, row_offset += ystep) {
-		INT32 offset = row_offset;
-		for (INT32 x = 0; x < right - left; x++, offset += xstep) {
-			INT32 pixel = gfx[offset];
-			if (pixel != 15) dst[x] = alpha[pixel] ? alpha_blend(dst[x], pal[pixel]) : pal[pixel];
-		}
-	}
-}
-
-static void draw_layer(UINT8 *ram, INT32 scr, UINT32 color_base, INT32 bank, INT32 begin, INT32 end)
+static void draw_layer(UINT8 *ram, INT32 scr, UINT32 color_base, INT32 bank)
 {
 	UINT16 *vram = (UINT16*)ram;
 
 	INT32 scrollx = (scroll[scr * 4 + 0] + (scroll[scr * 4 + 1] * 256)) & 0x1ff;
 	INT32 scrolly = (scroll[scr * 4 + 2] + (scroll[scr * 4 + 3] * 256)) & 0x1ff;
 
-	// Tiles within a layer do not overlap; visit only the worker's visible rows.
-	const INT32 first_y = begin - ((begin + scrolly) & 15);
-	for (INT32 sy = first_y; sy < end; sy += 16) {
-		const INT32 row = (((sy + scrolly) >> 4) & 31) * 32;
-		INT32 column = scrollx >> 4;
-		for (INT32 sx = -(scrollx & 15); sx < nScreenWidth; sx += 16, column++) {
-			INT32 attr = BURN_ENDIAN_SWAP_INT16(vram[row + (column & 31)]);
-			INT32 color = attr >> 12;
-			INT32 code = (attr & 0xfff) + (bank << 12);
-			if (DrvTransTab[code]) continue;
-			draw_tile_rows(DrvGfxROM1 + code * 0x100, 16, 0, color * 16 + color_base, sx, sy, begin, end);
+	for (INT32 offs = 0; offs < 32 * 32; offs++)
+	{
+		INT32 sx = (offs & 0x1f) * 16;
+		INT32 sy = (offs / 0x20) * 16;
+
+		sx -= scrollx;
+		if (sx < -15) sx += 512;
+		sy -= scrolly;
+		if (sy < -15) sy += 512;
+
+		if (sy >= nScreenHeight || sx >= nScreenWidth) continue;
+
+		INT32 attr = BURN_ENDIAN_SWAP_INT16(vram[offs]);
+		INT32 color = attr >> 12;
+		INT32 code = (attr & 0xfff) + (bank << 12);
+
+		if (DrvTransTab[code]) continue;
+
+		{
+			color *= 16;
+			color += color_base;
+			UINT32 *pal = DrvPalette + color;
+			UINT8 *gfx = DrvGfxROM1 + (code * 0x100);
+			UINT8 *alpha = DrvAlphaTable + color;
+			UINT32 *dst = bitmap32 + sy * nScreenWidth;
+
+			for (INT32 y = 0; y < 16; y++, sy++) {
+				if (sy >= 0 && sy < nScreenHeight) {
+					for (INT32 x = 0; x < 16; x++, sx++) {
+						if (sx < 0 || sx >= nScreenWidth) continue;
+
+						INT32 pxl = gfx[y*16+x];
+
+						if (pxl != 0x0f)
+						{
+							if (alpha[pxl]) {
+								dst[sx] = alpha_blend(dst[sx], pal[pxl]);
+							} else {
+								dst[sx] = pal[pxl];
+							}
+						}	
+					}
+					sx -= 16;
+				}
+				dst += nScreenWidth;
+			}
 		}
 	}
 }
 
-static void draw_txt_layer(INT32 begin, INT32 end)
+static void draw_txt_layer()
 {
 	UINT16 *vram = (UINT16*)DrvTxRAM;
 
-	for (INT32 sy = begin & ~7; sy < end && sy < 256; sy += 8) {
-		const INT32 row = (sy / 8) * 64;
-		for (INT32 sx = 0; sx < nScreenWidth && sx < 512; sx += 8) {
-			INT32 attr = BURN_ENDIAN_SWAP_INT16(vram[row + sx / 8]);
-			INT32 color = attr >> 12;
-			INT32 code = (attr & 0xfff) + (tx_bank * 0x1000);
-			if ((code & 0xfff) <= 0x0020) continue;
-			draw_tile_rows(DrvGfxROM0 + code * 0x40, 8, 0, color * 16 + 0x700, sx, sy, begin, end);
+	for (INT32 offs = 0; offs < 64 * 32; offs++)
+	{
+		INT32 sx = (offs & 0x3f) * 8;
+		INT32 sy = (offs / 0x40) * 8;
+
+		if (sy >= nScreenHeight || sx >= nScreenWidth) continue;
+
+		INT32 attr = BURN_ENDIAN_SWAP_INT16(vram[offs]);
+		INT32 color = attr >> 12;
+		INT32 code = (attr & 0xfff) + (tx_bank * 0x1000);
+
+		if ((code & 0xfff) <= 0x0020) continue;
+
+		{
+			color *= 16;
+			color += 0x700;
+			UINT32 *pal = DrvPalette + color;
+			UINT8 *gfx = DrvGfxROM0 + (code * 0x40);
+			UINT8 *alpha = DrvAlphaTable + color;
+			UINT32 *dst = bitmap32 + sy * nScreenWidth;
+
+			for (INT32 y = 0; y < 8; y++, sy++) {
+				if (sy >= 0 && sy < nScreenHeight) {
+					for (INT32 x = 0; x < 8; x++, sx++) {
+						if (sx < 0 || sx >= nScreenWidth) continue;
+
+						INT32 pxl = gfx[y*8+x];
+						if (pxl != 0x0f)
+						{
+							if (alpha[pxl]) {
+								dst[sx] = alpha_blend(dst[sx], pal[pxl]);
+							} else {
+								dst[sx] = pal[pxl];
+							}
+						}	
+					}
+					sx -= 8;
+				}
+				dst += nScreenWidth;
+			}
 		}
 	}
 }
 
-static void draw_single_sprite(INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipy, INT32 flipx, INT32 begin, INT32 end)
+static void draw_single_sprite(INT32 code, INT32 color, INT32 sx, INT32 sy, INT32 flipy, INT32 flipx)
 {
-	if (sx < -15 || sy + 16 <= begin || sy >= end || sx >= nScreenWidth) return;
-	if ((UINT32)code < 0x10000 && (DrvSpriteTransTab[code >> 3] & (1 << (code & 7)))) return;
-	draw_tile_rows(DrvGfxROM2 + code * 0x100, 16, (flipy ? 0xf0 : 0) | (flipx ? 0x0f : 0),
-		color * 16, sx, sy, begin, end);
-}
+	if (sx < -15 || sy < -15 || sy >= nScreenHeight || sx >= nScreenWidth) return;
 
-static bool sprite_block_empty(INT32 code, INT32 count)
-{
-	if (code < 0 || count <= 0 || code >= 0x10000 || count > 0x10000 - code) return false;
-	while (count > 0) {
-		const INT32 bit = code & 7;
-		const INT32 take = count < 8 - bit ? count : 8 - bit;
-		const UINT32 mask = ((1U << take) - 1) << bit;
-		if ((DrvSpriteTransTab[code >> 3] & mask) != mask) return false;
-		code += take;
-		count -= take;
+	{
+		INT32 flip = (flipy ? 0xf0 : 0) + (flipx ? 0x0f : 0);
+		color *= 16;
+		UINT32 *pal = DrvPalette + color;
+		UINT8 *gfx = DrvGfxROM2 + (code * 0x100);
+		UINT8 *alpha = DrvAlphaTable + color;
+		UINT32 *dst = bitmap32 + sy * nScreenWidth;
+
+		for (INT32 y = 0; y < 16; y++, sy++) {
+			if (sy >= 0 && sy < nScreenHeight) {
+				for (INT32 x = 0; x < 16; x++, sx++) {
+					if (sx < 0 || sx >= nScreenWidth) continue;
+
+					INT32 pxl = gfx[(y*16+x)^flip];
+					if (pxl != 0x0f)
+					{
+						if (alpha[pxl]) {
+							dst[sx] = alpha_blend(dst[sx], pal[pxl]);
+						} else {
+							dst[sx] = pal[pxl];
+						}
+					}	
+				}
+				sx -= 16;
+			}
+			dst += nScreenWidth;
+		}
 	}
-	return true;
 }
 
-static void draw_sprites(INT32 priority, INT32 begin, INT32 end)
+static void draw_sprites(INT32 priority)
 {
 	if (layer_enable & 0x10) return;
 
-	// Raiden II/DX latch sprite RAM on writes to 0x68e, not at vblank.
-	UINT16 *sprites = (UINT16*)(game_select <= 1 ? DrvSprBuf : DrvSprRAM);
-	for (INT32 offs = sprites_cur_start / 2; offs >= 0; offs -= 4) {
-		const UINT16 *source = sprites + offs;
-		INT32 attr = BURN_ENDIAN_SWAP_INT16(source[0]);
-		if (((attr >> 6) & 3) != priority) {
-			continue;
-		}
+	UINT16 *sprites = (UINT16*)DrvSprRAM;
+	UINT16 *source = sprites + sprites_cur_start/2;
+
+	while( source >= sprites ){
 		INT32 tile_number = BURN_ENDIAN_SWAP_INT16(source[1]);
 		INT32 sx = BURN_ENDIAN_SWAP_INT16(source[2]);
 		INT32 sy = BURN_ENDIAN_SWAP_INT16(source[3]);
@@ -3584,12 +3418,22 @@ static void draw_sprites(INT32 priority, INT32 begin, INT32 end)
 		INT32 ytlim, xtlim;
 		INT32 xflip, yflip;
 		INT32 xstep, ystep;
+		INT32 pri;
 
-		ytlim = (attr >> 12) & 0x7;
-		xtlim = (attr >> 8) & 0x7;
-		xflip = (attr >> 15) & 0x1;
-		yflip = (attr >> 11) & 0x1;
-		colr = attr & 0x3f;
+		ytlim = (BURN_ENDIAN_SWAP_INT16(source[0]) >> 12) & 0x7;
+		xtlim = (BURN_ENDIAN_SWAP_INT16(source[0]) >> 8 ) & 0x7;
+
+		xflip = (BURN_ENDIAN_SWAP_INT16(source[0]) >> 15) & 0x1;
+		yflip = (BURN_ENDIAN_SWAP_INT16(source[0]) >> 11) & 0x1;
+
+		colr = BURN_ENDIAN_SWAP_INT16(source[0]) & 0x3f;
+
+		pri = (BURN_ENDIAN_SWAP_INT16(source[0]) >> 6) & 3;
+
+		if (pri != priority) {
+			source -= 4;
+			continue;
+		}
 		
 		ytlim += 1;
 		xtlim += 1;
@@ -3609,139 +3453,21 @@ static void draw_sprites(INT32 priority, INT32 begin, INT32 end)
 			sx += xtlim*16-16;
 		}
 
-		const INT32 left = (sx + (xstep < 0 ? xstep * (xtlim - 1) : 0)) & 0x1ff;
-		if (left >= nScreenWidth && left + xtlim * 16 <= 0x200) continue;
-
-		const INT32 top = (sy + (ystep < 0 ? ystep * (ytlim - 1) : 0)) & 0x1ff;
-		const INT32 bottom = top + ytlim * 16;
-		// Check both intervals if the sprite crosses the 512-line wrap boundary.
-		if (bottom <= 0x200) {
-			if (top >= end || bottom <= begin) continue;
-		} else if (top >= end && bottom - 0x200 <= begin) {
-			continue;
-		}
-
-		// Sprite tile codes are contiguous even when flipped or wrapped.
-		if ((DrvSpriteTransTab[tile_number >> 3] & (1 << (tile_number & 7))) &&
-			sprite_block_empty(tile_number, xtlim * ytlim)) continue;
-
-		// Row visibility is identical for every column; preserve original row/copy order.
-		INT32 row_y[16], row_code[16], row_count = 0;
-		for (ytiles = 0; ytiles < ytlim; ytiles++) {
-			const INT32 y = (sy + ystep * ytiles) & 0x1ff;
-			if (y < end && y + 16 > begin) {
-				row_y[row_count] = y;
-				row_code[row_count++] = ytiles;
-			}
-			if (y - 0x200 < end && y - 0x200 + 16 > begin) {
-				row_y[row_count] = y - 0x200;
-				row_code[row_count++] = ytiles;
-			}
-		}
-		if (!row_count) continue;
-
 		for (xtiles = 0; xtiles < xtlim; xtiles++)
 		{
-			const INT32 x = (sx + xstep * xtiles) & 0x1ff;
-			const bool visible_x = x < nScreenWidth;
-			const bool wrapped_x = x >= 0x200 - 15 && x - 0x200 < nScreenWidth;
-			if (!visible_x && !wrapped_x) continue;
-
-			for (INT32 row = 0; row < row_count; row++)
+			for (ytiles = 0; ytiles < ytlim; ytiles++)
 			{
-				// Derive the code from the original column-major order even when columns are culled.
-				const INT32 code = tile_number + xtiles * ytlim + row_code[row];
-				if (visible_x) draw_single_sprite(code, colr, x, row_y[row], xflip, yflip, begin, end);
-				if (wrapped_x) draw_single_sprite(code, colr, x - 0x200, row_y[row], xflip, yflip, begin, end);
+				draw_single_sprite(tile_number, colr, (sx+xstep*xtiles)&0x1ff,(sy+ystep*ytiles)&0x1ff, xflip, yflip);
+				draw_single_sprite(tile_number, colr, ((sx+xstep*xtiles)&0x1ff)-0x200,(sy+ystep*ytiles)&0x1ff, xflip, yflip);
+				draw_single_sprite(tile_number, colr, (sx+xstep*xtiles)&0x1ff,((sy+ystep*ytiles)&0x1ff)-0x200, xflip, yflip);
+				draw_single_sprite(tile_number, colr, ((sx+xstep*xtiles)&0x1ff)-0x200,((sy+ystep*ytiles)&0x1ff)-0x200, xflip, yflip);
+
+				tile_number++;
 			}
 		}
+
+		source -= 4;
 	}
-}
-
-static void draw_rows(void *context, INT32 begin, INT32 end)
-{
-	const bool zeroteam = *(const bool*)context;
-	// Each band preserves all priority and blend dependencies within its rows.
-	for (INT32 priority = 0; priority < 4; priority++) {
-		if (!zeroteam && (nBurnLayer & (1 << priority))) draw_sprites(priority, begin, end);
-		if ((nSpriteEnable & (1 << priority)) && (~layer_enable & (1 << priority))) {
-			switch (priority) {
-				case 0: draw_layer(DrvBgRAM, 0, 0x400, bg_bank, begin, end); break;
-				case 1: draw_layer(DrvMgRAM, 1, 0x600, mg_bank, begin, end); break;
-				case 2: draw_layer(DrvFgRAM, 2, 0x500, fg_bank, begin, end); break;
-				case 3: draw_txt_layer(begin, end); break;
-			}
-		}
-		if (zeroteam && (nBurnLayer & (1 << priority))) draw_sprites(priority, begin, end);
-	}
-}
-
-static void draw_row_groups(void *context, INT32 begin, INT32 end)
-{
-	const INT32 bottom = end * 16 < nScreenHeight ? end * 16 : nScreenHeight;
-	draw_rows(context, begin * 16, bottom);
-}
-
-static void draw_scene(bool zeroteam)
-{
-	const INT32 tiles = nSpriteEnable & ~layer_enable & 15;
-	const INT32 sprites = (layer_enable & 0x10) ? 0 : (nBurnLayer & 15);
-	if (!(tiles | sprites)) return;
-
-	if (!Raiden2ThreadsReady) {
-		Raiden2Threads.Configure(3);
-		Raiden2ThreadsReady = true;
-	}
-	// ParallelFor joins before palette changes, output conversion or CPU execution.
-	Raiden2Threads.ParallelFor((nScreenHeight + 15) / 16, 3, draw_row_groups, &zeroteam);
-}
-
-template<INT32 Bytes>
-static inline void output_pixel(UINT8 *dst, UINT32 color)
-{
-	if (Bytes == 4) {
-		*((UINT32*)dst) = color;
-	} else {
-		PutPix(dst, color);
-	}
-}
-
-template<INT32 Bytes>
-static void draw_output_pixels()
-{
-	const INT32 stride = Bytes ? Bytes : nBurnBpp;
-	if (nScreenWidth <= 0) return;
-	for (INT32 y = 0; y < nScreenHeight; y++) {
-		const UINT32 *src = bitmap32 + y * nScreenWidth;
-		UINT8 *dst = pBurnDraw + y * nScreenWidth * stride;
-		INT32 same = 1;
-		while (same < nScreenWidth && src[same] == src[0]) same++;
-		// Reuse the leading run only; no per-pixel comparisons in the rest of the row.
-		const UINT32 first = src[0];
-		const UINT32 converted = BurnHighCol(first >> 16, (first >> 8) & 0xff, first & 0xff, 0);
-		for (INT32 x = 0; x < same; x++, dst += stride) output_pixel<Bytes>(dst, converted);
-		for (INT32 x = same; x < nScreenWidth; x++, dst += stride) {
-			const UINT32 rgb = src[x];
-			output_pixel<Bytes>(dst, BurnHighCol(rgb >> 16, (rgb >> 8) & 0xff, rgb & 0xff, 0));
-		}
-	}
-}
-
-static void draw_output()
-{
-	// Select the storage width outside the pixel loop; retain the color callback.
-	switch (nBurnBpp) {
-		case 4: draw_output_pixels<4>(); break;
-		default: draw_output_pixels<0>(); break;
-	}
-}
-
-static void clear_frame_buffers()
-{
-	const INT32 pixels = nScreenWidth * nScreenHeight;
-	if (pixels <= 0) return;
-	std::fill_n(pTransDraw, pixels, (UINT16)0x0800);
-	memset(bitmap32, 0, pixels * sizeof(UINT32));
 }
 
 static INT32 DrvDraw()
@@ -3753,11 +3479,24 @@ static INT32 DrvDraw()
 		DrvRecalc = 0;
 	}
 
-	clear_frame_buffers();
+//	BurnTransferClear();
+	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
+		pTransDraw[i] = 0x0800;
+		bitmap32[i] = 0; // black
+	}
 
-	draw_scene(false);
+	if (nBurnLayer & 1) draw_sprites(0);
+	if (nSpriteEnable & 1) if (~layer_enable & 1) draw_layer(DrvBgRAM, 0, 0x400, bg_bank);
+	if (nBurnLayer & 2) draw_sprites(1);
+	if (nSpriteEnable & 2) if (~layer_enable & 2) draw_layer(DrvMgRAM, 1, 0x600, mg_bank);
+	if (nBurnLayer & 4) draw_sprites(2);
+	if (nSpriteEnable & 4) if (~layer_enable & 4) draw_layer(DrvFgRAM, 2, 0x500, fg_bank);
+	if (nBurnLayer & 8) draw_sprites(3);
+	if (nSpriteEnable & 8) if (~layer_enable & 8) draw_txt_layer();
 
-	draw_output();
+	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
+		PutPix(pBurnDraw + (i * nBurnBpp), BurnHighCol(bitmap32[i]>>16, (bitmap32[i]>>8)&0xff, bitmap32[i]&0xff, 0));
+	}
 	return 0;
 }
 
@@ -3774,11 +3513,24 @@ static INT32 ZeroteamDraw() // sprite priorities different
 		DrvRecalc = 0;
 	}
 
-	clear_frame_buffers();
+//	BurnTransferClear();
+	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
+		pTransDraw[i] = 0x0800;
+		bitmap32[i] = 0; // black
+	}
 
-	draw_scene(true);
+	if (nSpriteEnable & 1) if (~layer_enable & 1) draw_layer(DrvBgRAM, 0, 0x400, bg_bank);
+	if (nBurnLayer & 1) draw_sprites(0);
+	if (nSpriteEnable & 2) if (~layer_enable & 2) draw_layer(DrvMgRAM, 1, 0x600, mg_bank);
+	if (nBurnLayer & 2) draw_sprites(1);
+	if (nSpriteEnable & 4) if (~layer_enable & 4) draw_layer(DrvFgRAM, 2, 0x500, fg_bank);
+	if (nBurnLayer & 4) draw_sprites(2);
+	if (nSpriteEnable & 8) if (~layer_enable & 8) draw_txt_layer();
+	if (nBurnLayer & 8) draw_sprites(3);
 
-	draw_output();
+	for (INT32 i = 0; i < nScreenWidth * nScreenHeight; i++) {
+		PutPix(pBurnDraw + (i * nBurnBpp), BurnHighCol(bitmap32[i]>>16, (bitmap32[i]>>8)&0xff, bitmap32[i]&0xff, 0));
+	}
 
 	return 0;
 }
@@ -3803,28 +3555,6 @@ static void compile_inputs()
 	seibu_coin_input = coin;
 }
 
-template<bool Profile>
-static void run_frame_cpus()
-{
-	INT32 nInterleave = 128;
-	INT32 nCyclesTotal[2] = { (16000000 * 100) / 5547, (3579545 * 100) / 5547 };
-	INT32 nCyclesDone[2] = { 0, 0 };
-	if (Profile) Raiden2Profile.cpu_samples++;
-	for (INT32 i = 0; i < nInterleave; i++) {
-		std::chrono::steady_clock::time_point start;
-		if (Profile) start = std::chrono::steady_clock::now();
-		CPU_RUN(0, Vez);
-		if (i == (nInterleave-2)) VezSetIRQLineAndVector(0, 0xc0/4, CPU_IRQSTATUS_ACK);
-		if (Profile) {
-			const auto now = std::chrono::steady_clock::now();
-			Raiden2Profile.v30 += std::chrono::duration<double, std::milli>(now - start).count();
-			start = now;
-		}
-		CPU_RUN_TIMER(1);
-		if (Profile) Raiden2Profile.z80_timer += std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
-	}
-}
-
 static INT32 DrvFrame()
 {
 	if (DrvReset) {
@@ -3836,27 +3566,31 @@ static INT32 DrvFrame()
 
 	compile_inputs();
 
+	INT32 nInterleave = 128;
+	INT32 nCyclesTotal[2] = { (16000000 * 100) / 5547, (3579545 * 100) / 5547 };
+	INT32 nCyclesDone[2] = { 0, 0 };
+
 	ZetOpen(0);
 	VezOpen(0);
 
-	if (game_select <= 1) Raiden2Profile.Begin();
-	// Sample only in opt-in diagnostics; the normal instantiation has no clocks.
-	if (Raiden2Profile.file && (Raiden2Profile.frames % 16) == 0) run_frame_cpus<true>();
-	else run_frame_cpus<false>();
+	for (INT32 i = 0; i < nInterleave; i++)
+	{
+		CPU_RUN(0, Vez);
+		if (i == (nInterleave-2)) VezSetIRQLineAndVector(0, 0xc0/4, CPU_IRQSTATUS_ACK);
+
+		CPU_RUN_TIMER(1);
+	}
 
 	VezClose();
 	ZetClose();
 
-	if (Raiden2Profile.file) Raiden2Profile.cpu += Raiden2Profile.Elapsed();
 	if (pBurnSoundOut) {
 		seibu_sound_update(pBurnSoundOut, nBurnSoundLen);
 	}
 
-	if (Raiden2Profile.file) Raiden2Profile.sound += Raiden2Profile.Elapsed();
 	if (pBurnDraw) {
 		BurnDrvRedraw();
 	}
-	Raiden2Profile.End(pBurnSoundOut != NULL, pBurnDraw != NULL);
 
 	return 0;
 }
@@ -3874,6 +3608,8 @@ static INT32 R2dxFrame()
 			DrvInputs[1] ^= (DrvJoy2[i] & 1) << i;
 		}
 	}
+
+//	INT32 nCyclesTotal[1] = { (16000000 * 100) / 5547 };
 
 	VezOpen(0);
 	VezRun(288444 - 500);
@@ -3935,7 +3671,6 @@ static INT32 DrvScan(INT32 nAction,INT32 *pnMin)
 	}
 
 	if (nAction & ACB_WRITE) {
-		mapped_prg_offset = -1;
 		VezOpen(0);
 		if (game_select == 0) raiden2_bankswitch(prg_bank);
 		if (game_select == 1) raidendx_bankswitch(prg_bank);

@@ -5323,16 +5323,13 @@ static void m68k_op_bfchg_32_ai(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5380,16 +5377,13 @@ static void m68k_op_bfchg_32_di(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5437,16 +5431,13 @@ static void m68k_op_bfchg_32_ix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5494,16 +5485,13 @@ static void m68k_op_bfchg_32_aw(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5551,16 +5539,13 @@ static void m68k_op_bfchg_32_al(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5645,16 +5630,13 @@ static void m68k_op_bfclr_32_ai(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5702,16 +5684,13 @@ static void m68k_op_bfclr_32_di(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5759,16 +5738,13 @@ static void m68k_op_bfclr_32_ix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5816,16 +5792,13 @@ static void m68k_op_bfclr_32_aw(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5873,16 +5846,13 @@ static void m68k_op_bfclr_32_al(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -5960,16 +5930,13 @@ static void m68k_op_bfexts_32_ai(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6011,16 +5978,13 @@ static void m68k_op_bfexts_32_di(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6062,16 +6026,13 @@ static void m68k_op_bfexts_32_ix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6113,16 +6074,13 @@ static void m68k_op_bfexts_32_aw(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6164,16 +6122,13 @@ static void m68k_op_bfexts_32_al(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6215,16 +6170,13 @@ static void m68k_op_bfexts_32_pcdi(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6266,16 +6218,13 @@ static void m68k_op_bfexts_32_pcix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6351,16 +6300,13 @@ static void m68k_op_bfextu_32_ai(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6401,16 +6347,13 @@ static void m68k_op_bfextu_32_di(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6451,16 +6394,13 @@ static void m68k_op_bfextu_32_ix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6501,16 +6441,13 @@ static void m68k_op_bfextu_32_aw(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6551,16 +6488,13 @@ static void m68k_op_bfextu_32_al(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6601,16 +6535,13 @@ static void m68k_op_bfextu_32_pcdi(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6651,16 +6582,13 @@ static void m68k_op_bfextu_32_pcix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6741,17 +6669,13 @@ static void m68k_op_bfffo_32_ai(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
-		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-		}
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
 		local_offset = offset % 8;
 		if(local_offset < 0)
 		{
 			local_offset += 8;
-			if(BIT_B(word2))
-				ea--;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6797,17 +6721,13 @@ static void m68k_op_bfffo_32_di(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
-		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-		}
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
 		local_offset = offset % 8;
 		if(local_offset < 0)
 		{
 			local_offset += 8;
-			if(BIT_B(word2))
-				ea--;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6853,17 +6773,13 @@ static void m68k_op_bfffo_32_ix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
-		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-		}
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
 		local_offset = offset % 8;
 		if(local_offset < 0)
 		{
 			local_offset += 8;
-			if(BIT_B(word2))
-				ea--;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6909,17 +6825,13 @@ static void m68k_op_bfffo_32_aw(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
-		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-		}
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
 		local_offset = offset % 8;
 		if(local_offset < 0)
 		{
 			local_offset += 8;
-			if(BIT_B(word2))
-				ea--;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -6965,17 +6877,13 @@ static void m68k_op_bfffo_32_al(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
-		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-		}
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
 		local_offset = offset % 8;
 		if(local_offset < 0)
 		{
 			local_offset += 8;
-			if(BIT_B(word2))
-				ea--;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -7021,17 +6929,13 @@ static void m68k_op_bfffo_32_pcdi(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
-		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-		}
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
 		local_offset = offset % 8;
 		if(local_offset < 0)
 		{
 			local_offset += 8;
-			if(BIT_B(word2))
-				ea--;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -7077,17 +6981,13 @@ static void m68k_op_bfffo_32_pcix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
-		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-		}
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
 		local_offset = offset % 8;
 		if(local_offset < 0)
 		{
 			local_offset += 8;
-			if(BIT_B(word2))
-				ea--;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -7180,16 +7080,13 @@ static void m68k_op_bfins_32_ai(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -7201,24 +7098,18 @@ static void m68k_op_bfins_32_ai(void)
 		FLAG_Z = insert_base;
 		insert_long = insert_base >> offset;
 
-		data_long = (offset + width) < 8 ? (m68ki_read_8(ea) << 24) :
-				(offset + width) < 16 ? (m68ki_read_16(ea) << 16) : m68ki_read_32(ea);
+		data_long = m68ki_read_32(ea);
 		FLAG_V = VFLAG_CLEAR;
 		FLAG_C = CFLAG_CLEAR;
 
-		if((width + offset) < 8)
-			m68ki_write_8(ea, ((data_long & ~mask_long) | insert_long) >> 24);
-		else if((width + offset) < 16)
-			m68ki_write_16(ea, ((data_long & ~mask_long) | insert_long) >> 16);
-		else
-			m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
+		m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
 
 		if((width + offset) > 32)
 		{
-			mask_byte = MASK_OUT_ABOVE_8(mask_base) << (8 - offset);
-			insert_byte = MASK_OUT_ABOVE_8(insert_base) << (8 - offset);
+			mask_byte = MASK_OUT_ABOVE_8(mask_base);
+			insert_byte = MASK_OUT_ABOVE_8(insert_base);
 			data_byte = m68ki_read_8(ea+4);
-			FLAG_Z |= (insert_byte & mask_byte);
+			FLAG_Z |= (data_byte & mask_byte);
 			m68ki_write_8(ea+4, (data_byte & ~mask_byte) | insert_byte);
 		}
 		return;
@@ -7250,16 +7141,13 @@ static void m68k_op_bfins_32_di(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -7271,24 +7159,18 @@ static void m68k_op_bfins_32_di(void)
 		FLAG_Z = insert_base;
 		insert_long = insert_base >> offset;
 
-		data_long = (offset + width) < 8 ? (m68ki_read_8(ea) << 24) :
-				(offset + width) < 16 ? (m68ki_read_16(ea) << 16) : m68ki_read_32(ea);
+		data_long = m68ki_read_32(ea);
 		FLAG_V = VFLAG_CLEAR;
 		FLAG_C = CFLAG_CLEAR;
 
-		if((width + offset) < 8)
-			m68ki_write_8(ea, ((data_long & ~mask_long) | insert_long) >> 24);
-		else if((width + offset) < 16)
-			m68ki_write_16(ea, ((data_long & ~mask_long) | insert_long) >> 16);
-		else
-			m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
+		m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
 
 		if((width + offset) > 32)
 		{
-			mask_byte = MASK_OUT_ABOVE_8(mask_base) << (8 - offset);
-			insert_byte = MASK_OUT_ABOVE_8(insert_base) << (8 - offset);
+			mask_byte = MASK_OUT_ABOVE_8(mask_base);
+			insert_byte = MASK_OUT_ABOVE_8(insert_base);
 			data_byte = m68ki_read_8(ea+4);
-			FLAG_Z |= (insert_byte & mask_byte);
+			FLAG_Z |= (data_byte & mask_byte);
 			m68ki_write_8(ea+4, (data_byte & ~mask_byte) | insert_byte);
 		}
 		return;
@@ -7320,16 +7202,13 @@ static void m68k_op_bfins_32_ix(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -7341,24 +7220,18 @@ static void m68k_op_bfins_32_ix(void)
 		FLAG_Z = insert_base;
 		insert_long = insert_base >> offset;
 
-		data_long = (offset + width) < 8 ? (m68ki_read_8(ea) << 24) :
-				(offset + width) < 16 ? (m68ki_read_16(ea) << 16) : m68ki_read_32(ea);
+		data_long = m68ki_read_32(ea);
 		FLAG_V = VFLAG_CLEAR;
 		FLAG_C = CFLAG_CLEAR;
 
-		if((width + offset) < 8)
-			m68ki_write_8(ea, ((data_long & ~mask_long) | insert_long) >> 24);
-		else if((width + offset) < 16)
-			m68ki_write_16(ea, ((data_long & ~mask_long) | insert_long) >> 16);
-		else
-			m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
+		m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
 
 		if((width + offset) > 32)
 		{
-			mask_byte = MASK_OUT_ABOVE_8(mask_base) << (8 - offset);
-			insert_byte = MASK_OUT_ABOVE_8(insert_base) << (8 - offset);
+			mask_byte = MASK_OUT_ABOVE_8(mask_base);
+			insert_byte = MASK_OUT_ABOVE_8(insert_base);
 			data_byte = m68ki_read_8(ea+4);
-			FLAG_Z |= (insert_byte & mask_byte);
+			FLAG_Z |= (data_byte & mask_byte);
 			m68ki_write_8(ea+4, (data_byte & ~mask_byte) | insert_byte);
 		}
 		return;
@@ -7390,16 +7263,13 @@ static void m68k_op_bfins_32_aw(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -7411,24 +7281,18 @@ static void m68k_op_bfins_32_aw(void)
 		FLAG_Z = insert_base;
 		insert_long = insert_base >> offset;
 
-		data_long = (offset + width) < 8 ? (m68ki_read_8(ea) << 24) :
-				(offset + width) < 16 ? (m68ki_read_16(ea) << 16) : m68ki_read_32(ea);
+		data_long = m68ki_read_32(ea);
 		FLAG_V = VFLAG_CLEAR;
 		FLAG_C = CFLAG_CLEAR;
 
-		if((width + offset) < 8)
-			m68ki_write_8(ea, ((data_long & ~mask_long) | insert_long) >> 24);
-		else if((width + offset) < 16)
-			m68ki_write_16(ea, ((data_long & ~mask_long) | insert_long) >> 16);
-		else
-			m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
+		m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
 
 		if((width + offset) > 32)
 		{
-			mask_byte = MASK_OUT_ABOVE_8(mask_base) << (8 - offset);
-			insert_byte = MASK_OUT_ABOVE_8(insert_base) << (8 - offset);
+			mask_byte = MASK_OUT_ABOVE_8(mask_base);
+			insert_byte = MASK_OUT_ABOVE_8(insert_base);
 			data_byte = m68ki_read_8(ea+4);
-			FLAG_Z |= (insert_byte & mask_byte);
+			FLAG_Z |= (data_byte & mask_byte);
 			m68ki_write_8(ea+4, (data_byte & ~mask_byte) | insert_byte);
 		}
 		return;
@@ -7460,16 +7324,13 @@ static void m68k_op_bfins_32_al(void)
 		if(BIT_5(word2))
 			width = REG_D[width&7];
 
-		if(BIT_B(word2))
+		/* Offset is signed so we have to use ugly math =( */
+		ea += offset / 8;
+		offset %= 8;
+		if(offset < 0)
 		{
-			/* Offset is signed so we have to use ugly math =( */
-			ea += offset / 8;
-			offset %= 8;
-			if(offset < 0)
-			{
-				offset += 8;
-				ea--;
-			}
+			offset += 8;
+			ea--;
 		}
 		width = ((width-1) & 31) + 1;
 
@@ -7481,24 +7342,18 @@ static void m68k_op_bfins_32_al(void)
 		FLAG_Z = insert_base;
 		insert_long = insert_base >> offset;
 
-		data_long = (offset + width) < 8 ? (m68ki_read_8(ea) << 24) :
-				(offset + width) < 16 ? (m68ki_read_16(ea) << 16) : m68ki_read_32(ea);
+		data_long = m68ki_read_32(ea);
 		FLAG_V = VFLAG_CLEAR;
 		FLAG_C = CFLAG_CLEAR;
 
-		if((width + offset) < 8)
-			m68ki_write_8(ea, ((data_long & ~mask_long) | insert_long) >> 24);
-		else if((width + offset) < 16)
-			m68ki_write_16(ea, ((data_long & ~mask_long) | insert_long) >> 16);
-		else
-			m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
+		m68ki_write_32(ea, (data_long & ~mask_long) | insert_long);
 
 		if((width + offset) > 32)
 		{
-			mask_byte = MASK_OUT_ABOVE_8(mask_base) << (8 - offset);
-			insert_byte = MASK_OUT_ABOVE_8(insert_base) << (8 - offset);
+			mask_byte = MASK_OUT_ABOVE_8(mask_base);
+			insert_byte = MASK_OUT_ABOVE_8(insert_base);
 			data_byte = m68ki_read_8(ea+4);
-			FLAG_Z |= (insert_byte & mask_byte);
+			FLAG_Z |= (data_byte & mask_byte);
 			m68ki_write_8(ea+4, (data_byte & ~mask_byte) | insert_byte);
 		}
 		return;

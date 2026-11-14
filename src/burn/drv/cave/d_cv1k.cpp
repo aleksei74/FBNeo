@@ -42,11 +42,7 @@ static INT32 is_type_d;
 static INT32 DriverClock; // selected cpu clockrate
 static INT32 nPrevBurnCPUSpeedAdjust;
 static UINT8 nPrevCPUTenth;
-static INT32 speedhack_burn; // 10us at the selected CPU clock
-static INT32 speedhack_mapped;
-static INT32 nPrevBlitterDipB;
-static INT32 nPrevBlitterDipC;
-static INT32 nPrevBlitterBurnCycles;
+static INT32 speedhack_burn; // 10ms @ cpu clock, calculated in DrvFrame
 
 static struct BurnInputInfo Cv1kInputList[] = {
 	{"P1 Coin",			BIT_DIGITAL,	DrvJoy1 + 2,	"p1 coin"	},
@@ -208,13 +204,11 @@ static void __fastcall main_write_long(UINT32 offset, UINT32 data)
 		return;
 	}
 
-	// Unhandled writes are intentionally ignored. Logging here is prohibitively
-	// expensive when a game polls an unknown register.
+	if (offset > 0x03fffff) bprintf(0, _T("mwl %x  %x\n"), offset, data);
 }
 static void __fastcall main_write_word(UINT32 offset, UINT16 data)
 {
-	(void)offset;
-	(void)data;
+	if (offset > 0x03fffff) bprintf(0, _T("mww %x  %x\n"), offset, data);
 }
 static void __fastcall main_write_byte(UINT32 offset, UINT8 data)
 {
@@ -244,8 +238,7 @@ static void __fastcall main_write_byte(UINT32 offset, UINT8 data)
 		case 0x10c00003: serflash_enab_write(data); return;
 	}
 
-	(void)offset;
-	(void)data;
+	if (offset > 0x03fffff) bprintf(0, _T("mwb %x  %x\n"), offset, data);
 }
 
 static UINT32 __fastcall main_read_long(UINT32 offset)
@@ -264,6 +257,8 @@ static UINT16 __fastcall main_read_word(UINT32 offset)
 		return epic12_blitter_read(offset & 0xff);
 	}
 
+	bprintf(0, _T("mrw %x\n"), offset);
+
 	return 0;
 }
 static UINT8 __fastcall main_read_byte(UINT32 offset)
@@ -281,6 +276,8 @@ static UINT8 __fastcall main_read_byte(UINT32 offset)
 		case 0x10c00001: return (rtc9701_read_bit() & 1) | 0xfe;
 	}
 
+	bprintf(0, _T("mrb %x\n"), offset);
+
 	return 0;
 }
 
@@ -296,6 +293,7 @@ static UINT32 __fastcall main_read_port(UINT32 offset)
 		case SH3_PORT_J: return 0xff; // blitter(?)
 	}
 
+	bprintf(0, _T("mrp %x\n"), offset);
 	return 0;
 }
 static void __fastcall main_write_port(UINT32 offset, UINT32 data)
@@ -305,45 +303,65 @@ static void __fastcall main_write_port(UINT32 offset, UINT32 data)
 		case SH3_PORT_J: return; // blitter(?)
 	}
 
-	(void)data;
+	bprintf(0, _T("mwp %x, %x\n"), offset, data);
 }
 
-// Verified idle-loop speedhack
+// hacky speedhack handler
 static UINT32 hacky_idle_ram;
 static UINT32 hacky_idle_pc;
 
 static UINT32 __fastcall speedhack_read_long(UINT32 offset)
 {
-	if (offset == hacky_idle_ram) {
-		const UINT32 pc = Sh3GetPC(-1);
-		if (pc == hacky_idle_pc || pc == hacky_idle_pc + 2) {
-			Sh3BurnCycles(speedhack_burn);
-		}
+	UINT32 pc = Sh3GetPC(-1);
+	if ( offset == hacky_idle_ram && (pc == hacky_idle_pc || pc == hacky_idle_pc+2)) {
+		//bprintf(0, _T("l"));
+		Sh3BurnCycles(speedhack_burn);
 	}
-	UINT32 value = *((UINT32 *)(DrvMainRAM + (offset & 0xfffffc)));
-	return (value << 16) | (value >> 16);
+	UINT32 V = *((UINT32 *)(DrvMainRAM + (offset & 0xfffffc)));
+#ifdef LSB_FIRST
+	V = (V << 16) | (V >> 16);
+#endif
+	return V;
+}
+
+static UINT16 __fastcall speedhack_read_word(UINT32 offset)
+{
+#if 0
+	// speedhack for all games uses long handler, just passthru for word/byte
+	// reads since this is a high-traffic area. (0xc000000 - 0xc00ffff)
+	UINT32 pc = Sh3GetPC(-1);
+	if ( offset == hacky_idle_ram && (pc == hacky_idle_pc || pc == hacky_idle_pc+2)) {
+		//bprintf(0, _T("w"));
+		Sh3BurnCycles(speedhack_burn);
+	}
+#endif
+	return *((UINT16 *)(DrvMainRAM + (offset & 0xfffffe)));
+}
+
+static UINT8 __fastcall speedhack_read_byte(UINT32 offset)
+{
+#if 0
+	UINT32 pc = Sh3GetPC(-1);
+	if ( offset == hacky_idle_ram && (pc == hacky_idle_pc || pc == hacky_idle_pc+2)) {
+		//bprintf(0, _T("b"));
+		Sh3BurnCycles(speedhack_burn);
+	}
+#endif
+#ifdef LSB_FIRST
+	offset ^= 1;
+#endif
+	return DrvMainRAM[offset & 0xffffff];
 }
 
 static void speedhack_set(UINT32 ram, UINT32 pc)
 {
 	hacky_idle_ram = ram;
 	hacky_idle_pc = pc;
-	speedhack_mapped = -1;
-}
 
-static void speedhack_apply(INT32 enable)
-{
-	enable = (enable && hacky_idle_ram && hacky_idle_pc) ? 1 : 0;
-	if (enable == speedhack_mapped) return;
-
-	if (enable) {
-		Sh3MapReadLongHandler(1, 0xc000000, 0xc00ffff);
-		Sh3SetReadLongHandler (1, speedhack_read_long);
-	} else {
-		Sh3MapMemory(DrvMainRAM, 0xc000000, 0xc00ffff, MAP_READ);
-	}
-
-	speedhack_mapped = enable;
+	Sh3MapHandler(1, 0xc000000, 0xc00ffff, MAP_READ);
+	Sh3SetReadByteHandler (1, speedhack_read_byte);
+	Sh3SetReadWordHandler (1, speedhack_read_word);
+	Sh3SetReadLongHandler (1, speedhack_read_long);
 }
 
 static INT32 DrvDoReset()
@@ -363,9 +381,6 @@ static INT32 DrvDoReset()
 
 	nPrevBurnCPUSpeedAdjust = -1;
 	nPrevCPUTenth = 0xff;
-	nPrevBlitterDipB = -1;
-	nPrevBlitterDipC = -1;
-	nPrevBlitterBurnCycles = -1;
 
 	hold_coin.reset();
 
@@ -501,8 +516,7 @@ static INT32 DrvInit()
 	Sh3SetReadPortHandler(main_read_port);
 	Sh3SetWritePortHandler(main_write_port);
 
-	init_speedhack(); // locate the game's verified idle loop
-	speedhack_apply(DrvDips[1] & 0x02);
+	init_speedhack(); // install the hacky speedhack handler
 
 	Sh3Close();
 
@@ -511,7 +525,7 @@ static INT32 DrvInit()
 	rtc9701_init();
 
 	ymz770_init(DrvSoundROM, 0x800000);
-
+	ymz770_set_volume(2.0);
 	ymz770_set_buffered(Sh3TotalCycles, SH3_CLOCK);
 	DrvDoReset();
 
@@ -531,9 +545,6 @@ static INT32 DrvExit()
 	GenericTilesExit();
 
 	is_type_d = 0;
-	hacky_idle_ram = 0;
-	hacky_idle_pc = 0;
-	speedhack_mapped = -1;
 
 	return 0;
 }
@@ -561,20 +572,17 @@ static INT32 DrvFrame()
 		double dPercent = i_percent + (0.1 * (DrvDips[3] & 0xf)); // .x tenth percent comes from DIPS
 
 		DriverClock = (INT32)((INT64)SH3_CLOCK * dPercent / 100);
-		speedhack_burn = DriverClock / 100000; // 10us
+		speedhack_burn = (double)((double)DriverClock / 1000000) * 10; // 10us
 
 		Sh3SetClockCV1k(DriverClock);
 		ymz770_set_buffered(Sh3TotalCycles, DriverClock);
 
 		bprintf(0, _T("Main Clock %d  at %0.1f%%  Adjusted Clock %d\n"), SH3_CLOCK, dPercent, DriverClock);
 	}
-	// These settings are static in normal use. Avoid crossing the device and
-	// thread-control boundary every frame unless a DIP or CPU clock changed.
-	if (nPrevBlitterDipB != DrvDips[1] || nPrevBlitterDipC != DrvDips[2] ||
-		nPrevBlitterBurnCycles != speedhack_burn) {
+	// set blitter delay, blitter threading & speedhack via dip setting
+	{
 		INT32 delay = DrvDips[2] & 0x1f;
 
-		speedhack_apply(DrvDips[1] & 0x02);
 		epic12_set_blitterdelay_method(DrvDips[2] & 0x20);
 		epic12_set_blitterdelay((delay) ? ((delay - 1) + 50) : 0, speedhack_burn);
 		epic12_set_blitterthreading(DrvDips[1] & 1);
@@ -583,10 +591,6 @@ static INT32 DrvFrame()
 		// test stuff for el_rika
 		epic12_set_blitter_clipping_margin(!(DrvDips[2] & 0x40));
 		epic12_set_blitter_sleep_on_busy(!(DrvDips[2] & 0x80));
-
-		nPrevBlitterDipB = DrvDips[1];
-		nPrevBlitterDipC = DrvDips[2];
-		nPrevBlitterBurnCycles = speedhack_burn;
 	}
 
 	{
@@ -618,11 +622,13 @@ static INT32 DrvFrame()
 	{
 		CPU_RUN(0, Sh3);
 	}
+
 	Sh3SetIRQLine(2, CPU_IRQSTATUS_HOLD);
 
 	if (pBurnSoundOut) {
 		ymz770_update(pBurnSoundOut, nBurnSoundLen);
 	}
+
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
 
 	Sh3Close();
@@ -632,6 +638,7 @@ static INT32 DrvFrame()
 	if (DrvDips[1] & 4) { // Thread Sync: Before Draw
 		epic12_wait_blitterthread();
 	}
+
 	if (pBurnDraw) {
 		BurnDrvRedraw();
 	}
@@ -1133,7 +1140,7 @@ STD_ROM_FN(deathsml)
 struct BurnDriver BurnDrvDeathsml = {
 	"deathsml", NULL, NULL, NULL, "2007",
 	"Deathsmiles (2007/10/09 MASTER VER)\0", NULL, "Cave (AMI license)", "CA017",
-	L"Deathsmiles\0\u30C7\u30B9\u30B9\u30DE\u30A4\u30EB\u30BA (2007/10/09 MASTER VER)\0", NULL, NULL, NULL,
+	L"Deathsmiles\0\uc730\ub930\ub930\ua430\ueb30\uba30 (2007/10/09 MASTER VER)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_CV1000, GBF_HORSHOOT, 0,
 	NULL, deathsmlRomInfo, deathsmlRomName, NULL, NULL, NULL, NULL, Cv1kInputInfo, Cv1kDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x10000,
@@ -1383,7 +1390,7 @@ STD_ROM_FN(dsmbl)
 struct BurnDriver BurnDrvDsmbl = {
 	"dsmbl", NULL, NULL, NULL, "2008",
 	"Deathsmiles MegaBlack Label (2008/10/06 MEGABLACK LABEL VER)\0", NULL, "Cave (AMI license)", "CA017B",
-	L"Deathsmiles MegaBlack Label\0\u30C7\u30B9\u30B9\u30DE\u30A4\u30EB\u30BA \u30E1\u30AC\u30D6\u30E9\u30C3\u30AF\u30EC\u30FC\u30D9\u30EB (2008/10/06 MEGABLACK LABEL VER)\0", NULL, NULL, NULL,
+	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAVE_CV1000, GBF_HORSHOOT, 0,
 	NULL, dsmblRomInfo, dsmblRomName, NULL, NULL, NULL, NULL, Cv1kInputInfo, Cv1kDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x10000,
