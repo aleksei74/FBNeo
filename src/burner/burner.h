@@ -258,6 +258,7 @@ void ComputeGammaLUT();
 #define DAT_PRE90S_ONLY			38
 #define DAT_POST90S_ONLY		39
 // Add Codes (DsNo)
+#define DAT_ATARI2600_ONLY		40
 
 INT32 write_datfile(INT32 bType, FILE* fDat);
 INT32 create_datfile(TCHAR* szFilename, INT32 bType);

@@ -1183,6 +1183,10 @@ int ProcessCmdLine()
 			write_datfile(DAT_ASTROHOME_ONLY, stdout);
 			return 1;
 		}
+		if (_tcscmp(szName, _T("-listinfoatari2600only")) == 0) {
+			write_datfile(DAT_ATARI2600_ONLY, stdout);
+			return 1;
+		}
 
 // Add Codes (DsNo)
 		if (_tcscmp(szName, _T("-listinfocapcom")) == 0) {
@@ -1607,6 +1611,7 @@ static void CreateSupportFolders()
 		{_T("roms/ngp/")},
 		{_T("roms/channelf/")},
 		{_T("roms/astrocade/")},
+		{_T("roms/atari2600/")},
 		{_T("roms/romdata/")},
 		{_T("\0")} // END of list
 	};

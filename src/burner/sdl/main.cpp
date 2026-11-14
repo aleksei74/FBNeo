@@ -175,6 +175,9 @@ void generateDats()
 	_stprintf(filename, _T("%sFBNeo_-_Super_Nintendo_Entertainment_System.dat"), szAppDatListsPath);
 	create_datfile(filename, DAT_SNES_ONLY);
 
+	_stprintf(filename, _T("%sFBNeo_-_Nintendo_Game_Boy_Advance.dat"), szAppDatListsPath);
+	create_datfile(filename, DAT_GBA_ONLY);
+
 	_stprintf(filename, _T("%sFBNeo_-_Neo_Geo_Pocket.dat"), szAppDatListsPath);
 	create_datfile(filename, DAT_NGP_ONLY);
 
@@ -183,6 +186,8 @@ void generateDats()
 
 	_stprintf(filename, _T("%sFBNeo_-_Bally_Astrocade.dat"), szAppDatListsPath);
 	create_datfile(filename, DAT_ASTROHOME_ONLY);
+	_stprintf(filename, _T("%sFBNeo_-_Atari_-_2600.dat"), szAppDatListsPath);
+	create_datfile(filename, DAT_ATARI2600_ONLY);
 
 #else
 	printf("Creating fbneo dats\n");
@@ -236,6 +241,9 @@ void generateDats()
 	sprintf(filename, "FBNeo_-_Super_Nintendo_Entertainment_System.dat");
 	create_datfile(filename, DAT_SNES_ONLY);
 
+	sprintf(filename, "FBNeo_-_Nintendo_Game_Boy_Advance.dat");
+	create_datfile(filename, DAT_GBA_ONLY);
+
 	sprintf(filename, "FBNeo_-_Neo_Geo_Pocket.dat");
 	create_datfile(filename, DAT_NGP_ONLY);
 
@@ -244,6 +252,8 @@ void generateDats()
 
 	sprintf(filename, "FBNeo_-_Bally_Astrocade.dat");
 	create_datfile(filename, DAT_ASTROHOME_ONLY);
+	sprintf(filename, "FBNeo_-_Atari_-_2600.dat");
+	create_datfile(filename, DAT_ATARI2600_ONLY);
 #endif
 }
 
