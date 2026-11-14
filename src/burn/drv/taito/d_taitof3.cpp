@@ -11,8 +11,6 @@
 	  note: this was a 68ec020 cpu-core interface bug in handling odd 32bit reads/writes
 */
 
-//#define USE_CPU_SPEEDHACKS
-
 #include "tiles_generic.h"
 #include "m68000_intf.h"
 #include "taito.h"
@@ -268,7 +266,6 @@ static void control_w(INT32 offset, UINT32 d, INT32 b)
 
 		case 0x04:
 		{
-	//		bprintf (0, _T("contrl %2.2x, %8.8x, %8.8x\n"), offset, d, b);
 			if ((offset & 3) == 0) DrvCoinWord[0] = d << 0; // or 8?
 		}
 		return;
@@ -285,7 +282,6 @@ static void control_w(INT32 offset, UINT32 d, INT32 b)
 
 		case 0x14:
 		{
-	//		bprintf (0, _T("contrl %2.2x, %8.8x, %8.8x\n"), offset, d, b);
 			if ((offset & 3) == 0) DrvCoinWord[1] = d << 0; // or 8?
 		}
 		return;
@@ -294,7 +290,6 @@ static void control_w(INT32 offset, UINT32 d, INT32 b)
 		{
 			if (DebugSnd_MSM6295Initted) {
 				if ((offset & 3) == 3) { MSM6295Write(0, d); return; }
-			//	bprintf (0, _T("Sound Command: %x, %x %d\n"), offset & 0x1f, d, b); 
 				if ((offset & 3) == 0) { } // banking
 			}
 		}
@@ -491,10 +486,25 @@ static void __fastcall f3_palette_write_byte(UINT32 a, UINT8 d)
 	}
 }
 
+#if defined(LSB_FIRST) && !defined(__clang__) && ((defined(__GNUC__) && defined(__x86_64__)) || (defined(_MSC_VER) && defined(_M_X64)))
+static inline void f3_expand_pixels(UINT8 *dst, const UINT8 *src)
+{
+	// Expand two packed bytes into four low/high-nibble pixels per store.
+	UINT32 a = src[2] | (UINT32(src[3]) << 16);
+	UINT32 b = src[0] | (UINT32(src[1]) << 16);
+	a = (a & 0x000f000f) | ((a & 0x00f000f0) << 4);
+	b = (b & 0x000f000f) | ((b & 0x00f000f0) << 4);
+	memcpy(dst, &a, sizeof(a));
+	memcpy(dst + 4, &b, sizeof(b));
+}
+#endif
+
 static void DrvVRAMExpand(UINT16 offset)
 {
 	offset &= 0x1ffc;
-
+#if defined(LSB_FIRST) && defined(__GNUC__) && defined(__x86_64__) && !defined(__clang__)
+	f3_expand_pixels(TaitoCharsB + offset * 2, DrvVRAMRAM + offset);
+#else
 	TaitoCharsB[offset * 2 + 1] = DrvVRAMRAM[offset + 2] >> 4;
 	TaitoCharsB[offset * 2 + 0] = DrvVRAMRAM[offset + 2] & 0x0f;
 	TaitoCharsB[offset * 2 + 3] = DrvVRAMRAM[offset + 3] >> 4;
@@ -503,12 +513,16 @@ static void DrvVRAMExpand(UINT16 offset)
 	TaitoCharsB[offset * 2 + 4] = DrvVRAMRAM[offset + 0] & 0x0f;
 	TaitoCharsB[offset * 2 + 7] = DrvVRAMRAM[offset + 1] >> 4;
 	TaitoCharsB[offset * 2 + 6] = DrvVRAMRAM[offset + 1] & 0x0f;
+#endif
 }
 
 static void DrvPivotExpand(UINT16 offset)
 {
 	offset &= 0xfffc;
 
+#if defined(LSB_FIRST) && !defined(__clang__) && ((defined(__GNUC__) && defined(__x86_64__)) || (defined(_MSC_VER) && defined(_M_X64)))
+	f3_expand_pixels(TaitoCharsPivot + offset * 2, DrvPivotRAM + offset);
+#else
 	TaitoCharsPivot[offset * 2 + 1] = DrvPivotRAM[offset + 2] >> 4;
 	TaitoCharsPivot[offset * 2 + 0] = DrvPivotRAM[offset + 2] & 0x0f;
 	TaitoCharsPivot[offset * 2 + 3] = DrvPivotRAM[offset + 3] >> 4;
@@ -517,6 +531,7 @@ static void DrvPivotExpand(UINT16 offset)
 	TaitoCharsPivot[offset * 2 + 4] = DrvPivotRAM[offset + 0] & 0x0f;
 	TaitoCharsPivot[offset * 2 + 7] = DrvPivotRAM[offset + 1] >> 4;
 	TaitoCharsPivot[offset * 2 + 6] = DrvPivotRAM[offset + 1] & 0x0f;
+#endif
 }
 
 static void __fastcall f3_VRAM_write_long(UINT32 a, UINT32 d)
@@ -634,66 +649,15 @@ static void __fastcall f3_playfield_write_byte(UINT32 a, UINT8 d)
 	}
 }
 
-static UINT32 speedhack_address;
-
-static void __fastcall f3_speedhack_write_long(UINT32 a, UINT32 d)
-{
-	a &= 0x1fffe;
-	*((UINT32*)(Taito68KRam1 + a)) = BURN_ENDIAN_SWAP_INT32((d << 16) | (d >> 16));
-	if (a == (speedhack_address & ~3)) {
-	//	SekIdle(100);
-		SekRunEnd(); // kill until next loop
-	}
-}
-
-static void __fastcall f3_speedhack_write_word(UINT32 a, UINT16 d)
-{
-	a &= 0x1fffe;
-	*((UINT16*)(Taito68KRam1 + (a & 0x1fffe))) = BURN_ENDIAN_SWAP_INT16(d);
-	if (a == speedhack_address) {
-	//	SekIdle(100);
-		SekRunEnd(); // kill until next loop
-	}
-}
-
-static void __fastcall f3_speedhack_write_byte(UINT32 a, UINT8 d)
-{
-	Taito68KRam1[(a & 0x1ffff) ^ 1] = d;
-}
-
-static void f3_speedhack_init(UINT32 address)
-{
-	if (address == 0) return;
-
-#ifndef USE_CPU_SPEEDHACKS
-	return;
-#endif
-
-	SekOpen(0);
-
-	address &= ~0x20000;
-
-	speedhack_address = address & 0x1fffe;
-
-	SekMapHandler(5,		address & ~0x3ff, address | 0x3ff, MAP_WRITE);
-	SekSetWriteLongHandler(5,	f3_speedhack_write_long);
-	SekSetWriteWordHandler(5,	f3_speedhack_write_word);
-	SekSetWriteByteHandler(5,	f3_speedhack_write_byte);
-
-	address |= 0x20000;
-
-	SekMapHandler(6,		address & ~0x3ff, address | 0x3ff, MAP_WRITE);
-	SekSetWriteLongHandler(6,	f3_speedhack_write_long);
-	SekSetWriteWordHandler(6,	f3_speedhack_write_word);
-	SekSetWriteByteHandler(6,	f3_speedhack_write_byte);
-	SekClose();
-}
 
 static void f3_reset_dirtybuffer()
 {
 	memset (dirty_tiles, 1, 0x8000/4);
 	memset (dirty_tile_count, 1, 10);
 }
+
+static void f3_24bit_palette_update(UINT16 offset);
+static void f3_24bit_palette_identity_update(UINT16 offset);
 
 static void calc_brightness_gamma_lut()
 { // this is specifically for gunlock/rayforce
@@ -707,6 +671,7 @@ static void calc_brightness_gamma_lut()
 
 	gamma = 1/gamma;
 
+	bool brightness_lut_identity = true;
 	for (INT32 col = 0; col < 0x100; col++) {
 		float er;
 		INT32 mcol = col;
@@ -722,6 +687,13 @@ static void calc_brightness_gamma_lut()
 		mcol = (UINT8)(er * 255.0);
 
 		Brightness_LUT[col] = mcol;
+		if (mcol != col) brightness_lut_identity = false;
+	}
+	// Select once per LUT rebuild; leave other palette formats untouched.
+	if (pPaletteUpdateCallback == f3_24bit_palette_update ||
+		pPaletteUpdateCallback == f3_24bit_palette_identity_update) {
+		pPaletteUpdateCallback = brightness_lut_identity ?
+			f3_24bit_palette_identity_update : f3_24bit_palette_update;
 	}
 }
 
@@ -901,6 +873,8 @@ static INT32 MemIndex()
 
 	output_bitmap		= (UINT32*)Next; Next += 512 * 512 * sizeof(INT32);
 
+	TaitoPriorityMap	= Next; Next += 1024 * 512;
+
 	bitmap_layer[0] 	= (UINT16*)Next; Next += 1024 * 512 * sizeof(INT16);
 	bitmap_layer[1] 	= (UINT16*)Next; Next += 1024 * 512 * sizeof(INT16);
 	bitmap_layer[2] 	= (UINT16*)Next; Next += 1024 * 512 * sizeof(INT16);
@@ -986,6 +960,7 @@ static void tile_decode(INT32 spr_len, INT32 tile_len)
 	}
 
 	DrvGfxDecode(spr_len, tile_len);
+
 }
 
 static INT32 TaitoF3GetRoms(bool bLoad)
@@ -1017,7 +992,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 
 		if (ri.nType == TAITO_68KROM1_BYTESWAP32)
 		{
-	//		if (bLoad) bprintf (0, _T("000000 68k1\n"));
 
 			if (bLoad) {
 				ret  = BurnLoadRom(Taito68KRom1 + 1, i + 0, 4);
@@ -1032,7 +1006,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 
 		if (ri.nType == TAITO_SPRITESA_BYTESWAP)
 		{
-	//		if (bLoad) bprintf (0, _T("%6.6x sprite 2x\n"), sprites - TaitoSpritesA);
 
 			if (f3_game == GSEEKER)
 			{
@@ -1065,7 +1038,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 				sprites = TaitoSpritesA + ((sprites - TaitoSpritesA) / 2) * 3;
 			}
 
-	//		if (bLoad) bprintf (0, _T("%6.6x sprite 1x \n"), sprites - TaitoSpritesA);
 
 			if (bLoad) {
 				BurnLoadRom(sprites + 0, i + 0, 1);
@@ -1076,7 +1048,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 
 		if (ri.nType == TAITO_CHARS_BYTESWAP32)
 		{
-	//		if (bLoad) bprintf (0, _T("%6.6x tiles x4\n"), tiles - TaitoChars);
 
 			if (bLoad) {
 				ret  = BurnLoadRom(tiles + 0, i + 0, 4);
@@ -1097,7 +1068,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 				tilecount = 1;
 			}
 
-	//		if (bLoad) bprintf (0, _T("%6.6x tiles x2\n"), tiles - TaitoChars);
 
 			if (pi.nType != TAITO_CHARS_BYTESWAP) {
 				if (bLoad) {
@@ -1121,20 +1091,17 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 				tiles = TaitoChars + ((tiles - TaitoChars) / 2) * 3;
 			}
 
-	//		if (bLoad) bprintf (0, _T("%6.6x tiles x1 \n"), tiles - TaitoChars);
 
 			if (bLoad) {
 				BurnLoadRom(tiles + 0, i + 0, 1);
 			}
 			tiles += ri.nLen;
-	//		if (bLoad) bprintf (0, _T("%6.6x tiles x1b \n"), tiles - TaitoChars);
 
 			continue;
 		}
 
 		if (ri.nType == TAITO_68KROM2_BYTESWAP)
 		{
-	//		if (bLoad) bprintf (0, _T("000000 68k2 x2\n"));
 
 			if (bLoad) {
 				ret  = BurnLoadRom(Taito68KRom2 + 1, i + 0, 2);
@@ -1147,7 +1114,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 
 		if (ri.nType == TAITO_68KROM2) // kirameki
 		{
-	//		if (bLoad) bprintf (0, _T("100000, 68k1 x1\n"));
 			if (bLoad) {
 				BurnLoadRom(Taito68KRom2 + 0x100000, i, 1);
 			}
@@ -1166,7 +1132,6 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 				samples += 0x200000;
 			}
 
-	//		if (bLoad) bprintf (0, _T("%6.6x, samples \n"), samples - TaitoES5505Rom);
 
 			if (bLoad) {
 				if (BurnLoadRom(samples + 1, i, 2)) return 1;
@@ -1206,14 +1171,13 @@ static INT32 TaitoF3GetRoms(bool bLoad)
 		TaitoSpriteARomSize = spritesize;
 		TaitoCharRomSize = tilesize;
 		TaitoF3ES5506RomSize = samplesize;
-	//	bprintf (0, _T("Load: %x, %x, %x\n"), spritesize, tilesize, samplesize);
 	}
 
 	return 0;
 }
 
 
-static INT32 DrvInit(INT32 (*pRomLoadCB)(), void (*pPalUpdateCB)(UINT16), INT32 extend, INT32 kludge, INT32 spritelag, UINT32 speedhack_addr)
+static INT32 DrvInit(INT32 (*pRomLoadCB)(), void (*pPalUpdateCB)(UINT16), INT32 extend, INT32 kludge, INT32 spritelag)
 {
 	BurnSetRefreshRate(58.943844);
 
@@ -1280,7 +1244,6 @@ static INT32 DrvInit(INT32 (*pRomLoadCB)(), void (*pPalUpdateCB)(UINT16), INT32 
 	SekSetWriteByteHandler(4,	f3_playfield_write_byte);
 	SekClose();
 
-	f3_speedhack_init(speedhack_addr);
 
 	TaitoF3SoundInit(1);
 	TaitoF3SoundIRQConfig((TaitoDip[0] & 2) ? 0 : 1);
@@ -1336,11 +1299,51 @@ static void f3_12bit_palette_update(UINT16 offset)
 {
 	UINT32 x = BURN_ENDIAN_SWAP_INT32(*((UINT32*)(TaitoPaletteRam + (offset & ~3))));
 
-	UINT8 r = ((x >> 28) & 0x0f) * 0x10;
-	UINT8 g = ((x >> 24) & 0x0f) * 0x10;
-	UINT8 b = ((x >> 20) & 0x0f) * 0x10;
+	UINT8 r = ((x >> 28) & 0x0f) * 0x0f;
+	UINT8 g = ((x >> 24) & 0x0f) * 0x0f;
+	UINT8 b = ((x >> 20) & 0x0f) * 0x0f;
 
 	TaitoPalette[offset/4] = BURN_ENDIAN_SWAP_INT32(r*0x10000+g*0x100+b); //BurnHighCol(r,g,b, 0);
+}
+
+static void f3_21bit_typeA_palette_update(UINT16 offset)
+{
+	UINT32 x = BURN_ENDIAN_SWAP_INT32(*((UINT32*)(TaitoPaletteRam + (offset & ~3))));
+
+	UINT8 r = x;
+	UINT8 g = x >> 24;
+	UINT8 b = x >> 16;
+
+	if (offset < 0x400 || offset > 0x4000) {
+		r <<= 1;
+		g <<= 1;
+		b <<= 1;
+	}
+
+	TaitoPalette[offset/4] = BURN_ENDIAN_SWAP_INT32(r*0x10000+g*0x100+b);
+}
+
+static void f3_21bit_typeB_palette_update(UINT16 offset)
+{
+	UINT32 x = BURN_ENDIAN_SWAP_INT32(*((UINT32*)(TaitoPaletteRam + (offset & ~3))));
+
+	UINT8 r = x;
+	UINT8 g = x >> 24;
+	UINT8 b = x >> 16;
+
+	if (offset > 0x7000) {
+		r <<= 1;
+		g <<= 1;
+		b <<= 1;
+	}
+
+	TaitoPalette[offset/4] = BURN_ENDIAN_SWAP_INT32(r*0x10000+g*0x100+b); //BurnHighCol(r,g,b, 0);
+}
+
+static void f3_24bit_palette_identity_update(UINT16 offset)
+{
+	UINT32 x = BURN_ENDIAN_SWAP_INT32(*((UINT32*)(TaitoPaletteRam + (offset & ~3))));
+	TaitoPalette[offset/4] = BURN_ENDIAN_SWAP_INT32(((x & 0xff) << 16) | (x >> 16));
 }
 
 static void f3_24bit_palette_update(UINT16 offset)
@@ -1352,6 +1355,13 @@ static void f3_24bit_palette_update(UINT16 offset)
 	UINT8 b = Brightness_LUT[(x >> 16) & 0xff];
 
 	TaitoPalette[offset/4] = BURN_ENDIAN_SWAP_INT32(r*0x10000+g*0x100+b); //BurnHighCol(r,g,b, 0);
+}
+
+static INT32 DrvDraw224A_Flipped() // 224A, w/ flipscreen
+{
+	TaitoF3DrawCommon(0x1234);
+
+	return 0;
 }
 
 static INT32 DrvDraw224A()
@@ -1597,8 +1607,6 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		EEPROMScan(nAction, pnMin);
 
-		TaitoF3VideoScan(nAction);
-
 		SCAN_VAR(nCyclesExtra);
 
 		if (nAction & ACB_WRITE && ~nAction & ACB_RUNAHEAD) {
@@ -1647,7 +1655,7 @@ STD_ROM_FN(ringrage)
 
 static INT32 ringrageInit()
 {
-	return DrvInit(NULL, f3_12bit_palette_update, 0, RINGRAGE, 2, 0);
+	return DrvInit(NULL, f3_12bit_palette_update, 0, RINGRAGE, 2);
 }
 
 struct BurnDriver BurnDrvRingrage = {
@@ -1774,7 +1782,7 @@ STD_ROM_FN(arabianm)
 
 static INT32 arabianmInit()
 {
-	return DrvInit(NULL, f3_12bit_palette_update, 0, ARABIANM, 2, 0x408100);
+	return DrvInit(NULL, f3_12bit_palette_update, 0, ARABIANM, 2);
 }
 
 struct BurnDriver BurnDrvArabianm = {
@@ -1783,7 +1791,7 @@ struct BurnDriver BurnDrvArabianm = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
 	NULL, arabianmRomInfo, arabianmRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	arabianmInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	arabianmInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -1830,7 +1838,7 @@ struct BurnDriver BurnDrvArabianmj = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
 	NULL, arabianmjRomInfo, arabianmjRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	arabianmInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	arabianmInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -1877,7 +1885,7 @@ struct BurnDriver BurnDrvArabianmu = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SCRFIGHT, 0,
 	NULL, arabianmuRomInfo, arabianmuRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	arabianmInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	arabianmInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -1908,7 +1916,7 @@ STD_ROM_FN(ridingf)
 
 static INT32 ridingfInit()
 {
-	return DrvInit(NULL, f3_12bit_palette_update, 1, RIDINGF, 1, 0x417FE4);
+	return DrvInit(NULL, f3_12bit_palette_update, 1, RIDINGF, 1);
 }
 
 struct BurnDriver BurnDrvRidingf = {
@@ -2023,7 +2031,7 @@ STD_ROM_FN(gseeker)
 
 static INT32 gseekerInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, GSEEKER, 1, 0x40A85C);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, GSEEKER, 1);
 }
 
 struct BurnDriver BurnDrvGseeker = {
@@ -2146,7 +2154,7 @@ STD_ROM_FN(commandw)
 
 static INT32 commandwInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, COMMANDW, 1, 0x417FE4);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, COMMANDW, 1);
 }
 
 struct BurnDriver BurnDrvCommandw = {
@@ -2191,7 +2199,7 @@ STD_ROM_FN(cupfinal)
 
 static INT32 cupfinalInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, SCFINALS, 1, 0x408100);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, SCFINALS, 1);
 }
 
 struct BurnDriver BurnDrvCupfinal = {
@@ -2200,7 +2208,7 @@ struct BurnDriver BurnDrvCupfinal = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, cupfinalRomInfo, cupfinalRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -2240,7 +2248,7 @@ struct BurnDriver BurnDrvHthero93 = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, hthero93RomInfo, hthero93RomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -2291,7 +2299,7 @@ struct BurnDriver BurnDrvHthero93u = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, hthero93uRomInfo, hthero93uRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -2327,7 +2335,7 @@ STD_ROM_FN(trstar)
 
 static INT32 trstarInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, TRSTAR, 0, 0x41E000);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, TRSTAR, 0);
 }
 
 struct BurnDriver BurnDrvTrstar = {
@@ -2569,7 +2577,7 @@ STD_ROM_FN(gunlock)
 
 static INT32 gunlockInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, GUNLOCK, 2, 0x400004); // speed hack isn't great for this game
+	return DrvInit(NULL, f3_24bit_palette_update, 1, GUNLOCK, 2);
 }
 
 struct BurnDriver BurnDrvGunlock = {
@@ -2578,7 +2586,7 @@ struct BurnDriver BurnDrvGunlock = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
 	NULL, gunlockRomInfo, gunlockRomName, NULL, NULL, NULL, NULL, F3InputInfo, GunlockDIPInfo,
-	gunlockInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	gunlockInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	224, 320, 3, 4
 };
 
@@ -2663,7 +2671,7 @@ struct BurnDriver BurnDrvRayforce = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
 	NULL, rayforceRomInfo, rayforceRomName, NULL, NULL, NULL, NULL, F3InputInfo, GunlockDIPInfo,
-	gunlockInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	gunlockInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	224, 320, 3, 4
 };
 
@@ -2700,7 +2708,7 @@ struct BurnDriver BurnDrvRayforcej = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_ORIENTATION_VERTICAL | BDF_ORIENTATION_FLIPPED | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_VERSHOOT, 0,
 	NULL, rayforcejRomInfo, rayforcejRomName, NULL, NULL, NULL, NULL, F3InputInfo, GunlockDIPInfo,
-	gunlockInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	gunlockInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	224, 320, 3, 4
 };
 
@@ -2750,7 +2758,7 @@ static INT32 scfinalsCallback()
 
 static INT32 scfinalsInit()
 {
-	return DrvInit(scfinalsCallback, f3_24bit_palette_update, 0, SCFINALS, 1, 0x408100);
+	return DrvInit(scfinalsCallback, f3_24bit_palette_update, 0, SCFINALS, 1);
 }
 
 struct BurnDriver BurnDrvScfinals = {
@@ -2759,7 +2767,7 @@ struct BurnDriver BurnDrvScfinals = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, scfinalsRomInfo, scfinalsRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	scfinalsInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	scfinalsInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -2802,7 +2810,7 @@ struct BurnDriver BurnDrvScfinalso = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, scfinalsoRomInfo, scfinalsoRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	scfinalsInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	scfinalsInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -2845,7 +2853,7 @@ struct BurnDriver BurnDrvScfinalsoc = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, scfinalsocRomInfo, scfinalsocRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	scfinalsInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	scfinalsInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -2881,7 +2889,7 @@ STD_ROM_FN(lightbr)
 
 static INT32 lightbrInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, LIGHTBR, 2, 0x400118);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, LIGHTBR, 2);
 }
 
 struct BurnDriver BurnDrvLightbr = {
@@ -3050,7 +3058,7 @@ struct BurnDriver BurnDrvIntcup94 = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, intcup94RomInfo, intcup94RomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -3090,7 +3098,7 @@ struct BurnDriver BurnDrvHthero94 = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, hthero94RomInfo, hthero94RomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	cupfinalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -3123,7 +3131,7 @@ STD_ROM_FN(recalh)
 
 static INT32 recalhInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, RECALH, 1, 0);
+	return DrvInit(NULL, f3_21bit_typeB_palette_update, 1, RECALH, 1);
 }
 
 struct BurnDriver BurnDrvRecalh = {
@@ -3178,7 +3186,7 @@ STD_ROM_FN(kaiserkn)
 
 static INT32 kaiserknInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, KAISERKN, 2, 0x408100);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, KAISERKN, 2);
 }
 
 struct BurnDriver BurnDrvKaiserkn = {
@@ -3187,7 +3195,7 @@ struct BurnDriver BurnDrvKaiserkn = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING, 2, HARDWARE_TAITO_MISC, GBF_VSFIGHT, 0,
 	NULL, kaiserknRomInfo, kaiserknRomName, NULL, NULL, NULL, NULL, KnInputInfo, KnDIPInfo,
-	kaiserknInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	kaiserknInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -3237,7 +3245,7 @@ struct BurnDriver BurnDrvKaiserknj = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_VSFIGHT, 0,
 	NULL, kaiserknjRomInfo, kaiserknjRomName, NULL, NULL, NULL, NULL, KnInputInfo, KnDIPInfo,
-	kaiserknInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	kaiserknInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -3287,7 +3295,7 @@ struct BurnDriver BurnDrvGblchmp = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE, 2, HARDWARE_TAITO_MISC, GBF_VSFIGHT, 0,
 	NULL, gblchmpRomInfo, gblchmpRomName, NULL, NULL, NULL, NULL, KnInputInfo, KnDIPInfo,
-	kaiserknInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	kaiserknInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -3337,7 +3345,7 @@ struct BurnDriver BurnDrvDankuga = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_PROTOTYPE, 2, HARDWARE_TAITO_MISC, GBF_VSFIGHT, 0,
 	NULL, dankugaRomInfo, dankugaRomName, NULL, NULL, NULL, NULL, KnInputInfo, KnDIPInfo,
-	kaiserknInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	kaiserknInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -3370,7 +3378,7 @@ STD_ROM_FN(dariusg)
 
 static INT32 dariusgInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, DARIUSG, 1, 0x406baa);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, DARIUSG, 1);
 }
 
 struct BurnDriver BurnDrvDariusg = {
@@ -3527,7 +3535,7 @@ STD_ROM_FN(bublbob2)
 
 static INT32 bublbob2Init()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, BUBSYMPH, 1, 0x41f3fc);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, BUBSYMPH, 1);
 }
 
 struct BurnDriver BurnDrvBublbob2 = {
@@ -3705,7 +3713,7 @@ static INT32 bublbob2pRomCallback()
 
 static INT32 bublbob2pInit()
 {
-	return DrvInit(bublbob2pRomCallback, f3_24bit_palette_update, 1, BUBSYMPH, 1, 0);
+	return DrvInit(bublbob2pRomCallback, f3_24bit_palette_update, 1, BUBSYMPH, 1);
 }
 
 struct BurnDriver BurnDrvBublbob2p = {
@@ -4087,7 +4095,7 @@ STD_ROM_FN(spcinvdj)
 
 static INT32 spcinvdjInit()
 {
-	return DrvInit(NULL, f3_12bit_palette_update, 1, SPCINVDX, 1, 0x400218);
+	return DrvInit(NULL, f3_12bit_palette_update, 1, SPCINVDX, 1);
 }
 
 struct BurnDriver BurnDrvSpcinvdj = {
@@ -4135,7 +4143,7 @@ STD_ROM_FN(pwrgoal)
 
 static INT32 pwrgoalInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, HTHERO95, 1, 0);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, HTHERO95, 1);
 }
 
 struct BurnDriver BurnDrvPwrgoal = {
@@ -4144,7 +4152,7 @@ struct BurnDriver BurnDrvPwrgoal = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, pwrgoalRomInfo, pwrgoalRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	pwrgoalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	pwrgoalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -4187,7 +4195,7 @@ struct BurnDriver BurnDrvHthero95 = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, hthero95RomInfo, hthero95RomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	pwrgoalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	pwrgoalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -4230,7 +4238,7 @@ struct BurnDriver BurnDrvHthero95u = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, hthero95uRomInfo, hthero95uRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	pwrgoalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	pwrgoalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -4273,7 +4281,7 @@ struct BurnDriver BurnDrvHthero95a = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_SPORTSFOOTBALL, 0,
 	NULL, hthero95aRomInfo, hthero95aRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	pwrgoalInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	pwrgoalInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -4304,7 +4312,7 @@ STD_ROM_FN(qtheater)
 
 static INT32 qtheaterInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, QTHEATER, 1, 0);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, QTHEATER, 1);
 }
 
 struct BurnDriver BurnDrvQtheater = {
@@ -4352,7 +4360,7 @@ STD_ROM_FN(spcinv95)
 
 static INT32 spcinv95Init()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, SPCINV95, 1, 0x408100);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, SPCINV95, 1);
 }
 
 struct BurnDriver BurnDrvSpcinv95 = {
@@ -4482,7 +4490,7 @@ STD_ROM_FN(elvactr)
 
 static INT32 elvactrInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, EACTION2, 2, 0x4007a2);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, EACTION2, 2);
 }
 
 struct BurnDriver BurnDrvElvactr = {
@@ -4610,7 +4618,7 @@ STD_ROM_FN(twinqix)
 
 static INT32 twinqixInit()
 {
-	return DrvInit(NULL/*twinqixRomCallback*/, f3_24bit_palette_update, 1, TWINQIX, 1, 0x40011c);
+	return DrvInit(NULL/*twinqixRomCallback*/, f3_21bit_typeB_palette_update, 1, TWINQIX, 1);
 }
 
 struct BurnDriver BurnDrvTwinqix = {
@@ -4704,7 +4712,7 @@ STD_ROM_FN(quizhuhu)
 
 static INT32 quizhuhuInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, QUIZHUHU, 1, 0);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, QUIZHUHU, 1);
 }
 
 struct BurnDriver BurnDrvQuizhuhu = {
@@ -4747,7 +4755,7 @@ STD_ROM_FN(pbobble2)
 
 static INT32 pbobble2Init()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, PBOBBLE2, 1, 0x40451c);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, PBOBBLE2, 1);
 }
 
 static INT32 pbobble23OCallback()
@@ -4762,7 +4770,7 @@ static INT32 pbobble23OCallback()
 
 static INT32 pbobble23OInit()
 {
-	return DrvInit(pbobble23OCallback, f3_24bit_palette_update, 0, PBOBBLE2, 1, 0x40451c);
+	return DrvInit(pbobble23OCallback, f3_24bit_palette_update, 0, PBOBBLE2, 1);
 }
 
 struct BurnDriver BurnDrvPbobble2 = {
@@ -4954,7 +4962,7 @@ STD_ROM_FN(gekiridn)
 
 static INT32 gekiridnInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, GEKIRIDO, 1, 0x406bb0);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, GEKIRIDO, 1);
 }
 
 struct BurnDriver BurnDrvGekiridn = {
@@ -5041,7 +5049,7 @@ STD_ROM_FN(tcobra2)
 
 static INT32 tcobra2Init()
 {
-	INT32 rc = DrvInit(NULL, f3_24bit_palette_update, 0, KTIGER2, 0, 0);
+	INT32 rc = DrvInit(NULL, f3_24bit_palette_update, 0, KTIGER2, 0);
 
 	if (!rc) {
 		ES550X_twincobra2_pan_fix = 1;
@@ -5180,7 +5188,7 @@ STD_ROM_FN(bubblem)
 
 static INT32 bubblemInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, BUBBLEM, 1, 0x40011c);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, BUBBLEM, 1);
 }
 
 struct BurnDriver BurnDrvBubblem = {
@@ -5333,7 +5341,7 @@ STD_ROM_FN(cleopatr)
 
 static INT32 cleopatrInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, CLEOPATR, 1, 0);
+	return DrvInit(NULL, f3_21bit_typeA_palette_update, 0, CLEOPATR, 1);
 }
 
 struct BurnDriver BurnDrvCleopatr = {
@@ -5342,7 +5350,7 @@ struct BurnDriver BurnDrvCleopatr = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_PUZZLE, 0,
 	NULL, cleopatrRomInfo, cleopatrRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	cleopatrInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	cleopatrInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -5377,7 +5385,7 @@ struct BurnDriver BurnDrvCleopatro = {
 	NULL, NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_MISC, GBF_PUZZLE, 0,
 	NULL, cleopatroRomInfo, cleopatroRomName, NULL, NULL, NULL, NULL, F3InputInfo, F3DIPInfo,
-	cleopatrInit, DrvExit, DrvFrame, DrvDraw224A, DrvScan, &TaitoF3PalRecalc, 0x2000,
+	cleopatrInit, DrvExit, DrvFrame, DrvDraw224A_Flipped, DrvScan, &TaitoF3PalRecalc, 0x2000,
 	320, 224, 4, 3
 };
 
@@ -5410,7 +5418,7 @@ STD_ROM_FN(pbobble3)
 
 static INT32 pbobble3Init()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, PBOBBLE3, 1, 0x4055c0);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, PBOBBLE3, 1);
 }
 
 struct BurnDriver BurnDrvPbobble3 = {
@@ -5586,7 +5594,7 @@ STD_ROM_FN(arkretrn)
 
 static INT32 arkretrnInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, ARKRETRN, 1, 0);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, ARKRETRN, 1);
 }
 
 struct BurnDriver BurnDrvArkretrn = {
@@ -5721,7 +5729,7 @@ STD_ROM_FN(kirameki)
 
 static INT32 kiramekiInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, KIRAMEKI, 1, 0);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, KIRAMEKI, 1);
 }
 
 struct BurnDriver BurnDrvKirameki = {
@@ -5773,7 +5781,7 @@ STD_ROM_FN(puchicar)
 
 static INT32 puchicarInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, PUCHICAR, 1, 0);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, PUCHICAR, 1);
 }
 
 struct BurnDriver BurnDrvPuchicar = {
@@ -5915,7 +5923,7 @@ STD_ROM_FN(pbobble4)
 
 static INT32 pbobble4Init()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 0, PBOBBLE4, 1, 0x4053c0);
+	return DrvInit(NULL, f3_24bit_palette_update, 0, PBOBBLE4, 1);
 }
 
 struct BurnDriver BurnDrvPbobble4 = {
@@ -6049,7 +6057,7 @@ STD_ROM_FN(popnpop)
 
 static INT32 popnpopInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, POPNPOP, 1, 0);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, POPNPOP, 1);
 }
 
 struct BurnDriver BurnDrvPopnpop = {
@@ -6184,7 +6192,7 @@ STD_ROM_FN(landmakr)
 
 static INT32 landmakrInit()
 {
-	return DrvInit(NULL, f3_24bit_palette_update, 1, LANDMAKR, 1, 0x400826);
+	return DrvInit(NULL, f3_24bit_palette_update, 1, LANDMAKR, 1);
 }
 
 struct BurnDriver BurnDrvLandmakr = {
@@ -6308,7 +6316,7 @@ static INT32 landmakrpRomCallback()
 
 static INT32 landmakrpInit()
 {
-	return DrvInit(landmakrpRomCallback, f3_24bit_palette_update, 1, LANDMAKR, 1, 0);
+	return DrvInit(landmakrpRomCallback, f3_24bit_palette_update, 1, LANDMAKR, 1);
 }
 
 struct BurnDriver BurnDrvLandmakrp = {

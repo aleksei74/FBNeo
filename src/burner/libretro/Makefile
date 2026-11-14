@@ -31,9 +31,6 @@ BACKSLASH := \$(BACKSLASH)
 filter_out1 = $(filter-out $(firstword $1),$1)
 filter_out2 = $(call filter_out1,$(call filter_out1,$1))
 
-# Probe both frontends; Ubuntu 18.04's GCC does not recognize Cortex-A76.
-supports_rpi5_cpu = $(shell printf 'int probe;\n' | $(CC) -mcpu=cortex-a76 -mtune=cortex-a76 -x c -c -o /dev/null - >/dev/null 2>&1 && printf 'int probe;\n' | $(CXX) -mcpu=cortex-a76 -mtune=cortex-a76 -x c++ -c -o /dev/null - >/dev/null 2>&1 && echo yes)
-
 # system platform
 ifeq ($(platform),)
 	platform = unix
@@ -50,9 +47,6 @@ ifeq ($(platform),)
 			arch = ppc
 		endif
 	else ifneq ($(findstring MINGW,$(shell uname -a)),)
-		platform = win
-		EXE_EXT=.exe
-	else ifneq ($(findstring MSYS,$(shell uname -a)),)
 		platform = win
 		EXE_EXT=.exe
 	endif
@@ -82,68 +76,29 @@ ifneq (,$(findstring unix,$(platform)))
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	LDFLAGS += -lpthread
 
 	# Raspberry Pi
-	ifneq (,$(filter rpi3_64 rpi4_64 rpi5_64,$(platform)))
-		CC = aarch64-linux-gnu-gcc
-		CXX = aarch64-linux-gnu-g++
-		AR = aarch64-linux-gnu-ar
-		ARCH = arm64
-		HAVE_NEON = 0
-		ifeq (,$(filter rpi5_64,$(platform)))
-			RPI64_CPU := $(if $(filter rpi3_64,$(platform)),cortex-a53,cortex-a72)
-		else
-			RPI64_CPU := $(if $(supports_rpi5_cpu),cortex-a76,cortex-a72)
-			ifeq ($(RPI64_CPU),cortex-a72)
-$(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 code generation)
-			endif
-		endif
-		PLATFORM_DEFINES := -mcpu=$(RPI64_CPU) -mtune=$(RPI64_CPU) -mabi=lp64
-	else ifneq (,$(findstring rpi1,$(platform)))
-		CC = arm-linux-gnueabihf-gcc
-		CXX = arm-linux-gnueabihf-g++
-		AR = arm-linux-gnueabihf-ar
+	ifneq (,$(findstring rpi1,$(platform)))
 		PLATFORM_DEFINES := -marm -mcpu=arm1176jzf-s -mfpu=vfp -mfloat-abi=hard
-		INCLUDE_7Z_SUPPORT = 0
 		HAVE_NEON = 0
 		USE_CYCLONE = 1
 	else ifneq (,$(findstring rpi2,$(platform)))
-		CC = arm-linux-gnueabihf-gcc
-		CXX = arm-linux-gnueabihf-g++
-		AR = arm-linux-gnueabihf-ar
 		PLATFORM_DEFINES := -marm -mcpu=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
-		INCLUDE_7Z_SUPPORT = 0
 		HAVE_NEON = 1
 		USE_CYCLONE = 1
 	else ifneq (,$(findstring rpi3,$(platform)))
-		CC = arm-linux-gnueabihf-gcc
-		CXX = arm-linux-gnueabihf-g++
-		AR = arm-linux-gnueabihf-ar
-		PLATFORM_DEFINES := -marm -mcpu=cortex-a53 -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard
-		INCLUDE_7Z_SUPPORT = 0
-		HAVE_NEON = 1
-		USE_CYCLONE = 1
-	else ifneq (,$(findstring rpi4,$(platform)))
-		CC = arm-linux-gnueabihf-gcc
-		CXX = arm-linux-gnueabihf-g++
-		AR = arm-linux-gnueabihf-ar
-		PLATFORM_DEFINES := -marm -mcpu=cortex-a72 -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard
-		INCLUDE_7Z_SUPPORT = 0
-		HAVE_NEON = 1
-		USE_CYCLONE = 0
-	else ifneq (,$(findstring rpi5,$(platform)))
-		CC = arm-linux-gnueabihf-gcc
-		CXX = arm-linux-gnueabihf-g++
-		AR = arm-linux-gnueabihf-ar
-		RPI5_CPU := $(if $(supports_rpi5_cpu),cortex-a76,cortex-a72)
-		ifeq ($(RPI5_CPU),cortex-a72)
-$(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 code generation)
+		ifneq (,$(findstring rpi3_64,$(platform)))
+			PLATFORM_DEFINES := -march=armv8-a+crc+simd -mtune=cortex-a53
+		else
+			PLATFORM_DEFINES := -marm -mcpu=cortex-a53 -mfpu=neon-fp-armv8 -mfloat-abi=hard
+			HAVE_NEON = 1
+			USE_CYCLONE = 1
 		endif
-		PLATFORM_DEFINES := -marm -mcpu=$(RPI5_CPU) -mfpu=crypto-neon-fp-armv8 -mfloat-abi=hard
-		INCLUDE_7Z_SUPPORT = 0
-		HAVE_NEON = 1
-		USE_CYCLONE = 0
+	else ifneq (,$(findstring rpi4_64,$(platform)))
+		PLATFORM_DEFINES := -march=armv8-a+crc+simd -mtune=cortex-a72
+	else ifneq (,$(findstring rpi5_64,$(platform)))
+		PLATFORM_DEFINES := -march=armv8.2-a+crc+simd -mtune=cortex-a76
 	endif
 
 	# Solaris
@@ -166,71 +121,13 @@ $(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 c
 		endif
 	endif
 
-# Raspberry Pi 3 (x64)
-else ifeq ($(platform), ras3_x64)
-	CC = aarch64-linux-gnu-gcc
-	CXX = aarch64-linux-gnu-g++
-	AR = aarch64-linux-gnu-gcc-ar
-	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
-	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	ENDIANNESS_DEFINES := -DLSB_FIRST
-	HAVE_NEON = 0
-	USE_CYCLONE = 0
-	ARCH = arm64
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
-	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
-	CFLAGS += -mcpu=cortex-a53 -mabi=lp64 -Wno-psabi -mtune=cortex-a53 $(CPUFLAGS)
-	CXXFLAGS += -mcpu=cortex-a53 -mabi=lp64 -Wno-psabi -mtune=cortex-a53 $(CPUFLAGS)
-	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
-
-# Raspberry Pi 4 (x64)
-else ifeq ($(platform), ras4_x64)
-	CC = aarch64-linux-gnu-gcc
-	CXX = aarch64-linux-gnu-g++
-	AR = aarch64-linux-gnu-gcc-ar
-	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
-	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	ENDIANNESS_DEFINES := -DLSB_FIRST
-	HAVE_NEON = 0
-	USE_CYCLONE = 0
-	ARCH = arm64
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
-	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
-	CFLAGS += -mcpu=cortex-a72 -mabi=lp64 -Wno-psabi -mtune=cortex-a72 $(CPUFLAGS)
-	CXXFLAGS += -mcpu=cortex-a72 -mabi=lp64 -Wno-psabi -mtune=cortex-a72 $(CPUFLAGS)
-	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
-
-# Raspberry Pi 5 (x64)
-else ifeq ($(platform), ras5_x64)
-	CC = aarch64-linux-gnu-gcc
-	CXX = aarch64-linux-gnu-g++
-	AR = aarch64-linux-gnu-gcc-ar
-	RPI5_CPU := $(if $(supports_rpi5_cpu),cortex-a76,cortex-a72)
-	ifeq ($(RPI5_CPU),cortex-a72)
-$(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 code generation)
-	endif
-	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
-	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	ENDIANNESS_DEFINES := -DLSB_FIRST
-	HAVE_NEON = 0
-	USE_CYCLONE = 0
-	ARCH = arm64
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
-	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
-	CFLAGS += -mcpu=$(RPI5_CPU) -mabi=lp64 -Wno-psabi -mtune=$(RPI5_CPU) $(CPUFLAGS)
-	CXXFLAGS += -mcpu=$(RPI5_CPU) -mabi=lp64 -Wno-psabi -mtune=$(RPI5_CPU) $(CPUFLAGS)
-	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
-
 # webOS (32/64-bit)
 else ifeq ($(platform), webos)
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -pthread -ldl
+	LDFLAGS += -lpthread -ldl
 	ifneq (,$(findstring arm,$(CROSS_COMPILE)))
 		HAVE_NEON = 1
 	endif
@@ -344,7 +241,7 @@ else ifneq (,$(filter $(platform), ps3 psl1ght))
 	# RetroArch no longer vendors zlib, build our own copy
 	EXTERNAL_ZLIB = 0
 	STATIC_LINKING = 1
-	INCLUDE_7Z_SUPPORT = 0
+	INCLUDE_7Z_SUPPORT = 1
 
 	CC = $(PS3DEV)/ppu/bin/ppu-$(COMMONLV)gcc$(EXE_EXT)
 	CXX = $(PS3DEV)/ppu/bin/ppu-$(COMMONLV)g++$(EXE_EXT)
@@ -404,21 +301,19 @@ else ifeq ($(platform), switch)
 # Nintendo Switch (libnx)
 else ifeq ($(platform), libnx)
 	include $(DEVKITPRO)/libnx/switch_rules
-	CC = "$(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-gcc$(BINARY_EXT)"
-	CXX = "$(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-g++$(BINARY_EXT)"
-	AR = "$(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-ar$(BINARY_EXT)"
+	AR="$(DEVKITPRO)/devkitA64/bin/aarch64-none-elf-ar$(BINARY_EXT)"
 	EXT=a
 	TARGET := $(TARGET_NAME)_libretro_$(platform).$(EXT)
 	DEFINES := -DSWITCH=1 -U__linux__ -U__linux -DRARCH_INTERNAL
 	CFLAGS	:=	$(DEFINES) -g \
 		-fPIE -I$(LIBNX)/include/ -ffunction-sections -fdata-sections -ftls-model=local-exec -Wl,--allow-multiple-definition -specs=$(LIBNX)/switch.specs
 	CFLAGS += $(INCDIRS)
-	CFLAGS += $(INCLUDE) -D__SWITCH__ -DHAVE_LIBNX
-	CXXFLAGS := $(ASFLAGS) $(CFLAGS) -fno-rtti -std=gnu++11 -pthread
+	CFLAGS	+=	$(INCLUDE)  -D__SWITCH__ -DHAVE_LIBNX
+	CXXFLAGS := $(ASFLAGS) $(CFLAGS) -fno-rtti -std=gnu++11
 	CFLAGS += -std=gnu11
 	STATIC_LINKING = 1
 	# 2021-05-18 : disabling 7z again for libnx, it seems the lib version linked to RA is old
-	INCLUDE_7Z_SUPPORT = 0
+	INCLUDE_7Z_SUPPORT = 1
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 
 # Funkey S
@@ -445,124 +340,48 @@ else ifeq ($(platform), funkey)
 	CXXFLAGS += $(PLATFORM_FLAGS)
 
 # Classic Platforms ####################
-# Platform affix = classic_<ISA>_<uARCH>
+# Platform affix = classic_<ISA>_<µARCH>
 # Help at https://modmyclassic.com/comp
 
 # (armv7 a7, hard point, neon based) ### 
 # NESC, SNESC, C64 mini 
 else ifeq ($(platform), classic_armv7_a7)
-	CC = arm-linux-gnueabihf-gcc
-	CXX = arm-linux-gnueabihf-g++
-	AR = arm-linux-gnueabihf-ar
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	PLATFORM_FLAGS = -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard -march=armv7ve
-	USE_EXPERIMENTAL_FLAGS = 0
+	PLATFORM_FLAGS = -marm -mtune=cortex-a7 -mfpu=neon-vfpv4 -mfloat-abi=hard
+	USE_EXPERIMENTAL_FLAGS = 1
 	HAVE_NEON = 1
 	USE_CYCLONE = 1
 	ARCH = arm
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
-	CFLAGS += $(PLATFORM_FLAGS)
-	CXXFLAGS += $(PLATFORM_FLAGS)
-
-# RG35XX
-else ifeq ($(platform), rg35xx)
-	# GarlicOS uses the legacy uClibc SDK, not the Koriki/glibc toolchain.
-	RG35XX_TOOLCHAIN ?= /opt/miyoo
-	RG35XX_CROSS_COMPILE ?= $(if $(wildcard $(RG35XX_TOOLCHAIN)/bin/arm-miyoo-linux-uclibcgnueabi-gcc),$(RG35XX_TOOLCHAIN)/bin/)arm-miyoo-linux-uclibcgnueabi-
-	CC = $(RG35XX_CROSS_COMPILE)gcc
-	CXX = $(RG35XX_CROSS_COMPILE)g++
-	AR = $(RG35XX_CROSS_COMPILE)ar
-	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
-	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	PLATFORM_FLAGS = -marm -march=armv7-a -mtune=cortex-a9 -mfpu=neon-fp16 -mfloat-abi=softfp
-	USE_EXPERIMENTAL_FLAGS = 0
-	HAVE_NEON = 1
-	USE_CYCLONE = 1
-	ARCH = arm
-	ENDIANNESS_DEFINES := -DLSB_FIRST
-	# Keep the soft-float calling convention required by the GarlicOS SDK.
-	LDFLAGS += $(PLATFORM_FLAGS) -static-libgcc -static-libstdc++ -pthread
+	ifeq ($(shell echo `$(CC) -dumpversion` "< 4.9" | bc -l), 1)
+		PLATFORM_FLAGS += -march=armv7-a
+	else
+		PLATFORM_FLAGS += -march=armv7ve
+		# If gcc is 5.0 or later
+		ifeq ($(shell echo `$(CC) -dumpversion` ">= 5" | bc -l), 1)
+			LDFLAGS += -static-libgcc -static-libstdc++
+		endif
+	endif
 	CFLAGS += $(PLATFORM_FLAGS)
 	CXXFLAGS += $(PLATFORM_FLAGS)
 
 # (armv8 a35, hard point, neon based) ###
 # Playstation Classic
 else ifeq ($(platform), classic_armv8_a35)
-	CC = arm-linux-gnueabihf-gcc
-	CXX = arm-linux-gnueabihf-g++
-	AR = arm-linux-gnueabihf-ar
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	PLATFORM_FLAGS = -marm -mtune=cortex-a35 -mfpu=neon-fp-armv8 -mfloat-abi=hard -march=armv8-a
-	USE_EXPERIMENTAL_FLAGS = 0
+	USE_EXPERIMENTAL_FLAGS = 1
 	HAVE_NEON = 1
 	USE_CYCLONE = 1
 	ARCH = arm
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
+	LDFLAGS += -static-libgcc -static-libstdc++
 	CFLAGS += $(PLATFORM_FLAGS)
 	CXXFLAGS += $(PLATFORM_FLAGS)
-
-# Playstation Classic
-else ifeq ($(platform), classic_armv8_a35_x64)
-	CC = aarch64-linux-gnu-gcc
-	CXX = aarch64-linux-gnu-g++
-	AR = aarch64-linux-gnu-gcc-ar
-	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
-	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	HAVE_NEON = 0
-	USE_CYCLONE = 0
-	ARCH = arm64
-	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
-	CPUFLAGS += -DTARGET_LINUX_ARMv8 -frename-registers
-	CFLAGS += -mcpu=cortex-a35 -mabi=lp64 -Wno-psabi -mtune=cortex-a35 $(CPUFLAGS)
-	CXXFLAGS += -mcpu=cortex-a35 -mabi=lp64 -Wno-psabi -mtune=cortex-a35 $(CPUFLAGS)
-	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
-
-# Odroid N2
-else ifeq ($(platform), odroid-n2)
-	CC = arm-linux-gnueabihf-gcc
-	CXX = arm-linux-gnueabihf-g++
-	AR = arm-linux-gnueabihf-ar
-	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
-	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	PLATFORM_DEFINES := -marm -mcpu=cortex-a73 -mfpu=neon-vfpv4 -mfloat-abi=hard
-	HAVE_NEON = 1
-	USE_CYCLONE = 0
-	ARCH = arm
-	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
-	CPUFLAGS += -DHOST_CPU=0x20000006 -DTARGET_LINUX_ARMv8 -frename-registers
-	CFLAGS += -mcpu=cortex-a73 -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
-	CXXFLAGS += -mcpu=cortex-a73 -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
-	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
-
-# Odroid N2 (x64)
-else ifeq ($(platform), odroid-n2_x64)
-	CC = aarch64-linux-gnu-gcc
-	CXX = aarch64-linux-gnu-g++
-	AR = aarch64-linux-gnu-gcc-ar
-	TARGET := $(TARGET_NAME)_libretro.so
-	fpic := -fPIC
-	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	HAVE_NEON = 0
-	USE_CYCLONE = 0
-	ARCH = arm64
-	ENDIANNESS_DEFINES := -DLSB_FIRST
-	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
-	CPUFLAGS += -DHOST_CPU=0x20000006 -DTARGET_LINUX_ARMv8 -frename-registers
-	CFLAGS += -mcpu=cortex-a73 -mabi=lp64 -Wno-psabi -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
-	CXXFLAGS += -mcpu=cortex-a73 -mabi=lp64 -Wno-psabi -mtune=cortex-a73.cortex-a53 $(CPUFLAGS)
-	ASFLAGS += $(CFLAGS) -c -frename-registers -fno-strict-aliasing -ffast-math -ftree-vectorize
-
 #######################################
 
 # Nintendo Game Cube / Wii / WiiU
@@ -595,7 +414,7 @@ else ifneq (,$(filter $(platform), ngc wii wiiu))
 else ifeq ($(platform), emscripten)
 	TARGET := $(TARGET_NAME)_libretro_$(platform).bc
 	ENDIANNESS_DEFINES := -DLSB_FIRST
-	INCLUDE_7Z_SUPPORT = 0
+	INCLUDE_7Z_SUPPORT = 1
 	EXTERNAL_ZLIB = 1
 	STATIC_LINKING = 1
 	FASTMATH = 0
@@ -699,33 +518,22 @@ else
 	CC ?= gcc
 	CXX ?= g++
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
-	LDFLAGS += -static -static-libgcc -static-libstdc++ -pthread
+	LDFLAGS += -static-libgcc -static-libstdc++
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 	SPLIT_UP_LINK = 1
 endif
-
 
 # some platforms (3ds, maybe others) are unable to find "main" entry symbol if you build with their sdk
 # so let's use standard compiler for header generation since this is cross-built anyway
 CC_SYSTEM = gcc
 CXX_SYSTEM = g++
 
-
 include Makefile.common
 include $(INCLUDED_MAKEFILE)
 
-OBJ_COMPILER_TARGET := $(shell $(CXX) -dumpmachine 2>/dev/null)
-OBJ_PLATFORM := $(subst $(SPACE),_,$(strip $(platform)))
-ifneq ($(OBJ_COMPILER_TARGET),)
-	OBJ_PLATFORM := $(OBJ_PLATFORM)_$(OBJ_COMPILER_TARGET)
-endif
-OBJDIR ?= .objs/$(OBJ_PLATFORM)
-
-FBNEO_CXXOBJ := $(foreach src,$(SOURCES_CXX),$(OBJDIR)/$(patsubst ../../%,%,$(src:.cpp=.o)))
-FBNEO_COBJ := $(foreach src,$(SOURCES_C),$(OBJDIR)/$(patsubst ../../%,%,$(src:.c=.o)))
-FBNEO_SOBJ := $(foreach src,$(SOURCES_S),$(OBJDIR)/$(patsubst ../../%,%,$(src:.S=.o)))
-LEGACY_OBJS := $(SOURCES_C:.c=.o) $(SOURCES_CXX:.cpp=.o) $(SOURCES_S:.S=.o)
-LEGACY_DEPS := $(LEGACY_OBJS:.o=.d)
+FBNEO_CXXOBJ := $(SOURCES_CXX:.cpp=.o)
+FBNEO_COBJ := $(SOURCES_C:.c=.o)
+FBNEO_SOBJ := $(SOURCES_S:.S=.o)
 
 OBJS := $(FBNEO_COBJ) $(FBNEO_CXXOBJ) $(FBNEO_SOBJ)
 DEPS := $(OBJS:.o=.d)
@@ -735,8 +543,6 @@ FBNEO_DEFINES += -D__LIBRETRO__ \
 	$(PLATFORM_DEFINES) \
 	$(NEON_FLAGS) \
 	$(ARM_FLAGS)
-
-
 
 INCFLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(dir))
 
@@ -838,13 +644,13 @@ CTVMAKE_EXE = ctvmake$(EXE_EXT)
 PGM_SPRITE_CREATE_EXE = pgmspritecreate$(EXE_EXT)
 EXE_PREFIX = ./
 
+# backward compatibility (make less than 4.4 doesn't support .WAIT)
+.WAIT:
+
 .PHONY: all clean generate-files generate-files-clean clean-objs
 
 ifeq ($(REGEN_HEADERS), 1)
-# GNU Make 4.1 has no .WAIT barrier. Re-read dependencies only after the
-# generated headers and Musashi sources are complete, preserving the jobserver.
-all: generate-files
-	+$(MAKE) REGEN_HEADERS=0 $(TARGET)
+all: generate-files .WAIT $(TARGET)
 else
 all: $(TARGET)
 endif
@@ -927,52 +733,16 @@ else
 	LD = $(CXX)
 endif
 
-$(OBJDIR)/%.o: ../../%.c
-	@mkdir -p $(dir $@)
+%.o: %.c
 	$(CC) -c $(OBJOUT)$@ $< $(CFLAGS) $(INCFLAGS)
 
-# Disabling file_stream_transform for those files
-# In the following file, it's lacking a stdout implementation
-$(OBJDIR)/cpu/mips3/x64/mips3_x64.o: $(MAIN_FBNEO_DIR)/cpu/mips3/x64/mips3_x64.cpp
-	@mkdir -p $(dir $@)
-	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
-
-$(OBJDIR)/cpu/mips3_intf.o: $(MAIN_FBNEO_DIR)/cpu/mips3_intf.cpp
-	@mkdir -p $(dir $@)
-	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
-
-$(OBJDIR)/burner/libretro/ips_manager.o: $(MAIN_FBNEO_DIR)/burner/libretro/ips_manager.cpp
-	@mkdir -p $(dir $@)
-	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
-
-$(OBJDIR)/burner/libretro/romdata.o: $(MAIN_FBNEO_DIR)/burner/libretro/romdata.cpp
-	@mkdir -p $(dir $@)
-	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
-
-$(OBJDIR)/burn/drv/snes/msu1_backend.o: $(MAIN_FBNEO_DIR)/burn/drv/snes/msu1_backend.cpp
-	@mkdir -p $(dir $@)
-	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS) -DSKIP_STDIO_REDEFINES
-
-$(OBJDIR)/%.o: ../../%.cpp
-	@mkdir -p $(dir $@)
+%.o: %.cpp
 	$(CXX) -c $(OBJOUT)$@ $< $(CXXFLAGS) $(INCFLAGS)
 
-$(OBJDIR)/%.o: ../../%.S
-	@mkdir -p $(dir $@)
+%.o: %.S
 	$(CC) $(CFLAGS) $(INCFLAGS) -c $< -o $@
 
-# A shared output name can outlive a switch back to older platform objects.
-# Update this stamp only when the selected objects or link settings change.
-LINK_CONFIG_FILE := $(TARGET).build-config
-.PHONY: FORCE_LINK_CONFIG
-FORCE_LINK_CONFIG:
-
-$(LINK_CONFIG_FILE): FORCE_LINK_CONFIG
-	$(file >$@.tmp,$(OBJDIR)|$(OBJS)|$(LD)|$(AR)|$(STATIC_LINKING)|$(SHARED)|$(LDFLAGS)|$(LIBS))
-	@cmp -s $@.tmp $@ || mv -f $@.tmp $@
-	@rm -f $@.tmp
-
-$(TARGET): $(OBJS) $(LINK_CONFIG_FILE)
+$(TARGET): $(OBJS)
 ifeq ($(STATIC_LINKING), 1)
 ifeq ($(SPLIT_UP_LINK), 1)
 	$(AR) rcs $@ $(foreach OBJS,$(OBJS),$(NEWLINE) $(AR) q $@ $(OBJS))
@@ -983,9 +753,9 @@ else
 ifeq ($(SPLIT_UP_LINK), 1)
 	$(file >$@.in,$(OBJS))
 	$(LD) $(LINKOUT)$@ $(SHARED) @$@.in $(LDFLAGS) $(LIBS)
-	@rm -f $@.in
+	@rm $@.in
 else
-	$(LD) $(LINKOUT)$@ $(SHARED) $(OBJS) $(LDFLAGS) $(LIBS)
+	$(LD) $(LINKOUT)$@ $(SHARED) $^ $(LDFLAGS) $(LIBS)
 endif
 endif
 
@@ -993,17 +763,15 @@ endif
 
 clean-objs:
 ifeq ($(SPLIT_UP_LINK), 1)
-	$(file >$@.in,$(OBJS) $(DEPS) $(LEGACY_OBJS) $(LEGACY_DEPS))
+	$(file >$@.in,$(OBJS) $(DEPS))
 	xargs rm -f <$@.in
 	rm -f $@.in
 else
-	rm -f $(OBJS) $(DEPS) $(LEGACY_OBJS) $(LEGACY_DEPS)
+	rm -f $(OBJS) $(DEPS)
 endif
-	rm -rf $(OBJDIR)
 
 clean: clean-objs
-	rm -f $(TARGET) $(LINK_CONFIG_FILE) $(LINK_CONFIG_FILE).tmp
+	rm -f $(TARGET)
 	rm -f $(M68KMAKE_EXE)
 	rm -f $(PGM_SPRITE_CREATE_EXE)
 	rm -f $(CTVMAKE_EXE)
-

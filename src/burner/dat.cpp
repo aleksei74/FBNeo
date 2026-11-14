@@ -128,7 +128,6 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 	if (bType == DAT_NGP_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - Neo Geo Pocket Games</name>\n");
 	if (bType == DAT_CHANNELF_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - Fairchild Channel F Games</name>\n");
 	if (bType == DAT_ASTROHOME_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - Astrocade Home Computer Games</name>\n");
-	if (bType == DAT_ATARI2600_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - Atari 2600 Games</name>\n");
 // Add Codes (DsNo)
 	if (bType == DAT_CAPCOM_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - Capcom Misc Games</name>\n");
 	if (bType == DAT_CPS1_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - CPS-1 Games</name>\n");
@@ -153,6 +152,9 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 	if (bType == DAT_POST90S_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - Post90s Games</name>\n");
 // Add Codes (DsNo)
 
+	if (bType == DAT_ATARI2600_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - Atari 2600 Games</name>\n");
+	if (bType == DAT_32X_ONLY) fprintf(fDat, "\t\t<name>" APP_TITLE " - Sega 32X Games</name>\n");
+	
 	if (bType == DAT_ARCADE_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Arcade Games</description>\n"), szAppBurnVer);
 	if (bType == DAT_MEGADRIVE_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Megadrive Games</description>\n"), szAppBurnVer);
 	if (bType == DAT_PCENGINE_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" PC-Engine Games</description>\n"), szAppBurnVer);
@@ -172,7 +174,6 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 	if (bType == DAT_NGP_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Neo Geo Pocket Games</description>\n"), szAppBurnVer);
 	if (bType == DAT_CHANNELF_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Fairchild Channel F Games</description>\n"), szAppBurnVer);
 	if (bType == DAT_ASTROHOME_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Astrocade Home Computer Games</description>\n"), szAppBurnVer);
-	if (bType == DAT_ATARI2600_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Atari 2600 Games</description>\n"), szAppBurnVer);
 // Add Codes (DsNo)
 	if (bType == DAT_CAPCOM_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Capcom Misc Games</description>\n"), szAppBurnVer);
 	if (bType == DAT_CPS1_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" CPS-1 Games</description>\n"), szAppBurnVer);
@@ -197,6 +198,8 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 	if (bType == DAT_POST90S_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Post90s Games</description>\n"), szAppBurnVer);
 // Add Codes (DsNo)
 
+	if (bType == DAT_ATARI2600_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Atari 2600 Games</description>\n"), szAppBurnVer);
+	if (bType == DAT_32X_ONLY) _ftprintf(fDat, _T("\t\t<description>") _T(APP_TITLE) _T(" v%s") _T(" Sega 32X Games</description>\n"), szAppBurnVer);
 	fprintf(fDat, "\t\t<category>Standard DatFile</category>\n");
 	_ftprintf(fDat, _T("\t\t<version>%s</version>\n"), szAppBurnVer);
 	fprintf(fDat, "\t\t<author>" APP_TITLE "</author>\n");
@@ -227,6 +230,7 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 
 		if ((((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SEGA_MEGADRIVE)
 			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SEGA_MEGACD)
+			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SEGA_32X)
 			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_PCENGINE_PCENGINE)
 			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_PCENGINE_PCE_CD)
 			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_PCENGINE_TG16)
@@ -317,6 +321,10 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 			continue;
 		}
 		if (((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) != HARDWARE_ATARI2600) && (bType == DAT_ATARI2600_ONLY)) {
+			continue;
+		}
+
+		if (((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) != HARDWARE_SEGA_32X) && (bType == DAT_32X_ONLY)) {
 			continue;
 		}
 
@@ -572,6 +580,7 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 
 		remove_driver_leader(HARDWARE_SEGA_MEGADRIVE, 3, 1)
 		remove_driver_leader(HARDWARE_SEGA_MEGACD, 3, 1)
+		remove_driver_leader(HARDWARE_SEGA_32X, 5, 1)
 		remove_driver_leader(HARDWARE_PCENGINE_TG16, 3, 1)
 		remove_driver_leader(HARDWARE_COLECO, 3, 1)
 		remove_driver_leader(HARDWARE_SEGA_SG1000, 5, 1)
@@ -925,6 +934,7 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 
 		if ((((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SEGA_MEGADRIVE)
 			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SEGA_MEGACD)
+			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SEGA_32X)
 			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_PCENGINE_PCENGINE)
 			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_PCENGINE_PCE_CD)
 			|| ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_PCENGINE_TG16)
@@ -1015,6 +1025,10 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 			continue;
 		}
 		if (((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) != HARDWARE_ATARI2600) && (bType == DAT_ATARI2600_ONLY)) {
+			continue;
+		}
+
+		if (((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) != HARDWARE_SEGA_32X) && (bType == DAT_32X_ONLY)) {
 			continue;
 		}
 
@@ -1203,6 +1217,7 @@ INT32 write_datfile(INT32 bType, FILE* fDat)
 
 		remove_driver_leader(HARDWARE_SEGA_MEGADRIVE, 3, 0)
 		remove_driver_leader(HARDWARE_SEGA_MEGACD, 3, 0)
+		remove_driver_leader(HARDWARE_SEGA_32X, 5, 0)
 		remove_driver_leader(HARDWARE_PCENGINE_TG16, 3, 0)
 		remove_driver_leader(HARDWARE_COLECO, 3, 0)
 		remove_driver_leader(HARDWARE_SEGA_SG1000, 5, 0)

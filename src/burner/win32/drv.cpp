@@ -27,6 +27,8 @@ TCHAR szAppRomPaths[DIRS_MAX][MAX_PATH] = {
 	{ _T("roms/channelf/")	},
 	{ _T("roms/astrocade/")	},
 	{ _T("roms/romdata/")	},
+	{ _T("roms/atari2600/")	},
+	{ _T("roms/32x/")		},
 	{ _T("")				}
 };
 
@@ -306,6 +308,7 @@ int DrvInit(int nDrvNum, bool bRestore)
 	VidExit();
 	POST_INITIALISE_MESSAGE;
 	CallRegisteredLuaFunctions(LUACALL_ONSTART);
+	Ptblank2UpdateMouseClip(true);
 
 	return 0;
 }
@@ -317,6 +320,8 @@ int DrvInitCallback()
 
 int DrvExit()
 {
+	Ptblank2UpdateMouseClip(false);
+
 	if (bDrvOkay) {
 		NeoCDZRateChangeback();
 		StopReplay();

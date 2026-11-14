@@ -291,6 +291,7 @@ int ScrnExit();
 int ScrnSize();
 int ScrnTitle();
 void SetPauseMode(bool bPause);
+void Ptblank2UpdateMouseClip(bool enable);
 int ActivateChat();
 void DeActivateChat();
 int BurnerLoadDriver(TCHAR *pszDriverName);

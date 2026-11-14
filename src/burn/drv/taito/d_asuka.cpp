@@ -2852,7 +2852,7 @@ static struct BurnRomInfo cadashk1RomDesc[] = {
 	{ "c21-01k.1",				0x80000, 0x56c68218, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
 
 	{ "c21-07.57",				0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
-	
+
 	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },										//  8 plds
 	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },										//  9
 	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },										// 10
@@ -2888,7 +2888,7 @@ static struct BurnRomInfo cadashk1aRomDesc[] = {
 	{ "c21-01k.1",				0x80000, 0x56c68218, BRF_GRA | TAITO_SPRITESA },					//  6 Sprites
 
 	{ "c21-07.57",				0x08000, 0xf02292bd, BRF_PRG | BRF_OPT },							//  7 HD64180RP8 code (link)
-	
+
 	{ "pal16l8b-c21-09.ic34",	0x00104, 0x4b296700, BRF_OPT },										//  8 plds
 	{ "pal16l8b-c21-10.ic45",	0x00104, 0x35642f00, BRF_OPT },										//  9
 	{ "pal16l8b-c21-11-1.ic46",	0x00104, 0xf4791e24, BRF_OPT },										// 10

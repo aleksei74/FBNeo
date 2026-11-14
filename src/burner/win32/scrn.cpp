@@ -721,7 +721,6 @@ static int CreateDatfileWindows(int bType)
 	if (bType == DAT_NGP_ONLY) _sntprintf(szConsoleString, 64, _T(", NeoGeo Pocket Games only"));
 	if (bType == DAT_CHANNELF_ONLY) _sntprintf(szConsoleString, 64, _T(", Fairchild Channel F Games only"));
 	if (bType == DAT_ASTROHOME_ONLY) _sntprintf(szConsoleString, 64, _T(", Bally Astrocade Games only"));
-	if (bType == DAT_ATARI2600_ONLY) _sntprintf(szConsoleString, 64, _T(", Atari 2600 Games only"));
 // Add Codes (DsNo)
 	if (bType == DAT_CAPCOM_ONLY) _sntprintf(szConsoleString, 64, _T(", Capcom Misc only"));
 	if (bType == DAT_CPS1_ONLY) _sntprintf(szConsoleString, 64, _T(", CPS-1 only"));
@@ -745,6 +744,8 @@ static int CreateDatfileWindows(int bType)
 	if (bType == DAT_PRE90S_ONLY) _sntprintf(szConsoleString, 64, _T(", Pre90s only"));
 	if (bType == DAT_POST90S_ONLY) _sntprintf(szConsoleString, 64, _T(", Post90s only"));
 // Add Codes (DsNo)
+	if (bType == DAT_ATARI2600_ONLY) _sntprintf(szConsoleString, 64, _T(", Atari 2600 Games only"));
+	if (bType == DAT_32X_ONLY) _sntprintf(szConsoleString, 64, _T(", Sega 32X Games only"));
 
 	TCHAR szProgramString[25];
 	_sntprintf(szProgramString, 25, _T("ClrMame Pro XML"));
@@ -867,20 +868,11 @@ INT32 CreateDefaultDatfilesWindows(bool bSilent, const TCHAR* pszSpecDir)
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", SNES Games only"));
 	create_datfile(szFilename, DAT_SNES_ONLY);
 
-	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", GBA Games only"));
-	create_datfile(szFilename, DAT_GBA_ONLY);
-
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Neo Geo Pocket Games only"));
 	create_datfile(szFilename, DAT_NGP_ONLY);
 
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Fairchild Channel F Games only"));
 	create_datfile(szFilename, DAT_CHANNELF_ONLY);
-
-	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Bally Astrocade Games only"));
-	create_datfile(szFilename, DAT_ASTROHOME_ONLY);
-
-	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Atari 2600 Games only"));
-	create_datfile(szFilename, DAT_ATARI2600_ONLY);
 
 	return nRet;
 }
@@ -1061,6 +1053,9 @@ INT32 CreateAllDatfilesWindows(bool bSilent, const TCHAR* pszSpecDir)
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Post90s only"));
 	create_datfile(szFilename, DAT_POST90S_ONLY);
 // Add Codes (DsNo)
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Sega 32X Games only"));
+	create_datfile(szFilename, DAT_32X_ONLY);
+
 
 	return nRet;
 }
@@ -1095,6 +1090,48 @@ static void RefreshWindow(bool bInitialise)
 			VidPaint(0);
 		}
 	}
+}
+
+static bool Ptblank2UsesMouseClip()
+{
+	if (!bDrvOkay) return false;
+
+	const char* name = BurnDrvGetTextA(DRV_NAME);
+	if (name == NULL) return false;
+
+	return !strncmp(name, "ptblank2", 8) || !strcmp(name, "gunbarl");
+}
+
+void Ptblank2UpdateMouseClip(bool enable)
+{
+	static bool clipped = false;
+
+	if (!enable || !bHasFocus || !Ptblank2UsesMouseClip() || hScrnWnd == NULL) {
+		if (clipped) {
+			ClipCursor(NULL);
+			clipped = false;
+		}
+		return;
+	}
+
+	RECT rect;
+	POINT points[2];
+
+	if (!GetClientRect(hScrnWnd, &rect)) return;
+
+	points[0].x = rect.left;
+	points[0].y = rect.top;
+	points[1].x = rect.right;
+	points[1].y = rect.bottom;
+
+	MapWindowPoints(hScrnWnd, NULL, points, 2);
+
+	rect.left = points[0].x;
+	rect.top = points[0].y;
+	rect.right = points[1].x;
+	rect.bottom = points[1].y;
+
+	if (ClipCursor(&rect)) clipped = true;
 }
 
 static LRESULT CALLBACK ScrnProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam)
@@ -1443,6 +1480,7 @@ static int OnCreate(HWND, LPCREATESTRUCT)	// HWND hwnd, LPCREATESTRUCT lpCreateS
 static void OnActivateApp(HWND hwnd, BOOL fActivate, DWORD /* dwThreadId */)
 {
 	bHasFocus = fActivate;
+	Ptblank2UpdateMouseClip(fActivate);
 	if (!kNetGame && bAutoPause && !bAltPause && hInpdDlg == NULL && hInpCheatDlg == NULL && hInpDIPSWDlg == NULL) {
 		bRunPause = fActivate? 0 : 1;
 	}
@@ -1511,6 +1549,7 @@ static t_hw_Struct scrn_gamehw_cfg[] = {
 	{ "channelf",	{ HARDWARE_CHANNELF, 0 } },
 	{ "astrocade",	{ HARDWARE_ASTROHOME, 0 } },
 	{ "atari2600",	{ HARDWARE_ATARI2600, 0 } },
+	{ "32x",		{ HARDWARE_SEGA_32X, 0 } },
 	{ "cps1",		{ HARDWARE_CAPCOM_CPS1, HARDWARE_CAPCOM_CPS1_QSOUND, HARDWARE_CAPCOM_CPS1_GENERIC, HARDWARE_CAPCOM_CPSCHANGER, 0 } },
 	{ "cps2",		{ HARDWARE_CAPCOM_CPS2, 0 } },
 	{ "cps3",		{ HARDWARE_CAPCOM_CPS3, 0 } },
@@ -1700,6 +1739,7 @@ static void OnClose(HWND)
 
 static void OnDestroy(HWND)
 {
+	Ptblank2UpdateMouseClip(false);
 	VidExit();							// Stop using video with the Window
 	hScrnWnd = NULL;					// Make sure handle is not used again
 }
@@ -3630,7 +3670,7 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 			nUiColorTheme = uiLightModeCode;
 			UpdateUiColorMode(nUiColorTheme);
 			POST_INITIALISE_MESSAGE;
-			break;	
+			break;
 
 		case MENU_LANGUAGE_SELECT:
 			if (UseDialogs()) {
@@ -3942,12 +3982,6 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 			}
 			break;
 
-		case MENU_CLRMAME_PRO_XML_ATARI2600_ONLY:
-			if (UseDialogs()) {
-				CreateDatfileWindows(DAT_ATARI2600_ONLY);
-			}
-			break;
-
 // Add Codes (DsNo)
 		case MENU_CLRMAME_PRO_XML_CAPCOM_ONLY:
 			if (UseDialogs()) {
@@ -4081,6 +4115,17 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 			}
 			break;
 // Add Codes (DsNo)
+		case MENU_CLRMAME_PRO_XML_ATARI2600_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_ATARI2600_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_32X_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_32X_ONLY);
+			}
+			break;
 
 		case MENU_CLRMAME_PRO_ALL_DATS:
 			if (UseDialogs()) {
@@ -4969,12 +5014,15 @@ static void OnSize(HWND hWnd, UINT state, int cx, int cy)
 			RefreshWindow(false);
 		}
 	}
+
+	Ptblank2UpdateMouseClip(state != SIZE_MINIMIZED);
 }
 
 static void OnEnterSizeMove(HWND)
 {
 	RECT rect;
 
+	Ptblank2UpdateMouseClip(false);
 	AudBlankSound();
 
 	GetClientRect(hScrnWnd, &rect);
@@ -4994,6 +5042,8 @@ static void OnExitSizeMove(HWND)
 	GetWindowRect(hScrnWnd, &rect);
 	nWindowPosX = rect.left;
 	nWindowPosY = rect.top;
+
+	Ptblank2UpdateMouseClip(true);
 }
 
 static void OnEnterIdle(HWND /*hwnd*/, UINT /*source*/, HWND /*hwndSource*/)
@@ -5008,6 +5058,8 @@ static void OnEnterIdle(HWND /*hwnd*/, UINT /*source*/, HWND /*hwndSource*/)
 
 static void OnEnterMenuLoop(HWND, BOOL)
 {
+	Ptblank2UpdateMouseClip(false);
+
 	if (!bModelessMenu) {
 		InputSetCooperativeLevel(false, bAlwaysProcessKeyboardInput);
 		AudBlankSound();
@@ -5023,6 +5075,8 @@ static void OnExitMenuLoop(HWND, BOOL)
 	if (!bModelessMenu) {
 		GameInpCheckMouse();
 	}
+
+	Ptblank2UpdateMouseClip(true);
 }
 
 static int ScrnRegister()
