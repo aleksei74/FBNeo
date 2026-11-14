@@ -438,6 +438,7 @@ jobs:
     if: >-
       ${{ always() &&
           !cancelled() &&
+          inputs.target == 'all' &&
           !contains(needs.*.result, 'failure') &&
           github.event_name == 'workflow_dispatch' }}
     name: Create FBNeo Release
