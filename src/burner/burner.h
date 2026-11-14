@@ -20,7 +20,7 @@
 #if defined (BUILD_QT)
  #define DIRS_MAX (4)								// Maximum number of directories to search
 #else
- #define DIRS_MAX (21)								// Maximum number of directories to search
+ #define DIRS_MAX (23)								// Maximum number of directories to search
 #endif
 
 #include "title.h"
@@ -259,6 +259,7 @@ void ComputeGammaLUT();
 #define DAT_POST90S_ONLY		39
 // Add Codes (DsNo)
 #define DAT_ATARI2600_ONLY		40
+#define DAT_32X_ONLY			41
 
 INT32 write_datfile(INT32 bType, FILE* fDat);
 INT32 create_datfile(TCHAR* szFilename, INT32 bType);
