@@ -20,7 +20,7 @@
 #if defined (BUILD_QT)
  #define DIRS_MAX (4)								// Maximum number of directories to search
 #else
- #define DIRS_MAX (23)								// Maximum number of directories to search
+ #define DIRS_MAX (21)								// Maximum number of directories to search
 #endif
 
 #include "title.h"
@@ -235,31 +235,30 @@ void ComputeGammaLUT();
 #define DAT_CHANNELF_ONLY		16
 #define DAT_ASTROHOME_ONLY		17
 #define DAT_GBA_ONLY			18
+#define DAT_ATARI2600_ONLY		19
 // Add Codes (DsNo)
-#define DAT_CAPCOM_ONLY			19
-#define DAT_CPS1_ONLY			20
-#define DAT_CPS2_ONLY			21
-#define DAT_CPS3_ONLY			22
-#define DAT_CAVE_ONLY			23
-#define DAT_DATAEAST_ONLY		24
-#define DAT_GALAXIAN_ONLY		25
-#define DAT_IREM_ONLY			26
-#define DAT_KANEKO_ONLY			27
-#define DAT_KONAMI_ONLY			28
-#define DAT_MIDWAY_ONLY			29
-#define DAT_PACMAN_ONLY			30
-#define DAT_PGM_ONLY			31
-#define DAT_PSIKYO_ONLY			32
-#define DAT_SEGA_ONLY			33
-#define DAT_SETA_ONLY			34
-#define DAT_TAITO_ONLY			35
-#define DAT_TECHNOS_ONLY		36
-#define DAT_TOAPLAN_ONLY		37
-#define DAT_PRE90S_ONLY			38
-#define DAT_POST90S_ONLY		39
+#define DAT_CAPCOM_ONLY			20
+#define DAT_CPS1_ONLY			21
+#define DAT_CPS2_ONLY			22
+#define DAT_CPS3_ONLY			23
+#define DAT_CAVE_ONLY			24
+#define DAT_DATAEAST_ONLY		25
+#define DAT_GALAXIAN_ONLY		26
+#define DAT_IREM_ONLY			27
+#define DAT_KANEKO_ONLY			28
+#define DAT_KONAMI_ONLY			29
+#define DAT_MIDWAY_ONLY			30
+#define DAT_PACMAN_ONLY			31
+#define DAT_PGM_ONLY			32
+#define DAT_PSIKYO_ONLY			33
+#define DAT_SEGA_ONLY			34
+#define DAT_SETA_ONLY			35
+#define DAT_TAITO_ONLY			36
+#define DAT_TECHNOS_ONLY		37
+#define DAT_TOAPLAN_ONLY		38
+#define DAT_PRE90S_ONLY			39
+#define DAT_POST90S_ONLY		40
 // Add Codes (DsNo)
-#define DAT_ATARI2600_ONLY		40
-#define DAT_32X_ONLY			41
 
 INT32 write_datfile(INT32 bType, FILE* fDat);
 INT32 create_datfile(TCHAR* szFilename, INT32 bType);

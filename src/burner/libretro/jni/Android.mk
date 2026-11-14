@@ -31,8 +31,7 @@ FBNEO_DEFINES :=
 include $(LOCAL_PATH)/../Makefile.common
 include $(LOCAL_PATH)/../Makefile.all
 
-COMMON_FLAGS := -DUSE_SPEEDHACKS -D__LIBRETRO__ -DANDROID -Wno-write-strings -DLSB_FIRST \
-	-DFBNEO_NAMCOS_OPENGL -DFBNEO_NAMCOS_OPENGL_ES2 $(FBNEO_DEFINES)
+COMMON_FLAGS := -DUSE_SPEEDHACKS -D__LIBRETRO__ -DANDROID -Wno-write-strings -DLSB_FIRST $(FBNEO_DEFINES)
 
 # Build shared library including static C module
 include $(CLEAR_VARS)
@@ -42,10 +41,9 @@ LOCAL_C_INCLUDES   := $(INCLUDE_DIRS)
 LOCAL_CFLAGS       := $(CFLAGS) $(COMMON_FLAGS)
 LOCAL_CPPFLAGS     := $(CXXFLAGS) $(COMMON_FLAGS) -Wno-narrowing
 LOCAL_LDFLAGS      := -Wl,-version-script=$(MAIN_FBNEO_DIR)/burner/libretro/link.T,-z,max-page-size=16384
-LOCAL_LDLIBS       := $(LDFLAGS) -lEGL -lGLESv2
+LOCAL_LDLIBS       := $(LDFLAGS)
 LOCAL_CPP_FEATURES := exceptions rtti
 LOCAL_DISABLE_FORMAT_STRING_CHECKS := true
-LOCAL_ARM_MODE := arm
 LOCAL_SHORT_COMMANDS := true
 # NDK r18 writes response files through a quoted shell echo. Preserve the
 # literal quotes in string macros through both shell and response-file parsing.

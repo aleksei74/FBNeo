@@ -18,8 +18,6 @@ static INT32 nOldSelect    = 0;
 static UINT32 nScanPos     = 0;
 static bool   bScanRunning = false;
 
-#define ROM_PATHS	22	// paths shown in the dialog
-
 static const TCHAR szAppDefaultPaths[DIRS_MAX][MAX_PATH] = {
 	{ _T("roms/")			},
 	{ _T("roms/arcade/")	},
@@ -41,13 +39,11 @@ static const TCHAR szAppDefaultPaths[DIRS_MAX][MAX_PATH] = {
 	{ _T("roms/channelf/")	},
 	{ _T("roms/astrocade/")	},
 	{ _T("roms/romdata/")	},
-	{ _T("roms/atari2600/")	},
-	{ _T("roms/32x/")		},
 	{ _T("")				}
 };
 
 INT32 nRomsDlgWidth  = 0x1d2;
-INT32 nRomsDlgHeight = 0x2c8;
+INT32 nRomsDlgHeight = 0x291;
 static INT32 nDlgCaptionHeight;
 static INT32 nDlgInitialWidth;
 static INT32 nDlgInitialHeight;
@@ -56,9 +52,9 @@ static INT32 nDlgGroupCtrlInitialPos[4];
 static INT32 nDlgOKBtnInitialPos[4];
 static INT32 nDlgCancelBtnInitialPos[4];
 static INT32 nDlgDefaultsBtnInitialPos[4];
-static INT32 nDlgTextCtrlInitialPos[ROM_PATHS][4];
-static INT32 nDlgEditCtrlInitialPos[ROM_PATHS][4];
-static INT32 nDlgBtnCtrlInitialPos[ROM_PATHS][4];
+static INT32 nDlgTextCtrlInitialPos[20][4];
+static INT32 nDlgEditCtrlInitialPos[20][4];
+static INT32 nDlgBtnCtrlInitialPos[20][4];
 
 // Dialog sizing support functions and macros (everything working in client co-ords)
 #define GetInititalControlPos(a, b)								\
@@ -120,7 +116,7 @@ static void GetInitialPositions()
 	GetInititalControlPos(IDCANCEL,        nDlgCancelBtnInitialPos);
 	GetInititalControlPos(IDDEFAULT,       nDlgDefaultsBtnInitialPos);
 
-	for (INT32 i = 0; i < ROM_PATHS; i++) {
+	for (INT32 i = 0; i < 20; i++) {
 		GetInititalControlPos(IDC_ROMSDIR_TEXT1 + i, nDlgTextCtrlInitialPos[i]);
 		GetInititalControlPos(IDC_ROMSDIR_EDIT1 + i, nDlgEditCtrlInitialPos[i]);
 		GetInititalControlPos(IDC_ROMSDIR_BR1   + i, nDlgBtnCtrlInitialPos[i]);
@@ -266,7 +262,7 @@ static INT_PTR CALLBACK DefInpProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lP
 			SetWindowText(hDlg, szDialogTitle);
 
 			// Setup edit controls values (ROMs Paths)
-			for (INT32 x = 0; x < ROM_PATHS; x++) {
+			for (INT32 x = 0; x < 20; x++) {
 				SetDlgItemText(hDlg, IDC_ROMSDIR_EDIT1 + x, szAppRomPaths[x]);
 			}
 
@@ -295,7 +291,7 @@ static INT_PTR CALLBACK DefInpProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lP
 		}
 		case WM_CTLCOLORSTATIC: {
 			HDC hDc = (HDC)wParam;
-			for (int x = 0; x < ROM_PATHS; x++) {
+			for (int x = 0; x < 20; x++) {
 				if ((HWND)lParam == GetDlgItem(hDlg, IDC_ROMSDIR_TEXT1 + x)) {
 					SetBkMode(hDc, TRANSPARENT);								// LTEXT control with transparent background
 					return (LRESULT)GetStockObject(HOLLOW_BRUSH);				// Return to empty brush
@@ -327,7 +323,7 @@ static INT_PTR CALLBACK DefInpProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lP
 
 			SetControlPosAlignBottomLeft(IDDEFAULT, nDlgDefaultsBtnInitialPos);
 
-			for (INT32 i = 0; i < ROM_PATHS; i++) {
+			for (INT32 i = 0; i < 20; i++) {
 				SetControlPosAlignTopLeft(IDC_ROMSDIR_TEXT1          + i, nDlgTextCtrlInitialPos[i]);
 				SetControlPosAlignTopLeftResizeHor(IDC_ROMSDIR_EDIT1 + i, nDlgEditCtrlInitialPos[i]);
 				SetControlPosAlignTopRight(IDC_ROMSDIR_BR1           + i, nDlgBtnCtrlInitialPos[i]);
@@ -345,7 +341,7 @@ static INT_PTR CALLBACK DefInpProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lP
 			TCHAR buffer[MAX_PATH];
 
 			if (LOWORD(wParam) == IDOK) {
-				for (int i = 0; i < ROM_PATHS; i++) {
+				for (int i = 0; i < 20; i++) {
 //					if (GetDlgItemText(hDlg, IDC_ROMSDIR_EDIT1 + i, buffer, sizeof(buffer)) && lstrcmp(szAppRomPaths[i], buffer)) {
 					GetDlgItemText(hDlg, IDC_ROMSDIR_EDIT1 + i, buffer, sizeof(buffer));
 					if (lstrcmp(szAppRomPaths[i], buffer)) chOk = true;
@@ -365,7 +361,7 @@ static INT_PTR CALLBACK DefInpProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lP
 				SendMessage(hDlg, WM_CLOSE, 0, 0);
 				break;
 			} else {
-				if (LOWORD(wParam) >= IDC_ROMSDIR_BR1 && LOWORD(wParam) <= IDC_ROMSDIR_BR22) {
+				if (LOWORD(wParam) >= IDC_ROMSDIR_BR1 && LOWORD(wParam) <= IDC_ROMSDIR_BR20) {
 					var = IDC_ROMSDIR_EDIT1 + LOWORD(wParam) - IDC_ROMSDIR_BR1;
 
 					TCHAR szPath[MAX_PATH] = { 0 };
@@ -383,7 +379,7 @@ static INT_PTR CALLBACK DefInpProc(HWND hDlg, UINT Msg, WPARAM wParam, LPARAM lP
 							FBALoadStringEx(hAppInst, IDS_ERR_WARNING,   true),
 							MB_OKCANCEL | MB_ICONEXCLAMATION | MB_DEFBUTTON2)
 						) {
-							for (INT32 x = 0; x < ROM_PATHS; x++) {
+							for (INT32 x = 0; x < 20; x++) {
 								if (lstrcmp(szAppRomPaths[x], szAppDefaultPaths[x])) chOk = true;
 								_tcscpy(szAppRomPaths[x], szAppDefaultPaths[x]);
 								SetDlgItemText(hDlg, IDC_ROMSDIR_EDIT1 + x, szAppRomPaths[x]);

@@ -1059,7 +1059,7 @@ static struct BurnRomInfo saiyugoukRomDesc[] = {
 	{ "23j3-0k.51",		0x20000, 0xb98d67ed, 0 | BRF_PRG | BRF_ESS }, //  0 HD6309 #0 Code
 
 	{ "23j4-0.48",		0x20000, 0x2914af38, 1 | BRF_PRG | BRF_ESS }, //  1 HD6309 #1 Code
-
+	
 	{ "23j0-0.40",		0x08000, 0x9ffcadb6, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
 
 	{ "23j6-0k.18",		0x20000, 0x184a8c1d, 3 | BRF_GRA },           //  3 Foreground Tiles

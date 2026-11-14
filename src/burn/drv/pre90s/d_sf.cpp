@@ -1935,6 +1935,6 @@ struct BurnDriver BurnDrvsfk = {
 	L"Street Fighter (Korean Translation, set 1)\0\uC2A4\uD2B8\uB9AC\uD2B8 \uD30C\uC774\uD130 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, set 1)\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_VSFIGHT, FBF_SF,
 	NULL, sfkRomInfo, sfkRomName, NULL, NULL, NULL, NULL, SfusInputInfo, SfusDIPInfo,
-	SfusInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
+	SfusInit, DrvExit, DrvFrame, DrvDraw, DrvScan, 
 	&DrvRecalc, 0x401, 384, 224, 4, 3
 };

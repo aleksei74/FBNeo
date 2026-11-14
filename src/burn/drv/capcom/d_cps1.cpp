@@ -22379,7 +22379,7 @@ static void Varthb2Callback()
 	// bootleg sprites index tiles from 0x8000 upwards; mirror the graphics
 	// so those tiles resolve into a valid copy at 0x400000
 	memcpy(CpsGfx + 0x400000, CpsGfx, 0x200000);
-};
+}
 
 static INT32 Varthb2Init()
 {
@@ -30366,6 +30366,7 @@ struct BurnDriver BurnDrvCpsCaptcommc = {
 
 #include "d_kenseim.h"
 
+
 //========================
 // Add Korean Translation
 //========================
@@ -30619,9 +30620,9 @@ static struct BurnRomInfo DynwarkRomDesc[] = {
 
 	{ "30.12e",        0x020000, 0x7e5f6cb4, BRF_SND | CPS1_OKIM6295_SAMPLES },
 	{ "31.13e",        0x020000, 0x4a30c737, BRF_SND | CPS1_OKIM6295_SAMPLES },
-
+	
 	A_BOARD_PLDS
-
+	
 	{ "tk22b.1a",      0x000117, 0x1a1ab6d7, BRF_OPT },	// b-board PLDs
 	{ "lwio.12c",      0x000117, 0xad52b90c, BRF_OPT },
 };

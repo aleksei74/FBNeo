@@ -23,9 +23,6 @@ SUPPORT_LARGE_FILES = 1
 # Use a temporary file to hold the list of objects, as it can exceed windows shell command limits
 SPLIT_UP_LINK ?= 0
 REGEN_HEADERS ?= 0
-NAMCOS_OPENGL = 0
-NAMCOS_OPENGL_ES2 = 0
-NAMCOS_OPENGL_LIBS =
 
 SPACE :=
 SPACE := $(SPACE) $(SPACE)
@@ -86,22 +83,6 @@ ifneq (,$(findstring unix,$(platform)))
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 	LDFLAGS += -static-libgcc -static-libstdc++ -pthread
-	ifeq ($(platform),unix)
-		NAMCOS_OPENGL = 1
-		NAMCOS_OPENGL_ES2 = 1
-		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
-	else ifneq (,$(findstring android,$(platform)))
-		NAMCOS_OPENGL = 1
-		NAMCOS_OPENGL_ES2 = 1
-		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
-	else ifneq (,$(findstring rpi,$(platform)))
-		NAMCOS_OPENGL = 1
-		NAMCOS_OPENGL_ES2 = 1
-		NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
-	else
-		NAMCOS_OPENGL = 1
-		NAMCOS_OPENGL_LIBS += -lGL
-	endif
 
 	# Raspberry Pi
 	ifneq (,$(filter rpi3_64 rpi4_64 rpi5_64,$(platform)))
@@ -187,9 +168,6 @@ $(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 c
 
 # Raspberry Pi 3 (x64)
 else ifeq ($(platform), ras3_x64)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
 	CXX = aarch64-linux-gnu-g++
 	AR = aarch64-linux-gnu-gcc-ar
@@ -208,9 +186,6 @@ else ifeq ($(platform), ras3_x64)
 
 # Raspberry Pi 4 (x64)
 else ifeq ($(platform), ras4_x64)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
 	CXX = aarch64-linux-gnu-g++
 	AR = aarch64-linux-gnu-gcc-ar
@@ -229,9 +204,6 @@ else ifeq ($(platform), ras4_x64)
 
 # Raspberry Pi 5 (x64)
 else ifeq ($(platform), ras5_x64)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
 	CXX = aarch64-linux-gnu-g++
 	AR = aarch64-linux-gnu-gcc-ar
@@ -254,9 +226,6 @@ $(warning Pi 5: compiler lacks Cortex-A76 support; using compatible Cortex-A72 c
 
 # webOS (32/64-bit)
 else ifeq ($(platform), webos)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
@@ -268,8 +237,6 @@ else ifeq ($(platform), webos)
 
 # OS X
 else ifeq ($(platform), osx)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_LIBS += -framework OpenGL
 	TARGET := $(TARGET_NAME)_libretro.dylib
 	fpic := -fPIC
 	SHARED := -dynamiclib
@@ -298,8 +265,6 @@ else ifeq ($(platform), osx)
 
 # iOS
 else ifneq (,$(findstring ios,$(platform)))
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_LIBS += -framework OpenGLES
 	TARGET := $(TARGET_NAME)_libretro_ios.dylib
 	fpic := -fPIC
 	SHARED := -dynamiclib
@@ -330,8 +295,6 @@ else ifneq (,$(findstring ios,$(platform)))
         CXXFLAGS += $(MINVERSION)
 
 else ifeq ($(platform), tvos-arm64)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_LIBS += -framework OpenGLES
 	TARGET := $(TARGET_NAME)_libretro_tvos.dylib
 	fpic := -fPIC
 	SHARED := -dynamiclib
@@ -346,8 +309,6 @@ else ifeq ($(platform), tvos-arm64)
 
 # Theos iOS
 else ifeq ($(platform), theos_ios)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_LIBS += -framework OpenGLES
 	DEPLOYMENT_IOSVERSION = 5.0
 	TARGET = iphone:latest:$(DEPLOYMENT_IOSVERSION)
 	ARCHS = armv7 armv7s
@@ -361,9 +322,6 @@ else ifeq ($(platform), theos_ios)
 
 # QNX
 else ifeq ($(platform), qnx)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	TARGET := $(TARGET_NAME)_libretro_$(platform).so
 	fpic := -fPIC
 	SHARED := -lcpp -lm -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
@@ -465,9 +423,6 @@ else ifeq ($(platform), libnx)
 
 # Funkey S
 else ifeq ($(platform), funkey)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	TARGET := $(TARGET_NAME)_libretro.so
 	fpic := -fPIC
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
@@ -496,9 +451,6 @@ else ifeq ($(platform), funkey)
 # (armv7 a7, hard point, neon based) ### 
 # NESC, SNESC, C64 mini 
 else ifeq ($(platform), classic_armv7_a7)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = arm-linux-gnueabihf-gcc
 	CXX = arm-linux-gnueabihf-g++
 	AR = arm-linux-gnueabihf-ar
@@ -540,9 +492,6 @@ else ifeq ($(platform), rg35xx)
 # (armv8 a35, hard point, neon based) ###
 # Playstation Classic
 else ifeq ($(platform), classic_armv8_a35)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = arm-linux-gnueabihf-gcc
 	CXX = arm-linux-gnueabihf-g++
 	AR = arm-linux-gnueabihf-ar
@@ -561,9 +510,6 @@ else ifeq ($(platform), classic_armv8_a35)
 
 # Playstation Classic
 else ifeq ($(platform), classic_armv8_a35_x64)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
 	CXX = aarch64-linux-gnu-g++
 	AR = aarch64-linux-gnu-gcc-ar
@@ -582,9 +528,6 @@ else ifeq ($(platform), classic_armv8_a35_x64)
 
 # Odroid N2
 else ifeq ($(platform), odroid-n2)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = arm-linux-gnueabihf-gcc
 	CXX = arm-linux-gnueabihf-g++
 	AR = arm-linux-gnueabihf-ar
@@ -604,9 +547,6 @@ else ifeq ($(platform), odroid-n2)
 
 # Odroid N2 (x64)
 else ifeq ($(platform), odroid-n2_x64)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_ES2 = 1
-	NAMCOS_OPENGL_LIBS += -lEGL -lGLESv2
 	CC = aarch64-linux-gnu-gcc
 	CXX = aarch64-linux-gnu-g++
 	AR = aarch64-linux-gnu-gcc-ar
@@ -653,8 +593,6 @@ else ifneq (,$(filter $(platform), ngc wii wiiu))
 
 # Emscripten
 else ifeq ($(platform), emscripten)
-	NAMCOS_OPENGL = 1
-	NAMCOS_OPENGL_LIBS += -sUSE_WEBGL2=1
 	TARGET := $(TARGET_NAME)_libretro_$(platform).bc
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 	INCLUDE_7Z_SUPPORT = 0
@@ -669,11 +607,10 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 
 	PlatformSuffix = $(subst windows_msvc2017_,,$(platform))
 	ifneq (,$(findstring desktop,$(PlatformSuffix)))
-		NAMCOS_OPENGL = 1
 		WinPartition = desktop
 		MSVC2017CompileFlags = -DWINAPI_FAMILY=WINAPI_FAMILY_DESKTOP_APP -EHsc -FS
 		LDFLAGS += -MANIFEST -LTCG:incremental -NXCOMPAT -DYNAMICBASE -DEBUG -OPT:REF -INCREMENTAL:NO -SUBSYSTEM:WINDOWS -MANIFESTUAC:"level='asInvoker' uiAccess='false'" -OPT:ICF -ERRORREPORT:PROMPT -NOLOGO -TLBID:1
-		LIBS := kernel32.lib user32.lib gdi32.lib opengl32.lib winspool.lib comdlg32.lib advapi32.lib
+		LIBS := kernel32.lib user32.lib gdi32.lib winspool.lib comdlg32.lib advapi32.lib
 	else ifneq (,$(findstring uwp,$(PlatformSuffix)))
 		WinPartition = uwp
 		MSVC2017CompileFlags = -DWINAPI_FAMILY=WINAPI_FAMILY_APP -D_WINDLL -D_UNICODE -DUNICODE -D__WRL_NO_DEFAULT_LIB__ -EHsc -FS
@@ -758,18 +695,15 @@ else ifneq (,$(findstring windows_msvc2017,$(platform)))
 
 # Windows
 else
-	NAMCOS_OPENGL = 1
 	TARGET := $(TARGET_NAME)_libretro.dll
 	CC ?= gcc
 	CXX ?= g++
 	SHARED := -shared -Wl,-no-undefined -Wl,--version-script=$(VERSION_SCRIPT)
 	LDFLAGS += -static -static-libgcc -static-libstdc++ -pthread
-	LIBS += -lopengl32 -lgdi32
 	ENDIANNESS_DEFINES := -DLSB_FIRST
 	SPLIT_UP_LINK = 1
 endif
 
-LIBS += $(NAMCOS_OPENGL_LIBS)
 
 # some platforms (3ds, maybe others) are unable to find "main" entry symbol if you build with their sdk
 # so let's use standard compiler for header generation since this is cross-built anyway
@@ -802,13 +736,7 @@ FBNEO_DEFINES += -D__LIBRETRO__ \
 	$(NEON_FLAGS) \
 	$(ARM_FLAGS)
 
-ifeq ($(NAMCOS_OPENGL),1)
-	FBNEO_DEFINES += -DFBNEO_NAMCOS_OPENGL
-endif
 
-ifeq ($(NAMCOS_OPENGL_ES2),1)
-	FBNEO_DEFINES += -DFBNEO_NAMCOS_OPENGL_ES2
-endif
 
 INCFLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(dir))
 

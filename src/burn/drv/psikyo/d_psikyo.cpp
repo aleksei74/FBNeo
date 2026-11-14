@@ -2661,7 +2661,6 @@ struct BurnDriver BurnDrvSngkacek = {
 	224, 320, 3, 4
 };
 
-
 // Gunbird (Korean Translation)
 
 static struct BurnRomInfo gunbirdkaRomDesc[] = {
@@ -2697,8 +2696,7 @@ struct BurnDriver BurnDrvGunbirdka = {
 	224, 320, 3, 4
 };
 
-
-// Sengoku Blade - Sengoku Ace episode II (Korean Translation)\0Tengai (World)
+// Sengoku Blade - Sengoku Ace episode II (Korean Translation)
 
 static struct BurnRomInfo tengaikRomDesc[] = {
 	{ "2-u40k.bin",   0x080000, 0x279f7493, 1 | BRF_ESS | BRF_PRG }, //  0 CPU #0 code

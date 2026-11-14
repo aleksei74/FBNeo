@@ -2876,7 +2876,7 @@ struct BurnDriver BurnDrvSfiii2k = {
 static struct BurnRomInfo sfiii3kRomDesc[] = {
 
 	{ "sfiii3_euro.29f400.u2",				0x080000, 0x30bbf293, BRF_ESS | BRF_BIOS },	// SH-2 Bios
-
+	
 	{ "sfiii3-simm1k.0",		0x200000, 0x165ad612, BRF_ESS | BRF_PRG },
 	{ "sfiii3-simm1k.1",		0x200000, 0x00864bdb, BRF_ESS | BRF_PRG },
 	{ "sfiii3-simm1k.2",		0x200000, 0xc5952a35, BRF_ESS | BRF_PRG },

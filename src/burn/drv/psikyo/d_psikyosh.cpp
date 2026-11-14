@@ -179,6 +179,9 @@ static struct BurnDIPInfo DragnblzDIPList[]=
 	{0x14, 0x01, 0x20, 0x20, "Off"			},
 	{0x14, 0x01, 0x20, 0x00, "On"			},
 
+//	{0   , 0xfe, 0   ,    2, "Debug"		},
+//	{0x14, 0x01, 0x40, 0x40, "Off"			},
+//	{0x14, 0x01, 0x40, 0x00, "On"			},
 
 	{0   , 0xfe, 0   ,    2, "Region"		},
 	{0x15, 0x01, 0x01, 0x00, "Japan"		},
@@ -220,11 +223,9 @@ static struct BurnDIPInfo SoldividkDIPList[]=
 	{0x14, 0x01, 0x40, 0x40, "Off"			},
 	{0x14, 0x01, 0x40, 0x00, "On"			},
 
-	// Region is hard-coded to Korea.
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x16, 0x01, 0x01, 0x00, "No"			},
-	{0x16, 0x01, 0x01, 0x01, "Yes"	},
+//	{0   , 0xfe, 0   ,    2, "Region"		}, /* Game is hard coded to Korea */
+//	{0x15, 0x01, 0x01, 0x00, "Japan"		},
+//	{0x15, 0x01, 0x01, 0x01, "World"		},
 };
 
 STDDIPINFO(Soldividk)
@@ -1318,7 +1319,7 @@ static struct BurnRomInfo gunbird2mRomDesc[] = {
 	{ "3hm.u13",				0x800000, 0xbd27a0eb, 2 | BRF_GRA },           // 10
 
 	{ "soundm.u9",				0x400000, 0x0e6b24f5, 3 | BRF_SND },           // 11 Samples
-
+	
 	{ "eeprom-gunbird2.bin",	0x000100, 0x7ac38846, BRF_OPT },
 };
 

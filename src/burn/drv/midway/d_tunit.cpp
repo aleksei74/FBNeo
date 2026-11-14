@@ -2047,7 +2047,7 @@ struct BurnDriver BurnDrvMkk = {
 static struct BurnRomInfo mk2kRomDesc[] = {
 	{ "l3.1_mortal_kombat_ii_game_rom_uj12k.uj12",	0x080000, 0x8cae1465, 1 | BRF_PRG | BRF_ESS }, //  0 TMS34010
 	{ "l3.1_mortal_kombat_ii_game_rom_ug12k.ug12",	0x080000, 0x0c0c49fa, 1 | BRF_PRG | BRF_ESS }, //  1
-
+	
 	{ "l1_mortal_kombat_ii_sound_rom_u2.u2",		0x080000, 0x5f23d71d, 2 | BRF_PRG | BRF_ESS }, //  2 DCS sound banks
 	{ "l1_mortal_kombat_ii_sound_rom_u3.u3",		0x080000, 0xd6d92bf9, 2 | BRF_PRG | BRF_ESS }, //  3
 	{ "l1_mortal_kombat_ii_sound_rom_u4.u4",		0x080000, 0xeebc8e0f, 2 | BRF_PRG | BRF_ESS }, //  4

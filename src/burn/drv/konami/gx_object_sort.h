@@ -1,8 +1,7 @@
 #pragma once
 #include <algorithm>
 
-template<int Capacity, typename Object>
-static inline void GxSortObjects(INT32 *indices, INT32 count, const Object *objects)
+template <int Capacity, typename Object> static inline void GxSortObjects(INT32 *indices, INT32 count, const Object *objects)
 {
 	// Key materialization only pays for sufficiently large object lists.
 	if (count < 512) {
@@ -31,5 +30,6 @@ static inline void GxSortObjects(INT32 *indices, INT32 count, const Object *obje
 			*position = value;
 		}
 	}
-	for (INT32 i = 0; i < count; i++) indices[i] = (INT32)(UINT32)keys[i];
+	for (INT32 i = 0; i < count; i++)
+		indices[i] = (INT32)(UINT32)keys[i];
 }

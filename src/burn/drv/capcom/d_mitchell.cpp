@@ -3499,15 +3499,15 @@ static struct BurnRomInfo DokabenkRomDesc[] = {
 	{ "db_06k.11h",    0x08000, 0x9f145744, BRF_ESS | BRF_PRG }, //  0	Z80 #1 Program Code
 	{ "db_07k.13h",    0x20000, 0x8c50de3b, BRF_ESS | BRF_PRG }, //	 1
 	{ "db_08k.14h",    0x20000, 0x844ef118, BRF_ESS | BRF_PRG }, //	 2
-
+	
 	{ "db_02k.1e",     0x20000, 0xff7fc7dc, BRF_GRA },	     //  3	Characters
 	{ "db_03k.2e",     0x20000, 0xeef3cea2, BRF_GRA },	     //  4
 	{ "db_04k.1g",     0x20000, 0x9e398384, BRF_GRA },	     //  5
 	{ "db_05k.2g",     0x20000, 0x326dd11f, BRF_GRA },	     //  6
-
+	
 	{ "db_10k.2k",     0x20000, 0x96a41e46, BRF_GRA },	     //  7	Sprites
 	{ "db_09k.1k",     0x20000, 0xf5309f9e, BRF_GRA },	     //  8
-
+	
 	{ "db_01.1d",      0x20000, 0x62fa6b81, BRF_SND },	     //  9	Samples
 };
 
