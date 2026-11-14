@@ -2241,6 +2241,16 @@ INT32 SekSetWriteLongHandler(INT32 i, pSekWriteLongHandler pHandler)
 // ----------------------------------------------------------------------------
 // Query register values
 
+UINT32 SekGetCACR()
+{
+#ifdef EMU_M68K
+    if (nSekActive >= 0 && nSekCPUType[nSekActive] != 0)
+        return m68k_get_reg(NULL, M68K_REG_CACR);
+#endif
+    return 0;
+}
+
+
 #ifdef EMU_A68K
 UINT32 SekGetPC(INT32 n)
 #else

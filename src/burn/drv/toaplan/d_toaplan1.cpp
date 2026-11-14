@@ -1054,7 +1054,7 @@ static struct BurnDIPInfo OutzoneDIPList[]=
 	{0x17, 0x01, 0x40, 0x00, "Off"			},
 	{0x17, 0x01, 0x40, 0x40, "On"			},
 
-	{0   , 0xfe, 0   ,    8, "Region"		},
+	{0   , 0xfe, 0   ,    9, "Region"		},
 	{0x18, 0x01, 0x0f, 0x00, "Japan"		},
 	{0x18, 0x01, 0x0f, 0x01, "USA"			},
 	{0x18, 0x01, 0x0f, 0x02, "Europe"		},
@@ -3287,7 +3287,7 @@ STD_ROM_FN(rallybik)
 struct BurnDriver BurnDrvRallybik = {
 	"rallybik", NULL, NULL, NULL, "1988",
 	"Rally Bike (Europe, US) / Dash Yarou (Japan)\0", NULL, "Toaplan / Taito Corporation", "Toaplan BCU-2 / FCU-2 based",
-	L"Rally Bike\0\u30C0\u30C3\u30B7\u30E5\uC91E\u90CE\0", NULL, NULL, NULL,
+	L"Rally Bike\0\u30C0\u30C3\u30B7\u30E5\u91CE\u90CE\0", NULL, NULL, NULL,
 	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TOAPLAN_RAIZING, GBF_RACING, 0,
 	NULL, rallybikRomInfo, rallybikRomName, NULL, NULL, NULL, NULL, Drv2bInputInfo, RallybikDIPInfo,
 	RallybikInit, DrvExit, DrvFrame, RallybikDraw, DrvScan, &DrvRecalc, 0x800,

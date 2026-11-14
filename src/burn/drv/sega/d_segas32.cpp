@@ -8157,3 +8157,45 @@ struct BurnDriverX BurnDrvAs1 = {
 	640, 224, 8, 3
 };
 
+//========================
+// Add Korean Translation
+//========================
+
+// SegaSonic The Hedgehog (Korean Translation, rev. C)
+
+static struct BurnRomInfo sonickRomDesc[] = {
+	{ "epr-15787c.ic17",			0x020000, 0x25e3c27e, 1 | BRF_PRG | BRF_ESS }, //  0 V60 #0 Code
+	{ "epr-15786c.ic8",				0x020000, 0xefe9524c, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "epr-15781ck.ic18",			0x040000, 0xc816511e, 2 | BRF_PRG | BRF_ESS }, //  2
+	{ "epr-15780ck.ic9",			0x040000, 0x80f67df0, 2 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "epr-15785.ic36",				0x040000, 0x0fe7422e, 3 | BRF_PRG | BRF_ESS }, //  4 Z80 #0 Code
+	{ "mpr-15784.ic35",				0x100000, 0x42f06714, 3 | BRF_PRG | BRF_ESS }, //  5
+	{ "mpr-15783.ic34",				0x100000, 0xe4220eea, 3 | BRF_PRG | BRF_ESS }, //  6
+	{ "mpr-15782.ic33",				0x100000, 0xcf56b5a0, 3 | BRF_PRG | BRF_ESS }, //  7
+
+	{ "mpr-15789.ic14",				0x100000, 0x4378f12b, 1 | BRF_GRA },           //  8 Main Layer Tiles
+	{ "mpr-15788.ic5",				0x100000, 0xa6ed5d7a, 1 | BRF_GRA },           //  9
+
+	{ "mpr-15790k.ic32",			0x200000, 0x941ad1d3, 2 | BRF_GRA },           // 10 Main Sprites
+	{ "mpr-15792k.ic30",			0x200000, 0xcc7e056b, 2 | BRF_GRA },           // 11
+	{ "mpr-15794k.ic28",			0x200000, 0x2879b355, 2 | BRF_GRA },           // 12
+	{ "mpr-15796k.ic26",			0x200000, 0x928fef38, 2 | BRF_GRA },           // 13
+	{ "mpr-15791.ic31",				0x100000, 0x42217066, 2 | BRF_GRA },           // 14
+	{ "mpr-15793.ic29",				0x100000, 0x75bafe55, 2 | BRF_GRA },           // 15
+	{ "mpr-15795.ic27",				0x100000, 0x7f3dad30, 2 | BRF_GRA },           // 16
+	{ "mpr-15797.ic25",				0x100000, 0x013c6cab, 2 | BRF_GRA },           // 17
+};
+
+STD_ROM_PICK(sonick)
+STD_ROM_FN(sonick)
+
+struct BurnDriver BurnDrvSonick = {
+	"sonick", "sonic", NULL, NULL, "2026",
+	"SegaSonic The Hedgehog (Korean Translation, rev. C)\0", NULL, "Sega", "System 32",
+	L"SegaSonic The Hedgehog (Korean Translation, rev. C)\0\uC138\uAC00\uC18C\uB2C9 \uB354 \uD5E4\uC9C0\uD639 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, rev. C)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 3, HARDWARE_SEGA_SYSTEM32, GBF_PLATFORM, 0,
+	NULL, sonickRomInfo, sonickRomName, NULL, NULL, NULL, NULL, SonicInputInfo, SonicDIPInfo,
+	SonicInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x8000,
+	320, 224, 4, 3
+};

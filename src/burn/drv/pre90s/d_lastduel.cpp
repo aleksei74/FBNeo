@@ -1840,3 +1840,43 @@ struct BurnDriver BurnDrvLeds2011u = {
 	Leds2011Init, MadgearExit, DrvFrame, DrvDraw, MadgearScan,
 	NULL, 0x800, 240, 384, 3, 4
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+static struct BurnRomInfo LastduelkRomDesc[] = {
+	{ "ld_06k.13k",    0x20000, 0xa29d3430, BRF_ESS | BRF_PRG }, //  0	68000 Program Code
+	{ "ld_05k.12k",    0x20000, 0xe13b0821, BRF_ESS | BRF_PRG }, //	 1
+	{ "ld_04.11k",     0x10000, 0xaa4bf001, BRF_ESS | BRF_PRG }, //	 2
+	{ "ld_03.9k",      0x10000, 0xbbaac8ab, BRF_ESS | BRF_PRG }, //	 3
+
+	{ "ld_02.16h",     0x10000, 0x91834d0c, BRF_ESS | BRF_PRG }, //  4	Z80 Program
+
+	{ "ld_01k.12f",    0x08000, 0x03c9ce3b, BRF_GRA },	     	 //  5	Characters
+
+	{ "ld-15.6p",      0x20000, 0xd977a175, BRF_GRA },	     	 //  6	BG Tiles
+	{ "ld-13.6m",      0x20000, 0xbc25729f, BRF_GRA },	     	 //  7
+
+	{ "ld-14.15n",     0x80000, 0xd0653739, BRF_GRA },	     	 //  8	FG Tiles
+
+	{ "ld-09.12a",     0x20000, 0x6efadb74, BRF_GRA },	     	 //  9  Sprites
+	{ "ld-10.17a",     0x20000, 0xb8d3b2e3, BRF_GRA },	     	 // 10
+	{ "ld-11.12b",     0x20000, 0x49d4dbbd, BRF_GRA },	     	 // 11
+	{ "ld-12.17b",     0x20000, 0x313e5338, BRF_GRA },	     	 // 12
+
+	{ "ld.3d",         0x00100, 0x729a1ddc, BRF_GRA },  	     // 13	PROM (Priority)
+};
+
+STD_ROM_PICK(Lastduelk)
+STD_ROM_FN(Lastduelk)
+
+struct BurnDriver BurnDrvLastduelk = {
+	"lastduelk", "lastduel", NULL, NULL, "2026",
+	"Last Duel (Korean Translation)\0", NULL, "Capcom", "Miscellaneous",
+	L"Last Duel (Korean Translation)\0\uB77C\uC2A4\uD2B8 \uB4C0\uC5BC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_VERSHOOT, 0,
+	NULL, LastduelkRomInfo, LastduelkRomName, NULL, NULL, NULL, NULL, LastduelInputInfo, LastduelDIPInfo,
+	LastduelInit, DrvExit, LastduelFrame, LastduelDraw, DrvScan,
+	NULL, 0x800, 240, 384, 3, 4
+};

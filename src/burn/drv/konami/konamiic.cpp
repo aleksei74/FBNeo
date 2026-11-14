@@ -1,10 +1,14 @@
+// Generated with Codex AI (by DsNo)
+
 #include "tiles_generic.h"
 #include "konamiic.h"
 
 UINT32 KonamiIC_K051960InUse = 0;
 UINT32 KonamiIC_K052109InUse = 0;
+UINT32 KonamiIC_K051316InUse = 0;
 UINT32 KonamiIC_K053245InUse = 0;
 UINT32 KonamiIC_K053247InUse = 0;
+UINT32 KonamiIC_K053936InUse = 0;
 UINT32 KonamiIC_K053250InUse = 0;
 UINT32 KonamiIC_K055555InUse = 0;
 UINT32 KonamiIC_K054338InUse = 0;
@@ -17,6 +21,8 @@ UINT32 *konami_palette32;
 
 static INT32 previous_depth = 0;
 static UINT16 *palette_lut = NULL;
+static INT32 konami_bitmap_width = 0;
+static INT32 konami_bitmap_height = 0;
 
 //static UINT16 *konami_blendpal16;
 
@@ -115,6 +121,7 @@ void konami_rom_deinterleave_4(UINT8 *src, INT32 len)
 void KonamiRecalcPalette(UINT8 *src, UINT32 *dst, INT32 len)
 {
 	konami_palette32 = dst;
+	K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 
 	UINT8 r,g,b;
 	UINT16 *p = (UINT16*)src;
@@ -137,8 +144,10 @@ void KonamiICReset()
 {
 	if (KonamiIC_K051960InUse) K051960Reset();
 	if (KonamiIC_K052109InUse) K052109Reset();
+	if (KonamiIC_K051316InUse) K051316Reset();
 	if (KonamiIC_K053245InUse) K053245Reset();
 	if (KonamiIC_K053247InUse) K053247Reset();
+	if (KonamiIC_K053936InUse) K053936Reset();
 	if (KonamiIC_K053250InUse) K053250Reset();
 	if (KonamiIC_K055555InUse) K055555Reset();
 	if (KonamiIC_K054338InUse) K054338Reset();
@@ -160,6 +169,8 @@ void KonamiICExit()
 		BurnFree(konami_priority_bitmap);
 		konami_priority_bitmap = NULL;
 	}
+	konami_bitmap_width = 0;
+	konami_bitmap_height = 0;
 
 	previous_depth = 0;
 	if (palette_lut) {
@@ -169,8 +180,10 @@ void KonamiICExit()
 
 	if (KonamiIC_K051960InUse) K051960Exit();
 	if (KonamiIC_K052109InUse) K052109Exit();
+	if (KonamiIC_K051316InUse) K051316Exit();
 	if (KonamiIC_K053245InUse) K053245Exit();
 	if (KonamiIC_K053247InUse) K053247Exit();
+	if (KonamiIC_K053936InUse) K053936Exit();
 	if (KonamiIC_K053250InUse) K053250Exit();
 	if (KonamiIC_K055555InUse) K055555Exit();
 	if (KonamiIC_K054338InUse) K054338Exit();
@@ -179,6 +192,7 @@ void KonamiICExit()
 
 	KonamiIC_K051960InUse = 0;
 	KonamiIC_K052109InUse = 0;
+	KonamiIC_K051316InUse = 0;
 	KonamiIC_K053245InUse = 0;
 	KonamiIC_K053247InUse = 0;
 	KonamiIC_K053250InUse = 0;
@@ -201,8 +215,10 @@ void KonamiICScan(INT32 nAction)
 {
 	if (KonamiIC_K051960InUse) K051960Scan(nAction);
 	if (KonamiIC_K052109InUse) K052109Scan(nAction);
+	if (KonamiIC_K051316InUse) K051316Scan(nAction);
 	if (KonamiIC_K053245InUse) K053245Scan(nAction);
 	if (KonamiIC_K053247InUse) K053247Scan(nAction);
+	if (KonamiIC_K053936InUse) K053936Scan(nAction);
 	if (KonamiIC_K053250InUse) K053250Scan(nAction);
 	if (KonamiIC_K055555InUse) K055555Scan(nAction);
 	if (KonamiIC_K054338InUse) K054338Scan(nAction);
@@ -219,6 +235,16 @@ void KonamiAllocateBitmaps()
 	INT32 width, height;
 	BurnDrvGetVisibleSize(&width, &height);
 
+	if (konami_bitmap32 && (konami_bitmap_width != width || konami_bitmap_height != height)) {
+		BurnFree(konami_bitmap32);
+		konami_bitmap32 = NULL;
+	}
+
+	if (konami_priority_bitmap && (konami_bitmap_width != width || konami_bitmap_height != height)) {
+		BurnFree(konami_priority_bitmap);
+		konami_priority_bitmap = NULL;
+	}
+
 	if (konami_bitmap32 == NULL) {
 		konami_bitmap32 = (UINT32*)BurnMalloc(width * height * sizeof(INT32));
 	}
@@ -226,6 +252,11 @@ void KonamiAllocateBitmaps()
 	if (konami_priority_bitmap == NULL) {
 		konami_priority_bitmap = (UINT8*)BurnMalloc(width * height * sizeof(INT8));
 	}
+
+	konami_bitmap_width = width;
+	konami_bitmap_height = height;
+
+	K053936SetRenderTarget(konami_bitmap32, konami_palette32, konami_priority_bitmap);
 }
 
 void KonamiClearBitmaps(UINT32 color)
@@ -335,17 +366,32 @@ void konami_draw_16x16_priozoom_sprite(UINT8 *gfx, INT32 code, INT32 bpp, INT32 
 			dy = -dy;
 		}
 
-		for (INT32 y = sy; y < ey; y++)
+		if (ex <= 0 || ey <= 0 || sx >= nScreenWidth || sy >= nScreenHeight) {
+			return;
+		}
+
+		INT32 start_y = (sy < 0) ? 0 : sy;
+		INT32 end_y = (ey > nScreenHeight) ? nScreenHeight : ey;
+		INT32 start_x = (sx < 0) ? 0 : sx;
+		INT32 end_x = (ex > nScreenWidth) ? nScreenWidth : ex;
+
+		y_index += (start_y - sy) * dy;
+
+		for (INT32 y = start_y; y < end_y; y++)
 		{
-			if (y >= 0 && y < nScreenHeight)
-			{
+			INT32 yi = y_index >> 16;
+
+			if (yi >= 0 && yi < height) {
 				UINT8 *src = gfx_base + (y_index / 0x10000) * width;
 				UINT32 *dst = konami_bitmap32 + y * nScreenWidth;
 				UINT8 *prio = konami_priority_bitmap + y * nScreenWidth;
+				INT32 x_index = x_index_base + (start_x - sx) * dx;
 
-				for (INT32 x = sx, x_index = x_index_base; x < ex; x++)
+				for (INT32 x = start_x; x < end_x; x++)
 				{
-					if (x >= 0 && x < nScreenWidth) {
+					INT32 xi = x_index >> 16;
+
+					if (xi >= 0 && xi < width) {
 						INT32 pxl = src[x_index>>16];
 
 						if (pxl != t) {
@@ -477,16 +523,21 @@ void konami_draw_16x16_prio_sprite(UINT8 *gfxbase, INT32 code, INT32 bpp, INT32 
 
 	UINT8 *gfx = gfxbase + code * 0x100;
 
-	UINT8 *pri = konami_priority_bitmap + (sy * nScreenWidth) + sx;
-	UINT32 *dst = konami_bitmap32 + (sy * nScreenWidth) + sx;
 	UINT32 *pal = konami_palette32 + (color << bpp);
 
 	priority |= 1 << 31; // always on!
+
+	if (sx <= -16 || sx >= nScreenWidth || sy <= -16 || sy >= nScreenHeight) {
+		return;
+	}
 
 	for (INT32 y = 0; y < 16; y++, sy++)
 	{
 		if (sy >= 0 && sy < nScreenHeight)
 		{
+			UINT8 *pri = konami_priority_bitmap + (sy * nScreenWidth);
+			UINT32 *dst = konami_bitmap32 + (sy * nScreenWidth);
+
 			for (INT32 x = 0; x < 16; x++)
 			{
 				if ((sx+x) >= 0 && (sx+x) < nScreenWidth)
@@ -494,21 +545,20 @@ void konami_draw_16x16_prio_sprite(UINT8 *gfxbase, INT32 code, INT32 bpp, INT32 
 					INT32 pxl = gfx[((y*16)+x)^flip];
 
 					if (pxl) {
-						if ((priority & (1 << (pri[x]&0x1f)))==0) {
-							if (pri[x] & 0x20) {
-								dst[x] = highlight_mode ? highlight_blend(pal[pxl]) : shadow_blend(pal[pxl]);
+						INT32 dx = sx + x;
+
+						if ((priority & (1 << (pri[dx]&0x1f)))==0) {
+							if (pri[dx] & 0x20) {
+								dst[dx] = highlight_mode ? highlight_blend(pal[pxl]) : shadow_blend(pal[pxl]);
 							} else {
-								dst[x] = pal[pxl];
+								dst[dx] = pal[pxl];
 							}
 						}
-						pri[x] |= 0x1f;
+						pri[dx] |= 0x1f;
 					}
 				}
 			}
 		}
-
-		pri += nScreenWidth;
-		dst += nScreenWidth;
 	}
 }
 
@@ -574,19 +624,35 @@ void konami_render_zoom_shadow_sprite(UINT8 *gfxbase, INT32 code, INT32 bpp, INT
 			dy = -dy;
 		}
 
+		if (ex <= 0 || ey <= 0 || sx >= nScreenWidth || sy >= nScreenHeight) {
+			return;
+		}
+
+		INT32 start_y = (sy < 0) ? 0 : sy;
+		INT32 end_y = (ey > nScreenHeight) ? nScreenHeight : ey;
+		INT32 start_x = (sx < 0) ? 0 : sx;
+		INT32 end_x = (ex > nScreenWidth) ? nScreenWidth : ex;
+		INT32 y_index_base = y_index + (start_y - sy) * dy;
+
 		if (priority == 0xffffffff)
 		{
-			for (INT32 y = sy; y < ey; y++)
+			INT32 y_index = y_index_base;
+
+			for (INT32 y = start_y; y < end_y; y++)
 			{
-				if (y >= 0 && y < nScreenHeight)
-				{
+				INT32 yi = y_index >> 16;
+
+				if (yi >= 0 && yi < height) {
 					UINT8 *src = gfx_base + (y_index / 0x10000) * width;
 					UINT32 *dst = konami_bitmap32 + y * nScreenWidth;
 					UINT8 *pri = konami_priority_bitmap + y * nScreenWidth;
+					INT32 x_index = x_index_base + (start_x - sx) * dx;
 
-					for (INT32 x = sx, x_index = x_index_base; x < ex; x++)
+					for (INT32 x = start_x; x < end_x; x++)
 					{
-						if (x >= 0 && x < nScreenWidth) {
+						INT32 xi = x_index >> 16;
+
+						if (xi >= 0 && xi < width) {
 							INT32 pxl = src[x_index>>16];
 
 							if (pxl) {
@@ -612,18 +678,23 @@ void konami_render_zoom_shadow_sprite(UINT8 *gfxbase, INT32 code, INT32 bpp, INT
 			}
 		} else {
 			priority |= 1<<31; // always on!
+			INT32 y_index = y_index_base;
 
-			for (INT32 y = sy; y < ey; y++)
+			for (INT32 y = start_y; y < end_y; y++)
 			{
-				if (y >= 0 && y < nScreenHeight)
-				{
+				INT32 yi = y_index >> 16;
+
+				if (yi >= 0 && yi < height) {
 					UINT8 *src = gfx_base + (y_index / 0x10000) * width;
 					UINT32 *dst = konami_bitmap32 + y * nScreenWidth;
 					UINT8 *pri = konami_priority_bitmap + y * nScreenWidth;
+					INT32 x_index = x_index_base + (start_x - sx) * dx;
 
-					for (INT32 x = sx, x_index = x_index_base; x < ex; x++)
+					for (INT32 x = start_x; x < end_x; x++)
 					{
-						if (x >= 0 && x < nScreenWidth) {
+						INT32 xi = x_index >> 16;
+
+						if (xi >= 0 && xi < width) {
 							INT32 pxl = src[x_index>>16];
 
 							if (pxl) {

@@ -301,6 +301,7 @@ void ScrnInitLua();
 void ScrnExitLua();
 char* DecorateKailleraGameName(UINT32 nBurnDrv);
 INT32 CreateAllDatfilesWindows(bool bSilent = false, const TCHAR* pszSpecDir = NULL);
+INT32 CreateDefaultDatfilesWindows(bool bSilent = false, const TCHAR* pszSpecDir = NULL);
 INT32 RomDataLoadDriver(const TCHAR* pszSelDat);
 INT32 BurnerQuickLoad(const INT32 nMode, const TCHAR* pszSelect);
 

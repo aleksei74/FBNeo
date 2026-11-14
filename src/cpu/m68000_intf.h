@@ -262,6 +262,7 @@ INT32 SekSetTASCallback(pSekTASCallback pCallback);
 
 // Get a CPU's PC
 UINT32 SekGetPC(INT32 n);
+UINT32 SekGetCACR(); // Active Musashi CPU cache control (68020+).
 UINT32 SekGetPPC(INT32);
 UINT32 SekGetDAR(INT32 n);
 

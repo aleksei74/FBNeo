@@ -45,6 +45,10 @@ int z80daisy_update_irq_state(const struct z80_irq_daisy_chain *chain);
 int z80daisy_call_ack_device(const struct z80_irq_daisy_chain *chain);
 void z80daisy_call_reti_device(const struct z80_irq_daisy_chain *chain);
 
+// Optional external bus IRQ after the internal devices. The owner scans/resets
+// its state. Devices returning IEO must provide the optional RETI callback.
+void z80daisy_set_external_irq(int (*irq_state)(), int (*irq_ack)(), void (*irq_reti)() = NULL);
+
 void z80daisy_exit();
 void z80daisy_scan(int nAction);
 void Z80SetDaisy(void *dptr); // from z80.cpp

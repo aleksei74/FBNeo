@@ -4843,3 +4843,52 @@ struct BurnDriver BurnDrvMajtitlej = {
 	majtitleInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
 	384, 256, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Air Duel (Korean Translation, M82 hardware)
+
+static struct BurnRomInfo airduelkRomDesc[] = {
+	{ "ad_=m82=_a-h0-dk.ic52",	0x20000, 0xaebead01, 0x01 | BRF_PRG | BRF_ESS }, //  0 V30 Code
+	{ "ad_=m82=_a-l0-dk.ic60",	0x20000, 0xf7da1128, 0x01 | BRF_PRG | BRF_ESS }, //  1
+	{ "ad_=m82=_a-h1-d.ic51",	0x20000, 0xbafc152a, 0x01 | BRF_PRG | BRF_ESS }, //  2
+	{ "ad_=m82=_a-l1-d.ic59",	0x20000, 0x9e2b1ae7, 0x01 | BRF_PRG | BRF_ESS }, //  3
+	
+	{ "ad_=m82=_a-sp-d.ic15",	0x10000, 0x16a858a3, 0x06 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "ad_=m82=_b-n0-dk.ic44",	0x20000, 0x28f0a4b4, 0x02 | BRF_GRA },           //  5 Sprites
+	{ "ad_=m82=_b-n1-dk.ic45",	0x20000, 0x716a2e8b, 0x02 | BRF_GRA },           //  6
+	{ "ad_=m82=_b-n2-d.ic46",	0x20000, 0xd392aef2, 0x02 | BRF_GRA },           //  7
+	{ "ad_=m82=_b-n3-d.ic36",	0x20000, 0x923240c3, 0x02 | BRF_GRA },           //  8
+
+	{ "ad_=m82=_a-c0-dk.ic49",	0x20000, 0xd4a3ff5e, 0x03 | BRF_GRA },           //  9 Foreground Tiles
+	{ "ad_=m82=_a-c1-dk.ic48",	0x20000, 0xe6e83291, 0x03 | BRF_GRA },           // 10
+	{ "ad_=m82=_a-c2-dk.ic57",	0x20000, 0x704c1b55, 0x03 | BRF_GRA },           // 11
+	{ "ad_=m82=_a-c3-dk.ic56",	0x20000, 0x7cef19a5, 0x03 | BRF_GRA },           // 12
+
+	{ "mt_f0.ic38",				0x20000, 0x2d5e05d5, 0x0e | BRF_GRA },           // 17 Sprites 2
+	{ "mt_f1.ic39",				0x20000, 0xc68cd65f, 0x0e | BRF_GRA },           // 18
+	{ "mt_f2.ic40",				0x20000, 0xa71feb2d, 0x0e | BRF_GRA },           // 19
+	{ "mt_f3.ic41",				0x20000, 0x179f7562, 0x0e | BRF_GRA },           // 20
+
+	{ "ad_=m82=_a-vo-d.ic12",	0x20000, 0x339f474d, 0x05 | BRF_SND },           // 21 DAC Samples
+
+	{ "mt_a-2h-.ic5",			0x00117, 0x21ede612, 0x00 | BRF_OPT },           // 22 PLDs
+	{ "mt_a-5l-.ic31",			0x00117, 0xe3064bfe, 0x00 | BRF_OPT },           // 23
+	{ "mt_a-7d-.ic43",			0x00117, 0xd7ec1cc6, 0x00 | BRF_OPT },           // 24
+};
+
+STD_ROM_PICK(airduelk)
+STD_ROM_FN(airduelk)
+
+struct BurnDriver BurnDrvAirduelk = {
+	"airduelk", "airduel", NULL, NULL, "2026",
+	"Air Duel (Korean Translation, M82 hardware)\0", NULL, "Irem", "Irem M82",
+	L"Air Duel (Korean Translation, M82 hardware)\0\uC5D0\uC5B4 \uB4C0\uC5BC (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, M82 \uD558\uB4DC\uC6E8\uC5B4)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED | BDF_ORIENTATION_VERTICAL, 2, HARDWARE_IREM_M72, GBF_VERSHOOT, 0,
+	NULL, airduelkRomInfo, airduelkRomName, NULL, NULL, NULL, NULL, CommonInputInfo, AirduelDIPInfo,
+	airduelInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x200,
+	256, 384, 3, 4
+};

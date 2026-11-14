@@ -23,6 +23,9 @@ void K053936PredrawTiles2(INT32 chip, UINT8 *gfx);
 void K053936PredrawTiles(INT32 chip, UINT8 *gfx, INT32 transparent, INT32 tcol /*transparent color*/);
 void K053936Draw(INT32 chip, UINT16 *ctrl, UINT16 *linectrl, INT32 transp);
 
+#define K053936_DRAW_16BIT	(1 << 24)
+#define K053936_DRAW_CLIP	(1 << 25)
+
 extern UINT16 *m_k053936_0_ctrl_16;
 extern UINT16 *m_k053936_0_linectrl_16;
 extern UINT16 *m_k053936_0_ctrl;
@@ -32,9 +35,13 @@ extern UINT16 *K053936_external_bitmap;
 void K053936GP_set_colorbase(INT32 chip, INT32 color_base);
 void K053936GP_enable(int chip, int enable);
 void K053936GP_set_offset(int chip, int xoffs, int yoffs);
+void K053936GP_set_visible_offset(int chip, int xoffs, int yoffs);
+void K053936GP_wraparound_enable(int chip, int status);
+void K053936GP_set_source_size(int chip, int width, int height);
 void K053936GP_clip_enable(int chip, int status);
 void K053936GP_set_cliprect(int chip, int minx, int maxx, int miny, int maxy);
 void K053936GP_0_zoom_draw(UINT16 *bitmap, int tilebpp, int blend, int alpha, int pixeldouble_output, UINT16* temp_m_k053936_0_ctrl_16, UINT16* temp_m_k053936_0_linectrl_16,UINT16* temp_m_k053936_0_ctrl, UINT16* temp_m_k053936_0_linectrl);
+void K053936GP_0_zoom_draw_noswap(UINT16 *bitmap, int tilebpp, int blend, int alpha, int pixeldouble_output, UINT16 *ctrl, UINT16 *linectrl);
 void K053936GpInit();
 void K053936GPExit();
 

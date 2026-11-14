@@ -2166,3 +2166,5 @@ void SetSekCpuCore()
 	nSekCpuCore = (bCycloneEnabled ? 0 : 1);
 }
 #endif
+
+int FBA_LuaRunning() { return 0; }

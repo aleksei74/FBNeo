@@ -34,7 +34,6 @@
 #include <stddef.h>
 
 int has_sh2;
-INT32 cps3speedhack; // must be set _after_ Sh2Init();
 
 #define BUSY_LOOP_HACKS     0
 #define FAST_OP_FETCH		1
@@ -141,7 +140,7 @@ enum {
 #define Q	0x00000100
 #define M	0x00000200
 
-#define AM	0xc7ffffff
+#define AM	(pSh2Ext->addressMask)
 
 #define FLAGS	(M|Q|I|S|T)
 
@@ -177,6 +176,7 @@ typedef struct
 	pSh2WriteLongHandler WriteLong[SH2_MAXHANDLER];
 	
 	unsigned char * opbase;
+	UINT32 addressMask;
 	int suspend;
 
 	// external dma requests (DREQ0/1)
@@ -506,8 +506,6 @@ int Sh2Init(int nCount)
 
 	has_sh2 = 1;
 
-	cps3speedhack = 0;
-
 	Sh2Ext = (SH2EXT *)malloc(sizeof(SH2EXT) * nCount);
 	if (Sh2Ext == NULL) {
 		Sh2Exit();
@@ -523,6 +521,7 @@ int Sh2Init(int nCount)
 		sh2 = & (pSh2Ext->sh2);
 
 		sh2->sh2_eat_cycles = 1;
+		pSh2Ext->addressMask = 0xc7ffffff;
 
 		Sh2MapHandler(SH2_MAXHANDLER - 1, 0xE0000000, 0xFFFFFFFF, 0x07);
 		Sh2MapHandler(SH2_MAXHANDLER - 2, 0x40000000, 0xBFFFFFFF, 0x07);
@@ -812,7 +811,10 @@ SH2_INLINE void sh2_exception(/*const char *message,*/ int irqline)
 		}
 		else
 		{
-			if(sh2->m[0x38] & 0x00010000)
+			if (sh2->irq_callback) {
+				vector = sh2->irq_callback(irqline);
+			}
+			else if(sh2->m[0x38] & 0x00010000)
 			{
 				//vector = sh2->irq_callback(irqline);
 				//LOG(("SH-2 #%d exception #%d (external vector: $%x) after [%s]\n", cpu_getactivecpu(), irqline, vector, message));
@@ -3345,6 +3347,38 @@ static inline int sh2_is_branch(UINT16 op)
 	return 0;
 }
 
+// while suspended (Sh2BurnUntilInt) nothing happens until an internal timer (frt, wdt) fires:
+// returns the number of empty steps before the next event or the end of the run
+static INT32 sh2_suspend_skip()
+{
+	INT32 eat = sh2->sh2_eat_cycles;
+	if (eat <= 0) return 0;
+
+	// dma transfers go on while the cpu is suspended
+	if ((sh2->m[0x6c] & 7) == 1 && ((sh2->m[0x63] & 3) == 1 || (sh2->m[0x67] & 3) == 1)) return 0;
+
+	INT32 steps = (sh2->sh2_icount + eat - 1) / eat;
+	UINT32 now = sh2_GetTotalCycles();
+
+	// checked before the step's cycles are counted
+	if (pSh2Ext->wdt_csr & 0x20) {
+		INT32 d = (INT32)(pSh2Ext->wdt_next - now);
+		if (d <= 0) return 0;
+		INT32 k = (d + eat - 1) / eat;
+		if (k < steps) steps = k;
+	}
+
+	// checked after the step's cycles are counted
+	if (sh2->timer_active) {
+		UINT32 e = now - sh2->timer_base;
+		if (e >= sh2->timer_cycles) return 0;
+		UINT32 k = (sh2->timer_cycles - e + eat - 1) / eat - 1;
+		if (k < (UINT32)steps) steps = k;
+	}
+
+	return steps;
+}
+
 int Sh2Run(int cycles)
 {
 #if defined FBNEO_DEBUG
@@ -3357,10 +3391,13 @@ int Sh2Run(int cycles)
 
 	do
 	{
-		if ( pSh2Ext->suspend && cps3speedhack ) {
-			sh2->sh2_total_cycles += sh2->sh2_icount;
-			sh2->sh2_icount = 0;
-			break;
+		if (pSh2Ext->suspend && !sh2->test_irq) {
+			INT32 skip = sh2_suspend_skip();
+			if (skip > 0) {
+				sh2->sh2_total_cycles += skip;
+				sh2->sh2_icount -= skip * sh2->sh2_eat_cycles;
+				continue;
+			}
 		}
 
 		if (pSh2Ext->suspend == 0) {
@@ -3668,4 +3705,14 @@ int Sh2Scan(int nAction)
 	}
 	
 	return 0;
+}
+
+void Sh2SetIRQCallback(int (*callback)(int))
+{
+	sh2->irq_callback = callback;
+}
+
+void Sh2SetAddressMask(UINT32 mask)
+{
+	pSh2Ext->addressMask = mask;
 }

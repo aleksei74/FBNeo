@@ -2,6 +2,7 @@
 
 // license:BSD-3-Clause
 // copyright-holders:David Haywood
+// Generated with Codex AI (by DsNo)
 
 #include "tiles_generic.h"
 #include "konamiic.h"
@@ -11,6 +12,8 @@ INT32 m_shd_rgb[12];
 
 static INT32 k054338_alphainverted;
 static INT32 alpha_cache; // for moomesa
+static INT32 k054338_bg_offx;
+static INT32 k054338_bg_offy;
 
 static void reset_shadows()
 {
@@ -27,6 +30,8 @@ void K054338Reset()
 
 	reset_shadows();
 	alpha_cache = 0;
+	k054338_bg_offx = 0;
+	k054338_bg_offy = 0;
 }
 
 void K054338Exit()
@@ -59,6 +64,12 @@ void K054338Init()
 	k054338_alphainverted = 1;
 }
 
+void K054338SetBgOffsets(INT32 x, INT32 y)
+{
+	k054338_bg_offx = x;
+	k054338_bg_offy = y;
+}
+
 void K054338WriteWord(INT32 offset, UINT16 data)
 {
 	k54338_regs[(offset & 0x1e)/2] = BURN_ENDIAN_SWAP_INT16(data);
@@ -79,6 +90,12 @@ INT32 K054338_read_register(INT32 reg)
 
 void K054338_update_all_shadows(INT32 rushingheroes_hack)
 {
+	// Fixed shadows do not consume the programmable RGB values.
+	if (rushingheroes_hack) {
+		reset_shadows();
+		return;
+	}
+
 	INT32 i, d;
 
 	for (i = 0; i < 9; i++)
@@ -87,10 +104,6 @@ void K054338_update_all_shadows(INT32 rushingheroes_hack)
 		if (d >= 0x100)
 			d -= 0x200;
 		m_shd_rgb[i] = d;
-	}
-
-	if (rushingheroes_hack) {
-		reset_shadows();
 	}
 }
 
@@ -103,19 +116,16 @@ void K054338_export_config(INT32 **shd_rgb)
 void K054338_fill_solid_bg()
 {
 	UINT32 bgcolor;
-	UINT32 *pLine;
-	INT32 x, y;
 
 	bgcolor = (K054338_read_register(K338_REG_BGC_R)&0xff)<<16;
 	bgcolor |= K054338_read_register(K338_REG_BGC_GB);
 
-	/* and fill the screen with it */
-	for (y = 0; y < nScreenHeight; y++)
-	{
-		pLine = konami_bitmap32;
-		pLine += (nScreenWidth*y);
-		for (x = 0; x < nScreenWidth; x++)
-			*pLine++ = bgcolor;
+	if (nScreenWidth <= 0 || nScreenHeight <= 0) return;
+	const size_t pixels = (size_t)nScreenWidth * nScreenHeight;
+	if (bgcolor == 0) {
+		memset(konami_bitmap32, 0, pixels * sizeof(UINT32));
+	} else {
+		for (size_t i = 0; i < pixels; i++) konami_bitmap32[i] = bgcolor;
 	}
 }
 
@@ -127,17 +137,17 @@ void K054338_fill_backcolor(INT32 palette_offset, INT32 mode) // (see p.67)
 	UINT32 *dst_ptr, *pal_ptr;
 	INT32 bgcolor;
 
-	clipx = 0 & ~3;
-	clipy = 0;
+	clipx = k054338_bg_offx & ~3;
+	clipy = k054338_bg_offy;
 	clipw = ((nScreenWidth - 1) + 4) & ~3;
 	cliph = (nScreenHeight-1) + 1;
 
-	dst_ptr = konami_bitmap32 + palette_offset;
+	dst_ptr = konami_bitmap32;
 	dst_pitch = nScreenWidth;
 	dst_ptr += 0;
 
 	BGC_SET = 0;
-	pal_ptr = konami_palette32;
+	pal_ptr = konami_palette32 + palette_offset;
 
 	if (!mode)
 	{
@@ -148,7 +158,7 @@ void K054338_fill_backcolor(INT32 palette_offset, INT32 mode) // (see p.67)
 	{
 		BGC_CBLK = K055555ReadRegister(0);
 		BGC_SET  = K055555ReadRegister(1);
-		pal_ptr += BGC_CBLK << 9;
+		pal_ptr = konami_palette32 + (BGC_CBLK << 9);
 
 		// single color output from PCU2
 		if (!(BGC_SET & 2)) { bgcolor = *pal_ptr; mode = 0; } else bgcolor = 0;
@@ -157,6 +167,11 @@ void K054338_fill_backcolor(INT32 palette_offset, INT32 mode) // (see p.67)
 	if (!mode)
 	{
 		// single color fill
+		// Preserve the legacy padded-row path when the visible width is unaligned.
+		if (bgcolor == 0 && clipw == dst_pitch && dst_pitch > 0 && cliph > 0) {
+			memset(dst_ptr, 0, (size_t)dst_pitch * cliph * sizeof(UINT32));
+			return;
+		}
 		dst_ptr += clipw;
 		i = clipw = -clipw;
 		do
@@ -203,44 +218,17 @@ void K054338_fill_backcolor(INT32 palette_offset, INT32 mode) // (see p.67)
 // addition blending unimplemented (requires major changes to drawgfx and tilemap.c)
 INT32 K054338_set_alpha_level(INT32 pblend)
 {
-	UINT16 *regs;
-	INT32 ctrl, mixpri, mixset, mixlv;
+	if (pblend <= 0) return 255;
 
-	if (pblend <= 0 || pblend > 3)
-	{
-	//	alpha_set_level(255);
-		return(255);
-	}
+	pblend &= 3;
 
-	regs   = k54338_regs;
-	ctrl   = BURN_ENDIAN_SWAP_INT16(k54338_regs[K338_REG_CONTROL]);
-	mixpri = ctrl & K338_CTL_MIXPRI;
-	mixset = BURN_ENDIAN_SWAP_INT16(regs[K338_REG_PBLEND + (pblend>>1 & 1)]) >> (~pblend<<3 & 8);
-	mixlv  = mixset & 0x1f;
-
+	INT32 mixset = BURN_ENDIAN_SWAP_INT16(k54338_regs[K338_REG_PBLEND + (pblend >> 1 & 1)]) >> (~pblend << 3 & 8);
+	INT32 mixlv = mixset & 0x1f;
 	if (k054338_alphainverted) mixlv = 0x1f - mixlv;
 
-	if (!(mixset & 0x20))
-	{
-		mixlv = mixlv<<3 | mixlv>>2;
-	//	alpha_set_level(mixlv); // source x alpha/255  +  target x (255-alpha)/255
-	}
-	else
-	{
-		if (!mixpri)
-		{
-			// source x alpha  +  target (clipped at 255)
-		}
-		else
-		{
-			// source  +  target x alpha (clipped at 255)
-		}
-
-		// DUMMY
-		if (mixlv && mixlv<0x1f) mixlv = 0x10;
-		mixlv = mixlv<<3 | mixlv>>2;
-	//	alpha_set_level(mixlv);
-	}
+	mixlv = (mixlv << 3) | (mixlv >> 2);
+	mixlv |= (mixset & 0x20) << 3;
+	if (BURN_ENDIAN_SWAP_INT16(k54338_regs[K338_REG_CONTROL]) & K338_CTL_MIXPRI) mixlv |= 0x200;
 
 	return(mixlv);
 }

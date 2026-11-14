@@ -722,6 +722,29 @@ static int CreateDatfileWindows(int bType)
 	if (bType == DAT_CHANNELF_ONLY) _sntprintf(szConsoleString, 64, _T(", Fairchild Channel F Games only"));
 	if (bType == DAT_ASTROHOME_ONLY) _sntprintf(szConsoleString, 64, _T(", Bally Astrocade Games only"));
 	if (bType == DAT_ATARI2600_ONLY) _sntprintf(szConsoleString, 64, _T(", Atari 2600 Games only"));
+// Add Codes (DsNo)
+	if (bType == DAT_CAPCOM_ONLY) _sntprintf(szConsoleString, 64, _T(", Capcom Misc only"));
+	if (bType == DAT_CPS1_ONLY) _sntprintf(szConsoleString, 64, _T(", CPS-1 only"));
+	if (bType == DAT_CPS2_ONLY) _sntprintf(szConsoleString, 64, _T(", CPS-2 only"));
+	if (bType == DAT_CPS3_ONLY) _sntprintf(szConsoleString, 64, _T(", CPS-3 only"));
+	if (bType == DAT_CAVE_ONLY) _sntprintf(szConsoleString, 64, _T(", Cave only"));
+	if (bType == DAT_DATAEAST_ONLY) _sntprintf(szConsoleString, 64, _T(", Data East only"));
+	if (bType == DAT_GALAXIAN_ONLY) _sntprintf(szConsoleString, 64, _T(", Galaxian only"));
+	if (bType == DAT_IREM_ONLY) _sntprintf(szConsoleString, 64, _T(", Irem only"));
+	if (bType == DAT_KANEKO_ONLY) _sntprintf(szConsoleString, 64, _T(", Kaneko only"));
+	if (bType == DAT_KONAMI_ONLY) _sntprintf(szConsoleString, 64, _T(", Konami only"));
+	if (bType == DAT_MIDWAY_ONLY) _sntprintf(szConsoleString, 64, _T(", Midway only"));
+	if (bType == DAT_PACMAN_ONLY) _sntprintf(szConsoleString, 64, _T(", Pacman only"));
+	if (bType == DAT_PGM_ONLY) _sntprintf(szConsoleString, 64, _T(", PGM only"));
+	if (bType == DAT_PSIKYO_ONLY) _sntprintf(szConsoleString, 64, _T(", Psikyo only"));
+	if (bType == DAT_SEGA_ONLY) _sntprintf(szConsoleString, 64, _T(", Sega only"));
+	if (bType == DAT_SETA_ONLY) _sntprintf(szConsoleString, 64, _T(", Seta only"));
+	if (bType == DAT_TAITO_ONLY) _sntprintf(szConsoleString, 64, _T(", Taito only"));
+	if (bType == DAT_TECHNOS_ONLY) _sntprintf(szConsoleString, 64, _T(", Technos only"));
+	if (bType == DAT_TOAPLAN_ONLY) _sntprintf(szConsoleString, 64, _T(", Toaplan only"));
+	if (bType == DAT_PRE90S_ONLY) _sntprintf(szConsoleString, 64, _T(", Pre90s only"));
+	if (bType == DAT_POST90S_ONLY) _sntprintf(szConsoleString, 64, _T(", Post90s only"));
+// Add Codes (DsNo)
 
 	TCHAR szProgramString[25];
 	_sntprintf(szProgramString, 25, _T("ClrMame Pro XML"));
@@ -749,6 +772,119 @@ static int CreateDatfileWindows(int bType)
 
 	return create_datfile(szChoice, bType);
 }
+
+// Add Codes (DsNo)
+INT32 CreateDefaultDatfilesWindows(bool bSilent, const TCHAR* pszSpecDir)
+{
+	INT32 nRet = 0;
+
+	LPMALLOC pMalloc = NULL;
+	BROWSEINFO bInfo;
+	ITEMIDLIST* pItemIDList = NULL;
+	TCHAR buffer[MAX_PATH] = { 0 };
+	TCHAR szFilename[MAX_PATH];
+	TCHAR szProgramString[25];
+
+	_sntprintf(szProgramString, 25, _T("ClrMame Pro XML"));
+
+	if (!bSilent) {
+		SHGetMalloc(&pMalloc);
+
+		memset(&bInfo, 0, sizeof(bInfo));
+		bInfo.hwndOwner = hScrnWnd;
+		bInfo.pszDisplayName = buffer;
+		bInfo.lpszTitle = FBALoadStringEx(hAppInst, IDS_SELECT_DIR, true);
+		bInfo.ulFlags = BIF_EDITBOX | BIF_RETURNONLYFSDIRS;
+
+		pItemIDList = SHBrowseForFolder(&bInfo);
+
+		if (!pItemIDList) {	// User clicked 'Cancel'
+			pMalloc->Release();
+			return nRet;
+		}
+
+		if (!SHGetPathFromIDList(pItemIDList, buffer)) {	// Browse dialog returned non-filesystem path
+			pMalloc->Free(pItemIDList);
+			pMalloc->Release();
+			return nRet;
+		}
+
+		int strLen = _tcslen(buffer);
+		if (strLen) {
+			if (buffer[strLen - 1] != _T('\\')) {
+				buffer[strLen]		= _T('\\');
+				buffer[strLen + 1]	= _T('\0');
+			}
+		}
+
+		pMalloc->Free(pItemIDList);
+		pMalloc->Release();
+	}
+
+	if (NULL != pszSpecDir) {
+		_tcscpy(buffer, pszSpecDir);
+	}
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(""));
+	create_datfile(szFilename, DAT_ARCADE_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Megadrive only"));
+	create_datfile(szFilename, DAT_MEGADRIVE_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", PC-Engine only"));
+	create_datfile(szFilename, DAT_PCENGINE_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", TurboGrafx16 only"));
+	create_datfile(szFilename, DAT_TG16_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", SuprGrafx only"));
+	create_datfile(szFilename, DAT_SGX_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Sega SG-1000 only"));
+	create_datfile(szFilename, DAT_SG1000_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", ColecoVision only"));
+	create_datfile(szFilename, DAT_COLECO_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Master System only"));
+	create_datfile(szFilename, DAT_MASTERSYSTEM_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Game Gear only"));
+	create_datfile(szFilename, DAT_GAMEGEAR_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", MSX 1 Games only"));
+	create_datfile(szFilename, DAT_MSX_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", ZX Spectrum Games only"));
+	create_datfile(szFilename, DAT_SPECTRUM_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", NES Games only"));
+	create_datfile(szFilename, DAT_NES_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", FDS Games only"));
+	create_datfile(szFilename, DAT_FDS_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", SNES Games only"));
+	create_datfile(szFilename, DAT_SNES_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", GBA Games only"));
+	create_datfile(szFilename, DAT_GBA_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Neo Geo Pocket Games only"));
+	create_datfile(szFilename, DAT_NGP_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Fairchild Channel F Games only"));
+	create_datfile(szFilename, DAT_CHANNELF_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Bally Astrocade Games only"));
+	create_datfile(szFilename, DAT_ASTROHOME_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Atari 2600 Games only"));
+	create_datfile(szFilename, DAT_ATARI2600_ONLY);
+
+	return nRet;
+}
+// Add Codes (DsNo)
 
 INT32 CreateAllDatfilesWindows(bool bSilent, const TCHAR* pszSpecDir)
 {
@@ -857,9 +993,74 @@ INT32 CreateAllDatfilesWindows(bool bSilent, const TCHAR* pszSpecDir)
 	
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Bally Astrocade Games only"));
 	create_datfile(szFilename, DAT_ASTROHOME_ONLY);
+
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Atari 2600 Games only"));
 	create_datfile(szFilename, DAT_ATARI2600_ONLY);
 
+// Add Codes (DsNo)
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Capcom Misc only"));
+	create_datfile(szFilename, DAT_CAPCOM_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", CPS-1 only"));
+	create_datfile(szFilename, DAT_CPS1_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", CPS-2 only"));
+	create_datfile(szFilename, DAT_CPS2_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", CPS-3 only"));
+	create_datfile(szFilename, DAT_CPS3_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Cave only"));
+	create_datfile(szFilename, DAT_CAVE_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Data East only"));
+	create_datfile(szFilename, DAT_DATAEAST_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Galaxian only"));
+	create_datfile(szFilename, DAT_GALAXIAN_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Irem only"));
+	create_datfile(szFilename, DAT_IREM_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Kaneko only"));
+	create_datfile(szFilename, DAT_KANEKO_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Konami only"));
+	create_datfile(szFilename, DAT_KONAMI_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Midway only"));
+	create_datfile(szFilename, DAT_MIDWAY_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Pacman only"));
+	create_datfile(szFilename, DAT_PACMAN_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", PGM only"));
+	create_datfile(szFilename, DAT_PGM_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Psikyo only"));
+	create_datfile(szFilename, DAT_PSIKYO_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Sega only"));
+	create_datfile(szFilename, DAT_SEGA_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Seta only"));
+	create_datfile(szFilename, DAT_SETA_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Taito only"));
+	create_datfile(szFilename, DAT_TAITO_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Technos only"));
+	create_datfile(szFilename, DAT_TECHNOS_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Toaplan only"));
+	create_datfile(szFilename, DAT_TOAPLAN_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Pre90s only"));
+	create_datfile(szFilename, DAT_PRE90S_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Post90s only"));
+	create_datfile(szFilename, DAT_POST90S_ONLY);
+// Add Codes (DsNo)
 
 	return nRet;
 }
@@ -3746,6 +3947,140 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 				CreateDatfileWindows(DAT_ATARI2600_ONLY);
 			}
 			break;
+
+// Add Codes (DsNo)
+		case MENU_CLRMAME_PRO_XML_CAPCOM_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_CAPCOM_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_CPS1_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_CPS1_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_CPS2_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_CPS2_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_CPS3_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_CPS3_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_CAVE_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_CAVE_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_DATAEAST_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_DATAEAST_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_GALAXIAN_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_GALAXIAN_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_IREM_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_IREM_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_KANEKO_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_KANEKO_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_KONAMI_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_KONAMI_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_MIDWAY_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_MIDWAY_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_PACMAN_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_PACMAN_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_PGM_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_PGM_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_PSIKYO_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_PSIKYO_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_SEGA_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_SEGA_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_SETA_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_SETA_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_TAITO_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_TAITO_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_TECHNOS_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_TECHNOS_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_TOAPLAN_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_TOAPLAN_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_PRE90S_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_PRE90S_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_XML_POST90S_ONLY:
+			if (UseDialogs()) {
+				CreateDatfileWindows(DAT_POST90S_ONLY);
+			}
+			break;
+
+		case MENU_CLRMAME_PRO_DEFAULT_DATS:
+			if (UseDialogs()) {
+				CreateDefaultDatfilesWindows();
+			}
+			break;
+// Add Codes (DsNo)
 
 		case MENU_CLRMAME_PRO_ALL_DATS:
 			if (UseDialogs()) {

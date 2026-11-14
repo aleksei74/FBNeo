@@ -73,6 +73,19 @@ void z80daisy_init(int dev0, int dev1)
     Z80SetDaisy(main_chain);
 }
 
+void z80daisy_set_external_irq(int (*irq_state)(), int (*irq_ack)(), void (*irq_reti)())
+{
+    // init reserves two internal links, this optional bus input and a terminator.
+    if (!main_chain || !irq_state || !irq_ack) return;
+    z80_irq_daisy_chain *link = main_chain;
+    while (link < main_chain + 2 && link->param != -1) link++;
+    memset(link, 0, sizeof(*link) * 2);
+    link->irq_state = irq_state;
+    link->irq_ack = irq_ack;
+    link->irq_reti = irq_reti;
+    (link + 1)->param = -1;
+}
+
 void z80daisy_exit()
 {
     struct z80_irq_daisy_chain *daisy = main_chain;

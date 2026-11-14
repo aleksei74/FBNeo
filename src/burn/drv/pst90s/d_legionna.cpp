@@ -7,6 +7,52 @@
 #include "seibucop.h"
 #include "seibusnd.h"
 
+
+static bool legion_frame_active;
+extern int FBA_LuaRunning();
+
+struct LegionSoundCommand {
+    enum Kind { Timer, Irq, Finish } kind;
+    INT32 arg0, arg1;
+    bool last;
+};
+
+static void LegionPostSound(LegionSoundCommand::Kind kind, INT32 arg0 = 0, INT32 arg1 = 0, bool last = false)
+{
+    if (kind == LegionSoundCommand::Timer) {
+        BurnTimerUpdate(arg0);
+        if (last) BurnTimerEndFrame(arg1);
+    } else if (kind == LegionSoundCommand::Irq) {
+        seibu_main_word_write(arg0, arg1);
+    } else ZetClose();
+}
+
+
+static void LegionBeginSound()
+{
+    ZetOpen(0);
+}
+
+static UINT8 LegionSoundRead(INT32 offset)
+{
+    // Completion transfers passive latch ownership to the main CPU.
+    {}
+    return seibu_main_word_read(offset);
+}
+
+static void LegionSoundWrite(INT32 offset, UINT8 data)
+{
+    // Register 4 changes the Z80 vector/IRQ and executes on its owner.
+    // Other registers are shared command bytes and pending flags.
+    if (legion_frame_active && ((offset >> 1) & 7) == 4) {
+        LegionPostSound(LegionSoundCommand::Irq, offset, data);
+        {}
+    } else {
+        {}
+        seibu_main_word_write(offset, data);
+    }
+}
+
 static UINT8 *AllMem;
 static UINT8 *Drv68KROM;
 static UINT8 *DrvZ80ROM;
@@ -50,7 +96,7 @@ static UINT8 DrvJoy2[16];
 static UINT8 DrvJoy3[16];
 static UINT8 DrvJoy4[16];
 static UINT16 DrvInputs[4];
-static UINT8 DrvDips[2];
+static UINT8 DrvDips[3];
 static UINT8 DrvReset;
 
 static INT32 denjinmk_hack = 0;
@@ -126,6 +172,53 @@ static struct BurnInputInfo HeatbrlInputList[] = {
 };
 
 STDINPUTINFO(Heatbrl)
+
+static struct BurnInputInfo CupsocInputList[] = {
+	{"P1 Coin",        BIT_DIGITAL, DrvJoy4 + 0,  "p1 coin"   },
+	{"P1 Start",       BIT_DIGITAL, DrvJoy3 + 0,  "p1 start"  },
+	{"P1 Up",          BIT_DIGITAL, DrvJoy1 + 0,  "p1 up"     },
+	{"P1 Down",        BIT_DIGITAL, DrvJoy1 + 1,  "p1 down"   },
+	{"P1 Left",        BIT_DIGITAL, DrvJoy1 + 2,  "p1 left"   },
+	{"P1 Right",       BIT_DIGITAL, DrvJoy1 + 3,  "p1 right"  },
+	{"P1 Shoot",       BIT_DIGITAL, DrvJoy1 + 4,  "p1 fire 1" },
+	{"P1 Pass",        BIT_DIGITAL, DrvJoy1 + 5,  "p1 fire 2" },
+
+	{"P2 Coin",        BIT_DIGITAL, DrvJoy4 + 1,  "p2 coin"   },
+	{"P2 Start",       BIT_DIGITAL, DrvJoy3 + 1,  "p2 start"  },
+	{"P2 Up",          BIT_DIGITAL, DrvJoy1 + 8,  "p2 up"     },
+	{"P2 Down",        BIT_DIGITAL, DrvJoy1 + 9,  "p2 down"   },
+	{"P2 Left",        BIT_DIGITAL, DrvJoy1 + 10, "p2 left"   },
+	{"P2 Right",       BIT_DIGITAL, DrvJoy1 + 11, "p2 right"  },
+	{"P2 Shoot",       BIT_DIGITAL, DrvJoy1 + 12, "p2 fire 1" },
+	{"P2 Pass",        BIT_DIGITAL, DrvJoy1 + 13, "p2 fire 2" },
+
+	// P3/P4 coins are wired directly into PLAYERS34 on this PCB.
+	{"P3 Coin",        BIT_DIGITAL, DrvJoy2 + 7,  "p3 coin"   },
+	{"P3 Start",       BIT_DIGITAL, DrvJoy3 + 8,  "p3 start"  },
+	{"P3 Up",          BIT_DIGITAL, DrvJoy2 + 0,  "p3 up"     },
+	{"P3 Down",        BIT_DIGITAL, DrvJoy2 + 1,  "p3 down"   },
+	{"P3 Left",        BIT_DIGITAL, DrvJoy2 + 2,  "p3 left"   },
+	{"P3 Right",       BIT_DIGITAL, DrvJoy2 + 3,  "p3 right"  },
+	{"P3 Shoot",       BIT_DIGITAL, DrvJoy2 + 4,  "p3 fire 1" },
+	{"P3 Pass",        BIT_DIGITAL, DrvJoy2 + 5,  "p3 fire 2" },
+
+	{"P4 Coin",        BIT_DIGITAL, DrvJoy2 + 15, "p4 coin"   },
+	{"P4 Start",       BIT_DIGITAL, DrvJoy3 + 9,  "p4 start"  },
+	{"P4 Up",          BIT_DIGITAL, DrvJoy2 + 8,  "p4 up"     },
+	{"P4 Down",        BIT_DIGITAL, DrvJoy2 + 9,  "p4 down"   },
+	{"P4 Left",        BIT_DIGITAL, DrvJoy2 + 10, "p4 left"   },
+	{"P4 Right",       BIT_DIGITAL, DrvJoy2 + 11, "p4 right"  },
+	{"P4 Shoot",       BIT_DIGITAL, DrvJoy2 + 12, "p4 fire 1" },
+	{"P4 Pass",        BIT_DIGITAL, DrvJoy2 + 13, "p4 fire 2" },
+
+	{"Reset",          BIT_DIGITAL, &DrvReset,     "reset"     },
+	{"Service",        BIT_DIGITAL, DrvJoy3 + 3,   "service"   },
+	{"Dip A",          BIT_DIPSWITCH, DrvDips + 0, "dip"       },
+	{"Dip B",          BIT_DIPSWITCH, DrvDips + 1, "dip"       },
+	{"Dip C",          BIT_DIPSWITCH, DrvDips + 2, "dip"       },
+};
+
+STDINPUTINFO(Cupsoc)
 
 static struct BurnInputInfo GodzillaInputList[] = {
 	{"P1 Coin",			BIT_DIGITAL,	DrvJoy4 + 0,	"p1 coin"	},
@@ -221,7 +314,7 @@ static struct BurnInputInfo GrainbowInputList[] = {
 	{"P2 Button 2",		BIT_DIGITAL,	DrvJoy1 + 13,	"p2 fire 2"	},
 	{"P2 Button 3",		BIT_DIGITAL,	DrvJoy1 + 14,	"p2 fire 3"	},
 
-	{"P3 Start",		BIT_DIGITAL,	DrvJoy3 + 8,	"p3 start"	},
+	{"P3 Start",		BIT_DIGITAL,	DrvJoy1 + 8,	"p3 start"	},
 	{"P3 Up",			BIT_DIGITAL,	DrvJoy2 + 0,	"p3 up"		},
 	{"P3 Down",			BIT_DIGITAL,	DrvJoy2 + 1,	"p3 down"	},
 	{"P3 Left",			BIT_DIGITAL,	DrvJoy2 + 2,	"p3 left"	},
@@ -230,7 +323,7 @@ static struct BurnInputInfo GrainbowInputList[] = {
 	{"P3 Button 2",		BIT_DIGITAL,	DrvJoy2 + 5,	"p3 fire 2"	},
 	{"P3 Button 3",		BIT_DIGITAL,	DrvJoy2 + 6,	"p3 fire 3"	},
 
-	{"P4 Start",		BIT_DIGITAL,	DrvJoy3 + 9,	"p4 start"	},
+	{"P4 Start",		BIT_DIGITAL,	DrvJoy1 + 9,	"p4 start"	},
 	{"P4 Up",			BIT_DIGITAL,	DrvJoy2 + 8,	"p4 up"		},
 	{"P4 Down",			BIT_DIGITAL,	DrvJoy2 + 9,	"p4 down"	},
 	{"P4 Left",			BIT_DIGITAL,	DrvJoy2 + 10,	"p4 left"	},
@@ -408,6 +501,88 @@ static struct BurnDIPInfo HeatbrlDIPList[]=
 };
 
 STDDIPINFO(Heatbrl)
+
+static struct BurnDIPInfo CupsocDIPList[]=
+{
+	DIP_OFFSET(0x22)
+	{0x00, 0xff, 0xff, 0xff, NULL},
+	{0x01, 0xff, 0xff, 0xff, NULL},
+	{0x02, 0xff, 0xff, 0xff, NULL},
+
+	{0,    0xfe, 0,    8, "Coin 1"},
+	{0x00, 0x01, 0x07, 0x00, "4 Coins 1 Credit"},
+	{0x00, 0x01, 0x07, 0x01, "3 Coins 1 Credit"},
+	{0x00, 0x01, 0x07, 0x02, "2 Coins 1 Credit"},
+	{0x00, 0x01, 0x07, 0x07, "1 Coin 1 Credit"},
+	{0x00, 0x01, 0x07, 0x06, "1 Coin 2 Credits"},
+	{0x00, 0x01, 0x07, 0x05, "1 Coin 3 Credits"},
+	{0x00, 0x01, 0x07, 0x04, "1 Coin 4 Credits"},
+	{0x00, 0x01, 0x07, 0x03, "1 Coin 6 Credits"},
+
+	{0,    0xfe, 0,    8, "Coin 2"},
+	{0x00, 0x01, 0x38, 0x00, "4 Coins 1 Credit"},
+	{0x00, 0x01, 0x38, 0x08, "3 Coins 1 Credit"},
+	{0x00, 0x01, 0x38, 0x10, "2 Coins 1 Credit"},
+	{0x00, 0x01, 0x38, 0x38, "1 Coin 1 Credit"},
+	{0x00, 0x01, 0x38, 0x30, "1 Coin 2 Credits"},
+	{0x00, 0x01, 0x38, 0x28, "1 Coin 3 Credits"},
+	{0x00, 0x01, 0x38, 0x20, "1 Coin 4 Credits"},
+	{0x00, 0x01, 0x38, 0x18, "1 Coin 6 Credits"},
+
+	{0,    0xfe, 0,    2, "Starting Coin"},
+	{0x00, 0x01, 0x40, 0x40, "Normal"},
+	{0x00, 0x01, 0x40, 0x00, "x2"},
+
+	{0,    0xfe, 0,    2, "Flip Screen"},
+	{0x00, 0x01, 0x80, 0x80, "Off"},
+	{0x00, 0x01, 0x80, 0x00, "On"},
+
+	{0,    0xfe, 0,    4, "Time vs Computer (1P)"},
+	{0x01, 0x01, 0x03, 0x02, "1:30"},
+	{0x01, 0x01, 0x03, 0x03, "2:00"},
+	{0x01, 0x01, 0x03, 0x01, "2:30"},
+	{0x01, 0x01, 0x03, 0x00, "3:00"},
+
+	{0,    0xfe, 0,    4, "Time Player vs Player (2P)"},
+	{0x01, 0x01, 0x0c, 0x08, "2:00"},
+	{0x01, 0x01, 0x0c, 0x0c, "2:30"},
+	{0x01, 0x01, 0x0c, 0x04, "3:00"},
+	{0x01, 0x01, 0x0c, 0x00, "2:00 (duplicate)"},
+
+	{0,    0xfe, 0,    4, "Time Player vs Player (3P)"},
+	{0x01, 0x01, 0x30, 0x20, "2:30"},
+	{0x01, 0x01, 0x30, 0x30, "3:00"},
+	{0x01, 0x01, 0x30, 0x10, "3:30"},
+	{0x01, 0x01, 0x30, 0x00, "2:30 (duplicate)"},
+
+	{0,    0xfe, 0,    4, "Time Player vs Player (4P)"},
+	{0x01, 0x01, 0xc0, 0x80, "3:00"},
+	{0x01, 0x01, 0xc0, 0xc0, "3:30"},
+	{0x01, 0x01, 0xc0, 0x40, "4:00"},
+	{0x01, 0x01, 0xc0, 0x00, "3:00 (duplicate)"},
+
+	{0,    0xfe, 0,    4, "Difficulty"},
+	{0x02, 0x01, 0x03, 0x03, "Normal"},
+	{0x02, 0x01, 0x03, 0x02, "Easy"},
+	{0x02, 0x01, 0x03, 0x01, "Hard"},
+	{0x02, 0x01, 0x03, 0x00, "Very Hard"},
+
+	{0,    0xfe, 0,    4, "Cabinet Setting"},
+	{0x02, 0x01, 0x0c, 0x0c, "2 Players"},
+	{0x02, 0x01, 0x0c, 0x08, "4 Players & 4 Coin Slots"},
+	{0x02, 0x01, 0x0c, 0x04, "4 Players (2x 2P Linked) & 1-4 Coin Slots"},
+	{0x02, 0x01, 0x0c, 0x00, "4 Players & 1 Coin Slot"},
+
+	{0,    0xfe, 0,    2, "Demo Sounds"},
+	{0x02, 0x01, 0x10, 0x00, "No"},
+	{0x02, 0x01, 0x10, 0x10, "Yes"},
+
+	{0,    0xfe, 0,    2, "Service Mode"},
+	{0x02, 0x01, 0x20, 0x20, "Off"},
+	{0x02, 0x01, 0x20, 0x00, "On"},
+};
+
+STDDIPINFO(Cupsoc)
 
 static struct BurnDIPInfo GodzillaDIPList[]=
 {
@@ -661,7 +836,7 @@ static void __fastcall legionna_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (address >= 0x100700 && address <= 0x10071f) {
-		seibu_main_word_write((address-0x100700)/2, data);
+		LegionSoundWrite((address-0x100700)/2, data);
 		return;
 	}
 
@@ -676,7 +851,7 @@ static void __fastcall legionna_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if (address >= 0x100700 && address <= 0x10071f) {
-		seibu_main_word_write((address-0x100700)/2, data);
+		LegionSoundWrite((address-0x100700)/2, data);
 		return;
 	}
 
@@ -697,17 +872,59 @@ static UINT16 __fastcall legionna_main_read_word(UINT32 address)
 	if (address >= 0x100700 && address <= 0x10071f) {
 		if (denjinmk_hack) {
 			if (address == 0x100714) return 1;
-			return seibu_main_word_read(((address & 0x1f)/2) & 7);
+			return LegionSoundRead(((address & 0x1f)/2) & 7);
 		}
-		return seibu_main_word_read((address & 0x1f)/2);
+		return LegionSoundRead((address & 0x1f)/2);
 	}
 
 	return legionna_common_read_word(address);
 }
 
+static UINT16 __fastcall cupsoc_main_read_word(UINT32 address)
+{
+	if (address == 0x10075c) {
+		return 0xff00 | DrvDips[2];
+	}
+
+	return legionna_main_read_word(address);
+}
+
 static UINT8 __fastcall legionna_main_read_byte(UINT32 address)
 {
 	return SekReadWord(address) >> ((~address & 1) * 8);
+}
+
+static UINT16 __fastcall cupsocs_main_read_word(UINT32 address)
+{
+	if (address >= 0x100700 && address <= 0x10071f)
+		return cupsoc_main_read_word(address + 0x40);
+	if (address >= 0x100740 && address <= 0x10075f)
+		return LegionSoundRead((address & 0x1f) / 2);
+	if (address >= 0x100600 && address <= 0x10067f) return 0;
+	return legionna_common_read_word(address);
+}
+
+static void __fastcall cupsocs_main_write_word(UINT32 address, UINT16 data)
+{
+	if (address >= 0x100600 && address <= 0x10067f) {
+		legionna_ctc_write((address - 0x100600) ^ 0x40, data);
+		return;
+	}
+	if (address >= 0x100740 && address <= 0x10075f) {
+		LegionSoundWrite((address & 0x1f) / 2, data);
+		return;
+	}
+	legionna_common_write_word(address, data);
+}
+
+static void __fastcall cupsocs_main_write_byte(UINT32 address, UINT8 data)
+{
+	if (address >= 0x100600 && address <= 0x10067f) return;
+	if (address >= 0x100740 && address <= 0x10075f) {
+		LegionSoundWrite((address & 0x1f) / 2, data);
+		return;
+	}
+	legionna_common_write_byte(address, data);
 }
 
 static void __fastcall heatbrl_main_write_word(UINT32 address, UINT16 data)
@@ -718,7 +935,7 @@ static void __fastcall heatbrl_main_write_word(UINT32 address, UINT16 data)
 	}
 
 	if (address >= 0x1007c0 && address <= 0x1007df) {
-		seibu_main_word_write((address-0x1007c0)/2, data);
+		LegionSoundWrite((address-0x1007c0)/2, data);
 		return;
 	}
 
@@ -733,7 +950,7 @@ static void __fastcall heatbrl_main_write_byte(UINT32 address, UINT8 data)
 	}
 
 	if (address >= 0x1007c0 && address <= 0x1007df) {
-		seibu_main_word_write((address-0x1007c0)/2, data);
+		LegionSoundWrite((address-0x1007c0)/2, data);
 		bprintf(0, _T("sound wb? %X\n"), address);
 		return;
 	}
@@ -749,7 +966,7 @@ static UINT16 __fastcall heatbrl_main_read_word(UINT32 address)
 	}
 
 	if (address >= 0x1007c0 && address <= 0x1007df) {
-		return seibu_main_word_read((address & 0x1f)/2);
+		return LegionSoundRead((address & 0x1f)/2);
 	}
 
 	return legionna_common_read_word(address);
@@ -874,6 +1091,7 @@ static tilemap_callback( tx )
 
 static INT32 DrvDoReset()
 {
+    legion_frame_active = false;
 	memset (AllRam, 0, RamEnd - AllRam);
 
 	SekOpen(0);
@@ -1412,8 +1630,82 @@ static INT32 GrainbowInit()
 	return 0;
 }
 
+static INT32 CupsocInit()
+{
+	sprite_size = 0x100000;
+
+	BurnSetRefreshRate(60.03);
+	BurnAllocMemIndex();
+
+	{
+		INT32 k = 0;
+		if (BurnLoadRom(Drv68KROM  + 0x0000001, k++, 4)) return 1;
+		if (BurnLoadRom(Drv68KROM  + 0x0000000, k++, 4)) return 1;
+		if (BurnLoadRom(Drv68KROM  + 0x0000003, k++, 4)) return 1;
+		if (BurnLoadRom(Drv68KROM  + 0x0000002, k++, 4)) return 1;
+
+		if (BurnLoadRom(DrvZ80ROM  + 0x0000000, k++, 1)) return 1;
+		memcpy (DrvZ80ROM + 0x10000, DrvZ80ROM + 0x08000, 0x08000);
+		memcpy (DrvZ80ROM + 0x18000, DrvZ80ROM + 0x00000, 0x08000);
+
+		if (BurnLoadRom(DrvGfxROM0 + 0x0000000, k++, 2)) return 1;
+		if (BurnLoadRom(DrvGfxROM0 + 0x0000001, k++, 2)) return 1;
+
+		if (BurnLoadRom(DrvGfxROM2 + 0x0000000, k++, 1)) return 1;
+		BurnByteswap(DrvGfxROM2, 0x100000);
+
+		if (BurnLoadRom(DrvGfxROM3 + 0x0000000, k++, 1)) return 1;
+		BurnByteswap(DrvGfxROM3, 0x100000);
+		memcpy (DrvGfxROM4, DrvGfxROM3, 0x100000); // MG uses the second half of the shared BG ROM.
+
+		if (BurnLoadRom(DrvGfxROM1 + 0x0000000, k++, 1)) return 1;
+		BurnByteswap(DrvGfxROM1, 0x080000);
+
+		if (BurnLoadRom(DrvSndROM  + 0x0000000, k++, 1)) return 1;
+
+		DrvGfxDecode();
+	}
+
+	SekInit(0, 0x68000);
+	SekOpen(0);
+	SekMapMemory(Drv68KROM,      0x000000, 0x0fffff, MAP_ROM);
+	SekMapMemory(Drv1KRAM,      0x100000, 0x1003ff, MAP_RAM);
+	SekMapMemory(DrvAllRAM,     0x100800, 0x11ffff, MAP_RAM);
+	SekSetWriteWordHandler(0, legionna_main_write_word);
+	SekSetWriteByteHandler(0, legionna_main_write_byte);
+	SekSetReadWordHandler(0, cupsoc_main_read_word);
+	SekSetReadByteHandler(0, legionna_main_read_byte);
+	SekClose();
+
+	seibu_cop_config(1, videowrite_cb_w, palette_write_xbgr555, 1);
+	seibu_sound_init(0, 0x20000, 3579545, 3579545, 1000000 / 132);
+
+	GenericTilesInit();
+	GenericTilemapInit(0, TILEMAP_SCAN_ROWS, bg_map_callback, 16, 16, 32, 32);
+	GenericTilemapInit(1, TILEMAP_SCAN_ROWS, mg_map_callback, 16, 16, 32, 32);
+	GenericTilemapInit(2, TILEMAP_SCAN_ROWS, fg_map_callback, 16, 16, 32, 32);
+	GenericTilemapInit(3, TILEMAP_SCAN_ROWS, tx_map_callback,  8,  8, 64, 32);
+	GenericTilemapSetGfx(0, DrvGfxROM0, 4,  8,  8, 0x040000, 0x300, 0xf);
+	GenericTilemapSetGfx(1, DrvGfxROM1, 4, 16, 16, 0x200000, 0x200, 0xf);
+	GenericTilemapSetGfx(2, DrvGfxROM2, 4, 16, 16, sprite_size * 2, 0x400, 0xf);
+	GenericTilemapSetGfx(3, DrvGfxROM3, 4, 16, 16, 0x200000, 0x000, 0xf);
+	GenericTilemapSetGfx(4, DrvGfxROM4, 4, 16, 16, 0x200000, 0x100, 0xf);
+	GenericTilemapSetTransparent(0, 0xf);
+	GenericTilemapSetTransparent(1, 0xf);
+	GenericTilemapSetTransparent(2, 0xf);
+	GenericTilemapSetTransparent(3, 0xf);
+
+	// MAME exposes y=8..247 as the 320x240 active window.
+	GenericTilemapSetOffsets(TMAP_GLOBAL, 0, -8);
+
+	DrvDoReset();
+
+	return 0;
+}
+
 static INT32 DrvExit()
 {
+    legion_frame_active = false;
 	GenericTilesExit();
 	SekExit();
 	seibu_sound_exit();
@@ -1649,11 +1941,48 @@ static INT32 GrainbowDraw()
 	return 0;
 }
 
+static INT32 CupsocDraw()
+{
+	if (DrvRecalc) {
+		for (INT32 i = 0; i < 0x800; i++) {
+			palette_write_xbgr555(i, DrvPalBuf16[i]);
+		}
+		DrvPalette[0x800] = 0;
+		DrvRecalc = 0;
+	}
+
+	static UINT16 pri_masks[4] = { 0xfff0, 0xfffc, 0xfffe, 0x0000 };
+
+	GenericTilemapSetScrollX(0, scroll[0]);
+	GenericTilemapSetScrollY(0, scroll[1]);
+	GenericTilemapSetScrollX(1, scroll[2]);
+	GenericTilemapSetScrollY(1, scroll[3]);
+	GenericTilemapSetScrollX(2, scroll[4]);
+	GenericTilemapSetScrollY(2, scroll[5]);
+
+	BurnTransferClear(0x800);
+
+	if ((layer_disable & 0x0001) == 0 && (nBurnLayer & 1)) GenericTilemapDraw(0, pTransDraw, 0);
+	if ((layer_disable & 0x0002) == 0 && (nBurnLayer & 2)) GenericTilemapDraw(1, pTransDraw, 1);
+	if ((layer_disable & 0x0004) == 0 && (nBurnLayer & 4)) GenericTilemapDraw(2, pTransDraw, 2);
+	if ((layer_disable & 0x0008) == 0 && (nBurnLayer & 8)) GenericTilemapDraw(3, pTransDraw, 4);
+
+	// cupsoc has 0x800 bytes of sprite RAM at 0x107000, i.e. +0x6800 from DrvAllRAM.
+	if ((layer_disable & 0x0010) == 0 && (nSpriteEnable & 1)) draw_sprites(0x6800, pri_masks, 0, 0, -8);
+
+	BurnTransferCopy(DrvPalette);
+
+	return 0;
+}
+
 static INT32 DrvFrame()
 {
 	if (DrvReset) {
 		DrvDoReset();
 	}
+
+    if (FBA_LuaRunning()) ;
+    legion_frame_active = false;
 
 	ZetNewFrame();
 
@@ -1682,28 +2011,30 @@ static INT32 DrvFrame()
 	INT32 nCyclesDone[2] = { nExtraCycles[0], 0 };
 
 	SekOpen(0);
-	ZetOpen(0);
+	LegionBeginSound();
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
 		CPU_RUN(0, Sek);
 		if (i == (nInterleave - 1)) SekSetIRQLine(4, CPU_IRQSTATUS_AUTO);
 
-		CPU_RUN_TIMER(1);
+        LegionPostSound(LegionSoundCommand::Timer, (i + 1) * nCyclesTotal[1] / nInterleave, nCyclesTotal[1], i == nInterleave - 1);
 	}
 
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
 
-	ZetClose();
 	SekClose();
 
-	if (pBurnDraw) {
-		BurnDrvRedraw();
-	}
+    if (legion_frame_active) ([](void *) {
+        if (pBurnDraw) BurnDrvRedraw();
+    })(NULL);
+    LegionPostSound(LegionSoundCommand::Finish);
+    if (!legion_frame_active && pBurnDraw) BurnDrvRedraw();
 
-	if (pBurnSoundOut) {
-		seibu_sound_update(pBurnSoundOut, nBurnSoundLen);
-	}
+    ([](void *) {
+        if (pBurnSoundOut) seibu_sound_update(pBurnSoundOut, nBurnSoundLen);
+    })(NULL);
+    legion_frame_active = false;
 
 	return 0;
 }
@@ -1741,6 +2072,8 @@ static INT32 DrvScan(INT32 nAction, INT32 *pnMin)
 
 		SCAN_VAR(nExtraCycles);
 	}
+
+    if (nAction & ACB_WRITE) MSM6295SetBank(0, DrvSndROM + (sample_bank & 1) * 0x40000, 0, 0x3ffff);
 
 	return 0;
 }
@@ -2254,6 +2587,309 @@ struct BurnDriver BurnDrvDenjinmka = {
 };
 
 
+// Seibu Cup Soccer (set 1)
+
+static struct BurnRomInfo cupsocRomDesc[] = {
+	{ "scc_01.bin",  0x040000, 0xc122203c, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "scc_02.bin",  0x040000, 0x105511b4, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "scc_03.bin",  0x040000, 0x2d23d78f, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "scc_04.bin",  0x040000, 0xe8877461, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "scc_06.bin",  0x010000, 0xf1a18ec6, 3 | BRF_GRA },           //  5 Characters
+	{ "scc_05.bin",  0x010000, 0xc0358503, 3 | BRF_GRA },           //  6
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },           //  7 Sprites
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },           //  8 Background / Midground Tiles
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },           //  9 Foreground Tiles
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },           // 10 Samples
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS }, // 11 COP ROM
+};
+
+STD_ROM_PICK(cupsoc)
+STD_ROM_FN(cupsoc)
+
+// WIP: registered for local testing while the remaining COP3 semantics are ported.
+struct BurnDriver BurnDrvCupsoc = {
+	"cupsoc", NULL, NULL, NULL, "1992",
+	"Seibu Cup Soccer (set 1)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocRomInfo, cupsocRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+
+static INT32 CupsocbInit()
+{
+	INT32 result = CupsocInit();
+	if (result) return result;
+	// Disable the Selection revision's debug text.
+	*((UINT16*)(Drv68KROM + 0xffffa)) = BURN_ENDIAN_SWAP_INT16(0x00ff);
+	return 0;
+}
+
+static INT32 CupsocsInit()
+{
+	INT32 result = CupsocbInit();
+	if (result) return result;
+	SekOpen(0);
+	SekSetReadWordHandler(0, cupsocs_main_read_word);
+	SekSetWriteWordHandler(0, cupsocs_main_write_word);
+	SekSetWriteByteHandler(0, cupsocs_main_write_byte);
+	SekClose();
+	return 0;
+}
+
+static INT32 Olysoc92Init()
+{
+	INT32 result = CupsocInit();
+	if (result) return result;
+	*((UINT16*)(Drv68KROM + 0xffffe)) ^= BURN_ENDIAN_SWAP_INT16(0x0003);
+	return 0;
+}
+
+// Seibu Cup Soccer (set 2)
+
+static struct BurnRomInfo cupsocaRomDesc[] = {
+	{ "soca_1.bin",  0x040000, 0xd5f76bd6, 1 | BRF_PRG | BRF_ESS },
+	{ "soca_2.bin",  0x040000, 0x34966aa1, 1 | BRF_PRG | BRF_ESS },
+	{ "soca_3.bin",  0x040000, 0x2b7934ec, 1 | BRF_PRG | BRF_ESS },
+	{ "soca_4.bin",  0x040000, 0xf4aa1d90, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "soca_6.bin",  0x010000, 0xa9e15910, 3 | BRF_GRA },
+	{ "soca_5.bin",  0x010000, 0x73a3e024, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(cupsoca)
+STD_ROM_FN(cupsoca)
+
+struct BurnDriver BurnDrvCupsoca = {
+	"cupsoca", "cupsoc", NULL, NULL, "1992",
+	"Seibu Cup Soccer (set 2)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocaRomInfo, cupsocaRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Seibu Cup Soccer (set 3)
+
+static struct BurnRomInfo cupsocbRomDesc[] = {
+	{ "1-10n.bin",   0x040000, 0xd4f37bf2, 1 | BRF_PRG | BRF_ESS },
+	{ "2-10q.bin",   0x040000, 0xf06e8743, 1 | BRF_PRG | BRF_ESS },
+	{ "3-10f.bin",   0x040000, 0x226f65f9, 1 | BRF_PRG | BRF_ESS },
+	{ "4-10k.bin",   0x040000, 0x8ff16a9e, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "soca_6.bin",  0x010000, 0xa9e15910, 3 | BRF_GRA },
+	{ "soca_5.bin",  0x010000, 0x73a3e024, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(cupsocb)
+STD_ROM_FN(cupsocb)
+
+struct BurnDriver BurnDrvCupsocb = {
+	"cupsocb", "cupsoc", NULL, NULL, "1992",
+	"Seibu Cup Soccer (set 3)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocbRomInfo, cupsocbRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocbInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Seibu Cup Soccer :Selection: (set 1)
+
+static struct BurnRomInfo cupsocsRomDesc[] = {
+	{ "1_10n.bin",   0x040000, 0xb67835c5, 1 | BRF_PRG | BRF_ESS },
+	{ "2_10q.bin",   0x040000, 0xde65509c, 1 | BRF_PRG | BRF_ESS },
+	{ "3_10f.bin",   0x040000, 0xc0333f0c, 1 | BRF_PRG | BRF_ESS },
+	{ "4_10k.bin",   0x040000, 0x288f11d4, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "6_7x.bin",    0x010000, 0x7981366e, 3 | BRF_GRA },
+	{ "5_7y.bin",    0x010000, 0x26cbfaf0, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "8_7a.bin",    0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(cupsocs)
+STD_ROM_FN(cupsocs)
+
+struct BurnDriver BurnDrvCupsocs = {
+	"cupsocs", "cupsoc", NULL, NULL, "1992",
+	"Seibu Cup Soccer :Selection: (set 1)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocsRomInfo, cupsocsRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocsInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Seibu Cup Soccer :Selection: (set 2)
+
+static struct BurnRomInfo cupsocs2RomDesc[] = {
+	{ "seibu1.10n",  0x040000, 0xe91fdc95, 1 | BRF_PRG | BRF_ESS },
+	{ "seibu2.10q",  0x040000, 0x7816df3c, 1 | BRF_PRG | BRF_ESS },
+	{ "seibu3.10f",  0x040000, 0x3be8a330, 1 | BRF_PRG | BRF_ESS },
+	{ "seibu4.10k",  0x040000, 0xf30167ea, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "seibu6.7x",   0x010000, 0x21c1e1b8, 3 | BRF_GRA },
+	{ "seibu5.7y",   0x010000, 0x955d9fd7, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(cupsocs2)
+STD_ROM_FN(cupsocs2)
+
+struct BurnDriver BurnDrvCupsocs2 = {
+	"cupsocs2", "cupsoc", NULL, NULL, "1992",
+	"Seibu Cup Soccer :Selection: (set 2)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, cupsocs2RomInfo, cupsocs2RomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	CupsocsInit, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Olympic Soccer '92 (set 1)
+
+static struct BurnRomInfo olysoc92RomDesc[] = {
+	{ "u025.1",      0x040000, 0xa94e7780, 1 | BRF_PRG | BRF_ESS },
+	{ "u024.2",      0x040000, 0xcb5f0748, 1 | BRF_PRG | BRF_ESS },
+	{ "u026.3",      0x040000, 0xf71cc626, 1 | BRF_PRG | BRF_ESS },
+	{ "u023.4",      0x040000, 0x2ba10e6c, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "seibu6.7x",   0x010000, 0x21c1e1b8, 3 | BRF_GRA },
+	{ "seibu5.7y",   0x010000, 0x955d9fd7, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(olysoc92)
+STD_ROM_FN(olysoc92)
+
+struct BurnDriver BurnDrvOlysoc92 = {
+	"olysoc92", "cupsoc", NULL, NULL, "1992",
+	"Olympic Soccer '92 (set 1)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, olysoc92RomInfo, olysoc92RomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	Olysoc92Init, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Olympic Soccer '92 (set 2)
+
+static struct BurnRomInfo olysoc92aRomDesc[] = {
+	{ "1.u025",      0x040000, 0x5191e895, 1 | BRF_PRG | BRF_ESS },
+	{ "2.u024",      0x040000, 0x6c566f43, 1 | BRF_PRG | BRF_ESS },
+	{ "3.u026",      0x040000, 0xe75bc773, 1 | BRF_PRG | BRF_ESS },
+	{ "4.u023",      0x040000, 0x6c2b037e, 1 | BRF_PRG | BRF_ESS },
+
+	{ "seibu7.8a",   0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "6_7x.bin",    0x010000, 0x7981366e, 3 | BRF_GRA },
+	{ "5_7y.bin",    0x010000, 0x26cbfaf0, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "seibu8.7a",   0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(olysoc92a)
+STD_ROM_FN(olysoc92a)
+
+struct BurnDriver BurnDrvOlysoc92a = {
+	"olysoc92a", "cupsoc", NULL, NULL, "1992",
+	"Olympic Soccer '92 (set 2)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, olysoc92aRomInfo, olysoc92aRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	Olysoc92Init, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
+// Olympic Soccer '92 (set 3)
+
+static struct BurnRomInfo olysoc92bRomDesc[] = {
+	{ "1",           0x040000, 0xd4f37bf2, 1 | BRF_PRG | BRF_ESS },
+	{ "2",           0x040000, 0x6967d6f9, 1 | BRF_PRG | BRF_ESS },
+	{ "3",           0x040000, 0x226f65f9, 1 | BRF_PRG | BRF_ESS },
+	{ "4",           0x040000, 0x8ff16a9e, 1 | BRF_PRG | BRF_ESS },
+
+	{ "7",           0x010000, 0xf63329f9, 2 | BRF_PRG | BRF_ESS },
+
+	{ "6",           0x010000, 0x7edb1700, 3 | BRF_GRA },
+	{ "5",           0x010000, 0xec21c8dc, 3 | BRF_GRA },
+
+	{ "obj.8c",      0x100000, 0xe2377895, 4 | BRF_GRA },
+	{ "back-1.4y",   0x100000, 0x3dfea0ec, 5 | BRF_GRA },
+	{ "back-2.6y",   0x080000, 0xe07712af, 6 | BRF_GRA },
+
+	{ "8",           0x040000, 0x6f594808, 7 | BRF_SND },
+	{ "copx-d1.bin", 0x080000, 0x029bc402, 8 | BRF_PRG | BRF_ESS },
+};
+
+STD_ROM_PICK(olysoc92b)
+STD_ROM_FN(olysoc92b)
+
+struct BurnDriver BurnDrvOlysoc92b = {
+	"olysoc92b", "cupsoc", NULL, NULL, "1992",
+	"Olympic Soccer '92 (set 3)\0", NULL, "Seibu Kaihatsu", "Miscellaneous",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE, 4, HARDWARE_MISC_POST90S, GBF_SPORTSFOOTBALL, 0,
+	NULL, olysoc92bRomInfo, olysoc92bRomName, NULL, NULL, NULL, NULL, CupsocInputInfo, CupsocDIPInfo,
+	Olysoc92Init, DrvExit, DrvFrame, CupsocDraw, DrvScan, &DrvRecalc, 0x801,
+	320, 240, 4, 3
+};
+
 // SD Gundam Sangokushi Rainbow Tairiku Senki (Japan)
 
 static struct BurnRomInfo grainbowRomDesc[] = {
@@ -2329,4 +2965,46 @@ struct BurnDriver BurnDrvGrainbowk = {
 	NULL, grainbowkRomInfo, grainbowkRomName, NULL, NULL, NULL, NULL, GrainbowInputInfo, GrainbowDIPInfo,
 	GrainbowInit, DrvExit, DrvFrame, GrainbowDraw, DrvScan, &DrvRecalc, 0x801,
 	320, 224, 4, 3
+};
+
+//========================
+// Add Korean Translation
+//========================
+
+// Legionnaire (Korean Translation)
+
+static struct BurnRomInfo legionnakRomDesc[] = {
+	{ "1k.u025",					0x020000, 0xf9484681, 1 | BRF_PRG | BRF_ESS }, //  0 68K Code
+	{ "2k.u024",					0x020000, 0x683aa84d, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "3k.u026",					0x020000, 0xae2845f9, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "4k.u023",					0x020000, 0x05c8707b, 1 | BRF_PRG | BRF_ESS }, //  3
+
+	{ "6.u1110",					0x010000, 0xfe7b8d06, 2 | BRF_PRG | BRF_ESS }, //  4 Z80 Code
+
+	{ "7k.u077",					0x010000, 0x2a26649f, 3 | BRF_GRA },           //  5 Characters and Foreground Tiles
+	{ "8k.u072",					0x010000, 0xb8aa1462, 3 | BRF_GRA },           //  6
+
+	{ "legionnire_obj1.u0815",		0x100000, 0xd35602f5, 4 | BRF_GRA },           //  7 Sprites
+	{ "legionnire_obj2.u0814",		0x100000, 0x351d3917, 4 | BRF_GRA },           //  8
+
+	{ "legionnire_backk.u075",		0x100000, 0x9efa2a14, 5 | BRF_GRA },           //  9 Background and Midground Tiles
+
+	{ "5.u106",						0x020000, 0x21d09bde, 6 | BRF_SND },           // 10 Samples
+
+	{ "copx-d1.u0330",				0x080000, 0x029bc402, 7 | BRF_GRA },           // 11 COP ROM
+
+	{ "leg007.u0910",				0x000200, 0xcc6da568, 8 | BRF_GRA },           // 12 Priority PROM?
+};
+
+STD_ROM_PICK(legionnak)
+STD_ROM_FN(legionnak)
+
+struct BurnDriver BurnDrvLegionnak = {
+	"legionnak", "legionna", NULL, NULL, "2026",
+	"Legionnaire (Korean Translation)\0", NULL, "TAD Corporation", "Miscellaneous",
+	L"Legionnaire (Korean Translation)\0\uB9AC\uC804\uC5D0\uC5B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_POST90S, GBF_SCRFIGHT, 0,
+	NULL, legionnakRomInfo, legionnakRomName, NULL, NULL, NULL, NULL, LegionnaInputInfo, LegionnaDIPInfo,
+	LegionnaInit, DrvExit, DrvFrame, LegionnaDraw, DrvScan, &DrvRecalc, 0x801,
+	256, 224, 4, 3
 };

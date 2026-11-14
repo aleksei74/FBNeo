@@ -2273,3 +2273,109 @@ struct BurnDriver BurnDrvNbajamse = {
 	WolfUnitInit, WolfUnitExit, WolfUnitFrame, WolfUnitDraw, WolfUnitScan, &nWolfUnitRecalc, 0x8000,
 	WUNIT_SCREEN_WIDTH, WUNIT_SCREEN_HEIGHT, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Mortal Kombat 3 (Korean Translation, rev 2.1)
+
+static struct BurnRomInfo mk3kRomDesc[] = {
+	{ "mk321u54k.bin",								0x080000, 0xf043597b, 1 | BRF_PRG | BRF_ESS }, //  0 TMS34010
+	{ "mk321u63k.bin",								0x080000, 0x53c2a51f, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "l1_mortal_kombat_3_u2_music_spch.u2",		0x100000, 0x5273436f, 2 | BRF_PRG | BRF_ESS }, //  2 DCS sound banks
+	{ "l1_mortal_kombat_3_u3_music_spch.u3",		0x100000, 0x856fe411, 2 | BRF_PRG | BRF_ESS }, //  3
+	{ "l1_mortal_kombat_3_u4_music_spch.u4",		0x100000, 0x428a406f, 2 | BRF_PRG | BRF_ESS }, //  4
+	{ "l1_mortal_kombat_3_u5_music_spch.u5",		0x100000, 0x3b98a09f, 2 | BRF_PRG | BRF_ESS }, //  5
+
+	{ "l1_mortal_kombat_3_u133_game_rom.u133",		0x100000, 0x79b94667, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x00, 0) }, //  6 GFX
+	{ "l1_mortal_kombat_3_u132_game_rom.u132",		0x100000, 0x13e95228, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x00, 1) }, //  7
+	{ "l1_mortal_kombat_3_u131_game_rom.u131",		0x100000, 0x41001e30, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x00, 2) }, //  8
+	{ "l1_mortal_kombat_3_u130_game_rom.u130",		0x100000, 0x49379dd7, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x00, 3) }, //  9
+
+	{ "l1_mortal_kombat_3_u129_game_rom.u129",		0x100000, 0xa8b41803, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x04, 0) }, // 10
+	{ "l1_mortal_kombat_3_u128_game_rom.u128",		0x100000, 0xb410d72f, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x04, 1) }, // 11
+	{ "l1_mortal_kombat_3_u127_game_rom.u127",		0x100000, 0xbd985be7, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x04, 2) }, // 12
+	{ "l1_mortal_kombat_3_u126_game_rom.u126",		0x100000, 0xe7c32cf4, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x04, 3) }, // 13
+
+	{ "l1_mortal_kombat_3_u125_game_rom.u125",		0x100000, 0x9a52227e, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x08, 0) }, // 14
+	{ "l1_mortal_kombat_3_u124_game_rom.u124",		0x100000, 0x5c750ebc, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x08, 1) }, // 15
+	{ "l1_mortal_kombat_3_u123_game_rom.u123",		0x100000, 0xf0ab88a8, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x08, 2) }, // 16
+	{ "l1_mortal_kombat_3_u122_game_rom.u122",		0x100000, 0x9b87cdac, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x08, 3) }, // 17
+
+	{ "l1_mortal_kombat_3_u121_game_romk.u121",		0x100000, 0x61990175, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x0c, 0) }, // 18
+	{ "l1_mortal_kombat_3_u120_game_romk.u120",		0x100000, 0xe2d64a63, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x0c, 1) }, // 19
+	{ "l1_mortal_kombat_3_u119_game_romk.u119",		0x100000, 0xbfc7ca85, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x0c, 2) }, // 20
+	{ "l1_mortal_kombat_3_u118_game_romk.u118",		0x100000, 0x388f3380, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x0c, 3) }, // 21
+
+	{ "l1_mortal_kombat_3_u117_game_romk.u117",		0x080000, 0x92afe245, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x10, 0) }, // 22
+	{ "l1_mortal_kombat_3_u116_game_romk.u116",		0x080000, 0x1be581ea, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x10, 1) }, // 23
+	{ "l1_mortal_kombat_3_u115_game_romk.u115",		0x080000, 0x63173ebb, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x10, 2) }, // 24
+	{ "l1_mortal_kombat_3_u114_game_romk.u114",		0x080000, 0x5b853aff, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x10, 3) }, // 25
+};
+
+STD_ROM_PICK(mk3k)
+STD_ROM_FN(mk3k)
+
+struct BurnDriver BurnDrvMk3k = {
+	"mk3k", "mk3", NULL, NULL, "2026",
+	"Mortal Kombat 3 (Korean Translation, rev 2.1)\0", NULL, "Midway", "MIDWAY Wolf-Unit",
+	L"Mortal Kombat 3 (Korean Translation, rev 2.1)\0\uBAA8\uD0C8 \uCEF4\uBC43 3 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, rev 2.1)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_MIDWAY_WUNIT, GBF_VSFIGHT, 0,
+	NULL, mk3kRomInfo, mk3kRomName, NULL, NULL, NULL, NULL, Mk3InputInfo, Mk3DIPInfo,
+	WolfUnitInit, WolfUnitExit, WolfUnitFrame, WolfUnitDraw, WolfUnitScan, &nWolfUnitRecalc, 0x8000,
+	WUNIT_SCREEN_WIDTH, WUNIT_SCREEN_HEIGHT, 4, 3
+};
+
+// Ultimate Mortal Kombat 3 (Korean Translation, rev 1.2)
+
+static struct BurnRomInfo umk3kRomDesc[] = {
+	{ "l1.2_mortal_kombat_3_u54_ultimatek.u54",		0x080000, 0x98f6ec06, 1 | BRF_PRG | BRF_ESS }, //  0 TMS34010
+	{ "l1.2_mortal_kombat_3_u63_ultimatek.u63",		0x080000, 0xcbc27d5a, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "l2.0_mortal_kombat_3_u2_ultimate.u2",		0x100000, 0x3838cfe5, 2 | BRF_PRG | BRF_ESS }, //  2 DCS sound banks
+	{ "l1_mortal_kombat_3_u3_music_spch.u3",		0x100000, 0x856fe411, 2 | BRF_PRG | BRF_ESS }, //  3
+	{ "l1_mortal_kombat_3_u4_music_spch.u4",		0x100000, 0x428a406f, 2 | BRF_PRG | BRF_ESS }, //  4
+	{ "l1_mortal_kombat_3_u5_music_spch.u5",		0x100000, 0x3b98a09f, 2 | BRF_PRG | BRF_ESS }, //  5
+
+	{ "l1_mortal_kombat_3_u133_game_rom.u133",		0x100000, 0x79b94667, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x00, 0) }, //  6 GFX
+	{ "l1_mortal_kombat_3_u132_game_rom.u132",		0x100000, 0x13e95228, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x00, 1) }, //  7
+	{ "l1_mortal_kombat_3_u131_game_rom.u131",		0x100000, 0x41001e30, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x00, 2) }, //  8
+	{ "l1_mortal_kombat_3_u130_game_rom.u130",		0x100000, 0x49379dd7, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x00, 3) }, //  9
+
+	{ "l1_mortal_kombat_3_u129_game_rom.u129",		0x100000, 0xa8b41803, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x04, 0) }, // 10
+	{ "l1_mortal_kombat_3_u128_game_rom.u128",		0x100000, 0xb410d72f, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x04, 1) }, // 11
+	{ "l1_mortal_kombat_3_u127_game_rom.u127",		0x100000, 0xbd985be7, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x04, 2) }, // 12
+	{ "l1_mortal_kombat_3_u126_game_rom.u126",		0x100000, 0xe7c32cf4, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x04, 3) }, // 13
+
+	{ "l1_mortal_kombat_3_u125_game_rom.u125",		0x100000, 0x9a52227e, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x08, 0) }, // 14
+	{ "l1_mortal_kombat_3_u124_game_rom.u124",		0x100000, 0x5c750ebc, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x08, 1) }, // 15
+	{ "l1_mortal_kombat_3_u123_game_rom.u123",		0x100000, 0xf0ab88a8, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x08, 2) }, // 16
+	{ "l1_mortal_kombat_3_u122_game_rom.u122",		0x100000, 0x9b87cdac, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x08, 3) }, // 17
+
+	{ "umk-u121.bin",								0x100000, 0xcc4b95db, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x0c, 0) }, // 18
+	{ "umk-u120.bin",								0x100000, 0x1c8144cd, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x0c, 1) }, // 19
+	{ "umk-u119.bin",								0x100000, 0x5f10c543, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x0c, 2) }, // 20
+	{ "umk-u118.bin",								0x100000, 0xde0c4488, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x0c, 3) }, // 21
+
+	{ "umk-u113k.bin",								0x100000, 0x417bff31, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x14, 0) }, // 22
+	{ "umk-u112k.bin",								0x100000, 0x4d9dd8fb, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x14, 1) }, // 23
+	{ "umk-u111k.bin",								0x100000, 0xdfc96851, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x14, 2) }, // 24
+	{ "umk-u110k.bin",								0x100000, 0xac6077d3, 3 | BRF_GRA | BRF_ESS | WUNIT_GFX(0x14, 3) }, // 25
+
+	{ "463_mk3_ultimate.u64",						0x1009, 0x4f425218, 0 | BRF_OPT },
+};
+
+STD_ROM_PICK(umk3k)
+STD_ROM_FN(umk3k)
+
+struct BurnDriver BurnDrvUmk3k = {
+	"umk3k", "umk3", NULL, NULL, "2026",
+	"Ultimate Mortal Kombat 3 (Korean Translation, rev 1.2)\0", NULL, "Midway", "MIDWAY Wolf-Unit",
+	L"Ultimate Mortal Kombat 3 (Korean Translation, rev 1.2)\0\uC5BC\uD2F0\uBC0B \uBAA8\uD0C8 \uCEF4\uBC43 3 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED, rev 1.2)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_MIDWAY_WUNIT, GBF_VSFIGHT, 0,
+	NULL, umk3kRomInfo, umk3kRomName, NULL, NULL, NULL, NULL, Mk3InputInfo, UMk3DIPInfo,
+	WolfUnitInitUMK3Patch, WolfUnitExit, WolfUnitFrame, WolfUnitDraw, WolfUnitScan, &nWolfUnitRecalc, 0x8000,
+	WUNIT_SCREEN_WIDTH, WUNIT_SCREEN_HEIGHT, 4, 3
+};

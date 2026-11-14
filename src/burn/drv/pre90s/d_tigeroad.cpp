@@ -1551,3 +1551,51 @@ struct BurnDriver BurnDrvF1dreamba = {
 	F1dreambInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x240,
 	256, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Tora e no Michi (Korean Translation)
+
+static struct BurnRomInfo toramichkRomDesc[] = {
+	{ "tr_02k.6j",	0x20000, 0x53bbde48, 1 | BRF_PRG | BRF_ESS }, //  0 68k Code
+	{ "tr_04k.6k",	0x20000, 0xd152f46c, 1 | BRF_PRG | BRF_ESS }, //  1
+
+	{ "tr_05.12k",	0x08000, 0x3ebe6e62, 2 | BRF_PRG | BRF_ESS }, //  2 Z80 Code
+
+	{ "tr_01k.10d",	0x08000, 0x5f963917, 3 | BRF_GRA },           //  3 Character Tiles
+
+	{ "tr-01a.3f",	0x20000, 0xa8aa2e59, 4 | BRF_GRA },           //  4 Background Tiles
+	{ "tr-04a.3h",	0x20000, 0x8863a63c, 4 | BRF_GRA },           //  5
+	{ "tr-02a.3j",	0x20000, 0x1a2c5f89, 4 | BRF_GRA },           //  6
+	{ "tr-05.3l",	0x20000, 0x5bf453b3, 4 | BRF_GRA },           //  7
+	{ "tr-03a.2f",	0x20000, 0x1e0537ea, 4 | BRF_GRA },           //  8
+	{ "tr-06a.2h",	0x20000, 0xb636c23a, 4 | BRF_GRA },           //  9
+	{ "tr-07a.2j",	0x20000, 0x5f907d4d, 4 | BRF_GRA },           // 10
+	{ "tr_08.2l",	0x20000, 0xadee35e2, 4 | BRF_GRA },           // 11 EPROM
+
+	{ "tr-09a.3b",	0x20000, 0x3d98ad1e, 5 | BRF_GRA },           // 12 Sprites
+	{ "tr-10a.2b",	0x20000, 0x8f6f03d7, 5 | BRF_GRA },           // 13
+	{ "tr-11a.3d",	0x20000, 0xcd9152e5, 5 | BRF_GRA },           // 14
+	{ "tr-12a.2d",	0x20000, 0x7d8a99d0, 5 | BRF_GRA },           // 15
+
+	{ "tr_13.7l",	0x08000, 0xa79be1eb, 6 | BRF_GRA },           // 16 Background Tilemaps
+
+	{ "tr.9e",		0x00100, 0xec80ae36, 7 | BRF_GRA | BRF_OPT }, // 17 Priority Proms (unused)
+
+	{ "tr_03.11j",	0x10000, 0xea1807ef, 8 | BRF_PRG | BRF_ESS }, // 18 Sample Z80 Code
+};
+
+STD_ROM_PICK(toramichk)
+STD_ROM_FN(toramichk)
+
+struct BurnDriver BurnDrvToramichk = {
+	"toramichk", "tigeroad", NULL, NULL, "2026",
+	"Tora e no Michi (Korean Translation)\0", NULL, "Capcom", "Miscellaneous",
+	L"Tora e no Michi (Korean Translation)\0\uD638\uB791\uC774\uC758 \uAE38 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARWARE_CAPCOM_MISC, GBF_SCRFIGHT | GBF_PLATFORM, 0,
+	NULL, toramichkRomInfo, toramichkRomName, NULL, NULL, NULL, NULL, TigeroadInputInfo, ToramichDIPInfo,
+	ToramichInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x240,
+	256, 224, 4, 3
+};

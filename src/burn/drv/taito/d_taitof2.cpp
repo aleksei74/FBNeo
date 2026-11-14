@@ -11863,3 +11863,37 @@ struct BurnDriver BurnDrvYuyugogo = {
 	YuyugogoInit, TaitoF2Exit, TaitoF2Frame, YuyugogoDraw, TaitoF2Scan,
 	NULL, 0x2000, 320, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+static struct BurnRomInfo DeadconxkRomDesc[] = {
+	{ "d28-06k.3",          0x040000, 0x9650ea7a, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "d28-07k.5",          0x040000, 0x56a8906a, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "d28-09k.2",          0x040000, 0x712be4ab, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+	{ "d28-08k.4",          0x040000, 0x8c8eba3d, BRF_ESS | BRF_PRG | TAITO_68KROM1_BYTESWAP },
+
+	{ "d28-10.6",           0x010000, 0x40805d74, BRF_ESS | BRF_PRG | TAITO_Z80ROM1 },
+
+	{ "d28-04k.16",         0x080000, 0xa273090f, BRF_GRA | TAITO_CHARS_BYTESWAP },
+	{ "d28-05k.17",         0x080000, 0x7124f14b, BRF_GRA | TAITO_CHARS_BYTESWAP },
+
+	{ "d28-01.8",           0x100000, 0x181d7b69, BRF_GRA | TAITO_SPRITESA },
+	{ "d28-02.9",           0x100000, 0xd301771c, BRF_GRA | TAITO_SPRITESA },
+
+	{ "d28-03.10",          0x100000, 0xa1804b52, BRF_SND | TAITO_YM2610A },
+};
+
+STD_ROM_PICK(Deadconxk)
+STD_ROM_FN(Deadconxk)
+
+struct BurnDriver BurnDrvDeadconxk = {
+	"deadconxk", "deadconx", NULL, NULL, "2026",
+	"Dead Connection (Korean Translation)\0", NULL, "Taito Corporation", "Taito F2",
+	L"Dead Connection (Korean Translation)\0\uB370\uB4DC \uCEE4\uB125\uC158 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_TAITO_TAITOF2, GBF_RUNGUN, 0,
+	NULL, DeadconxkRomInfo, DeadconxkRomName, NULL, NULL, NULL, NULL, DeadconxInputInfo, DeadconxjDIPInfo,
+	DeadconxInit, TaitoF2Exit, TaitoF2Frame, FootchmpDraw, TaitoF2Scan,
+	NULL, 0x2000, 320, 224, 4, 3
+};

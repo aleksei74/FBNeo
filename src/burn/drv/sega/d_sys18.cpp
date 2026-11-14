@@ -4198,3 +4198,85 @@ struct BurnDriver BurnDrvAquario = {
 	System18Bank40000Init, System18Exit, System18Frame, System18Render, System18Scan,
 	NULL, 0x1800, 320, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+static struct BurnRomInfo MwalkkRomDesc[] = {
+	{ "epr-13235k.a6",  0x40000, 0x39257d5c, SYS16_ROM_PROG | BRF_ESS | BRF_PRG },
+	{ "epr-13234k.a5",  0x40000, 0x102edd59, SYS16_ROM_PROG | BRF_ESS | BRF_PRG },
+
+	{ "mpr-13216k.b1",  0x40000, 0xee137e63, SYS16_ROM_TILES | BRF_GRA },
+	{ "mpr-13217k.b2",  0x40000, 0x866d723b, SYS16_ROM_TILES | BRF_GRA },
+	{ "mpr-13218k.b3",  0x40000, 0xa93a1a16, SYS16_ROM_TILES | BRF_GRA },
+
+	{ "mpr-13224.b11",  0x40000, 0xc59f107b, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-13231.a11",  0x40000, 0xa5e96346, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-13223k.b10", 0x40000, 0x4cad17e0, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-13230k.a10", 0x40000, 0x20d02ea2, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-13222k.b9",  0x40000, 0x58161b98, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-13229k.a9",  0x40000, 0xc6b0ae33, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "epr-13221.b8",   0x40000, 0x9ae7546a, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "epr-13228.a8",   0x40000, 0xde3786be, SYS16_ROM_SPRITES | BRF_GRA },
+
+	{ "epr-13225.a4",   0x20000, 0x56c2e82b, SYS16_ROM_Z80PROG | BRF_ESS | BRF_PRG },
+
+	{ "mpr-13219.b4",   0x40000, 0x19e2061f, SYS16_ROM_RF5C68DATA | BRF_SND },
+	{ "mpr-13220.b5",   0x40000, 0x58d4d9ce, SYS16_ROM_RF5C68DATA | BRF_SND },
+	{ "mpr-13249.b6",   0x40000, 0x623edc5d, SYS16_ROM_RF5C68DATA | BRF_SND },
+
+	{ "317-0159.key",   0x02000, 0x507838f0, SYS16_ROM_KEY | BRF_ESS | BRF_PRG},
+
+	{ "315-5437.ic4",   0x01000, 0x4bf63bc1, SYS16_ROM_I8751 | BRF_ESS | BRF_PRG},
+};
+
+STD_ROM_PICK(Mwalkk)
+STD_ROM_FN(Mwalkk)
+
+struct BurnDriver BurnDrvMWalkk = {
+	"mwalkk", "mwalk", NULL, NULL, "2026",
+	"Michael Jackson's Moonwalker (Korean Translation)\0", NULL, "Sega", "System 18",
+	L"Michael Jackson's Moonwalker (Korean Translation)\0\uB9C8\uC774\uD074 \uC7AD\uC2A8\uC758 \uBB38\uC6CC\uCEE4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 3, HARDWARE_SEGA_SYSTEM18 | HARDWARE_SEGA_FD1094_ENC | HARDWARE_SEGA_171_5874, GBF_PLATFORM, 0,
+	NULL, MwalkkRomInfo, MwalkkRomName, NULL, NULL, NULL, NULL, MwalkInputInfo, MwalkDIPInfo,
+	MwalkInit, System18Exit, System18Frame, System18Render, System18Scan,
+	NULL, 0x1800, 320, 224, 4, 3
+};
+
+static struct BurnRomInfo WwallykRomDesc[] = {
+	{ "epr-14730bk.a4", 0x040000, 0xf0d9f6c5, SYS16_ROM_PROG | BRF_ESS | BRF_PRG },
+	{ "epr-14731bk.a6", 0x040000, 0x3214dc3e, SYS16_ROM_PROG | BRF_ESS | BRF_PRG },
+
+	{ "mpr-14719k.c1",  0x040000, 0x5cc8f8d2, SYS16_ROM_TILES | BRF_GRA },
+	{ "mpr-14720k.c2",  0x040000, 0x6ca0cf35, SYS16_ROM_TILES | BRF_GRA },
+	{ "mpr-14721k.c3",  0x040000, 0xf8e74108, SYS16_ROM_TILES | BRF_GRA },
+
+	{ "mpr-14726k.c10", 0x100000, 0xb0ff8f57, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-14732k.a10", 0x100000, 0x1ba51c02, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-14727k.c11", 0x100000, 0x8dbf9880, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-14733k.a11", 0x100000, 0x40d295d4, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-14728.c12",  0x080000, 0x5b921587, SYS16_ROM_SPRITES | BRF_GRA },
+	{ "mpr-14734.a12",  0x080000, 0x6f3f5ed9, SYS16_ROM_SPRITES | BRF_GRA },
+
+	{ "epr-14725.c7",   0x020000, 0x2b29684f, SYS16_ROM_Z80PROG | BRF_ESS | BRF_PRG },
+
+	{ "mpr-14724.c6",   0x080000, 0x47cbea86, SYS16_ROM_RF5C68DATA | BRF_SND },
+	{ "mpr-14723.c5",   0x080000, 0xbc5adc27, SYS16_ROM_RF5C68DATA | BRF_SND },
+	{ "mpr-14722.c4",   0x080000, 0x1bd081f8, SYS16_ROM_RF5C68DATA | BRF_SND },
+
+	{ "317-0197b.key",  0x002000, 0xf5b7c5b4, SYS16_ROM_KEY | BRF_ESS | BRF_PRG},
+};
+
+STD_ROM_PICK(Wwallyk)
+STD_ROM_FN(Wwallyk)
+
+struct BurnDriver BurnDrvWwallyk = {
+	"wwallyk", "wwallyj", NULL, NULL, "2026",
+	"Wally wo Sagase! (rev B, Korean Translation, 2 players) (FD1094 317-0197B)\0", NULL, "Sega", "System 18",
+	L"Wally wo Sagase! (rev B, Korean Translation, 2 players) (FD1094 317-0197B)\0\uC70C\uB9AC\uB97C \uCC3E\uC544\uB77C! (rev B, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED, 2 \uD50C\uB808\uC774\uC5B4) (FD1094 317-0197B)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_SEGA_SYSTEM18 | HARDWARE_SEGA_FD1094_ENC | HARDWARE_SEGA_171_5987, GBF_PUZZLE, 0,
+	NULL, WwallykRomInfo, WwallykRomName, NULL, NULL, NULL, NULL, WwallyInputInfo, WwallyDIPInfo,
+	WwallyInit, WwallyExit, System18Frame, System18Render, WwallyScan,
+	NULL, 0x1800, 320, 224, 4, 3
+};

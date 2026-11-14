@@ -40,7 +40,7 @@ static INT32 nExtraCycles;
 
 static UINT8 DrvReset;
 static UINT32 DrvInputs;
-static UINT8 DrvDips[3];
+static UINT8 DrvDips[2];
 static UINT8 DrvJoy1[32];
 
 static struct BurnInputInfo Common2ButtonInputList[] = {
@@ -66,7 +66,6 @@ static struct BurnInputInfo Common2ButtonInputList[] = {
 	{"Service",			BIT_DIGITAL,	DrvJoy1 + 4,	"service"	},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
-	{"Dip C",       	BIT_DIPSWITCH,  DrvDips + 2,    "dip"       },
 };
 
 STDINPUTINFO(Common2Button)
@@ -96,7 +95,6 @@ static struct BurnInputInfo Common3ButtonInputList[] = {
 	{"Service",			BIT_DIGITAL,	DrvJoy1 + 4,	"service"	},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
-	{"Dip C",       	BIT_DIPSWITCH,  DrvDips + 2,    "dip"       },
 };
 
 STDINPUTINFO(Common3Button)
@@ -128,7 +126,6 @@ static struct BurnInputInfo Common4ButtonInputList[] = {
 	{"Service",			BIT_DIGITAL,	DrvJoy1 + 4,	"service"	},
 	{"Dip A",			BIT_DIPSWITCH,	DrvDips + 0,	"dip"		},
 	{"Dip B",			BIT_DIPSWITCH,	DrvDips + 1,	"dip"		},
-	{"Dip C",       	BIT_DIPSWITCH,  DrvDips + 2,    "dip"       },
 };
 
 STDINPUTINFO(Common4Button)
@@ -137,7 +134,6 @@ static struct BurnDIPInfo DarakuDIPList[]=
 {
 	{0x16, 0xff, 0xff, 0x60, NULL			},
 	{0x17, 0xff, 0xff, 0x01, NULL			},
-	{0x18, 0xff, 0xff, 0x00, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x16, 0x01, 0x20, 0x20, "Off"			},
@@ -150,10 +146,6 @@ static struct BurnDIPInfo DarakuDIPList[]=
 	{0   , 0xfe, 0   ,    2, "Region"		},
 	{0x17, 0x01, 0x01, 0x00, "Japan"		},
 	{0x17, 0x01, 0x01, 0x01, "World"		},
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x18, 0x01, 0x01, 0x00, "No"			},
-	{0x18, 0x01, 0x01, 0x01, "Yes"			},
 };
 
 STDDIPINFO(Daraku)
@@ -162,7 +154,6 @@ static struct BurnDIPInfo S1945iiDIPList[]=
 {
 	{0x12, 0xff, 0xff, 0x60, NULL			},
 	{0x13, 0xff, 0xff, 0x01, NULL			},
-	{0x14, 0xff, 0xff, 0x00, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x12, 0x01, 0x20, 0x20, "Off"			},
@@ -175,10 +166,6 @@ static struct BurnDIPInfo S1945iiDIPList[]=
 	{0   , 0xfe, 0   ,    2, "Region"		},
 	{0x13, 0x01, 0x01, 0x00, "Japan"		},
 	{0x13, 0x01, 0x01, 0x01, "World"		},
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x14, 0x01, 0x01, 0x00, "No"			},
-	{0x14, 0x01, 0x01, 0x01, "Yes"			},
 };
 
 STDDIPINFO(S1945ii)
@@ -187,7 +174,6 @@ static struct BurnDIPInfo DragnblzDIPList[]=
 {
 	{0x14, 0xff, 0xff, 0x20, NULL			},
 	{0x15, 0xff, 0xff, 0x01, NULL			},
-	{0x16, 0xff, 0xff, 0x00, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x14, 0x01, 0x20, 0x20, "Off"			},
@@ -200,10 +186,6 @@ static struct BurnDIPInfo DragnblzDIPList[]=
 	{0   , 0xfe, 0   ,    2, "Region"		},
 	{0x15, 0x01, 0x01, 0x00, "Japan"		},
 	{0x15, 0x01, 0x01, 0x01, "World"		},
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x16, 0x01, 0x01, 0x00, "No"			},
-	{0x16, 0x01, 0x01, 0x01, "Yes"			},
 };
 
 STDDIPINFO(Dragnblz)
@@ -212,7 +194,6 @@ static struct BurnDIPInfo SoldividDIPList[]=
 {
 	{0x14, 0xff, 0xff, 0x60, NULL			},
 	{0x15, 0xff, 0xff, 0x01, NULL			},
-	{0x16, 0xff, 0xff, 0x00, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x14, 0x01, 0x20, 0x20, "Off"			},
@@ -225,10 +206,6 @@ static struct BurnDIPInfo SoldividDIPList[]=
 	{0   , 0xfe, 0   ,    2, "Region"		},
 	{0x15, 0x01, 0x01, 0x00, "Japan"		},
 	{0x15, 0x01, 0x01, 0x01, "World"		},
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x16, 0x01, 0x01, 0x00, "No"			},
-	{0x16, 0x01, 0x01, 0x01, "Yes"	},
 };
 
 STDDIPINFO(Soldivid)
@@ -237,7 +214,6 @@ static struct BurnDIPInfo SoldividkDIPList[]=
 {
 	{0x14, 0xff, 0xff, 0x60, NULL			},
 	{0x15, 0xff, 0xff, 0x01, NULL			},
-	{0x16, 0xff, 0xff, 0x00, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x14, 0x01, 0x20, 0x20, "Off"			},
@@ -250,10 +226,6 @@ static struct BurnDIPInfo SoldividkDIPList[]=
 //	{0   , 0xfe, 0   ,    2, "Region"		}, /* Game is hard coded to Korea */
 //	{0x15, 0x01, 0x01, 0x00, "Japan"		},
 //	{0x15, 0x01, 0x01, 0x01, "World"		},
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x16, 0x01, 0x01, 0x00, "No"			},
-	{0x16, 0x01, 0x01, 0x01, "Yes"	},
 };
 
 STDDIPINFO(Soldividk)
@@ -262,7 +234,6 @@ static struct BurnDIPInfo Gunbird2DIPList[]=
 {
 	{0x14, 0xff, 0xff, 0x60, NULL			},
 	{0x15, 0xff, 0xff, 0x02, NULL			},
-	{0x16, 0xff, 0xff, 0x00, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x14, 0x01, 0x20, 0x20, "Off"			},
@@ -276,10 +247,6 @@ static struct BurnDIPInfo Gunbird2DIPList[]=
 	{0x15, 0x01, 0x03, 0x00, "Japan"		},
 	{0x15, 0x01, 0x03, 0x01, "International Ver A."	},
 	{0x15, 0x01, 0x03, 0x02, "International Ver B."	},
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x16, 0x01, 0x01, 0x00, "No"			},
-	{0x16, 0x01, 0x01, 0x01, "Yes"			},
 };
 
 STDDIPINFO(Gunbird2)
@@ -288,7 +255,6 @@ static struct BurnDIPInfo S1945iiiDIPList[]=
 {
 	{0x14, 0xff, 0xff, 0x60, NULL			},
 	{0x15, 0xff, 0xff, 0x01, NULL			},
-	{0x16, 0xff, 0xff, 0x00, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x14, 0x01, 0x20, 0x20, "Off"			},
@@ -302,10 +268,6 @@ static struct BurnDIPInfo S1945iiiDIPList[]=
 	{0x15, 0x01, 0x03, 0x00, "Japan"		},
 	{0x15, 0x01, 0x03, 0x02, "International Ver A."	},
 	{0x15, 0x01, 0x03, 0x01, "International Ver B."	},
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x16, 0x01, 0x01, 0x00, "No"			},
-	{0x16, 0x01, 0x01, 0x01, "Yes"			},
 };
 
 STDDIPINFO(S1945iii)
@@ -314,7 +276,6 @@ static struct BurnDIPInfo Tgm2DIPList[]=
 {
 	{0x14, 0xff, 0xff, 0x60, NULL			},
 	{0x15, 0xff, 0xff, 0x00, NULL			},
-	{0x16, 0xff, 0xff, 0x00, NULL			},
 
 	{0   , 0xfe, 0   ,    2, "Service Mode"		},
 	{0x14, 0x01, 0x20, 0x20, "Off"			},
@@ -323,10 +284,6 @@ static struct BurnDIPInfo Tgm2DIPList[]=
 	{0   , 0xfe, 0   ,    2, "Debug"		},
 	{0x14, 0x01, 0x40, 0x40, "Off"			},
 	{0x14, 0x01, 0x40, 0x00, "On"			},
-	
-	{0   , 0xfe, 0   ,    2, "Speed Hacks"},
-	{0x16, 0x01, 0x01, 0x00, "No"			},
-	{0x16, 0x01, 0x01, 0x01, "Yes"			},
 };
 
 STDDIPINFO(Tgm2)
@@ -617,11 +574,7 @@ static INT32 DrvDoReset(INT32 clear_mem)
 	}
 
 	if (strcmp(BurnDrvGetTextA(DRV_NAME), "soldivid") == 0 || strcmp(BurnDrvGetTextA(DRV_NAME), "soldividk") == 0) {
-		cpu_rate = ((DrvDips[2] & 1) ? 7600000 : 28636350/2);
-		Sh2SetEatCycles((DrvDips[2] & 1) ? 2 : 1);
-	}
-	else {
-		cps3speedhack = (DrvDips[2] & 1);
+		cpu_rate = 28636350/2;
 	}
 
 	BurnYMF278BReset();
@@ -1348,6 +1301,50 @@ struct BurnDriver BurnDrvGunbird2a = {
 	224, 320, 3, 4
 };
 
+// Gunbird 2 Makai (Morrigan Backport)
+// https://github.com/kuzearcade/Gunbird2_Makai
+
+static struct BurnRomInfo gunbird2mRomDesc[] = {
+	{ "2_prog_lm.u16",			0x080000, 0xd58149c8, 1 | BRF_PRG | BRF_ESS }, //  0 SH2 Code
+	{ "1_prog_hm.u17",			0x080000, 0xf850d33c, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "3_pdatam.u1",			0x080000, 0xe5e9c8be, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "0l.u3",					0x800000, 0x5c826bc8, 2 | BRF_GRA },           //  3 Graphics
+	{ "0h.u10",					0x800000, 0x3df0cb6c, 2 | BRF_GRA },           //  4
+	{ "1l.u4",					0x800000, 0x1558358d, 2 | BRF_GRA },           //  5
+	{ "1h.u11",					0x800000, 0x4ee0103b, 2 | BRF_GRA },           //  6
+	{ "2l.u5",					0x800000, 0xe1c7a7b8, 2 | BRF_GRA },           //  7
+	{ "2h.u12",					0x800000, 0xbc8a41df, 2 | BRF_GRA },           //  8
+	{ "3lm.u6",					0x800000, 0xd2f8b9ab, 2 | BRF_GRA },           //  9
+	{ "3hm.u13",				0x800000, 0xbd27a0eb, 2 | BRF_GRA },           // 10
+
+	{ "soundm.u9",				0x400000, 0x0e6b24f5, 3 | BRF_SND },           // 11 Samples
+	
+	{ "eeprom-gunbird2.bin",	0x000100, 0x7ac38846, BRF_OPT },
+};
+
+STD_ROM_PICK(gunbird2m)
+STD_ROM_FN(gunbird2m)
+
+static INT32 Gunbird2mInit()
+{
+	speedhack_address = 0x004000c;
+	speedhack_pc[0] = 0x06028be6;
+	speedhack_pc[1] = 0x06028974;
+	speedhack_pc[2] = 0x06028e64;
+
+	return DrvInit(Gunbird2LoadCallback, 1, 0x4000000, 0);
+}
+
+struct BurnDriver BurnDrvGunbird2m = {
+	"gunbird2m", "gunbird2", NULL, NULL, "2026",
+	"Gunbird 2 Makai (Morrigan Backport)\0", NULL, "Psikyo", "PS5",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbird2mRomInfo, gunbird2mRomName, NULL, NULL, NULL, NULL, Common3ButtonInputInfo, Gunbird2DIPInfo,
+	Gunbird2mInit, DrvExit, DrvFrame, PsikyoshDraw, DrvScan, NULL, 0x1400,
+	224, 320, 3, 4
+};
 
 // Strikers 1945 III (World) / Strikers 1999 (Japan)
 
@@ -1781,4 +1778,76 @@ struct BurnDriver BurnDrvTgm2p = {
 	NULL, tgm2pRomInfo, tgm2pRomName, NULL, NULL, NULL, NULL, Common3ButtonInputInfo, Tgm2DIPInfo,
 	Tgm2pInit, DrvExit, DrvFrame, PsikyoshDraw, DrvScan, NULL, 0x1400,
 	320, 240, 4, 3
+};
+
+//========================
+// Add Korean Translation
+//========================
+
+// Gunbird 2 (Korean Translation)
+
+static struct BurnRomInfo gunbird2kRomDesc[] = {
+	{ "2_prog_lk.u16",	0x080000, 0x31ad5be6, 1 | BRF_PRG | BRF_ESS }, //  0 SH2 Code
+	{ "1_prog_hk.u17",	0x080000, 0x14b5cf1f, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "3_pdatak.u1",	0x080000, 0xdcb8f2b5, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "0lk.u3",			0x800000, 0x02e17630, 2 | BRF_GRA },           //  3 Graphics
+	{ "0hk.u10",		0x800000, 0xac6c186f, 2 | BRF_GRA },           //  4
+	{ "1lk.u4",			0x800000, 0x1adff517, 2 | BRF_GRA },           //  5
+	{ "1hk.u11",		0x800000, 0x73f46309, 2 | BRF_GRA },           //  6
+	{ "2lk.u5",			0x800000, 0x2fd68ef0, 2 | BRF_GRA },           //  7
+	{ "2hk.u12",		0x800000, 0xe7bddbf8, 2 | BRF_GRA },           //  8
+	{ "3l.u6",			0x400000, 0x0229d37f, 2 | BRF_GRA },           //  9
+	{ "3h.u13",			0x400000, 0xf41bbf2b, 2 | BRF_GRA },           // 10
+
+	{ "sound.u9",		0x400000, 0xf19796ab, 3 | BRF_SND },           // 11 Samples
+
+	{ "eeprom-gunbird2.bin",0x000100, 0x7ac38846, BRF_OPT },
+};
+
+STD_ROM_PICK(gunbird2k)
+STD_ROM_FN(gunbird2k)
+
+struct BurnDriver BurnDrvGunbird2k = {
+	"gunbird2k", "gunbird2", NULL, NULL, "2026",
+	"Gunbird 2 (Korean Translation)\0", NULL, "Psikyo", "PS5",
+	L"Gunbird 2 (Korean Translation)\0\uAC74\uBC84\uB4DC 2 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_ORIENTATION_VERTICAL | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbird2kRomInfo, gunbird2kRomName, NULL, NULL, NULL, NULL, Common3ButtonInputInfo, Gunbird2DIPInfo,
+	Gunbird2Init, DrvExit, DrvFrame, PsikyoshDraw, DrvScan, NULL, 0x1400,
+	224, 320, 3, 4
+};
+
+// Gunbird 2 Makai (Morrigan Backport, Korean Translation)
+
+static struct BurnRomInfo gunbird2mkRomDesc[] = {
+	{ "2_prog_lmk.u16",			0x080000, 0xd2d57ddd, 1 | BRF_PRG | BRF_ESS }, //  0 SH2 Code
+	{ "1_prog_hmk.u17",			0x080000, 0xb06b29ac, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "3_pdatamk.u1",			0x080000, 0x514cd94f, 1 | BRF_PRG | BRF_ESS }, //  2
+
+	{ "0lk.u3",					0x800000, 0x02e17630, 2 | BRF_GRA },           //  3 Graphics
+	{ "0hk.u10",				0x800000, 0xac6c186f, 2 | BRF_GRA },           //  4
+	{ "1lk.u4",					0x800000, 0x1adff517, 2 | BRF_GRA },           //  5
+	{ "1hk.u11",				0x800000, 0x73f46309, 2 | BRF_GRA },           //  6
+	{ "2lk.u5",					0x800000, 0x2fd68ef0, 2 | BRF_GRA },           //  7
+	{ "2hk.u12",				0x800000, 0xe7bddbf8, 2 | BRF_GRA },           //  8
+	{ "3lmk.u6",				0x800000, 0x640a46c0, 2 | BRF_GRA },           //  9
+	{ "3hmk.u13",				0x800000, 0x58c900ac, 2 | BRF_GRA },           // 10
+
+	{ "soundm.u9",				0x400000, 0x0e6b24f5, 3 | BRF_SND },           // 11 Samples
+
+	{ "eeprom-gunbird2.bin",	0x000100, 0x7ac38846, BRF_OPT },
+};
+
+STD_ROM_PICK(gunbird2mk)
+STD_ROM_FN(gunbird2mk)
+
+struct BurnDriver BurnDrvGunbird2mk = {
+	"gunbird2mk", "gunbird2", NULL, NULL, "2026",
+	"Gunbird 2 Makai (Morrigan Backport, Korean Translation)\0", NULL, "Psikyo", "PS5",
+	L"Gunbird 2 Makai (Morrigan Backport, Korean Translation)\0\uAC74\uBC84\uB4DC 2 \uB9C8\uACC4 (\uBAA8\uB9AC\uAC74 \uC5ED\uC774\uC2DD, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_ORIENTATION_VERTICAL | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PSIKYO, GBF_VERSHOOT, 0,
+	NULL, gunbird2mkRomInfo, gunbird2mkRomName, NULL, NULL, NULL, NULL, Common3ButtonInputInfo, Gunbird2DIPInfo,
+	Gunbird2mInit, DrvExit, DrvFrame, PsikyoshDraw, DrvScan, NULL, 0x1400,
+	224, 320, 3, 4
 };

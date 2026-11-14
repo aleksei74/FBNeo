@@ -1,6 +1,8 @@
 // K051316 and K053936 are now standalone devices (src/burn/devices); their
 // declarations live in k051316.h / k053936.h. Included here so existing konami
 // drivers keep getting the API (and the SetRenderTarget hook) through konamiic.h.
+// Generated with Codex AI (by DsNo)
+
 #include "k051316.h"
 #include "k053936.h"
 
@@ -175,6 +177,9 @@ if (a >= nStartAddress && a <= nStartAddress + 0x7fff) {			\
 #define K056832_LAYER_OPAQUE			0x00400000
 #define K056832_DRAW_FLAG_MIRROR     		0x00800000
 #define K056382_DRAW_FLAG_FORCE_XYSCROLL	0x00800000 // same as flag mirror
+#define K056832_DRAW_CATEGORY_1		0x01000000
+#define K056832_DRAW_ALL_CATEGORIES	0x02000000
+#define K056832_LAYER_ADDITIVE		0x04000000 // additive blend (dst += src*alpha) instead of alpha-over
 
 #define K056832_SET_ALPHA(x)			(K056832_LAYER_ALPHA | ((x)<<8))
 
@@ -183,11 +188,21 @@ void K056832Init(UINT8 *rom, UINT8 *romexp, INT32 rom_size, void (*cb)(INT32 lay
 void K056832Exit();
 void K056832Scan(INT32 nAction);
 void K056832SetLayerAssociation(INT32 status);
+void K056832SetRomBankCount(INT32 banks);
+void K056832SetRomExpTileCount(INT32 tiles);
+void K056832SetColorGranularity(INT32 colors);
+void K056832SetVramWordOrder(INT32 swapped);
+void K056832SetBrightness(INT32 brightness);
 void K056832SetGlobalOffsets(INT32 minx, INT32 miny);
 void K056832SetLayerOffsets(INT32 layer, INT32 xoffs, INT32 yoffs);
+void K056832SetAlphaTileMode(INT32 enable);
+void K056832SetAlphaTileCallback(UINT32 (*Callback)(INT32 layer, INT32 code, INT32 color, INT32 pixel, INT32 x, INT32 y, INT32 *alpha, UINT32 rgb));
+INT32 K056832GetAlphaTileMode(); // mode 3: GX hardware colour/mix routing
+INT32 K056832GetLastAlphaTileMixCode();
 void K056832SetExtLinescroll();
 void K056832SetLinemap();
 UINT16 K056832GetVram(INT32 address);
+void K056832SetVram(INT32 address, UINT16 data);
 INT32 K056832IsIrqEnabled();
 void K056832ReadAvac(INT32 *mode, INT32 *data);
 UINT16 K056832ReadRegister(int reg);
@@ -201,6 +216,7 @@ void K056832HalfRamWriteByte(UINT32 offset, UINT8 data);
 UINT16 K056832HalfRamReadWord(UINT32 offset);
 UINT8 K056832HalfRamReadByte(UINT32 offset);
 void K056832RamWriteWord(UINT32 offset, UINT16 data);
+void K056832RamWriteWordMask(UINT32 offset, UINT16 data, UINT16 mem_mask);
 void K056832RamWriteByte(UINT32 offset, UINT8 data);
 UINT16 K056832RamReadWord(UINT32 offset);
 UINT8 K056832RamReadByte(UINT32 offset);
@@ -208,8 +224,11 @@ UINT16 K056832RomWord8000Read(INT32 offset);
 void K056832WritebRegsWord(INT32 offset, UINT16 data);
 void K056832WritebRegsByte(INT32 offset, UINT8 data);
 UINT16 K056832mwRomWordRead(INT32 address);
+UINT8 K056832GxRomByteRead(INT32 address);
+UINT8 K056832GxRomByteRead6bpp(INT32 address);
 void K056832Draw(INT32 layer, UINT32 flags, UINT32 priority);
 INT32 K056832GetLayerAssociation();
+INT32 K056832GetActiveLayer();
 void K056832Metamorphic_Fixup();
 
 // K051316 declarations moved to k051316.h (included at the top of this header).
@@ -267,6 +286,8 @@ void K053247Exit();
 void K053247Scan(INT32 nAction);
 
 void K053247SetBpp(INT32 bpp);
+void K053247SetRamSize(INT32 size);
+void K053247SetDecodedTileMask(INT32 mask);
 
 extern UINT8 *K053247Ram;
 extern void (*K053247Callback)(INT32 *code, INT32 *color, INT32 *priority);
@@ -274,10 +295,12 @@ extern void (*K053247Callback)(INT32 *code, INT32 *color, INT32 *priority);
 void K053247Export(UINT8 **ram, UINT8 **gfx, void (**callback)(INT32 *, INT32 *, INT32 *), INT32 *dx, INT32 *dy);
 void K053247GfxDecode(UINT8 *src, UINT8 *dst, INT32 len); // 16x16
 void K053247SetSpriteOffset(INT32 offsx, INT32 offsy);
+void K053247SetVisibleOffset(INT32 offsx, INT32 offsy);
 void K053247WrapEnable(INT32 status);
 
 void K053246_set_OBJCHA_line(INT32 state); // 1 assert, 0 clear
 INT32 K053246_is_IRQ_enabled();
+void K053246SetOffsetByteSwap(INT32 enable);
 
 UINT8 K053247Read(INT32 offset);
 void K053247Write(INT32 offset, INT32 data);
@@ -355,6 +378,7 @@ void K054338WriteByte(INT32 offset, UINT8 data);
 INT32 K054338_read_register(int reg);
 void K054338_fill_solid_bg();
 void K054338_fill_backcolor(int palette_offset, int mode);
+void K054338SetBgOffsets(INT32 x, INT32 y);
 INT32 K054338_set_alpha_level(int pblend);
 INT32 K054338_alpha_level_moo(INT32 pblend);
 void K054338_invert_alpha(int invert);
@@ -449,6 +473,7 @@ void K055555Scan(INT32 nAction);
 
 
 // konamigx.cpp
+void konamigx_set_wrport1_0(INT32 data);
 #define GXMIX_BLEND_AUTO    0           // emulate all blend effects
 #define GXMIX_BLEND_NONE    1           // disable all blend effects
 #define GXMIX_BLEND_FAST    2           // simulate translucency
@@ -466,6 +491,10 @@ void K055555Scan(INT32 nAction);
 void konamigx_mixer_init(int objdma);
 void konamigx_mixer_exit();
 void konamigx_scan(INT32 nAction);
+void konamigx_mixer_set_spriteram_bank(INT32 bank);
+void konamigx_mixer_set_spriteram_latch(UINT16 *ram);
 void konamigx_mixer_primode(int mode);
+void konamigx_prepare_frame();
+void konamigx_mixer_set_extra_bitmap(const UINT16 *bitmap);
 void konamigx_mixer(int sub1 /*extra tilemap 1*/, int sub1flags, int sub2 /*extra tilemap 2*/, int sub2flags, int mixerflags, int extra_bitmap /*extra tilemap 3*/, int rushingheroes_hack);
 extern INT32 konamigx_mystwarr_kludge;
