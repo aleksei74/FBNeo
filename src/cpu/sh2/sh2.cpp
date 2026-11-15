@@ -811,7 +811,10 @@ SH2_INLINE void sh2_exception(/*const char *message,*/ int irqline)
 		}
 		else
 		{
-			if(sh2->m[0x38] & 0x00010000)
+			if (sh2->irq_callback) {
+				vector = sh2->irq_callback(irqline);
+			}
+			else if(sh2->m[0x38] & 0x00010000)
 			{
 				//vector = sh2->irq_callback(irqline);
 				//LOG(("SH-2 #%d exception #%d (external vector: $%x) after [%s]\n", cpu_getactivecpu(), irqline, vector, message));

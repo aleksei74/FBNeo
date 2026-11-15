@@ -6281,7 +6281,7 @@ struct BurnDriver BurnDrvSlyspy3 = {
 //========================
 
 // Bad Dudes vs. Dragonninja (Korean Translation, revision 1)
-//
+// 
 
 static struct BurnRomInfo BaddudeskRomDesc[] = {
 	{ "ei04-1k.3c",     0x10000, 0xf749a2e6, BRF_ESS | BRF_PRG },	//  0	68000 Program Code
@@ -6289,7 +6289,7 @@ static struct BurnRomInfo BaddudeskRomDesc[] = {
 	{ "ei06k.6c",       0x10000, 0x12f01aaf, BRF_ESS | BRF_PRG },	//  2
 	{ "ei03k.6a",       0x10000, 0x1351ff0e, BRF_ESS | BRF_PRG },	//  3
 
-	{ "ei07.8a",        0x08000, 0x9fb1ef4b, BRF_ESS | BRF_PRG },	//  4	6502 Program
+	{ "ei07.8a",        0x08000, 0x9fb1ef4b, BRF_ESS | BRF_PRG },	//  4	6502 Program 
 
 	{ "ei25k.15h",      0x08000, 0xbef6e32b, BRF_GRA },				//  5	Characters
 	{ "ei26k.16h",      0x08000, 0x22a5c879, BRF_GRA },				//  6

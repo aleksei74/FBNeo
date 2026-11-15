@@ -868,11 +868,20 @@ INT32 CreateDefaultDatfilesWindows(bool bSilent, const TCHAR* pszSpecDir)
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", SNES Games only"));
 	create_datfile(szFilename, DAT_SNES_ONLY);
 
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", GBA Games only"));
+	create_datfile(szFilename, DAT_GBA_ONLY);
+
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Neo Geo Pocket Games only"));
 	create_datfile(szFilename, DAT_NGP_ONLY);
 
 	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Fairchild Channel F Games only"));
 	create_datfile(szFilename, DAT_CHANNELF_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Bally Astrocade Games only"));
+	create_datfile(szFilename, DAT_ASTROHOME_ONLY);
+
+	_sntprintf(szFilename, MAX_PATH, _T("%s") _T(APP_TITLE) _T(" v%.20s (%s%s).dat"), buffer, szAppBurnVer, szProgramString, _T(", Atari 2600 Games only"));
+	create_datfile(szFilename, DAT_ATARI2600_ONLY);
 
 	return nRet;
 }
