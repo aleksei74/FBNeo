@@ -2431,6 +2431,22 @@ static INT32 GameInpSpecialOne(struct GameInp* pgi, INT32 nPlayer, char* szb, ch
 		GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_JOYPAD_R, description);
 	}
 
+	// Use upstream's common racing controls only when a DsNo game-specific
+	// mapping has not already assigned the input.
+	if (!bButtonMapped) {
+		if (strcmp("Accelerator", description) == 0) {
+			GameInpAnalog2RetroInpAnalog(pgi, nPlayer, RETRO_DEVICE_ID_JOYPAD_R2, RETRO_DEVICE_INDEX_ANALOG_BUTTON, description);
+			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_JOYPAD_R2, description);
+		}
+		if (strcmp("Brake", description) == 0) {
+			GameInpAnalog2RetroInpAnalog(pgi, nPlayer, RETRO_DEVICE_ID_JOYPAD_L2, RETRO_DEVICE_INDEX_ANALOG_BUTTON, description);
+			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_JOYPAD_L2, description);
+		}
+		if (strcmp("Gear Shift", description) == 0) {
+			GameInpDigital2RetroInpKey(pgi, nPlayer, RETRO_DEVICE_ID_JOYPAD_R, description);
+		}
+	}
+
 	// Don't map neogeo select button anywhere
 	// See https://neo-source.com/index.php?topic=3490.0
 	// 2019-07-03 : actually, map it to L3, it allows access to a menu in last blade training mode
