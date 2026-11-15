@@ -784,22 +784,30 @@ static void CdxaExit()
 static INT32 CdxaInit()
 {
 	TCHAR path[MAX_PATH];
-	if (BurnHDDGetPath(0, _T(".chd"), path))
+	if (BurnHDDGetPath(0, _T(".chd"), path)) {
+		bprintf(PRINT_ERROR, _T("CDXA: required CD CHD not found for %s in %s%s/\n"),
+			BurnDrvGetText(DRV_NAME), szAppHDDPath, BurnDrvGetText(DRV_NAME));
 		return 1;
+	}
 	CdxaDisc = ChdOpenFile(path);
-	if (!CdxaDisc)
+	if (!CdxaDisc) {
+		bprintf(PRINT_ERROR, _T("CDXA: unable to open CD CHD: %s\n"), path);
 		return 1;
+	}
 	if (ChdGetContainerType(CdxaDisc) != CHD_CONTAINER_CD) {
+		bprintf(PRINT_ERROR, _T("CDXA: CHD is not a CD image: %s\n"), path);
 		CdxaExit();
 		return 1;
 	}
 	CdxaRAM = (UINT8 *)BurnMalloc(0x50000);
 	if (!CdxaRAM) {
+		bprintf(PRINT_ERROR, _T("CDXA: failed to allocate CD interface RAM\n"));
 		CdxaExit();
 		return 1;
 	}
 	memset(CdxaRAM, 0, 0x50000);
 	if (Sh2Init(1)) {
+		bprintf(PRINT_ERROR, _T("CDXA: SH-2 CPU initialization failed\n"));
 		BurnFree(CdxaRAM);
 		CdxaExit();
 		return 1;
