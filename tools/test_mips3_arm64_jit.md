@@ -190,3 +190,57 @@ page conflict planner. Build these two small tests using the target C++
 compiler with -O2. These are correctness tests, not actual game timing or
 multi-threaded rendering/frame checksum tests. Real-device validation
 is still required.
+
+
+## Y2 media/IO follow-up (based on 1d4b359475)
+
+The integrated branch's retroarch8.log reached 91.41% weighted native
+coverage in the 55 matched high-load windows. Render synchronization
+remained approximately 3.05 ms/frame in those windows, while a 189 ms
+peak coincided with substantial NAND I/O. These nested timers are not
+independent costs. This follow-up does not modify the CPU JIT or virtual
+device timing.
+
+* MVC (movie decoder) batches contiguous independent macroblocks.
+  A group must have the same output address, width and height; each
+  macroblock coordinate must be unique; every used reference frame
+  must be entirely in RAM and not overlap the output. Repeated blocks,
+  aliases, other device commands and incompatible layouts end a group.
+  Groups of at least 16 blocks use the existing render workers and join
+  before any dependent work. No extra persistent worker threads.
+  FBNEO_Y2_MVC_BATCH=0 restores serial MVC execution.
+* ARM64 NEON accelerates exact half-pel prediction, bidirectional
+  averaging and saturation of residual plus prediction. IDCT and
+  boundary-clamping behavior are unchanged. FBNEO_Y2_MEDIA_SIMD=0
+  restores the scalar media arithmetic.
+* Queue-generation-scoped footprint memoization skips repeated or
+  contained marks that already have sufficient protection. Write
+  tracking is still called before checking the memo; clearing or
+  swapping the pending map invalidates the memo.
+  FBNEO_Y2_FOOTPRINT_MEMO=0 disables this optimization.
+* Decrypted NAND cache: default 32 MiB of page data, four-way LRU,
+  with a last-page shortcut. FBNEO_Y2_NAND_CACHE_MB=2 restores the
+  old 2 MiB direct-mapped layout; 8,16,32,64 select four-way capacities.
+  Default memory increase is approximately 30 MiB plus metadata.
+  Only demanded records are read; no speculative I/O or extra
+  disk threads. Decryption and record addressing are unchanged.
+  Cold CHD reads may still cause a long stall; a larger cache primarily
+  helps recurring data and conflict misses.
+
+Y2 PERF MEDIA reports completed MVC jobs, parallel blocks, batch
+count and wall time, and render/YUV job counts and time. The background
+totals are merged only after the existing worker join, so work can
+cross interval boundaries. These timers overlap CPU/sync/background
+time and are not to be added to frame time.
+Y2 PERF IO reports NAND evictions and footprint call/memo-hit counts.
+Existing profile fields remain intact for comparison.
+
+tools/test_y2_media.cpp includes the actual driver for standalone
+regression tests. Build with the normal d_y2.cpp include paths and
+defines, -ffunction-sections -fdata-sections -Wl,--gc-sections
+and -pthread. It compares the actual sequential and parallel MVC
+outputs (including alias and duplicate barriers), exercises the cache
+addressing/replacement, 20000 exact SIMD arithmetic cases, and 8000
+real driver footprint calls across queue generations. ARM64 runs
+under QEMU, x86-64 directly. This is a functional regression test,
+not a game benchmark or complete frame hash comparison.

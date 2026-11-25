@@ -16,6 +16,8 @@
 #include "rpp324.h"
 #include "y2_pixel_ops.h"
 #include "y2_job_sync.h"
+#include "y2_nand_cache.h"
+#include "y2_media_ops.h"
 #define THREADY_NO_GLOBAL
 #include "thready.h"
 #include <math.h>
@@ -28,15 +30,28 @@
 static bool bY2Profile = false;
 static bool bY2BatchMap = true;
 static bool bY2SelectiveSync = true;
+static bool bY2MvcBatch = true;
+static bool bY2MediaSimd = true;
+static bool bY2FootprintMemo = true;
+struct Y2MediaPerf {
+	UINT64 mvcJobs, mvcBatches, mvcParallel, mvcNs, renderJobs, renderNs, yuvJobs, yuvNs;
+	void Add(const Y2MediaPerf &o) {
+		mvcJobs+=o.mvcJobs; mvcBatches+=o.mvcBatches; mvcParallel+=o.mvcParallel; mvcNs+=o.mvcNs;
+		renderJobs+=o.renderJobs;renderNs+=o.renderNs;yuvJobs+=o.yuvJobs;yuvNs+=o.yuvNs;
+	}
+};
 struct Y2PerfCounters {
 	UINT64 frame, peak, cpuDevices, audio, scanout, sync, wait, protect;
-	UINT64 nandFill, nandRead, nandMisses, bgRender, bgBatches;
+	UINT64 nandFill, nandRead, nandMisses, nandEvictions, bgRender, bgBatches;
+	UINT64 footprintCalls, footprintMemoHits;
+	Y2MediaPerf media;
 	UINT64 mapRanges, mapUpdates, syncCalls, syncPending, syncSelective;
 	UINT32 frames, lateFrames;
 };
 static Y2PerfCounters Y2Perf;
 static Mips3PerfStats Y2CpuPrev;
 static UINT64 Y2BgBatchNs = 0;
+static Y2MediaPerf Y2BgMedia;
 
 static UINT64 Y2PerfNow()
 {
@@ -69,9 +84,16 @@ static void Y2PerfBegin()
 	bY2BatchMap = !batch || strcmp(batch, "0") != 0;
 	const char *selective = getenv("FBNEO_Y2_SELECTIVE_SYNC");
 	bY2SelectiveSync = !selective || strcmp(selective, "0") != 0;
+	const char *mvcBatch = getenv("FBNEO_Y2_MVC_BATCH");
+	bY2MvcBatch = !mvcBatch || strcmp(mvcBatch,"0") != 0;
+	const char *mediaSimd = getenv("FBNEO_Y2_MEDIA_SIMD");
+	bY2MediaSimd = !mediaSimd || strcmp(mediaSimd,"0") != 0;
+	const char *memo = getenv("FBNEO_Y2_FOOTPRINT_MEMO");
+	bY2FootprintMemo = !memo || strcmp(memo,"0") != 0;
 	Y2Perf = {};
 	Y2CpuPrev = {};
 	Y2BgBatchNs = 0;
+	Y2BgMedia = {};
 }
 
 static UINT8 *AllMem;
@@ -170,13 +192,23 @@ static const UINT8 *pNandKeyBits;
 
 #define NAND_RECORD		0x1080		// two 0x840-byte pages: data + spare
 #define NAND_RECORDS	0x40000
-#define NAND_CACHE		512			// decrypted 4KB pages, direct mapped
-
-struct NandCacheLine {
-	INT32 tag;
-	UINT8 data[0x1000];
-};
+// Default 32 MiB of decrypted NAND data, 4-way LRU. A 2 MiB legacy
+// direct-mapped option is retained for low-memory and A/B testing.
+static unsigned nNandLines, nNandWays;
+using NandCacheLine = Y2Nand::Line;
 static NandCacheLine *NandCache;
+static Y2Nand::Cache NandPages;
+
+static void NandCacheConfigure()
+{
+	unsigned mb=32;
+	const char *env=getenv("FBNEO_Y2_NAND_CACHE_MB");
+	if(env && (!strcmp(env,"2") || !strcmp(env,"8") || !strcmp(env,"16") ||
+		!strcmp(env,"32") || !strcmp(env,"64"))) mb=atoi(env);
+	nNandLines=mb*256;
+	nNandWays=mb==2?1:4;
+	bprintf(PRINT_UI,_T("Y2 NAND cache: %u MiB, %u-way, demand only\n"),mb,nNandWays);
+}
 
 static double MvcBasis[8][8];
 
@@ -572,7 +604,7 @@ static void NandInitDecrypt()
 		}
 	}
 
-	for (INT32 i = 0; i < NAND_CACHE; i++) NandCache[i].tag = -1;
+	NandPages.Init(NandCache,nNandLines,nNandWays);
 }
 
 // each record decrypts on its own: the key is in its spare area, the mask depends on the position
@@ -608,16 +640,10 @@ static void NandFill(NandCacheLine *line, INT32 chip, UINT32 record)
 
 static UINT8 *NandPage(INT32 chip, UINT32 offset)
 {
-	UINT32 record = (offset >> 12) & (NAND_RECORDS - 1);
-	INT32 tag = (chip << 18) | record;
-	NandCacheLine *line = &NandCache[(record ^ (chip * (NAND_CACHE / 2))) & (NAND_CACHE - 1)];
-
-	if (line->tag != tag) {
-		NandFill(line, chip, record);
-		line->tag = tag;
-	}
-
-	return line->data;
+	bool evicted;
+	UINT8 *data=NandPages.Get(chip,offset>>12,NandFill,evicted);
+	if(bY2Profile && evicted)Y2Perf.nandEvictions++;
+	return data;
 }
 
 static UINT32 NandRead32(UINT32 a)
@@ -1765,6 +1791,10 @@ static inline UINT8 PageLevel(UINT32 page)
 	return (PendingMap[page] > RunningMap[page]) ? PendingMap[page] : RunningMap[page];
 }
 
+struct Y2FootprintMemoEntry { UINT32 first,last; UINT8 level; };
+static Y2FootprintMemoEntry FootprintMemo[16];
+static UINT32 FootprintGen=~0U, FootprintNext=0;
+
 static void FootprintMark(UINT32 start, UINT64 bytes, UINT8 level)
 {
 	if (bytes == 0 || start >= RAM_SIZE) return;
@@ -1772,10 +1802,24 @@ static void FootprintMark(UINT32 start, UINT64 bytes, UINT8 level)
 	if (end >= RAM_SIZE) end = RAM_SIZE - 1;
 
 	UINT32 first = start >> 12, last = (UINT32)(end >> 12);
+	if (level == PROTECT_WRITE) RamWritten(start, end - start + 1);
+	if (bY2Profile) Y2Perf.footprintCalls++;
+	if (bY2FootprintMemo) {
+		if (FootprintGen != nPendingGen) {
+			memset(FootprintMemo,0,sizeof(FootprintMemo));
+			FootprintGen=nPendingGen;FootprintNext=0;
+		}
+		for (const auto &e : FootprintMemo) {
+			if (e.level>=level && e.first<=first && e.last>=last) {
+				if (bY2Profile)Y2Perf.footprintMemoHits++;
+				return;
+			}
+		}
+		FootprintMemo[FootprintNext++ & 15]={first,last,level};
+	}
 	for (UINT32 page = first; page <= last; page++) {
 		if (PendingMap[page] < level) PendingMap[page] = level;
 	}
-	if (level == PROTECT_WRITE) RamWritten(start, end - start + 1);
 	if (first < nMapMin) nMapMin = first;
 	if (last > nMapMax) nMapMax = last;
 	if (first < nDirtyMin) nDirtyMin = first;
@@ -2012,10 +2056,56 @@ static void ExecJob(const Y2Job &job)
 	}
 }
 
+static const Y2Job *MvcBatchJobs=NULL;
+static UINT32 MvcBatchCount=0;
+static void MvcRows(INT32 part)
+{
+	for(UINT32 i=part;i<MvcBatchCount;i+=nRenderParts)MvcExec(MvcBatchJobs[i]);
+}
+
+static void RunJobs(const Y2Job *jobs, UINT32 count, Y2MediaPerf &perf)
+{
+	for(UINT32 i=0;i<count;) {
+		const UINT64 start=Y2PerfNow();
+		if(jobs[i].type==JOB_MVC) {
+			UINT32 n=1;
+			if(bY2MvcBatch && nY2Workers && count-i>=16) {
+				Y2Media::MvcGroup group;
+				if(group.Append(jobs[i],RAM_SIZE))
+					while(i+n<count && jobs[i+n].type==JOB_MVC && group.Append(jobs[i+n],RAM_SIZE))n++;
+			}
+			// Amortize worker wakeups. The job count is capped by the
+			// original queue, and no other worker dispatch overlaps this.
+			if(n>=16) {
+				const INT32 workers=(INT32)(n/8)-1 < nY2Workers ? (INT32)(n/8)-1 : nY2Workers;
+				MvcBatchJobs=jobs+i;MvcBatchCount=n;
+				WorkerRows=MvcRows;nRenderParts=workers+1;
+				for(INT32 w=0;w<workers;w++)Y2Workers[w].notify();
+				MvcRows(0);
+				for(INT32 w=0;w<workers;w++)Y2Workers[w].notify_wait();
+				WorkerRows=RenderRows;MvcBatchJobs=NULL;MvcBatchCount=0;
+				if(bY2Profile){perf.mvcBatches++;perf.mvcParallel+=n;}
+			} else {
+				for(UINT32 j=0;j<n;j++)MvcExec(jobs[i+j]);
+			}
+			if(bY2Profile){perf.mvcJobs+=n;perf.mvcNs+=Y2PerfElapsed(start);}
+			i+=n;
+		} else {
+			ExecJob(jobs[i]);
+			if(bY2Profile) {
+				if(jobs[i].type==JOB_RENDER){perf.renderJobs++;perf.renderNs+=Y2PerfElapsed(start);}
+				else if(jobs[i].type==JOB_YUV){perf.yuvJobs++;perf.yuvNs+=Y2PerfElapsed(start);}
+			}
+			i++;
+		}
+	}
+}
+
 static void RenderThreadProc()
 {
 	UINT64 start = Y2PerfNow();
-	for (UINT32 i = 0; i < JobsRunning->n; i++) ExecJob(JobsRunning->job[i]);
+	Y2BgMedia={};
+	RunJobs(JobsRunning->job,JobsRunning->n,Y2BgMedia);
 	Y2BgBatchNs = Y2PerfElapsed(start);
 	bBgDone = 1;
 }
@@ -2031,6 +2121,7 @@ static void BgWait()
 	}
 	if (bY2Profile) {
 		Y2Perf.bgRender += Y2BgBatchNs;
+		Y2Perf.media.Add(Y2BgMedia);
 		Y2Perf.bgBatches++;
 	}
 
@@ -2089,7 +2180,7 @@ static void RenderSync()
 
 	BgWait();
 
-	for (UINT32 i = 0; i < JobsPending->n; i++) ExecJob(JobsPending->job[i]);
+	RunJobs(JobsPending->job,JobsPending->n,Y2Perf.media);
 	JobsPending->n = 0;
 	BgListPending = NULL;
 	ClearMap(PendingMap);
@@ -2155,6 +2246,8 @@ static void RenderAsyncInit()
 	AppliedMap = (UINT8*)calloc(RAM_SIZE >> 12, 1);
 	nMapMin = ~0U;
 	nMapMax = 0;
+	FootprintGen=~0U;
+	memset(FootprintMemo,0,sizeof(FootprintMemo));
 	JobsPending = (Y2JobList*)calloc(1, sizeof(Y2JobList));
 	JobsRunning = (Y2JobList*)calloc(1, sizeof(Y2JobList));
 	bRenderBusy = bBgRunning = 0;
@@ -2294,14 +2387,8 @@ static void MvcPredictBlock(UINT32 base, UINT32 vector, INT32 chroma, UINT32 bx,
 	if (sx0 >= 0 && sy0 >= 0 && sx0 + 8 + hx <= pw && sy0 + 8 + hy <= ph
 		&& (UINT64)origin + (UINT64)(sy0 + 7 + hy) * width + sx0 + 8 + hx <= RAM_SIZE) {
 		const UINT8 *src = DrvRAM + origin + sy0 * width + sx0;
-		for (INT32 y = 0; y < 8; y++, src += width) {
-			const UINT8 *s0 = src, *s1 = src + hy * width;
-			if (!hx && !hy) {
-				for (INT32 x = 0; x < 8; x++) pred[y * 8 + x] = s0[x];
-			} else {
-				for (INT32 x = 0; x < 8; x++) pred[y * 8 + x] = (s0[x] + s0[x + hx] + s1[x] + s1[x + hx] + 2) / 4;
-			}
-		}
+		if(bY2MediaSimd) Y2Media::Predict(src,width,hx,hy,pred);
+		else Y2Media::PredictScalar(src,width,hx,hy,pred);
 		return;
 	}
 
@@ -2390,16 +2477,14 @@ static void MvcExec(const Y2Job &job)
 		if (type == 2) MvcPredictBlock(job.ref[1], cmd[3], chroma, bx, by, plane, width, pw, ph, pred);
 		if (type == 3) {
 			MvcPredictBlock(job.ref[1], cmd[3], chroma, bx, by, plane, width, pw, ph, pred2);
-			for (INT32 i = 0; i < 64; i++) pred[i] = (pred[i] + pred2[i] + 1) / 2;
+			if(bY2MediaSimd)Y2Media::Average(pred,pred2);
+			else for (INT32 i = 0; i < 64; i++) pred[i] = (pred[i] + pred2[i] + 1) / 2;
 		}
 
 		for (UINT32 y = 0; y < 8; y++) {
 			UINT8 *dst = DrvRAM + job.out + plane + (by + y) * width + bx;
-			for (UINT32 x = 0; x < 8; x++) {
-				INT32 value = residual[y * 8 + x];
-				if (type) value += pred[y * 8 + x];
-				dst[x] = Clamp(value, 0, 255);
-			}
+			if(bY2MediaSimd)Y2Media::Store(dst,residual+y*8,pred+y*8,type!=0);
+			else Y2Media::StoreScalar(dst,residual+y*8,pred+y*8,type!=0);
 		}
 	}
 }
@@ -2478,7 +2563,7 @@ static void mvc_process()
 			}
 			BgQueue(job);
 		} else {
-			ExecJob(job);
+			RunJobs(&job,1,Y2Perf.media);
 		}
 	}
 }
@@ -2605,7 +2690,7 @@ static void yuv_w(INT32 offset, UINT32 data, UINT32 mask)
 				FootprintMark(out, (UINT64)width * height * ((mode == 3) ? 4 : 2), PROTECT_WRITE);
 				BgQueue(job);
 			} else {
-				ExecJob(job);
+				RunJobs(&job,1,Y2Perf.media);
 			}
 
 			yuv[0x10 / 4] = (yuv[0x10 / 4] & ~0x100U) | 1;
@@ -2896,7 +2981,7 @@ static INT32 MemIndex()
 
 	NandDataLut		= (UINT16*)Next; Next += 0x10000 * sizeof(UINT16);
 	NandKeyLut		= (UINT16*)Next; Next += 0x10000 * sizeof(UINT16);
-	NandCache		= (NandCacheLine*)Next; Next += NAND_CACHE * sizeof(NandCacheLine);
+	NandCache		= (NandCacheLine*)Next; Next += nNandLines * sizeof(NandCacheLine);
 
 	DrvGfxList		= (UINT32*)Next; Next += 2 * GFX_LIST_WORDS * sizeof(UINT32);
 
@@ -2973,6 +3058,7 @@ static void DrvDoReset()
 static INT32 DrvInit(UINT16 seed, const UINT8 *data_bits, const UINT8 *key_bits, INT32 snd_roms, UINT32 state_megabytes)
 {
 	Y2PerfBegin();
+	NandCacheConfigure();
 	ScanMainRamInit(state_megabytes);
 
 	nSndROMLen = snd_roms * 0x8000000;
@@ -3260,6 +3346,14 @@ static void Y2PerfFrameDone(UINT64 start)
 		(unsigned long long)(cur.nativeBranches - Y2CpuPrev.nativeBranches),
 		(unsigned long long)Y2Perf.syncCalls, (unsigned long long)Y2Perf.syncPending,
 		(unsigned long long)Y2Perf.syncSelective, (unsigned long long)Y2Perf.mapUpdates, (unsigned long long)Y2Perf.mapRanges);
+	bprintf(PRINT_UI,_T("Y2 PERF MEDIA: MVC jobs %llu parallel %llu batches %llu ms/frame %.2f; render %llu %.2f; YUV %llu %.2f\n"),
+		(unsigned long long)Y2Perf.media.mvcJobs,(unsigned long long)Y2Perf.media.mvcParallel,
+		(unsigned long long)Y2Perf.media.mvcBatches,Y2Perf.media.mvcNs*scale,
+		(unsigned long long)Y2Perf.media.renderJobs,Y2Perf.media.renderNs*scale,
+		(unsigned long long)Y2Perf.media.yuvJobs,Y2Perf.media.yuvNs*scale);
+	bprintf(PRINT_UI,_T("Y2 PERF IO: NAND evictions %llu; footprint calls %llu memo hits %llu\n"),
+		(unsigned long long)Y2Perf.nandEvictions,(unsigned long long)Y2Perf.footprintCalls,
+		(unsigned long long)Y2Perf.footprintMemoHits);
 	Y2CpuPrev = cur;
 	Y2Perf = {};
 }
