@@ -101,6 +101,7 @@ struct Mips3Insn {
 	UINT16 cyc;		// instructions run in the block up to this one included (pseudo ops do not count)
 #if MIPS3_ARM64_JIT
 	UINT16 jit_count;
+	UINT16 jit_memory;
 	UINT32 jit_offset;
 #endif
 };
@@ -249,6 +250,8 @@ static UINT32 ArenaUsed = 0;
 static Mips3Arm64Jit::Cache JitCache;
 static bool bMips3Jit = false;
 static unsigned nJitMinSpan = 3;
+static bool bMips3FastRam = false;
+static UINT64 nJitRamHits = 0, nJitRamMisses = 0;
 static UINT64 nJitSpansBuilt = 0, nJitSpansRun = 0, nJitInsns = 0;
 static UINT64 nPerfGuest = 0, nPerfUncached = 0, nPerfFlushes = 0;
 static bool bMips3CollectPerf = false;
@@ -503,6 +506,11 @@ struct Mips3HostEntry {
 	UINT8 *host;
 };
 
+#if MIPS3_ARM64_JIT
+static_assert(MIPS3_HOST_ENTRIES == 512 && sizeof(Mips3HostEntry) == 16 &&
+	offsetof(Mips3HostEntry, tag) == 0 && offsetof(Mips3HostEntry, host) == 8,
+	"ARM64 guarded RAM emitter must match host cache layout");
+#endif
 static Mips3HostEntry HostRead[MIPS3_HOST_ENTRIES];
 static Mips3HostEntry HostWrite[MIPS3_HOST_ENTRIES];
 
@@ -2518,26 +2526,38 @@ static void IdleAnalyse(Mips3Block *b, const Mips3Insn *tmp, INT32 n)
 
 #if MIPS3_ARM64_JIT
 // Native spans cannot change PC, event deadlines or Mx.lim. Branches,
-// delay slots, pseudo ops, memory and trapping ops keep their old handlers.
+// delay slots, pseudo ops and trapping ops keep their handlers. Guarded
+// RAM accesses return before any cache miss so the existing handler owns it.
 static void BuildNativeSpans(Mips3Block *b)
 {
 	if (!bMips3Jit || JitCache.Denied()) return;
-	uint32_t words[MIPS3_SUPER_MAX * (Mips3Arm64Jit::MaxWordsPerInsn + 2)];
+	uint32_t words[MIPS3_SUPER_MAX * (Mips3Arm64Jit::MaxMemoryWords + 4)];
 	unsigned used = 0;
 	for (unsigned i = 0; i < b->count;) {
-		unsigned start = i, entry = used;
+		unsigned start = i, entry = used, memory = 0;
+		bool prevAlu = false;
 		words[used++] = Mips3Arm64Jit::Entry;
 		while (i < b->count) {
 			Mips3Insn &I = b->insn[i];
 			if (I.flags || IsPseudoOp(I.fn)) break;
-			int n = Mips3Arm64Jit::EmitAdjacent(I.op, words + used, used > entry + 1);
-			if (n < 0) break;
+			int n = Mips3Arm64Jit::EmitAdjacent(I.op, words + used, prevAlu);
+			if (n < 0) {
+				if (!bMips3FastRam) break;
+				n = Mips3Arm64Jit::EmitMemory(I.op, words + used, i - start, memory);
+				if (n < 0) break;
+				memory++;
+				prevAlu = false; // no dead-store elimination across a guard
+			} else if (n > 0) {
+				prevAlu = true;
+			}
 			used += n;
 			i++;
 		}
 		if (i - start >= nJitMinSpan && used > entry + 1) {
-			words[used++] = Mips3Arm64Jit::Ret;
+			if (memory) used += Mips3Arm64Jit::EmitReturn(words + used, i - start, memory);
+			else words[used++] = Mips3Arm64Jit::Ret;
 			b->insn[start].jit_count = i - start;
+			b->insn[start].jit_memory = memory;
 			b->insn[start].jit_offset = entry * sizeof(uint32_t);
 		} else {
 			used = entry;
@@ -2665,6 +2685,7 @@ static Mips3Block *BuildBlock(Mips3BlockPage *bp, UINT8 *host, UINT32 off)
 		tmp[i].cyc = c;
 #if MIPS3_ARM64_JIT
 		tmp[i].jit_count = 0;
+		tmp[i].jit_memory = 0;
 		tmp[i].jit_offset = 0;
 #endif
 	}
@@ -2937,10 +2958,21 @@ static MIPS3_INLINE void ExecBlock(Mips3Block *b)
 		do {
 			if (I->jit_count) {
 				const unsigned count = I->jit_count;
-				JitCache.Run(I->jit_offset, reinterpret_cast<uint64_t *>(M.r));
+				unsigned done = count;
+				if (I->jit_memory) {
+					const uint32_t result = JitCache.RunGuarded(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite);
+					done = result & 0xffff;
+					nJitRamHits += result >> 16;
+					if (done != count) nJitRamMisses++;
+				} else {
+					JitCache.Run(I->jit_offset, reinterpret_cast<uint64_t *>(M.r));
+				}
 				nJitSpansRun++;
-				nJitInsns += count;
-				I += count;
+				nJitInsns += done;
+				I += done;
+				// The failing instruction has not run; use its original handler
+				// with the exact PC/cycle/exception context. No native retry here.
+				if (done != count) { I->fn(I); ++I; }
 			} else {
 				I->fn(I);
 				++I;
@@ -3330,6 +3362,7 @@ INT32 mips3_init(INT32 type)
 	bMips3Initted = 1;
 #if MIPS3_ARM64_JIT
 	nJitSpansBuilt = nJitSpansRun = nJitInsns = 0;
+	nJitRamHits = nJitRamMisses = 0;
 	nPerfGuest = nPerfUncached = nPerfFlushes = 0;
 	const char *perf = getenv("FBNEO_Y2_PROFILE");
 	bMips3CollectPerf = IS_VR5500 && (!perf || strcmp(perf, "0") != 0);
@@ -3344,7 +3377,12 @@ INT32 mips3_init(INT32 type)
 	bMips3Jit = IS_VR5500;
 	if (jit && strcmp(jit, "0") == 0) bMips3Jit = false;
 	if (jit && strcmp(jit, "1") == 0) bMips3Jit = true;
-	bprintf(PRINT_UI, _T("MIPS3 ARM64 experimental JIT: %s, min span %u\n"), bMips3Jit ? _T("enabled") : _T("disabled"), nJitMinSpan);
+	const char *fastRam = getenv("FBNEO_MIPS3_JIT_FASTRAM");
+	bMips3FastRam = IS_VR5500;
+	if (fastRam && strcmp(fastRam, "0") == 0) bMips3FastRam = false;
+	if (fastRam && strcmp(fastRam, "1") == 0) bMips3FastRam = true;
+	bprintf(PRINT_UI, _T("MIPS3 ARM64 experimental JIT: %s, min span %u, guarded Fast RAM %s\n"),
+		bMips3Jit ? _T("enabled") : _T("disabled"), nJitMinSpan, bMips3FastRam ? _T("enabled") : _T("disabled"));
 #endif
 	return 0;
 }
@@ -3356,6 +3394,8 @@ void mips3_get_perf_stats(Mips3PerfStats *stats)
 	stats->guestInstructions = nPerfGuest;
 	stats->uncachedSteps = nPerfUncached;
 	stats->nativeInstructions = nJitInsns;
+	stats->nativeRamHits = nJitRamHits;
+	stats->nativeRamMisses = nJitRamMisses;
 	stats->nativeSpans = nJitSpansRun;
 	stats->nativeBuilt = nJitSpansBuilt;
 	stats->cacheFlushes = nPerfFlushes;
@@ -3386,7 +3426,7 @@ void mips3_exit()
 	if (!bMips3Initted) return;
 #if MIPS3_ARM64_JIT
 	if (bMips3Jit || nJitSpansBuilt) {
-		bprintf(PRINT_NORMAL, _T("MIPS3 ARM64 JIT: %llu spans built, %llu spans run, %llu guest ALU instructions%s\n"),
+		bprintf(PRINT_NORMAL, _T("MIPS3 ARM64 JIT: %llu spans built, %llu spans run, %llu guest native instructions%s\n"),
 			(unsigned long long)nJitSpansBuilt, (unsigned long long)nJitSpansRun, (unsigned long long)nJitInsns,
 			JitCache.Denied() ? _T(" (executable mapping denied; fallback)") : _T(""));
 	}

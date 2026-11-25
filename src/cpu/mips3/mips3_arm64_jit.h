@@ -1,7 +1,7 @@
 // Experimental ARM64 backend for the shared MIPS3/VR5500 cached interpreter.
 // SPDX-License-Identifier: BSD-3-Clause
-// Only non-trapping GPR ALU operations are emitted here. The existing core
-// owns PC, cycles, branches, exceptions, TLB, memory and device side effects.
+// Non-trapping GPR ALU operations and guarded host-cache RAM accesses.
+// The existing core owns PC, cycles, branches, exceptions, TLB and device side effects.
 #ifndef FBNEO_MIPS3_ARM64_JIT_H
 #define FBNEO_MIPS3_ARM64_JIT_H
 
@@ -13,11 +13,13 @@
 
 namespace Mips3Arm64Jit {
 
-// AAPCS64: x0 = GPR array, x1/x2 = scratch. No callee-saved registers,
-// stack changes, indirect guest accesses, or calls into the interpreter.
+// AAPCS64: x0 = GPR array, x1/x2 = ALU scratch; guarded spans also receive
+// x3/x4 = read/write host caches and use x5-x8. No callee-saved registers,
+// stack changes or calls. Guard failures return before the faulting instruction.
 static const uint32_t Entry = 0xd503245f; // BTI c (hint on older CPUs)
 static const uint32_t Ret = 0xd65f03c0;
 static const unsigned MaxWordsPerInsn = 6;
+static const unsigned MaxMemoryWords = 18;
 
 inline uint32_t Load(unsigned host, unsigned guest)
 {
@@ -178,6 +180,66 @@ inline int EmitAdjacent(uint32_t op, uint32_t *out, bool hasPrevious)
 	return n;
 }
 
+// MAME's fast RAM idea, adapted to FBNeo's already validated host-page cache.
+// Each entry has a virtual page tag and host pointer (16 bytes on AArch64).
+// Every access checks the tag AND alignment, so protected pages, MMIO, TLB
+// misses, code writes and first tracked writes fall back to the real handler.
+// Return w0 = completed guest instructions | completed memory ops << 16.
+inline int EmitReturn(uint32_t *out, unsigned completed, unsigned memory)
+{
+	out[0] = 0x52800000u | (completed << 5); // MOVZ w0,#completed
+	out[1] = 0x72a00000u | (memory << 5);    // MOVK w0,#memory,LSL #16
+	out[2] = Ret;
+	return 3;
+}
+
+inline int EmitMemory(uint32_t op, uint32_t *out, unsigned completed, unsigned memory)
+{
+	const unsigned opc = op >> 26, rs = (op >> 21) & 31, rt = (op >> 16) & 31;
+	unsigned sizeLog2;
+	uint32_t access;
+	bool write = false;
+	switch (opc) {
+		case 0x20: sizeLog2 = 0; access = 0x38a568c1u; break; // LB
+		case 0x24: sizeLog2 = 0; access = 0x386568c1u; break; // LBU
+		case 0x21: sizeLog2 = 1; access = 0x78a568c1u; break; // LH
+		case 0x25: sizeLog2 = 1; access = 0x786568c1u; break; // LHU
+		case 0x23: sizeLog2 = 2; access = 0xb8a568c1u; break; // LW
+		case 0x27: sizeLog2 = 2; access = 0xb86568c1u; break; // LWU
+		case 0x37: sizeLog2 = 3; access = 0xf86568c1u; break; // LD
+		case 0x28: sizeLog2 = 0; access = 0x382568c1u; write = true; break; // SB
+		case 0x29: sizeLog2 = 1; access = 0x782568c1u; write = true; break; // SH
+		case 0x2b: sizeLog2 = 2; access = 0xb82568c1u; write = true; break; // SW
+		case 0x3f: sizeLog2 = 3; access = 0xf82568c1u; write = true; break; // SD
+		default: return -1;
+	}
+	if (!write && !rt) return -1; // retain even MMIO reads into r0
+	int n = 0;
+	const int32_t imm = int16_t(op);
+	out[n++] = Load(5, rs);
+	if (imm) {
+		if (imm >= -4095 && imm <= 4095) {
+			out[n++] = (imm < 0 ? 0x510000a5u : 0x110000a5u) | (uint32_t(imm < 0 ? -imm : imm) << 10);
+		} else {
+			out[n++] = Immediate(6, uint16_t(imm), true);
+			out[n++] = 0x0b0600a5u; // ADD w5,w5,w6
+		}
+	}
+	out[n++] = 0x530c50a6u; // UBFX w6,w5,#12,#9 (512 entries)
+	out[n++] = write ? 0x8b061086u : 0x8b061066u; // ADD x6,x4/x3,x6,LSL #4
+	out[n++] = 0xb94000c7u; // LDR w7,[x6] (tag)
+	out[n++] = 0x12144ca8u + (sizeLog2 << 10); // AND w8,w5,#page|align mask
+	out[n++] = 0x6b0800ffu; // CMP w7,w8
+	out[n++] = 0x54000080u; // B.EQ over three-word side exit
+	n += EmitReturn(out + n, completed, memory);
+	out[n++] = 0xf94004c6u; // LDR x6,[x6,#8] (host page)
+	out[n++] = 0x12002ca5u; // AND w5,w5,#0xfff
+	if (write) out[n++] = Load(1, rt);
+	out[n++] = access; // LDR/STR [x6,x5], correct width and sign
+	if (!write) out[n++] = Store(rt);
+	return n;
+}
+
 // Bounded W^X code cache: publish whole page-aligned batches, never rewrite
 // executable pages. Exhaustion or a denied executable mapping means fallback.
 // Lifetime follows the interpreter's decoded-block arena, not guest state.
@@ -221,6 +283,9 @@ public:
 	}
 	void Run(uint32_t offset, uint64_t *r) const {
 		reinterpret_cast<void (*)(uint64_t *)>(base_ + offset)(r);
+	}
+	uint32_t RunGuarded(uint32_t offset, uint64_t *r, const void *read, const void *write) const {
+		return reinterpret_cast<uint32_t (*)(uint64_t *, uintptr_t, uintptr_t, const void *, const void *)>(base_ + offset)(r, 0, 0, read, write);
 	}
 	bool Denied() const { return denied_; }
 	size_t Used() const { return used_; }

@@ -3215,6 +3215,10 @@ static void Y2PerfFrameDone(UINT64 start)
 		(unsigned long long)(cur.nativeBuilt - Y2CpuPrev.nativeBuilt),
 		(unsigned long long)(cur.cacheFlushes - Y2CpuPrev.cacheFlushes),
 		cur.cacheBytes / 1048576.0, (int)cur.mappingDenied);
+	bprintf(PRINT_UI, _T("Y2 PERF RAM: native hits %llu, guard exits %llu, uncached steps %llu\n"),
+		(unsigned long long)(cur.nativeRamHits - Y2CpuPrev.nativeRamHits),
+		(unsigned long long)(cur.nativeRamMisses - Y2CpuPrev.nativeRamMisses),
+		(unsigned long long)(cur.uncachedSteps - Y2CpuPrev.uncachedSteps));
 	Y2CpuPrev = cur;
 	Y2Perf = {};
 }

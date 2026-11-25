@@ -1,10 +1,11 @@
-# Experimental MIPS3 ARM64 native ALU backend
+# Experimental MIPS3 ARM64 native ALU and guarded RAM backend
 
 This is an initial hybrid recompiler, not a full MIPS III/IV dynamic translator.
 It shares the existing decoded-block cache and executes runs of at least three
-non-trapping GPR ALU instructions as AArch64 code. Memory operations, exceptions,
-branches, delay slots, coprocessors, timing and all device callbacks still use
-the original interpreter. The existing idle-loop optimizations remain intact.
+non-trapping GPR ALU or guarded direct-memory instructions as AArch64 code.
+Memory guard misses, exceptions, branches, delay slots, coprocessors, timing
+and device callbacks still use the original interpreter. The existing idle-loop
+optimizations remain intact.
 
 ## Device testing
 
@@ -24,7 +25,7 @@ FBNEO_MIPS3_ARM64_JIT=0 retroarch -v -L /tmp/cores/fbneo_libretro.so /storage/ro
 
 Compare the same scene with the same governor, shader, frameskip and runahead
 settings. Disable runahead and shaders for initial isolation. At core exit the
-JIT reports compiled/executed spans and native guest ALU instruction counts.
+JIT reports compiled/executed spans and native guest instruction counts.
 Those counters demonstrate coverage, not measured speedup. A Linux executable
 mapping failure or a full code cache falls back to the interpreter.
 
@@ -40,7 +41,7 @@ most frontend overhead. CPU+devices includes device handlers; wait, sync,
 map and NAND times are nested and **must not be added together**. Background
 render time is batch wall time collected at join, not extra serial frame cost.
 The native ratio compares executed/attempted interpreter instructions with
-native ALU instructions; idle-loop skipped cycles are not counted as work.
+native instructions; idle-loop skipped cycles are not counted as work.
 Save/runahead/other driver callbacks outside DrvFrame can also contribute to
 the nested timers, so disable runahead and rewind for controlled comparisons.
 
@@ -89,3 +90,28 @@ performance on handheld hardware still require testing.
 - The prototype has no guest register allocator or block linking. Some small
   spans may be slower than the interpreter; actual device profiling is needed
   before expanding the backend or enabling it in master.
+
+## Guarded Fast RAM experiment (MAME-inspired)
+
+Reference: MAME's BSD-3-Clause MIPS III DRC memory accessors
+([mips3drc.cpp](https://github.com/mamedev/mame/blob/master/src/devices/cpu/mips/mips3drc.cpp),
+[ARM64 backend](https://github.com/mamedev/mame/blob/master/src/devices/cpu/drcbearm64.cpp)).
+This is an independent adaptation of the fast-memory/fallback design, **not**
+a port of MAME's UML backend. FBNeo already has read/write host-page caches
+whose tags are invalidated when translation, mappings, or write tracking change.
+
+- Linux AArch64 VR5500 defaults to guarded Fast RAM; R4600 remains opt-in.
+- FBNEO_MIPS3_JIT_FASTRAM=0 restores ALU-only generation; =1 enables it.
+- Supported: LB/LBU/LH/LHU/LW/LWU/LD and SB/SH/SW/SD, little-endian.
+- The tag comparison includes the alignment bits. A failed guard exits
+  before that instruction; its original leaf handler performs any TLB,
+  MMIO, protected-page, first-write, or exception work. No replay of
+  completed instructions. Remaining instructions execute normally.
+- No native branch/delay-slot, unaligned merge, LL/SC, FPU or device access.
+- Y2 PERF RAM reports successful native memory ops, guard exits, and
+  uncached steps. Compare with the same game sequence using FBNEO_MIPS3_JIT_FASTRAM=0 and
+  FBNEO_MIPS3_JIT_FASTRAM=1; a high guard exit rate or larger code cache can offset gains.
+- Regression tests compare all 11 memory instructions, sign extension,
+  address offsets, tag collisions, alignment, protected-page remapping,
+  write tracking, code invalidation, restore, CPU state and cycle debt.
+- QEMU correctness tests are not an Odin 3 throughput benchmark.

@@ -125,10 +125,85 @@ static void TestEmitter(int type)
 	printf("Emitter type %d: %u native sequences / %u guest instructions OK\n", type, cases, cases * length);
 }
 
+// Compare generated memory instructions against the existing leaf handlers.
+// A host-cache miss must exit before changing any GPR or host memory.
+static void TestGuardedMemoryEmitter(int type)
+{
+	nMips3Type = type;
+	static const unsigned ops[] = {0x20,0x24,0x21,0x25,0x23,0x27,0x37,0x28,0x29,0x2b,0x3f};
+	static const unsigned sizes[] = {1,1,2,2,4,4,8,1,2,4,8};
+	static const int offsets[] = {0,1,-1,4095,-4095,4096,-4096,32767,-32768};
+	Mips3Arm64Jit::Cache cache;
+	alignas(8) UINT8 ref[4096], actual[4096];
+	Mips3HostEntry read[MIPS3_HOST_ENTRIES] = {}, write[MIPS3_HOST_ENTRIES] = {};
+	for (unsigned c = 0; c < 2048; c++) {
+		if (!(c % 128)) cache.Reset();
+		unsigned kind = c % 11, size = sizes[kind];
+		bool store = kind >= 7;
+		unsigned rs = 1 + Random() % 31, rt = store ? Random() % 32 : 1 + Random() % 31;
+		int imm = offsets[(c / 11) % 9];
+		UINT32 va = (UINT32(Random()) & ~0xfffU) | ((UINT32(Random()) & 0xfffU) & ~(size - 1));
+		UINT32 page = va & ~0xfffU, idx = (va >> 12) & (MIPS3_HOST_ENTRIES - 1);
+		for (unsigned i = 0; i < 32; i++) M.r[i] = Random();
+		M.r[0] = 0;
+		M.r[rs] = (Random() & 0xffffffff00000000ULL) | UINT32(va - UINT32(imm));
+		for (unsigned i = 0; i < sizeof(ref); i++) ref[i] = UINT8(Random());
+		memcpy(actual, ref, sizeof(ref));
+		uint64_t regs[32];
+		memcpy(regs, M.r, sizeof(regs));
+		const uint64_t originalBase = regs[rs];
+		Mips3Insn I = {};
+		I.op = Imm(ops[kind], rs, rt, imm);
+		UINT32 flags = 0;
+		I.fn = Mips3Decode(I.op, &flags);
+		InsnFields(&I);
+		Require(flags == 0, "memory test instruction unexpectedly changes flow");
+		HOST_R(va)->tag = HOST_W(va)->tag = page;
+		HOST_R(va)->host = HOST_W(va)->host = ref;
+		I.fn(&I);
+		read[idx].tag = write[idx].tag = page;
+		read[idx].host = write[idx].host = actual;
+		uint32_t words[32], offset = 0;
+		unsigned used = 0;
+		words[used++] = Mips3Arm64Jit::Entry;
+		int n = Mips3Arm64Jit::EmitMemory(I.op, words + used, 0, 0);
+		Require(n > 0 && n <= int(Mips3Arm64Jit::MaxMemoryWords), "memory emitter failed");
+		used += n;
+		used += Mips3Arm64Jit::EmitReturn(words + used, 1, 1);
+		Require(cache.Publish(words, used, offset), "publish memory span");
+		Require(cache.RunGuarded(offset, regs, read, write) == 0x10001, "aligned hit failed");
+		Require(!memcmp(regs, M.r, sizeof(regs)) && !memcmp(ref, actual, sizeof(ref)), "native RAM result differs");
+		// Wrong tag, including a page-cache collision, must side exit.
+		read[idx].tag = write[idx].tag = page ^ 0x200000;
+		regs[rs] = originalBase;
+		uint64_t before[32];
+		memcpy(before, regs, sizeof(before));
+		Require(cache.RunGuarded(offset, regs, read, write) == 0, "wrong-tag access did not exit");
+		Require(!memcmp(before, regs, sizeof(regs)) && !memcmp(ref, actual, sizeof(ref)), "guard exit changed state");
+		// Alignment guard (same page, unaligned effective address).
+		if (size > 1 && rs != rt) {
+			read[idx].tag = write[idx].tag = page;
+			regs[rs] += 1;
+			memcpy(before, regs, sizeof(before));
+			Require(cache.RunGuarded(offset, regs, read, write) == 0, "unaligned access did not exit");
+			Require(!memcmp(before, regs, sizeof(regs)) && !memcmp(ref, actual, sizeof(ref)), "unaligned exit changed state");
+		}
+	}
+	HostCacheFlush();
+	printf("Guarded RAM type %d: 2048 load/store comparisons and side exits OK\n", type);
+}
+
+static UINT32 *mappedData;
+static unsigned mappedReads, mappedWrites, trackedWrites;
+static UINT32 __fastcall TestReadWord(UINT32 a) { mappedReads++; return BURN_ENDIAN_SWAP_INT32(mappedData[(a & 0xfff) / 4]); }
+static void __fastcall TestWriteWord(UINT32 a, UINT32 v) { mappedWrites++; mappedData[(a & 0xfff) / 4] = BURN_ENDIAN_SWAP_INT32(v); }
+static void TestTrackWrite(UINT32) { trackedWrites++; }
+
 struct Snapshot {
 	Mips3State state;
 	UINT32 data;
 	INT32 cycleDebt;
+	unsigned mappedReads, mappedWrites, trackedWrites;
 };
 
 static std::vector<Snapshot> RunProgram(int type, bool enable)
@@ -140,7 +215,7 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 		Imm(9, 0, 1, 37), Imm(0xf, 0, 2, 0x8000), Imm(0xd, 2, 2, 0x1000), Imm(9, 0, 3, 5),
 		// Long initial span exercises configurable thresholds up to eight.
 		Imm(9, 0, 11, 7), Imm(9, 11, 12, 1), Imm(9, 12, 13, 1), Imm(9, 13, 14, 1),
-		// Loop: interpreted load/store and branch around a native ALU span.
+		// Loop: guarded load/store and ALU; branch/delay remain interpreted.
 		Imm(0x23, 2, 4, 0), R(4, 3, 4, 0, 0x21), Imm(0xe, 4, 4, 0x1234), R(0, 4, 5, 3, 0), Imm(0x19, 5, 6, -3),
 		Imm(0x2b, 2, 6, 0), Imm(9, 1, 1, -1), Imm(5, 1, 0, -8), Imm(9, 3, 3, 1),
 		// Likely branch, not taken: its delay slot must be annulled.
@@ -155,13 +230,22 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 	Mips3MapMemory((UINT8 *)ram, 0, 0x1fff, MAP_RAM);
 	Mips3Reset();
 	M.pc = 0x80000000;
-	for (unsigned stage = 0; stage < 3; stage++) {
+	mappedData = ram + 0x1000 / 4;
+	mappedReads = mappedWrites = trackedWrites = 0;
+	UINT8 tracked[2] = {};
+	Mips3SetWriteTrack(tracked, 0x2000, TestTrackWrite);
+	Mips3SetReadWordHandler(3, TestReadWord);
+	Mips3SetWriteWordHandler(3, TestWriteWord);
+	for (unsigned stage = 0; stage < 5; stage++) {
 		for (unsigned i = 0; i < 31; i++) {
 			Mips3Run(17 + i % 13);
 			Snapshot snap = {};
 			snap.state = M;
 			snap.data = ram[0x1000/4];
 			snap.cycleDebt = nMips3ICount;
+			snap.mappedReads = mappedReads;
+			snap.mappedWrites = mappedWrites;
+			snap.trackedWrites = trackedWrites;
 			result.push_back(snap);
 		}
 		Require(M.r[7] == 0 && M.r[0] == 0, "annulled delay or zero register corrupted");
@@ -172,6 +256,14 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 			Mips3InvalidateRange(0, 3);
 		} else if (stage == 1) {
 			Mips3Scan(ACB_WRITE); // restore path flushes decoded and native caches
+		} else if (stage == 2) {
+			// Y2 protects RAM this way while the renderer owns the page.
+			Mips3MapHandler(3, 0x1000, 0x1fff, MAP_READ | MAP_WRITE);
+		} else if (stage == 3) {
+			Require(mappedReads > 0 && mappedWrites > 0, "protected-page handler was bypassed");
+			Mips3MapMemory((UINT8 *)mappedData, 0x1000, 0x1fff, MAP_RAM);
+			tracked[1] = 0;
+			Mips3SetWriteTrack(tracked, 0x2000, TestTrackWrite);
 		}
 		M.pc = 0x80000000;
 	}
@@ -185,10 +277,17 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 		Require(stats.cacheFlushes > 0, "missing cache flush counter");
 	}
 	if (enable) {
+		if (bMips3FastRam) {
+			Require(nJitRamHits > 0 && nJitRamMisses > 0, "guarded RAM hits/exits not exercised");
+			printf("Core type %d: %llu native RAM hits, %llu side exits\n", type,
+				(unsigned long long)nJitRamHits, (unsigned long long)nJitRamMisses);
+		}
 		Require(nJitSpansBuilt > 0 && nJitSpansRun > 0 && nJitInsns > 0, "no native span executed");
 		printf("Core type %d: %llu native spans run, %llu guest instructions\n", type,
 			(unsigned long long)nJitSpansRun, (unsigned long long)nJitInsns);
 	}
+	Require(trackedWrites >= 2, "first-write tracker was bypassed");
+	Mips3SetWriteTrack(NULL, 0, NULL);
 	Mips3Exit();
 	free(ram);
 	return result;
@@ -212,14 +311,17 @@ int main()
 	unsetenv("FBNEO_MIPS3_ARM64_JIT");
 	for (int type = 0; type < 2; type++) {
 		TestEmitter(type);
+		TestGuardedMemoryEmitter(type);
 		std::vector<Snapshot> a = RunProgram(type, false), b = RunProgram(type, true);
 		Require(a.size() == b.size(), "snapshot count differs");
 		for (size_t i = 0; i < a.size(); i++) {
 			Require(!memcmp(&a[i].state, &b[i].state, sizeof(Mips3State)), "CPU state differs");
 			Require(a[i].data == b[i].data && a[i].cycleDebt == b[i].cycleDebt, "memory or cycle debt differs");
+			Require(a[i].mappedReads == b[i].mappedReads && a[i].mappedWrites == b[i].mappedWrites &&
+				a[i].trackedWrites == b[i].trackedWrites, "device or write tracking differs");
 		}
 		printf("Core type %d: %zu interpreter/JIT snapshots identical\n", type, a.size());
 	}
-	puts("PASS: ARM64 native ALU + mixed-block differential tests");
+	puts("PASS: ARM64 native ALU + guarded RAM + mixed-block differential tests");
 	return 0;
 }
