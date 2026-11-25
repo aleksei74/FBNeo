@@ -132,9 +132,9 @@ unsigned int Mips3GetPC()
 	return mips3_get_pc();
 }
 
-int Mips3UseRecompiler(bool)
+int Mips3UseRecompiler(bool use)
 {
-	return 0;
+	return mips3_set_recompiler(use);
 }
 
 // ---------------------------------------------------------------------------

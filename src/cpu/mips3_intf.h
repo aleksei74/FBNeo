@@ -23,7 +23,9 @@ typedef UINT64 (*pMips3ReadDoubleHandler)(UINT32 a);
 typedef void (*pMips3WriteDoubleHandler)(UINT32 a, UINT64 d);
 
 int Mips3Init(int nType = MIPS3_TYPE_R4600);
-int Mips3UseRecompiler(bool use);   // kept for compatibility, ignored
+// Experimental native backend; call after init and outside CPU execution.
+// Returns nonzero if enable is unavailable on the host.
+int Mips3UseRecompiler(bool use);
 int Mips3Exit();
 void Mips3Reset();
 int Mips3Run(int cycles);

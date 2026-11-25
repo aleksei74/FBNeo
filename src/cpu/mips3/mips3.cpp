@@ -28,6 +28,18 @@
 #define MIPS3_DEBUG_TRACE	0
 #endif
 
+// Experimental Linux AArch64 integer-block backend.
+#ifndef MIPS3_ARM64_JIT
+#if defined(__aarch64__) && !defined(__AARCH64EB__) && defined(__linux__) && MIPS3_CACHED_INTERPRETER && !MIPS3_DEBUG_TRACE
+#define MIPS3_ARM64_JIT 1
+#else
+#define MIPS3_ARM64_JIT 0
+#endif
+#endif
+#if MIPS3_ARM64_JIT
+#include "mips3_arm64_jit.h"
+#endif
+
 #define PHYS_MASK			MIPS3_PHYS_MASK
 #define VIRT_PAGES			(1 << 20)
 #define MIPS3_TLB_ENTRIES	48
@@ -87,6 +99,10 @@ struct Mips3Insn {
 	UINT16 flags;
 	UINT8 rs, rt, rd, sa;	// pre-decoded register fields
 	UINT16 cyc;		// instructions run in the block up to this one included (pseudo ops do not count)
+#if MIPS3_ARM64_JIT
+	UINT16 jit_count;
+	UINT32 jit_offset;
+#endif
 };
 
 static inline void InsnFields(Mips3Insn *I)
@@ -229,6 +245,11 @@ static void FastCacheFlush()
 static UINT64 nProfIdle = 0, nProfStep = 0, nProfStart = 0, nProfNext = 0;
 #endif
 static UINT32 ArenaUsed = 0;
+#if MIPS3_ARM64_JIT
+static Mips3Arm64Jit::Cache JitCache;
+static bool bMips3Jit = false;
+static UINT64 nJitSpansBuilt = 0, nJitSpansRun = 0, nJitInsns = 0;
+#endif
 
 static Mips3Handler Mips3Decode(UINT32 op, UINT32 *flags);
 static void Mips3FlushCache();
@@ -2299,6 +2320,9 @@ static void Mips3FlushCache()
 	}
 
 	ArenaUsed = 0;
+#if MIPS3_ARM64_JIT
+	JitCache.Reset(); // decoded blocks referring to native code are gone
+#endif
 	FAST_INVALIDATE();
 }
 
@@ -2488,6 +2512,48 @@ static void IdleAnalyse(Mips3Block *b, const Mips3Insn *tmp, INT32 n)
 	b->nind = nind;
 }
 
+#if MIPS3_ARM64_JIT
+// Native spans cannot change PC, event deadlines or Mx.lim. Branches,
+// delay slots, pseudo ops, memory and trapping ops keep their old handlers.
+static void BuildNativeSpans(Mips3Block *b)
+{
+	if (!bMips3Jit || JitCache.Denied()) return;
+	uint32_t words[MIPS3_SUPER_MAX * (Mips3Arm64Jit::MaxWordsPerInsn + 2)];
+	unsigned used = 0;
+	for (unsigned i = 0; i < b->count;) {
+		unsigned start = i, entry = used;
+		words[used++] = Mips3Arm64Jit::Entry;
+		while (i < b->count) {
+			Mips3Insn &I = b->insn[i];
+			if (I.flags || IsPseudoOp(I.fn)) break;
+			int n = Mips3Arm64Jit::Emit(I.op, words + used);
+			if (n < 0) break;
+			used += n;
+			i++;
+		}
+		if (i - start >= 3 && used > entry + 1) {
+			words[used++] = Mips3Arm64Jit::Ret;
+			b->insn[start].jit_count = i - start;
+			b->insn[start].jit_offset = entry * sizeof(uint32_t);
+		} else {
+			used = entry;
+		}
+		if (i < b->count) i++; // unsupported instruction
+	}
+	uint32_t base = 0;
+	bool published = used && JitCache.Publish(words, used, base);
+	for (unsigned i = 0; i < b->count; i++) {
+		if (!b->insn[i].jit_count) continue;
+		if (published) {
+			b->insn[i].jit_offset += base;
+			nJitSpansBuilt++;
+		} else {
+			b->insn[i].jit_count = 0;
+		}
+	}
+}
+#endif
+
 static Mips3Block *BuildBlock(Mips3BlockPage *bp, UINT8 *host, UINT32 off)
 {
 	Mips3Insn tmp[MIPS3_SUPER_MAX];
@@ -2593,8 +2659,15 @@ static Mips3Block *BuildBlock(Mips3BlockPage *bp, UINT8 *host, UINT32 off)
 		InsnFields(&tmp[i]);
 		if (!IsPseudoOp(tmp[i].fn)) c++;
 		tmp[i].cyc = c;
+#if MIPS3_ARM64_JIT
+		tmp[i].jit_count = 0;
+		tmp[i].jit_offset = 0;
+#endif
 	}
 	memcpy(b->insn, tmp, n * sizeof(Mips3Insn));
+#if MIPS3_ARM64_JIT
+	BuildNativeSpans(b);
+#endif
 
 	if (bp->blk == NULL) bp->blk = (Mips3Block**)calloc(1024, sizeof(Mips3Block*));
 	bp->blk[off >> 2] = b;
@@ -2855,9 +2928,27 @@ static MIPS3_INLINE void ExecBlock(Mips3Block *b)
 	const Mips3Insn *I = b->insn;
 	Mx.lim = I + b->count;
 
-	do {
-		I->fn(I);
-	} while (++I < Mx.lim);
+#if MIPS3_ARM64_JIT
+	if (bMips3Jit) {
+		do {
+			if (I->jit_count) {
+				const unsigned count = I->jit_count;
+				JitCache.Run(I->jit_offset, reinterpret_cast<uint64_t *>(M.r));
+				nJitSpansRun++;
+				nJitInsns += count;
+				I += count;
+			} else {
+				I->fn(I);
+				++I;
+			}
+		} while (I < Mx.lim);
+	} else
+#endif
+	{
+		do {
+			I->fn(I);
+		} while (++I < Mx.lim);
+	}
 
 	INT32 n = I[-1].cyc;
 	M.total_cycles += n;
@@ -3227,12 +3318,48 @@ INT32 mips3_init(INT32 type)
 	VtlbRebuild();
 
 	bMips3Initted = 1;
+#if MIPS3_ARM64_JIT
+	nJitSpansBuilt = nJitSpansRun = nJitInsns = 0;
+	JitCache.Enable();
+	const char *jit = getenv("FBNEO_MIPS3_ARM64_JIT");
+	// This experimental branch defaults to Y2 only. An explicit 0/1
+	// allows A/B testing or opt-in testing on the R4600.
+	bMips3Jit = IS_VR5500;
+	if (jit && strcmp(jit, "0") == 0) bMips3Jit = false;
+	if (jit && strcmp(jit, "1") == 0) bMips3Jit = true;
+	bprintf(PRINT_NORMAL, _T("MIPS3 ARM64 experimental JIT: %s\n"), bMips3Jit ? _T("enabled") : _T("disabled"));
+#endif
 	return 0;
+}
+
+// Only change backend outside mips3_run(), at a CPU lifecycle boundary.
+INT32 mips3_set_recompiler(bool use)
+{
+#if MIPS3_ARM64_JIT
+	if (!bMips3Initted) return use ? 1 : 0;
+	if (bMips3Jit != use) {
+		Mips3FlushCache();
+		bMips3Jit = use;
+		if (use) JitCache.Enable();
+	}
+	return 0;
+#else
+	return use ? 1 : 0;
+#endif
 }
 
 void mips3_exit()
 {
 	if (!bMips3Initted) return;
+#if MIPS3_ARM64_JIT
+	if (bMips3Jit || nJitSpansBuilt) {
+		bprintf(PRINT_NORMAL, _T("MIPS3 ARM64 JIT: %llu spans built, %llu spans run, %llu guest ALU instructions%s\n"),
+			(unsigned long long)nJitSpansBuilt, (unsigned long long)nJitSpansRun, (unsigned long long)nJitInsns,
+			JitCache.Denied() ? _T(" (executable mapping denied; fallback)") : _T(""));
+	}
+	JitCache.Reset();
+	bMips3Jit = false;
+#endif
 
 	WriteTrack = NULL;
 	WriteTrackPages = 0;

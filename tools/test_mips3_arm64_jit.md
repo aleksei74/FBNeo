@@ -1,0 +1,66 @@
+# Experimental MIPS3 ARM64 native ALU backend
+
+This is an initial hybrid recompiler, not a full MIPS III/IV dynamic translator.
+It shares the existing decoded-block cache and executes runs of at least three
+non-trapping GPR ALU instructions as AArch64 code. Memory operations, exceptions,
+branches, delay slots, coprocessors, timing and all device callbacks still use
+the original interpreter. The existing idle-loop optimizations remain intact.
+
+## Device testing
+
+On this experimental branch, Linux AArch64 builds enable the backend by default
+for the VR5500 (System Board Y2). R4600 (Killer Instinct) defaults to interpreter.
+Set `FBNEO_MIPS3_ARM64_JIT=0` in the RetroArch process environment to compare
+against the interpreter; set it to `1` to explicitly enable either CPU type.
+Other architectures continue using the interpreter. Define `MIPS3_ARM64_JIT=0`
+at compile time to exclude the experimental backend entirely.
+
+Example (adapt the config/ROM paths to the target):
+
+```sh
+FBNEO_MIPS3_ARM64_JIT=1 retroarch -v -L /tmp/cores/fbneo_libretro.so /storage/roms/fbneo/kof2002um.zip
+FBNEO_MIPS3_ARM64_JIT=0 retroarch -v -L /tmp/cores/fbneo_libretro.so /storage/roms/fbneo/kof2002um.zip
+```
+
+Compare the same scene with the same governor, shader, frameskip and runahead
+settings. Disable runahead and shaders for initial isolation. At core exit the
+JIT reports compiled/executed spans and native guest ALU instruction counts.
+Those counters demonstrate coverage, not measured speedup. A Linux executable
+mapping failure or a full code cache falls back to the interpreter.
+
+## Differential test
+
+`tools/test_mips3_arm64_jit.cpp` is a standalone AArch64 test (not linked into
+the emulator). It includes the real CPU implementation so it can compare all
+GPRs against its actual decoded instruction handlers, then compare CPU state,
+memory, PC, cycle debt, and cache invalidation/rebuild across mixed blocks with
+the backend disabled/enabled. Both R4600 and VR5500 are tested.
+
+Use the compiler and flags from the libretro build:
+
+```sh
+make -Bn -C src/burner/libretro platform=unix ../../cpu/mips3/mips3.o ../../cpu/mips3_intf.o
+```
+
+From `src/burner/libretro`, substitute the Linux AArch64 cross compiler for g++,
+remove `-DNDEBUG`, compile `../../../tools/test_mips3_arm64_jit.cpp` in place
+of `../../cpu/mips3/mips3.cpp`, and compile `../../cpu/mips3_intf.cpp` separately.
+Link the two test objects into a standalone executable with the same compiler.
+Run on Linux AArch64, or under `qemu-aarch64 -L <target-runtime-root>` on x86-64.
+The runtime root needs the AArch64 dynamic loader and target C/C++ libraries
+if linking dynamically. No ROMs or copyrighted game data are needed.
+
+Initial test coverage: 2,048 randomized sequences of 66 instructions per CPU
+type; mixed ALU/load/store/branch blocks; annulled branch-likely delay slot;
+guest code invalidation; save-state cache rebuild. Real game compatibility and
+performance on handheld hardware still require testing.
+
+## Limitations
+
+- No native memory, branch, floating-point, HI/LO or trapping instructions.
+- The native code cache is bounded and uses page-aligned RW-to-RX publication.
+  Native code is discarded when the decoded-block arena is flushed; it is not
+  serialized. Invalidated individual blocks cannot be looked up again.
+- The prototype has no guest register allocator or block linking. Some small
+  spans may be slower than the interpreter; actual device profiling is needed
+  before expanding the backend or enabling it in master.

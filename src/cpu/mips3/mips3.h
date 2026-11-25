@@ -38,6 +38,7 @@ extern pMips3ReadDoubleHandler Mips3ReadDoubleH[MIPS3_MAXHANDLER];
 extern pMips3WriteDoubleHandler Mips3WriteDoubleH[MIPS3_MAXHANDLER];
 
 INT32 mips3_init(INT32 type);
+INT32 mips3_set_recompiler(bool use);
 void mips3_exit();
 void mips3_reset();
 void mips3_scan(INT32 nAction);
