@@ -53,6 +53,7 @@ static uint32_t RandomOp(unsigned kind)
 	if (kind < 8) return Imm(immediate[kind], kind == 6 ? 0 : rs, rt, Random());
 	if (kind < 18) return R(rs, rt, rd, 0, arithmetic[kind - 8]);
 	if (kind < 27) return R(0, rt, rd, sa, shift[kind - 18]);
+	if (kind >= 33) return R(rs, rt, rd, 0, kind == 33 ? 0x0a : 0x0b);
 	return R(rs, rt, rd, 0, variable[kind - 27]);
 }
 
@@ -74,12 +75,14 @@ static void TestEmitter(int type)
 		words[used++] = Mips3Arm64Jit::Entry;
 		for (unsigned i = 0; i < length; i++) {
 			Mips3Insn I = {};
-			I.op = RandomOp((i + c) % 33);
+			I.op = RandomOp((i + c) % 35);
+			if ((I.op >> 26) == 0 && ((I.op & 63) == 0x0a || (I.op & 63) == 0x0b) && (c & 1))
+				I.op &= ~(31u << 16); // force zero condition
 			UINT32 flags = 0;
 			I.fn = Mips3Decode(I.op, &flags);
 			InsnFields(&I);
 			Require(flags == 0, "test instruction unexpectedly changes flow");
-			int n = Mips3Arm64Jit::Emit(I.op, words + used);
+			int n = Mips3Arm64Jit::EmitAdjacent(I.op, words + used, used > 1);
 			Require(n >= 0 && n <= int(Mips3Arm64Jit::MaxWordsPerInsn), "emitter rejected supported instruction");
 			used += n;
 			I.fn(&I);
@@ -114,6 +117,8 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 	Require(ram != NULL, "allocate synthetic RAM");
 	const uint32_t code[] = {
 		Imm(9, 0, 1, 37), Imm(0xf, 0, 2, 0x8000), Imm(0xd, 2, 2, 0x1000), Imm(9, 0, 3, 5),
+		// Long initial span exercises configurable thresholds up to eight.
+		Imm(9, 0, 11, 7), Imm(9, 11, 12, 1), Imm(9, 12, 13, 1), Imm(9, 13, 14, 1),
 		// Loop: interpreted load/store and branch around a native ALU span.
 		Imm(0x23, 2, 4, 0), R(4, 3, 4, 0, 0x21), Imm(0xe, 4, 4, 0x1234), R(0, 4, 5, 3, 0), Imm(0x19, 5, 6, -3),
 		Imm(0x2b, 2, 6, 0), Imm(9, 1, 1, -1), Imm(5, 1, 0, -8), Imm(9, 3, 3, 1),
@@ -121,7 +126,7 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 		Imm(0x14, 0, 3, 1), Imm(9, 7, 7, 77),
 		Imm(9, 0, 8, -1), Imm(0xc, 8, 9, 0x8000), R(8, 9, 10, 0, 0x27),
 		// Spin at the end, allowing the existing idle optimizer to run.
-		0x08000012, 0
+		0x08000016, 0
 	};
 	for (unsigned i = 0; i < sizeof(code)/sizeof(code[0]); i++) ram[i] = BURN_ENDIAN_SWAP_INT32(code[i]);
 	Mips3Init(type);

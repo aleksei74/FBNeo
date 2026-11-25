@@ -248,6 +248,7 @@ static UINT32 ArenaUsed = 0;
 #if MIPS3_ARM64_JIT
 static Mips3Arm64Jit::Cache JitCache;
 static bool bMips3Jit = false;
+static unsigned nJitMinSpan = 3;
 static UINT64 nJitSpansBuilt = 0, nJitSpansRun = 0, nJitInsns = 0;
 static UINT64 nPerfGuest = 0, nPerfUncached = 0, nPerfFlushes = 0;
 static bool bMips3CollectPerf = false;
@@ -2529,12 +2530,12 @@ static void BuildNativeSpans(Mips3Block *b)
 		while (i < b->count) {
 			Mips3Insn &I = b->insn[i];
 			if (I.flags || IsPseudoOp(I.fn)) break;
-			int n = Mips3Arm64Jit::Emit(I.op, words + used);
+			int n = Mips3Arm64Jit::EmitAdjacent(I.op, words + used, used > entry + 1);
 			if (n < 0) break;
 			used += n;
 			i++;
 		}
-		if (i - start >= 3 && used > entry + 1) {
+		if (i - start >= nJitMinSpan && used > entry + 1) {
 			words[used++] = Mips3Arm64Jit::Ret;
 			b->insn[start].jit_count = i - start;
 			b->insn[start].jit_offset = entry * sizeof(uint32_t);
@@ -3334,12 +3335,16 @@ INT32 mips3_init(INT32 type)
 	bMips3CollectPerf = IS_VR5500 && (!perf || strcmp(perf, "0") != 0);
 	JitCache.Enable();
 	const char *jit = getenv("FBNEO_MIPS3_ARM64_JIT");
+	const char *span = getenv("FBNEO_MIPS3_JIT_MIN_SPAN");
+	nJitMinSpan = 3;
+	if (span && span[0] >= '2' && span[0] <= '8' && !span[1])
+		nJitMinSpan = unsigned(span[0] - '0');
 	// This experimental branch defaults to Y2 only. An explicit 0/1
 	// allows A/B testing or opt-in testing on the R4600.
 	bMips3Jit = IS_VR5500;
 	if (jit && strcmp(jit, "0") == 0) bMips3Jit = false;
 	if (jit && strcmp(jit, "1") == 0) bMips3Jit = true;
-	bprintf(PRINT_NORMAL, _T("MIPS3 ARM64 experimental JIT: %s\n"), bMips3Jit ? _T("enabled") : _T("disabled"));
+	bprintf(PRINT_UI, _T("MIPS3 ARM64 experimental JIT: %s, min span %u\n"), bMips3Jit ? _T("enabled") : _T("disabled"), nJitMinSpan);
 #endif
 	return 0;
 }

@@ -45,10 +45,13 @@ Save/runahead/other driver callbacks outside DrvFrame can also contribute to
 the nested timers, so disable runahead and rewind for controlled comparisons.
 
 Test the same fight with JIT on/off using `FBNEO_MIPS3_ARM64_JIT=1/0`.
-Also try `FBNEO_Y2_RENDER_WORKERS=2` or `=4` (maximum is the automatic count).
+The experimental Linux ARM64 default now caps renderer helpers at four.
+Compare `FBNEO_Y2_RENDER_WORKERS=2`, `=4`, and `=6` on an eight-core host
+(maximum is the original automatic count). An explicit value overrides the cap.
+The JIT also supports MOVZ/MOVN and removes redundant adjacent GPR reloads. Use `FBNEO_MIPS3_JIT_MIN_SPAN=2` or `=5`
+to compare shorter/longer native spans against the unchanged default of 3.
 This limits only the renderer helper threads, not the main CPU thread or the
-asynchronous renderer coordinator. Unset the variable to restore automatic
-thread selection. Compare core average, peak and late frames, not just FPS.
+asynchronous renderer coordinator. Unset the variable to restore the experimental four-helper default on Linux ARM64. Compare core average, peak and late frames, not just FPS.
 
 ## Differential test
 

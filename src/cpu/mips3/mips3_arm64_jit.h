@@ -77,6 +77,15 @@ inline int Emit(uint32_t op, uint32_t *out)
 			default:
 				if (sa) return -1;
 				switch (fn) {
+					case 0x0a: case 0x0b: // MOVZ / MOVN: preserve old destination
+						if (!dst) return 0;
+						out[n++] = Load(1, rs);
+						out[n++] = Load(2, rt);
+						out[n++] = 0xf100005fu; // CMP x2,#0
+						out[n++] = Load(2, dst);
+						out[n++] = 0x9a820021u | (fn == 0x0b ? 0x1000u : 0); // CSEL x1,x1,x2,EQ/NE
+						out[n++] = Store(dst);
+						return n;
 					case 0x21: alu = 0x0b000000u; narrow = true; break; // ADDU
 					case 0x23: alu = 0x4b000000u; narrow = true; break; // SUBU
 					case 0x24: alu = 0x8a000000u; break; // AND
@@ -125,6 +134,21 @@ inline int Emit(uint32_t op, uint32_t *out)
 		if (narrow) out[n++] = 0x93407c21u;
 	}
 	out[n++] = Store(dst);
+	return n;
+}
+
+// Keep x1 live across adjacent emitted instructions when the preceding
+// instruction stored the same guest register. Never cross a span boundary.
+inline int EmitAdjacent(uint32_t op, uint32_t *out, bool hasPrevious)
+{
+	int n = Emit(op, out);
+	if (n > 0 && hasPrevious) {
+		const uint32_t prev = out[-1];
+		if ((prev & ~uint32_t(31u << 10)) == Store(0) &&
+			out[0] == Load(1, (prev >> 10) & 31)) {
+			memmove(out, out + 1, size_t(--n) * sizeof(uint32_t));
+		}
+	}
 	return n;
 }
 

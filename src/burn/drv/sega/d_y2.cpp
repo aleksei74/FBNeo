@@ -1492,8 +1492,12 @@ static void RenderInit()
 	if (nY2Workers < 0) nY2Workers = 0;
 
 	// Cap helper threads for controlled A/B tests on heterogeneous CPUs.
-	// Leave the upstream automatic policy unchanged unless explicitly set.
+	// The experimental ARM64 default is four; explicit values allow A/B tests.
 	const char *workers = getenv("FBNEO_Y2_RENDER_WORKERS");
+#if defined(__aarch64__) && defined(__linux__)
+	// Experimental A/B default: reserve headroom for the CPU, audio and frontend.
+	if (!workers && nY2Workers > 4) nY2Workers = 4;
+#endif
 	if (workers && *workers) {
 		char *end = NULL;
 		long count = strtol(workers, &end, 10);
