@@ -8,6 +8,7 @@
 #include "serflash.h"
 #include "rtc9701.h"
 #include "ymz770.h"
+#include <chrono>
 
 #define SH3_CLOCK (12800000 * 8)
 
@@ -43,6 +44,47 @@ static INT32 DriverClock; // selected cpu clockrate
 static INT32 nPrevBurnCPUSpeedAdjust;
 static UINT8 nPrevCPUTenth;
 static INT32 speedhack_burn; // 10ms @ cpu clock, calculated in DrvFrame
+// Host-time profiling, not an emulated clock adjustment.
+static bool cv1kProfile;
+static UINT64 cv1kFrameNs, cv1kCpuNs, cv1kAudioNs, cv1kWaitNs, cv1kDrawNs, cv1kPeakNs;
+static UINT64 cv1kPrevOps, cv1kPrevSpans, cv1kPrevBuilt;
+static unsigned cv1kFrames, cv1kLate;
+static UINT64 Cv1kNow() {
+	return cv1kProfile ? (UINT64)std::chrono::duration_cast<std::chrono::nanoseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count() : 0;
+}
+static void Cv1kProfileInit() {
+	const char *e = getenv("FBNEO_CV1K_PROFILE");
+#if defined(__linux__) && defined(__aarch64__)
+	cv1kProfile = !e || strcmp(e, "0") != 0;
+#else
+	cv1kProfile = e && strcmp(e, "1") == 0;
+#endif
+	cv1kFrameNs = cv1kCpuNs = cv1kAudioNs = cv1kWaitNs = cv1kDrawNs = cv1kPeakNs = 0;
+	cv1kPrevOps = cv1kPrevSpans = cv1kPrevBuilt = 0;
+	cv1kFrames = cv1kLate = 0;
+}
+static void Cv1kProfileFrame(UINT64 start) {
+	if (!cv1kProfile) return;
+	UINT64 ns = Cv1kNow() - start;
+	cv1kFrameNs += ns;
+	if (ns > cv1kPeakNs) cv1kPeakNs = ns;
+	if (ns > 16666667) cv1kLate++;
+	if (++cv1kFrames < 120) return;
+	const double scale = 1.0 / (120 * 1000000.0);
+	UINT64 ops, spans, built;
+	Sh3Cv1kNativeStats(&ops, &spans, &built);
+	bprintf(PRINT_UI, _T("CV1K PERF: core avg %.3f ms peak %.3f ms late %u; CPU %.3f audio %.3f wait %.3f draw %.3f\n"),
+		cv1kFrameNs*scale, cv1kPeakNs/1000000.0, cv1kLate, cv1kCpuNs*scale,
+		cv1kAudioNs*scale, cv1kWaitNs*scale, cv1kDrawNs*scale);
+	bprintf(PRINT_UI, _T("CV1K JIT: native ops %llu spans %llu built %llu\n"),
+		(unsigned long long)(ops-cv1kPrevOps), (unsigned long long)(spans-cv1kPrevSpans),
+		(unsigned long long)(built-cv1kPrevBuilt));
+	cv1kPrevOps = ops; cv1kPrevSpans = spans; cv1kPrevBuilt = built;
+	cv1kFrameNs = cv1kCpuNs = cv1kAudioNs = cv1kWaitNs = cv1kDrawNs = cv1kPeakNs = 0;
+	cv1kFrames = cv1kLate = 0;
+}
+
 
 static struct BurnInputInfo Cv1kInputList[] = {
 	{"P1 Coin",			BIT_DIGITAL,	DrvJoy1 + 2,	"p1 coin"	},
@@ -358,7 +400,7 @@ static void speedhack_set(UINT32 ram, UINT32 pc)
 	hacky_idle_ram = ram;
 	hacky_idle_pc = pc;
 
-	Sh3MapHandler(1, 0xc000000, 0xc00ffff, MAP_READ);
+	Sh3MapReadLongHandler(1, 0xc000000, 0xc00ffff);
 	Sh3SetReadByteHandler (1, speedhack_read_byte);
 	Sh3SetReadWordHandler (1, speedhack_read_word);
 	Sh3SetReadLongHandler (1, speedhack_read_long);
@@ -517,6 +559,8 @@ static INT32 DrvInit()
 	Sh3SetWritePortHandler(main_write_port);
 
 	init_speedhack(); // install the hacky speedhack handler
+	Sh3SetCv1kNative(1);
+	Cv1kProfileInit();
 
 	Sh3Close();
 
@@ -558,6 +602,8 @@ static INT32 DrvDraw()
 
 static INT32 DrvFrame()
 {
+	const UINT64 frameStart = Cv1kNow();
+	UINT64 phase;
 	if (DrvReset) {
 		DrvDoReset();
 	}
@@ -617,6 +663,7 @@ static INT32 DrvFrame()
 	INT32 nCyclesDone[1] = { nExtraCycles[0] };
 
 	Sh3Open(0);
+	phase = Cv1kNow();
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
@@ -624,10 +671,14 @@ static INT32 DrvFrame()
 	}
 
 	Sh3SetIRQLine(2, CPU_IRQSTATUS_HOLD);
+	if (cv1kProfile) cv1kCpuNs += Cv1kNow() - phase;
+	phase = Cv1kNow();
 
 	if (pBurnSoundOut) {
 		ymz770_update(pBurnSoundOut, nBurnSoundLen);
 	}
+
+	if (cv1kProfile) cv1kAudioNs += Cv1kNow() - phase;
 
 	nExtraCycles[0] = nCyclesDone[0] - nCyclesTotal[0];
 
@@ -635,14 +686,19 @@ static INT32 DrvFrame()
 
 	rtc9701_once_per_frame();
 
+	phase = Cv1kNow();
 	if (DrvDips[1] & 4) { // Thread Sync: Before Draw
 		epic12_wait_blitterthread();
 	}
 
+	if (cv1kProfile) cv1kWaitNs += Cv1kNow() - phase;
+	phase = Cv1kNow();
 	if (pBurnDraw) {
 		BurnDrvRedraw();
 	}
 
+	if (cv1kProfile) cv1kDrawNs += Cv1kNow() - phase;
+	Cv1kProfileFrame(frameStart);
 	return 0;
 }
 

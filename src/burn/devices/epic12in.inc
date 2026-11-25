@@ -155,10 +155,14 @@ static const void FUNCNAME(BLIT_PARAMS)
 			bigblocks--;
 		}
 #endif
+#if REALLY_SIMPLE == 1 && FLIPX == 0
+		Epic12Fast::Copy(bmp, gfx2, dimx-startx > 0 ? dimx-startx : 0, TRANSPARENT != 0);
+#else
 		while (bmp<end)
 		{
 			#include "epic12pixel.inc"
 		}
+#endif
 
 	}
 

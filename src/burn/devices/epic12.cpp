@@ -11,6 +11,7 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "sh4_intf.h"
 #include "thready.h"
 #include "rectangle.h"
+#include "epic12_fast.h"
 #include <math.h> // floor()
 
 static const int EP1C_VRAM_CLK_NANOSEC = 13;
@@ -456,12 +457,15 @@ static void gfx_upload_shadow_copy(UINT32 *addr)
 	const UINT32 dimx = (COPY_NEXT_WORD(addr) & 0x1fff) + 1;
 	const UINT32 dimy = (COPY_NEXT_WORD(addr) & 0x0fff) + 1;
 
-	for (UINT32 y = 0; y < dimy; y++)
-	{
-		for (UINT32 x = 0; x < dimx; x++)
-		{
-			COPY_NEXT_WORD(addr);
-		}
+	// Copy contiguous pieces, splitting exactly at the original RAM wrap.
+	UINT32 left = dimx * dimy;
+	while (left) {
+		const UINT32 at = (*addr & m_main_rammask) >> 1;
+		const UINT32 available = (m_main_ramsize >> 1) - at;
+		const UINT32 n = left < available ? left : available;
+		memcpy(m_ram16_copy + at, m_ram16 + at, n * sizeof(UINT16));
+		*addr += n * 2;
+		left -= n;
 	}
 
 	// Time spent on uploads is mostly due to Main RAM accesses.
@@ -509,13 +513,15 @@ static void gfx_upload(UINT32 *addr)
 
 		dst += dst_x_start;
 
-		for (x = 0; x < dimx; x++)
-		{
-			UINT16 pendat = READ_NEXT_WORD(addr);
-			// real hw would upload the gfxword directly, but our VRAM is 32-bit, so convert it.
-			//dst[dst_x_start + x] = pendat;
-			*dst++ = ((pendat&0x8000)<<14) | ((pendat&0x7c00)<<9) | ((pendat&0x03e0)<<6) | ((pendat&0x001f)<<3);  // --t- ---- rrrr r--- gggg g--- bbbb b---  format
-			//dst[dst_x_start + x] = ((pendat&0x8000)<<14) | ((pendat&0x7c00)<<6) | ((pendat&0x03e0)<<3) | ((pendat&0x001f)<<0);  // --t- ---- ---r rrrr ---g gggg ---b bbbb  format
+		UINT32 left = dimx;
+		while (left) {
+			const UINT32 at = (*addr & m_main_rammask) >> 1;
+			const UINT32 available = (m_main_ramsize >> 1) - at;
+			const UINT32 n = left < available ? left : available;
+			Epic12Fast::Upload(dst, m_ram16_copy + at, n);
+			dst += n;
+			*addr += n * 2;
+			left -= n;
 		}
 	}
 }
@@ -1157,26 +1163,15 @@ void epic12_draw_screen(UINT8 &recalc_palette)
 	{
 		UINT32 *s0 = &src[((y - scrolly) & heightmask) * 0x2000];
 		UINT32 *d0 = dst + (y * nScreenWidth);
-		INT32 sx;
-		for (INT32 x = 0; x < nScreenWidth; x+=16)
-		{
-			sx = x - scrollx;
-			d0[x + 0] = s0[((sx + 0)) & widthmask];
-			d0[x + 1] = s0[((sx + 1)) & widthmask];
-			d0[x + 2] = s0[((sx + 2)) & widthmask];
-			d0[x + 3] = s0[((sx + 3)) & widthmask];
-			d0[x + 4] = s0[((sx + 4)) & widthmask];
-			d0[x + 5] = s0[((sx + 5)) & widthmask];
-			d0[x + 6] = s0[((sx + 6)) & widthmask];
-			d0[x + 7] = s0[((sx + 7)) & widthmask];
-			d0[x + 8] = s0[((sx + 8)) & widthmask];
-			d0[x + 9] = s0[((sx + 9)) & widthmask];
-			d0[x +10] = s0[((sx +10)) & widthmask];
-			d0[x +11] = s0[((sx +11)) & widthmask];
-			d0[x +12] = s0[((sx +12)) & widthmask];
-			d0[x +13] = s0[((sx +13)) & widthmask];
-			d0[x +14] = s0[((sx +14)) & widthmask];
-			d0[x +15] = s0[((sx +15)) & widthmask];
+		UINT32 sx = UINT32(-scrollx) & widthmask;
+		INT32 left = nScreenWidth;
+		while (left > 0) {
+			const INT32 available = 0x2000 - sx;
+			const INT32 n = left < available ? left : available;
+			memcpy(d0, s0 + sx, n * sizeof(UINT32));
+			d0 += n;
+			left -= n;
+			sx = 0;
 		}
 	}
 }

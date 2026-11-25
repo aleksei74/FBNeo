@@ -37,6 +37,7 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "sh4dmac.h"
 #include "sh4tmu.h"
 #include "math.h"
+#include "sh3_arm64_native.h"
 
 #define COMBINE_DATA(varptr)		(*(varptr) = (*(varptr) & ~mem_mask) | (data & mem_mask))
 
@@ -284,6 +285,18 @@ struct sh4_dtimer
 
 	void run_prescale(INT32 cyc) {
 		prescale_counter += cyc * m_ratio;
+		if (timer_prescaler > 0 && prescale_counter >= (UINT32)timer_prescaler) {
+			const UINT32 ticks = prescale_counter / (UINT32)timer_prescaler;
+			if (!running) {
+				prescale_counter %= (UINT32)timer_prescaler;
+				return;
+			}
+			if (time_current < time_trig && ticks < time_trig - time_current) {
+				time_current += ticks;
+				prescale_counter %= (UINT32)timer_prescaler;
+				return;
+			}
+		}
 		while (prescale_counter >= timer_prescaler) {
 			prescale_counter -= timer_prescaler;
 
@@ -555,6 +568,7 @@ INT32 Sh3Scan(INT32 nAction)
 #define	SH3_MAXHANDLER	(8)
 
 static UINT8 *MemMapR[SH3_PAGE_COUNT];
+static UINT8 *MemMapRL[SH3_PAGE_COUNT];
 static UINT8 *MemMapW[SH3_PAGE_COUNT];
 static UINT8 *MemMapF[SH3_PAGE_COUNT];
 static pSh3ReadByteHandler ReadByte[SH3_MAXHANDLER];
@@ -574,6 +588,7 @@ static INT32 Sh3MapInit()
 {
 	//bprintf(0, _T("Init Sh3 MEMMAP\n"));
 	memset(MemMapR, 0, sizeof(MemMapR));
+	memset(MemMapRL, 0, sizeof(MemMapRL));
 	memset(MemMapW, 0, sizeof(MemMapW));
 	memset(MemMapF, 0, sizeof(MemMapF));
 
@@ -584,11 +599,15 @@ INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType)
 {
 	UINT8* Ptr = pMemory - nStart;
 	UINT8** pMemMapR = MemMapR + (nStart >> SH3_SHIFT);
+	UINT8** pMemMapRL = MemMapRL + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapW = MemMapW + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapF = MemMapF + (nStart >> SH3_SHIFT);
 
-	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapR++, pMemMapW++, pMemMapF++) {
-		if (nType & MAP_READ)	  pMemMapR[0] = Ptr + i;
+	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapR++, pMemMapRL++, pMemMapW++, pMemMapF++) {
+		if (nType & MAP_READ) {
+			pMemMapR[0] = Ptr + i;
+			pMemMapRL[0] = Ptr + i;
+		}
 		if (nType & MAP_WRITE)	  pMemMapW[0] = Ptr + i;
 		if (nType & MAP_FETCHOP)  pMemMapF[0] = Ptr + i;
 	}
@@ -599,14 +618,29 @@ INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType)
 INT32 Sh3MapHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd, INT32 nType)
 {
 	UINT8** pMemMapR = MemMapR + (nStart >> SH3_SHIFT);
+	UINT8** pMemMapRL = MemMapRL + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapW = MemMapW + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapF = MemMapF + (nStart >> SH3_SHIFT);
 
-	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapR++, pMemMapW++, pMemMapF++) {
-		if (nType & MAP_READ)	 pMemMapR[0] = (UINT8*)nHandler;
+	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapR++, pMemMapRL++, pMemMapW++, pMemMapF++) {
+		if (nType & MAP_READ) {
+			pMemMapR[0] = (UINT8*)nHandler;
+			pMemMapRL[0] = (UINT8*)nHandler;
+		}
 		if (nType & MAP_WRITE)	 pMemMapW[0] = (UINT8*)nHandler;
 		if (nType & MAP_FETCHOP) pMemMapF[0] = (UINT8*)nHandler;
 	}
+	return 0;
+}
+
+INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd)
+{
+	UINT8** pMemMapRL = MemMapRL + (nStart >> SH3_SHIFT);
+
+	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapRL++) {
+		pMemMapRL[0] = (UINT8*)nHandler;
+	}
+
 	return 0;
 }
 
@@ -889,6 +923,7 @@ void Sh3Init(INT32 num, INT32 hz, char md0, char md1, char md2, char md3, char m
 
 void Sh3Exit()
 {
+	Sh3SetCv1kNative(0);
 }
 
 void Sh3Open(const INT32 i)
@@ -946,6 +981,12 @@ static inline UINT16 RW(UINT32 A)
 	}
 
 	UINT8 *pr = MemMapR[ A >> SH3_SHIFT ];
+	// A long-only handler replaces the CV1000 speedhack page's former
+	// all-width handler. Retain its unaligned-word behavior, too.
+	if ((A & 1) && (A >> SH3_SHIFT) == 0xc00 &&
+		(uintptr_t)pr >= SH3_MAXHANDLER &&
+		(uintptr_t)MemMapRL[A >> SH3_SHIFT] == 1)
+		return ReadWord[1](A);
 	if ( (uintptr_t)pr >= SH3_MAXHANDLER ) {
 #ifdef LSB_FIRST
 	//	A ^= 2;
@@ -963,7 +1004,7 @@ static inline UINT32 RL(UINT32 A)
 		WaitState(A, 0);
 	}
 
-	UINT8 *pr = MemMapR[ A >> SH3_SHIFT ];
+	UINT8 *pr = MemMapRL[ A >> SH3_SHIFT ];
 	if ( (uintptr_t)pr >= SH3_MAXHANDLER ) {
 		UINT32 V = *((UINT32 *)(pr + (A & SH3_PAGEM)));
 #ifdef LSB_FIRST
@@ -4645,6 +4686,89 @@ static inline void execute_one(const UINT16 opcode)
 	}
 
 
+static bool cv1kNativeEnabled = false;
+static UINT64 cv1kNativeOps, cv1kNativeSpans, cv1kNativeBuilt;
+#if SH3_NATIVE
+static_assert(SH3_SHIFT==16 && SH3_MAXHANDLER==8 && AM==0x1fffffff && T==1,
+	"native SH3 guards must match the interpreter");
+struct Cv1kSpan {
+	UINT32 pc, offset;
+	UINT16 ops[Sh3Native::MaxOps];
+	UINT8 count, checked, hot;
+	bool valid;
+};
+static Cv1kSpan cv1kSpans[8192];
+static Sh3Native::Cache cv1kCode;
+
+static bool Cv1kTryNative(UINT16 opcode)
+{
+	if (!Sh3Native::Candidate(opcode) || cv1kCode.Denied() || m_test_irq ||
+		m_sh4_icount < INT32(Sh3Native::MinOps) || (m_pc & 1)) return false;
+	const UINT32 pc = m_pc & AM, inpage = pc & SH3_PAGEM;
+	const UINT8 *page = MemMapF[pc >> SH3_SHIFT];
+	if ((uintptr_t)page < SH3_MAXHANDLER) return false;
+	const UINT16 *code = (const UINT16 *)(page + inpage);
+	unsigned available = (SH3_PAGE_SIZE - inpage) / 2;
+	if (available < Sh3Native::MinOps) return false;
+	if (available > Sh3Native::MaxOps) available = Sh3Native::MaxOps;
+	Cv1kSpan &b = cv1kSpans[((pc >> 1) ^ (pc >> 14)) & 8191];
+	if (b.pc != pc || !b.checked || b.checked > available ||
+		memcmp(b.ops, code, b.checked * sizeof(UINT16))) {
+		b = {}; b.pc = pc; b.hot = 1; b.checked = 1; b.ops[0] = code[0];
+		return false;
+	}
+	if (!b.valid && b.hot < 2) {
+		b.hot = 2;
+		UINT32 words[Sh3Native::MaxWords];
+		Sh3Native::Emitter emit(words);
+		unsigned n = 0;
+		for (; n < available; n++) if (!emit.Emit(code[n], n)) break;
+		b.checked = n < available ? n + 1 : n;
+		memcpy(b.ops, code, b.checked * sizeof(UINT16));
+		if (n < Sh3Native::MinOps) return false;
+		emit.Finish(n);
+		if (!cv1kCode.Publish(words, emit.End()-words, b.offset)) {
+			if (!cv1kCode.Denied()) {
+				// Whole-cache reset, not a partial overwrite of live code.
+				cv1kCode.Reset(); memset(cv1kSpans, 0, sizeof(cv1kSpans));
+			}
+			return false;
+		}
+		b.count = n; b.valid = true; cv1kNativeBuilt++;
+	}
+	if (!b.valid || b.count > m_sh4_icount) return false;
+	unsigned done = cv1kCode.Run(b.offset, m_r, &m_sr, &m_ea, MemMapR, MemMapRL);
+	cv1kNativeSpans++;
+	if (!done) return false;
+	m_pc += done * 2;
+	m_ppc = m_pc;
+	EAT(done);
+	cv1kNativeOps += done;
+	return true;
+}
+#endif
+
+void Sh3SetCv1kNative(INT32 enable)
+{
+	cv1kNativeEnabled = false;
+	cv1kNativeOps = cv1kNativeSpans = cv1kNativeBuilt = 0;
+#if SH3_NATIVE
+	cv1kCode.Reset(); cv1kCode.Enable();
+	memset(cv1kSpans, 0, sizeof(cv1kSpans));
+	const char *option = getenv("FBNEO_CV1K_JIT");
+	cv1kNativeEnabled = enable && (!option || strcmp(option, "0") != 0);
+	if (enable) bprintf(PRINT_UI, _T("CV1000 SH3 native spans: %s (timerhack only)\n"),
+		cv1kNativeEnabled ? _T("enabled") : _T("disabled"));
+#else
+	(void)enable;
+#endif
+}
+
+void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built)
+{
+	*instructions = cv1kNativeOps; *spans = cv1kNativeSpans; *built = cv1kNativeBuilt;
+}
+
 static int Sh3Run_timerhack(int cycles)
 {
 	m_sh4_icount = cycles;
@@ -4671,7 +4795,9 @@ static int Sh3Run_timerhack(int cycles)
 		else
 		{
 			const UINT16 opcode = sh3_cpu_readop16((UINT32)(m_pc & AM));
-
+#if SH3_NATIVE
+			if (cv1kNativeEnabled && Cv1kTryNative(opcode)) continue;
+#endif
 			m_pc += 2;
 			m_ppc = m_pc;
 
