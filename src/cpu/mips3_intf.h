@@ -30,7 +30,7 @@ int Mips3UseRecompiler(bool use);
 struct Mips3PerfStats {
 	uint64_t guestInstructions, uncachedSteps, nativeInstructions, nativeSpans;
 	uint64_t nativeBuilt, cacheFlushes, cacheBytes;
-	uint64_t nativeRamHits, nativeRamMisses;
+	uint64_t nativeRamHits, nativeRamMisses, nativeBranches;
 	uint64_t cachePayloadBytes, cacheMappedBytes, cacheCapacityBytes, cacheRejected;
 	bool jitEnabled, mappingDenied;
 };
@@ -49,6 +49,10 @@ int Mips3Scan(int nAction);
 // (e.g. adding wait states) while code is still fetched and cached from memory.
 int Mips3MapMemory(unsigned char* pMemory, unsigned int nStart, unsigned int nEnd, int nType);
 int Mips3MapHandler(uintptr_t nHandler, unsigned int nStart, unsigned int nEnd, int nType);
+// Batch synchronous map changes. No guest execution, callbacks that access
+// guest memory, or state operations may occur before the matching End.
+void Mips3BeginMapBatch();
+void Mips3EndMapBatch();
 
 // Must be called when something other than the CPU (DMA, driver code...) writes code into mapped memory
 void Mips3InvalidateRange(unsigned int nStart, unsigned int nEnd);

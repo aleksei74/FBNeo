@@ -141,3 +141,52 @@ their original invalidation/reset lifetime.
   a span crossing a page boundary, exact capacity, overflow rejection,
   preservation of old code, and reset/reuse.
 - This change does not implement MAME's UML compiler or block linking.
+
+
+## Integrated Y2 performance branch
+
+Based on the tested Fast RAM / packed-cache commit 72618c026.
+References: MAME's BSD-3-Clause mips3drc.cpp (sequence generation,
+delay-slot/branch generation and cycle accounting), drcbearm64.cpp (host
+register mapping) and drccache.cpp (packed executable code storage).
+The implementation is independent, retaining FBNeo's CPU/device model.
+
+- Six caller-saved ARM64 registers cache guest GPRs across ALU and guarded
+  memory operations. Dirty registers are committed on eviction and all
+  returns, including guard failure. Immediate arithmetic uses direct
+  encodings where possible.
+- Native normal and likely integer branches, link registers, ALU and
+  supported RAM delay slots. Likely annul and delay exceptions keep the
+  interpreter's architectural PC, EPC, BD and cycle behavior.
+- Non-taken conditional branches continue inside an existing decoded
+  superblock while its event budget permits. Taken branches, expired
+  deadlines, exceptions and unsupported instructions exit to the original
+  dispatcher. Cross-block machine-code linking, FPU/CP0 and unaligned
+  merge operations are deliberately not implemented.
+- FBNEO_MIPS3_JIT_INTEGRATED=0 selects the preceding ALU/Fast RAM emitter;
+  =1 opts into the integrated emitter (default for VR5500). All previous
+  Fast RAM, cache and profile controls remain available.
+- Y2 batches protection-map changes and fences/copies geometry list
+  input in page ranges rather than per word. FBNEO_Y2_BATCH_MAP=0
+  restores individual map invalidations.
+- Y2 range synchronization drains the whole queue on a pending conflict,
+  or joins only the running batch when pending work does not conflict;
+  unrelated queued jobs can then run asynchronously. Explicit full
+  fences (state scan, reset, cache sync and list reuse) stay unchanged.
+  FBNEO_Y2_SELECTIVE_SYNC=0 restores full draining on range conflicts.
+- ARM64 NEON accelerates integer constant-colour modulation and alpha-factor
+  blending without changing rounding or saturation. Other architectures
+  use the original scalar arithmetic. FBNEO_Y2_NO_NEON is a compile-time
+  fallback. No floating-point raster or texture interpolation precision changes.
+- Y2 PERF FLOW includes completed native branches, sync calls, serial
+  pending jobs, selective waits and map update/range counts.
+
+Tests: the standalone MIPS3 test adds register-cache differential tests,
+guard failures with dirty GPRs, integer branches/likely branches, native
+RAM delay slots, fused superblock fallthrough and event exits, nested map
+batches and delay exceptions. tools/test_y2_pixel_ops.cpp compares NEON
+against scalar colour arithmetic; tools/test_y2_job_sync.cpp checks the
+page conflict planner. Build these two small tests using the target C++
+compiler with -O2. These are correctness tests, not actual game timing or
+multi-threaded rendering/frame checksum tests. Real-device validation
+is still required.

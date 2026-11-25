@@ -38,6 +38,7 @@
 #endif
 #if MIPS3_ARM64_JIT
 #include "mips3_arm64_jit.h"
+#include "mips3_arm64_integrated.h"
 #endif
 
 #define PHYS_MASK			MIPS3_PHYS_MASK
@@ -251,6 +252,8 @@ static Mips3Arm64Jit::Cache JitCache;
 static bool bMips3Jit = false;
 static unsigned nJitMinSpan = 3;
 static bool bMips3FastRam = false;
+static bool bMips3Integrated = false;
+static UINT64 nJitBranches = 0;
 static UINT64 nJitRamHits = 0, nJitRamMisses = 0;
 static UINT64 nJitCacheRejected = 0;
 static UINT64 nJitSpansBuilt = 0, nJitSpansRun = 0, nJitInsns = 0;
@@ -2526,18 +2529,92 @@ static void IdleAnalyse(Mips3Block *b, const Mips3Insn *tmp, INT32 n)
 }
 
 #if MIPS3_ARM64_JIT
-// Native spans cannot change PC, event deadlines or Mx.lim. Branches,
-// delay slots, pseudo ops and trapping ops keep their handlers. Guarded
-// RAM accesses return before any cache miss so the existing handler owns it.
+// Native control flow follows the decoded block's branch/delay structure.
+// Faulting/unsupported slots and split/nested branches retain their handlers.
+static_assert(MIPS3_SUPER_MAX < 512, "flow result entry and memory fields must fit 9 bits");
+
+static bool NativeLikely(Mips3Handler h)
+{
+	return h == op_BEQL || h == op_BNEL || h == op_BLEZL || h == op_BGTZL ||
+		h == op_BLTZL || h == op_BGEZL || h == op_BLTZALL || h == op_BGEZALL;
+}
+
+static bool NativeBranchPair(const Mips3Block *b, unsigned i)
+{
+	if (i + 1 >= b->count || b->insn[i].flags || b->insn[i + 1].flags != F_DELAY ||
+		(i + 2 < b->count && b->insn[i + 2].fn != op_SbExit) ||
+		IsPseudoOp(b->insn[i + 1].fn)) return false;
+	const Mips3Handler h = b->insn[i].fn;
+	if (!(h == op_B || h == op_BEQ || h == op_BNE || h == op_BLEZ || h == op_BGTZ ||
+		h == op_BLTZ || h == op_BGEZ || h == op_BLTZAL || h == op_BGEZAL ||
+		h == op_J || h == op_JAL || h == op_JR || h == op_JALR || NativeLikely(h))) return false;
+	const UINT32 op = b->insn[i + 1].op;
+	if (Mips3Arm64Jit::SpanEmitter::SupportsAlu(op)) return true;
+	uint32_t tmp[Mips3Arm64Jit::MaxMemoryWords];
+	return bMips3FastRam && Mips3Arm64Jit::EmitMemory(op, tmp, 0, 0) >= 0;
+}
 static void BuildNativeSpans(Mips3Block *b)
 {
 	if (!bMips3Jit || JitCache.Denied()) return;
-	uint32_t words[MIPS3_SUPER_MAX * (Mips3Arm64Jit::MaxMemoryWords + 4)];
+	uint32_t words[MIPS3_SUPER_MAX * Mips3Arm64Jit::IntegratedMaxWords];
 	unsigned used = 0;
 	for (unsigned i = 0; i < b->count;) {
 		unsigned start = i, entry = used, memory = 0;
-		bool prevAlu = false;
+		bool prevAlu = false, flow = false;
 		words[used++] = Mips3Arm64Jit::Entry;
+		if (bMips3Integrated) {
+			// Reserve the runtime event budget and virtual-page prologue.
+			// Non-flow spans remove both words before publication.
+			words[used++] = Mips3Arm64Jit::MoveW(15, 6);
+			words[used++] = Mips3Arm64Jit::MoveW(16, 5);
+			Mips3Arm64Jit::SpanEmitter emitter(words + used);
+			unsigned branches = 0, pseudo = 0;
+			bool terminal = false, limited = false;
+			while (i < b->count) {
+				Mips3Insn &I = b->insn[i];
+				if (I.flags || IsPseudoOp(I.fn)) break;
+				if (NativeBranchPair(b, i)) {
+					if (branches == 63) { limited = true; break; }
+					emitter.Branch(I.op, I.pc);
+					branches++;
+					if (NativeLikely(I.fn)) emitter.Annul(I.pc, i - start + 1, memory, branches, pseudo);
+					if (!emitter.Alu(b->insn[i + 1].op)) {
+						emitter.Memory(b->insn[i + 1].op, i - start + 1, memory, branches, pseudo, true);
+						memory++;
+					}
+					i += 2;
+					flow = true;
+					if (i < b->count && b->insn[i].fn == op_SbExit) {
+						pseudo++;
+						emitter.Boundary(b->insn[i].pc, b->insn[i].cyc, i - start + 1, memory, branches, pseudo);
+						i++;
+						continue;
+					}
+					terminal = true;
+					break;
+				}
+				if (!emitter.Alu(I.op)) {
+					if (!bMips3FastRam || !emitter.Memory(I.op, i - start, memory, branches, pseudo)) break;
+					memory++;
+				}
+				i++;
+			}
+			const bool emitted = emitter.End() != words + used;
+			if ((flow || i - start >= nJitMinSpan) && emitted) {
+				emitter.Finish(i - start, memory, flow, branches, pseudo, terminal);
+				used = unsigned(emitter.End() - words);
+				if (!flow) {
+					memmove(words + entry + 1, words + entry + 3, (used - entry - 3) * sizeof(uint32_t));
+					used -= 2;
+				}
+				b->insn[start].jit_count = i - start;
+				b->insn[start].jit_memory = memory | (flow ? Mips3Arm64Jit::FlowFlag : 0) |
+					(terminal ? Mips3Arm64Jit::TerminalFlag : 0);
+				b->insn[start].jit_offset = entry * sizeof(uint32_t);
+			} else used = entry;
+			if (i < b->count && !limited) i++;
+			continue;
+		}
 		while (i < b->count) {
 			Mips3Insn &I = b->insn[i];
 			if (I.flags || IsPseudoOp(I.fn)) break;
@@ -2960,8 +3037,23 @@ static MIPS3_INLINE void ExecBlock(Mips3Block *b)
 		do {
 			if (I->jit_count) {
 				const unsigned count = I->jit_count;
-				unsigned done = count;
-				if (I->jit_memory) {
+				unsigned done = count, pseudo = 0;
+				bool early = false;
+				if (I->jit_memory & Mips3Arm64Jit::FlowFlag) {
+					const UINT64 left = nRunLimit > M.total_cycles ? nRunLimit - M.total_cycles : 0;
+					const uint32_t budget = left > UINT32_MAX ? UINT32_MAX : uint32_t(left);
+					const uint64_t result = JitCache.RunFlow(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite, Mx.vpage, budget);
+					done = result & 0x1ff;
+					pseudo = (result >> 9) & 0x3f;
+					nJitRamHits += (result >> 16) & 0x1ff;
+					nJitBranches += (result >> 25) & 0x3f;
+					early = (result & Mips3Arm64Jit::EarlyExit) != 0;
+					if (early || (result & Mips3Arm64Jit::DelayGuard) ||
+						(done == count && (I->jit_memory & Mips3Arm64Jit::TerminalFlag)))
+						Mx.next_pc = uint32_t(result >> 32);
+					if (early) BREAK_BLOCK();
+					else if (done != count) nJitRamMisses++;
+				} else if (I->jit_memory) {
 					const uint32_t result = JitCache.RunGuarded(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite);
 					done = result & 0xffff;
 					nJitRamHits += result >> 16;
@@ -2970,11 +3062,11 @@ static MIPS3_INLINE void ExecBlock(Mips3Block *b)
 					JitCache.Run(I->jit_offset, reinterpret_cast<uint64_t *>(M.r));
 				}
 				nJitSpansRun++;
-				nJitInsns += done;
+				nJitInsns += done - pseudo;
 				I += done;
-				// The failing instruction has not run; use its original handler
-				// with the exact PC/cycle/exception context. No native retry here.
-				if (done != count) { I->fn(I); ++I; }
+				// A guard failure leaves the precise state before the failing
+				// instruction, including a completed branch's delay context.
+				if (done != count && !early) { I->fn(I); ++I; }
 			} else {
 				I->fn(I);
 				++I;
@@ -3364,7 +3456,7 @@ INT32 mips3_init(INT32 type)
 	bMips3Initted = 1;
 #if MIPS3_ARM64_JIT
 	nJitSpansBuilt = nJitSpansRun = nJitInsns = 0;
-	nJitRamHits = nJitRamMisses = 0;
+	nJitRamHits = nJitRamMisses = nJitBranches = 0;
 	nJitCacheRejected = 0;
 	nPerfGuest = nPerfUncached = nPerfFlushes = 0;
 	const char *perf = getenv("FBNEO_Y2_PROFILE");
@@ -3387,12 +3479,17 @@ INT32 mips3_init(INT32 type)
 	bMips3Jit = IS_VR5500;
 	if (jit && strcmp(jit, "0") == 0) bMips3Jit = false;
 	if (jit && strcmp(jit, "1") == 0) bMips3Jit = true;
+	const char *integrated = getenv("FBNEO_MIPS3_JIT_INTEGRATED");
+	bMips3Integrated = IS_VR5500;
+	if (integrated && strcmp(integrated, "0") == 0) bMips3Integrated = false;
+	if (integrated && strcmp(integrated, "1") == 0) bMips3Integrated = true;
 	const char *fastRam = getenv("FBNEO_MIPS3_JIT_FASTRAM");
 	bMips3FastRam = IS_VR5500;
 	if (fastRam && strcmp(fastRam, "0") == 0) bMips3FastRam = false;
 	if (fastRam && strcmp(fastRam, "1") == 0) bMips3FastRam = true;
 	bprintf(PRINT_UI, _T("MIPS3 ARM64 experimental JIT: %s, min span %u, guarded Fast RAM %s\n"),
 		bMips3Jit ? _T("enabled") : _T("disabled"), nJitMinSpan, bMips3FastRam ? _T("enabled") : _T("disabled"));
+	bprintf(PRINT_UI, _T("MIPS3 ARM64 JIT integrated spans: %s\n"), bMips3Integrated ? _T("enabled") : _T("disabled"));
 	bprintf(PRINT_UI, _T("MIPS3 ARM64 JIT cache: %u MiB, %s allocation\n"),
 		cacheMB, packed ? _T("packed W^X") : _T("page aligned W^X"));
 #endif
@@ -3407,6 +3504,7 @@ void mips3_get_perf_stats(Mips3PerfStats *stats)
 	stats->uncachedSteps = nPerfUncached;
 	stats->nativeInstructions = nJitInsns;
 	stats->nativeRamHits = nJitRamHits;
+	stats->nativeBranches = nJitBranches;
 	stats->nativeRamMisses = nJitRamMisses;
 	stats->nativeSpans = nJitSpansRun;
 	stats->nativeBuilt = nJitSpansBuilt;

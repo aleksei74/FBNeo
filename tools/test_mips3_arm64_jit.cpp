@@ -124,12 +124,16 @@ static void TestEmitter(int type)
 	const unsigned cases = 2048, length = 66;
 	for (unsigned c = 0; c < cases; c++) {
 		if (!(c % 128)) cache.Reset();
-		uint64_t regs[32];
+		uint64_t regs[32], integrated[32];
 		for (unsigned i = 0; i < 32; i++) M.r[i] = Random();
 		M.r[0] = 0;
 		M.r[1] = 0x80000000ULL; M.r[2] = 0x8000000000000000ULL;
 		M.r[3] = ~0ULL; M.r[4] = 0x7fffffffULL;
 		memcpy(regs, M.r, sizeof(regs));
+		memcpy(integrated, M.r, sizeof(integrated));
+		uint32_t optWords[length * Mips3Arm64Jit::IntegratedMaxWords + 2];
+		optWords[0] = Mips3Arm64Jit::Entry;
+		Mips3Arm64Jit::SpanEmitter emitter(optWords + 1);
 		uint32_t words[length * Mips3Arm64Jit::MaxWordsPerInsn + 2];
 		unsigned used = 0;
 		words[used++] = Mips3Arm64Jit::Entry;
@@ -145,13 +149,17 @@ static void TestEmitter(int type)
 			int n = Mips3Arm64Jit::EmitAdjacent(I.op, words + used, used > 1);
 			Require(n >= 0 && n <= int(Mips3Arm64Jit::MaxWordsPerInsn), "emitter rejected supported instruction");
 			used += n;
+			Require(emitter.Alu(I.op), "register-cache ALU rejected supported instruction");
 			I.fn(&I);
 		}
+		emitter.Finish(length, 0, false);
 		words[used++] = Mips3Arm64Jit::Ret;
 		uint32_t offset = 0;
 		Require(cache.Publish(words, used, offset), "RX publication failed");
 		cache.Run(offset, regs);
-		if (memcmp(M.r, regs, sizeof(regs))) {
+		Require(cache.Publish(optWords, emitter.End() - optWords, offset), "publish cached-register span");
+		cache.Run(offset, integrated);
+		if (memcmp(M.r, regs, sizeof(regs)) || memcmp(M.r, integrated, sizeof(integrated))) {
 			fprintf(stderr, "type %d case %u: GPR mismatch\n", type, c);
 			exit(1);
 		}
@@ -253,6 +261,176 @@ static void TestGuardedMemoryEmitter(int type)
 	printf("Guarded RAM type %d: 2048 load/store comparisons and side exits OK\n", type);
 }
 
+// Compare mixed register-cache/guarded RAM spans with the exact prefix
+// executed by the interpreter, including a miss at each memory position.
+static void TestIntegratedMemory(int type)
+{
+	nMips3Type = type;
+	Mips3Arm64Jit::Cache cache;
+	alignas(8) UINT8 ref[4096], actual[4096];
+	Mips3HostEntry read[MIPS3_HOST_ENTRIES] = {}, write[MIPS3_HOST_ENTRIES] = {};
+	const unsigned ops[] = {0x20,0x24,0x21,0x25,0x23,0x27,0x37,0x28,0x29,0x2b,0x3f};
+	for (unsigned c = 0; c < 1024; c++) {
+		if (!(c % 128)) cache.Reset();
+		for (unsigned i = 0; i < 32; i++) M.r[i] = Random();
+		M.r[0] = 0;
+		M.r[1] = 0xffffffff80001000ULL;
+		M.r[2] = 0xffffffff80002000ULL;
+		uint64_t regs[32];
+		memcpy(regs, M.r, sizeof(regs));
+		for (unsigned i = 0; i < sizeof(ref); i++) ref[i] = UINT8(Random());
+		memcpy(actual, ref, sizeof(ref));
+		const UINT32 va = 0x80001000, idx = (va >> 12) & (MIPS3_HOST_ENTRIES - 1);
+		HOST_R(va)->tag = HOST_W(va)->tag = va;
+		HOST_R(va)->host = HOST_W(va)->host = ref;
+		read[idx].tag = write[idx].tag = va;
+		read[idx].host = write[idx].host = actual;
+		const unsigned miss = c % 12;
+		uint32_t words[32 * Mips3Arm64Jit::IntegratedMaxWords + 16], offset = 0;
+		words[0] = Mips3Arm64Jit::Entry;
+		Mips3Arm64Jit::SpanEmitter emitter(words + 1);
+		unsigned done = 0, memory = 0, prefix = 0, hits = 0;
+		bool stopped = false;
+		for (unsigned i = 0; i < 11; i++) {
+			Mips3Insn I = {};
+			unsigned r = 3 + Random() % 29;
+			I.op = Imm(9, r, r, int16_t(Random()));
+			UINT32 flags = 0;
+			I.fn = Mips3Decode(I.op, &flags);
+			InsnFields(&I);
+			Require(emitter.Alu(I.op), "mixed ALU emit failed");
+			if (!stopped) { I.fn(&I); prefix++; }
+			done++;
+			r = 3 + Random() % 29;
+			I.op = Imm(ops[(i + c) % 11], i == miss ? 2 : 1, r, (i * 8) & 0xff8);
+			I.fn = Mips3Decode(I.op, &flags);
+			InsnFields(&I);
+			Require(emitter.Memory(I.op, done, memory), "mixed memory emit failed");
+			if (i == miss) stopped = true;
+			if (!stopped) { I.fn(&I); prefix++; hits++; }
+			done++; memory++;
+		}
+		emitter.Finish(done, memory, false);
+		Require(cache.Publish(words, emitter.End() - words, offset), "publish integrated memory");
+		Require(cache.RunGuarded(offset, regs, read, write) == (prefix | (hits << 16)), "mixed side-exit count differs");
+		Require(!memcmp(regs, M.r, sizeof(regs)) && !memcmp(ref, actual, sizeof(ref)), "mixed dirty GPR or memory state differs");
+	}
+	HostCacheFlush();
+	printf("Integrated memory type %d: 1024 mixed spans and dirty-register side exits OK\n", type);
+}
+
+static void TestNativeBranches(int type)
+{
+	nMips3Type = type;
+	Mips3Arm64Jit::Cache cache;
+	const unsigned opc[] = {4,5,6,7,1,1,1,1,2,3,0,0,0x14,0x15,0x16,0x17,1,1,1,1};
+	for (unsigned c = 0; c < 4096; c++) {
+		if (!(c % 128)) cache.Reset();
+		for (unsigned i = 0; i < 32; i++) M.r[i] = Random();
+		M.r[0] = 0;
+		unsigned k = c % 20, rs = Random() & 31, rt = Random() & 31, rd = Random() & 31;
+		if ((c / 12) % 4 == 0) M.r[rs] = 0;
+		if ((c / 12) % 4 == 1) M.r[rs] = 0xffffffffffffffffULL;
+		if ((c / 12) % 4 == 2) M.r[rs] = 0x7fffffffffffffffULL;
+		if (c & 16) M.r[rt] = M.r[rs];
+		M.r[0] = 0;
+		uint64_t regs[32];
+		memcpy(regs, M.r, sizeof(regs));
+		Mips3Insn I = {};
+		I.pc = (c & 32) ? 0xff8 : (Random() & 0xffc);
+		if (I.pc == 0xffc) I.pc = 0xff8;
+		if (k < 2) I.op = Imm(opc[k], rs, rt, int16_t(Random()));
+		else if (k < 4) I.op = Imm(opc[k], rs, 0, int16_t(Random()));
+		else if (k < 8) I.op = Imm(1, rs, (k >= 6 ? 16 : 0) + (k & 1), int16_t(Random()));
+		else if (k < 10) I.op = (opc[k] << 26) | (Random() & 0x03ffffff);
+		else if (k < 12) I.op = R(rs, 0, k == 11 ? (c & 64 ? rs : rd) : 0, 0, k == 11 ? 9 : 8);
+		else if (k < 14) I.op = Imm(opc[k], rs, rt, int16_t(Random()));
+		else if (k < 16) I.op = Imm(opc[k], rs, 0, int16_t(Random()));
+		else I.op = Imm(1, rs, (k >= 18 ? 18 : 2) + (k & 1), int16_t(Random()));
+		UINT32 flags = 0;
+		I.fn = Mips3Decode(I.op, &flags);
+		InsnFields(&I);
+		Require(flags & F_BRANCH, "invalid synthetic branch");
+		Mx.vpage = uint32_t(Random()) & ~0xfffU;
+		Mx.next_pc = 1;
+		Mx.brk = 0;
+		I.fn(&I);
+		const bool annul = Mx.brk != 0;
+		const bool likely = NativeLikely(I.fn);
+		uint32_t next = Mx.next_pc;
+		Mips3Insn delay = {};
+		delay.op = RandomOp(c % 35);
+		delay.pc = I.pc + 4; delay.flags = F_DELAY;
+		delay.fn = Mips3Decode(delay.op, &flags);
+		InsnFields(&delay);
+		if (!annul) delay.fn(&delay);
+		uint32_t words[128], offset = 0;
+		words[0] = Mips3Arm64Jit::Entry;
+		words[1] = Mips3Arm64Jit::MoveW(15, 6);
+		words[2] = Mips3Arm64Jit::MoveW(16, 5);
+		Mips3Arm64Jit::SpanEmitter emitter(words + 3);
+		emitter.Branch(I.op, I.pc);
+		if (likely) emitter.Annul(I.pc, 1, 0, 1, 0);
+		Require(emitter.Alu(delay.op), "delay slot emit failed");
+		emitter.Finish(2, 0, true, 1, 0, true);
+		Require(cache.Publish(words, emitter.End() - words, offset), "publish branch pair");
+		const uint64_t result = cache.RunFlow(offset, regs, HostRead, HostWrite, Mx.vpage);
+		Require(result == ((uint64_t(next) << 32) | (1u << 25) |
+			(annul ? Mips3Arm64Jit::EarlyExit | 1u : 2u)), "native branch target differs");
+		Require(!memcmp(regs, M.r, sizeof(regs)), "branch link or delay register differs");
+	}
+	printf("Native flow type %d: 4096 branch/delay comparisons OK\n", type);
+}
+
+// Exercise a native RAM delay hit/miss and the fused superblock event
+// boundary in the same generated code. The latter must not run on a taken
+// branch or when the original op_SbExit would have stopped for an event.
+static void TestFlowGuardAndBudget()
+{
+	using namespace Mips3Arm64Jit;
+	Cache cache;
+	Mips3HostEntry read[MIPS3_HOST_ENTRIES] = {}, write[MIPS3_HOST_ENTRIES] = {};
+	alignas(8) uint32_t ram[1024] = {};
+	ram[0] = 0x87654321;
+	const uint32_t page = 0x80001000;
+	const unsigned idx = (page >> 12) & (MIPS3_HOST_ENTRIES - 1);
+	read[idx].host = reinterpret_cast<UINT8 *>(ram);
+	uint32_t words[256], off = 0;
+	words[0] = Entry; words[1] = MoveW(15,6); words[2] = MoveW(16,5);
+	SpanEmitter e(words + 3);
+	Require(e.Alu(Imm(9,0,8,7)), "prefix");
+	e.Branch(Imm(4,1,2,6), 4);
+	Require(e.Memory(Imm(0x23,3,4,0),2,0,1,0,true), "native delay RAM");
+	e.Boundary(12,3,4,1,1,1);
+	Require(e.Alu(Imm(9,8,8,1)), "suffix");
+	e.Branch(Imm(5,1,2,4),16);
+	Require(e.Alu(Imm(9,8,8,2)), "second delay");
+	e.Finish(7,1,true,2,1,true);
+	Require(cache.Publish(words,e.End()-words,off),"flow guard publication");
+	for(unsigned hit=0;hit<2;hit++) for(unsigned taken=0;taken<2;taken++) for(unsigned enough=0;enough<2;enough++) {
+		uint64_t regs[32]={};
+		regs[1]=1; regs[2]=taken?1:2; regs[3]=page;
+		read[idx].tag=hit?page:~0u;
+		uint64_t result=cache.RunFlow(off,regs,read,write,0x80000000,enough?100:3);
+		uint32_t expectTarget=taken?0x80000020u:1u;
+		uint32_t low;
+		if (!hit) {
+			low=2u | (1u<<25) | DelayGuard;
+			Require(regs[8]==7 && regs[4]==0,"delay miss changed state");
+		} else if (taken || !enough) {
+			low=4u | (1u<<9) | (1u<<16) | (1u<<25) | EarlyExit;
+			if (!taken) expectTarget=0x8000000cu;
+			Require(regs[8]==7 && regs[4]==0xffffffff87654321ULL,"boundary state");
+		} else {
+			low=7u | (1u<<9) | (1u<<16) | (2u<<25);
+			expectTarget=0x80000024u;
+			Require(regs[8]==10 && regs[4]==0xffffffff87654321ULL,"fallthrough state");
+		}
+		Require(result==((uint64_t(expectTarget)<<32)|low),"flow delay guard/event metadata differs");
+	}
+	puts("Native flow RAM delay, two branches and event boundary: PASS");
+}
+
 static UINT32 *mappedData;
 static unsigned mappedReads, mappedWrites, trackedWrites;
 static UINT32 __fastcall TestReadWord(UINT32 a) { mappedReads++; return BURN_ENDIAN_SWAP_INT32(mappedData[(a & 0xfff) / 4]); }
@@ -318,7 +496,12 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 			Mips3Scan(ACB_WRITE); // restore path flushes decoded and native caches
 		} else if (stage == 2) {
 			// Y2 protects RAM this way while the renderer owns the page.
-			Mips3MapHandler(3, 0x1000, 0x1fff, MAP_READ | MAP_WRITE);
+			Mips3BeginMapBatch();
+			Mips3MapHandler(3, 0x1000, 0x1fff, MAP_READ);
+			Mips3BeginMapBatch();
+			Mips3MapHandler(3, 0x1000, 0x1fff, MAP_WRITE);
+			Mips3EndMapBatch();
+			Mips3EndMapBatch();
 		} else if (stage == 3) {
 			Require(mappedReads > 0 && mappedWrites > 0, "protected-page handler was bypassed");
 			Mips3MapMemory((UINT8 *)mappedData, 0x1000, 0x1fff, MAP_RAM);
@@ -342,6 +525,10 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 			printf("Core type %d: %llu native RAM hits, %llu side exits\n", type,
 				(unsigned long long)nJitRamHits, (unsigned long long)nJitRamMisses);
 		}
+		if (bMips3Integrated) {
+			Require(nJitBranches > 0, "native branches not exercised");
+			printf("Core type %d: %llu native branches\n", type, (unsigned long long)nJitBranches);
+		}
 		Require(nJitSpansBuilt > 0 && nJitSpansRun > 0 && nJitInsns > 0, "no native span executed");
 		printf("Core type %d: %llu native spans run, %llu guest instructions\n", type,
 			(unsigned long long)nJitSpansRun, (unsigned long long)nJitInsns);
@@ -353,9 +540,51 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 	return result;
 }
 
+static Mips3State RunFlowCase(int type, bool enable, unsigned scenario)
+{
+	UINT32 *ram = (UINT32 *)calloc(0x2000, 1);
+	Require(ram != NULL, "flow case allocation");
+	// The first branch is an ordinary forward condition with a delay ALU.
+	// The second branch's slot loads RAM, including misalignment/TLB faults.
+	const uint32_t code[] = {
+		Imm(9,0,1,1), Imm(9,0,2,scenario & 1),
+		Imm(4,1,2,3), Imm(9,0,5,12),
+		Imm(9,0,6,23), Imm(9,0,7,34),
+		Imm(9,0,8,45),
+		Imm(scenario & 2 ? 0x14 : 4,1,2,2),
+		Imm(0x23,3,4,scenario & 4 ? 1 : 0),
+		Imm(9,0,9,56), 0x0800000a, 0
+	};
+	for (unsigned i=0; i<sizeof(code)/sizeof(code[0]); i++) ram[i]=BURN_ENDIAN_SWAP_INT32(code[i]);
+	ram[0x1000/4] = BURN_ENDIAN_SWAP_INT32(0xabcdef12u);
+	Mips3Init(type);
+	Require(Mips3UseRecompiler(enable)==0, "flow case backend");
+	Mips3MapMemory((UINT8 *)ram,0,0x1fff,MAP_RAM);
+	Mips3Reset();
+	M.pc = 0x80000000;
+	M.r[3] = scenario & 8 ? 0x12345000u : 0xffffffff80001000ULL;
+	// Exercise boundary exactly at and beyond the first branch's delay.
+	Mips3Run(scenario & 16 ? 4 : 64);
+	if (scenario & 16) Mips3Run(64);
+	Mips3State state = M;
+	Mips3Exit();
+	free(ram);
+	return state;
+}
+
+static void TestFlowCases(int type)
+{
+	for (unsigned scenario=0; scenario<32; scenario++) {
+		Mips3State a=RunFlowCase(type,false,scenario), b=RunFlowCase(type,true,scenario);
+		Require(!memcmp(&a,&b,sizeof(a)), "superblock/likely/delay fault CPU state differs");
+	}
+	printf("Flow core type %d: 32 event/likely/delay exception cases identical\n",type);
+}
+
 int main()
 {
 	TestPackedCache();
+	TestFlowGuardAndBudget();
 	// Verify default policy and explicit process-environment overrides.
 	for (int type = 0; type < 2; type++) {
 		unsetenv("FBNEO_MIPS3_ARM64_JIT");
@@ -373,6 +602,9 @@ int main()
 	for (int type = 0; type < 2; type++) {
 		TestEmitter(type);
 		TestGuardedMemoryEmitter(type);
+		TestIntegratedMemory(type);
+		TestNativeBranches(type);
+		TestFlowCases(type);
 		std::vector<Snapshot> a = RunProgram(type, false), b = RunProgram(type, true);
 		Require(a.size() == b.size(), "snapshot count differs");
 		for (size_t i = 0; i < a.size(); i++) {
@@ -383,6 +615,6 @@ int main()
 		}
 		printf("Core type %d: %zu interpreter/JIT snapshots identical\n", type, a.size());
 	}
-	puts("PASS: ARM64 native ALU + guarded RAM + mixed-block differential tests");
+	puts("PASS: ARM64 register cache + guarded RAM + native branches + mixed-block differential tests");
 	return 0;
 }

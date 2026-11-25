@@ -19,6 +19,27 @@ pMips3ReadDoubleHandler Mips3ReadDoubleH[MIPS3_MAXHANDLER];
 pMips3WriteDoubleHandler Mips3WriteDoubleH[MIPS3_MAXHANDLER];
 
 static INT32 bMips3IntfInitted = 0;
+static unsigned nMapBatchDepth = 0;
+static bool bMapBatchDirty = false;
+
+static void MapChanged()
+{
+	if (nMapBatchDepth) bMapBatchDirty = true;
+	else mips3_map_changed();
+}
+
+void Mips3BeginMapBatch()
+{
+	nMapBatchDepth++;
+}
+
+void Mips3EndMapBatch()
+{
+	if (nMapBatchDepth && !--nMapBatchDepth && bMapBatchDirty) {
+		bMapBatchDirty = false;
+		mips3_map_changed();
+	}
+}
 
 static UINT8 DefReadByte(UINT32) { return 0; }
 static UINT16 DefReadHalf(UINT32) { return 0; }
@@ -43,7 +64,7 @@ int Mips3MapMemory(unsigned char* pMemory, unsigned int nStart, unsigned int nEn
 		if (nType & MAP_FETCH) Mips3Phys[page].fetch = pMemory + 0x1000 * i;
 		mips3_page_mapped(page);
 	}
-	mips3_map_changed();
+	MapChanged();
 	return 0;
 }
 
@@ -58,7 +79,7 @@ int Mips3MapHandler(uintptr_t nHandler, unsigned int nStart, unsigned int nEnd, 
 		if (nType & MAP_FETCH) Mips3Phys[page].fetch = NULL;	// fetch through the read handler
 		mips3_page_mapped(page);
 	}
-	mips3_map_changed();
+	MapChanged();
 	return 0;
 }
 

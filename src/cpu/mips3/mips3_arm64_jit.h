@@ -318,6 +318,9 @@ public:
 	uint32_t RunGuarded(uint32_t offset, uint64_t *r, const void *read, const void *write) const {
 		return reinterpret_cast<uint32_t (*)(uint64_t *, uintptr_t, uintptr_t, const void *, const void *)>(base_ + offset)(r, 0, 0, read, write);
 	}
+	uint64_t RunFlow(uint32_t offset, uint64_t *r, const void *read, const void *write, uint32_t vpage, uint32_t budget = UINT32_MAX) const {
+		return reinterpret_cast<uint64_t (*)(uint64_t *, uintptr_t, uintptr_t, const void *, const void *, uint32_t, uint32_t)>(base_ + offset)(r, 0, 0, read, write, vpage, budget);
+	}
 	bool Denied() const { return denied_; }
 	size_t Used() const { return used_; }
 	size_t Payload() const { return payload_; }

@@ -14,6 +14,8 @@
 #include "mips3_intf.h"
 #include "burn_hdd.h"
 #include "rpp324.h"
+#include "y2_pixel_ops.h"
+#include "y2_job_sync.h"
 #define THREADY_NO_GLOBAL
 #include "thready.h"
 #include <math.h>
@@ -24,9 +26,12 @@
 // Experimental branch diagnostics. Main-thread timers include nested work;
 // background batches are handed back only after the existing worker join.
 static bool bY2Profile = false;
+static bool bY2BatchMap = true;
+static bool bY2SelectiveSync = true;
 struct Y2PerfCounters {
 	UINT64 frame, peak, cpuDevices, audio, scanout, sync, wait, protect;
 	UINT64 nandFill, nandRead, nandMisses, bgRender, bgBatches;
+	UINT64 mapRanges, mapUpdates, syncCalls, syncPending, syncSelective;
 	UINT32 frames, lateFrames;
 };
 static Y2PerfCounters Y2Perf;
@@ -60,6 +65,10 @@ static void Y2PerfBegin()
 #else
 	bY2Profile = profile && strcmp(profile, "1") == 0;
 #endif
+	const char *batch = getenv("FBNEO_Y2_BATCH_MAP");
+	bY2BatchMap = !batch || strcmp(batch, "0") != 0;
+	const char *selective = getenv("FBNEO_Y2_SELECTIVE_SYNC");
+	bY2SelectiveSync = !selective || strcmp(selective, "0") != 0;
 	Y2Perf = {};
 	Y2CpuPrev = {};
 	Y2BgBatchNs = 0;
@@ -1181,9 +1190,7 @@ static void RenderSpan(INT32 y, INT32 startx, INT32 stopx, const Y2Poly &poly)
 			if (a.color == 0xffffffff) {
 				src = tex;
 			} else {
-				for (INT32 shift = 0; shift < 32; shift += 8) {
-					src |= (((a.color >> shift) & 255) * ((tex >> shift) & 255) / 255) << shift;
-				}
+				src = Y2PixelOps::Modulate(a.color, tex);
 			}
 		} else {
 			for (INT32 shift = 0; shift < 32; shift += 8) {
@@ -1325,9 +1332,7 @@ static void RenderSpanFast(INT32 y, INT32 startx, INT32 stopx, const Y2Poly &pol
 			if (white) {
 				src = tex;
 			} else {
-				for (INT32 shift = 0; shift < 32; shift += 8) {
-					src |= (((a.color >> shift) & 255) * ((tex >> shift) & 255) / 255) << shift;
-				}
+				src = Y2PixelOps::Modulate(a.color, tex);
 			}
 		} else {
 			for (INT32 shift = 0; shift < 32; shift += 8) {
@@ -1352,12 +1357,7 @@ static void RenderSpanFast(INT32 y, INT32 startx, INT32 stopx, const Y2Poly &pol
 		if (alpha_factors) {
 			// factors that only depend on the alphas are the same for the three channels
 			const INT32 sf = BlendFactor(src_factor, src, dst, 0), df = BlendFactor(dst_factor, src, dst, 0);
-			for (INT32 shift = 0; shift < 24; shift += 8) {
-				INT32 sv = ((src >> shift) & 255) * sf;
-				INT32 dv = ((dst >> shift) & 255) * df;
-				INT32 value = subtract ? (dv - sv) : (dv + sv);
-				color |= (UINT32)Clamp((value + 127) / 255, 0, 255) << shift;
-			}
+			color = Y2PixelOps::BlendAlpha(src, dst, sf, df, subtract != 0);
 		} else {
 			for (INT32 shift = 0; shift < 24; shift += 8) {
 				INT32 sv = ((src >> shift) & 255) * BlendFactor(src_factor, src, dst, shift);
@@ -1943,6 +1943,8 @@ static void ProtectUpdate(INT32 full)
 	if (from > to) return;
 
 	INT32 any = 0;
+	if (bY2Profile) Y2Perf.mapUpdates++;
+	if (bY2BatchMap) Mips3BeginMapBatch();
 	for (UINT32 page = from; page <= to; ) {
 		// most of the range is pages nothing ever protected: skip them 8 at a time
 		if (!(page & 7) && page + 7 <= to) {
@@ -1964,13 +1966,16 @@ static void ProtectUpdate(INT32 full)
 		while (page <= to && PageLevel(page) == level && AppliedMap[page] != level) AppliedMap[page++] = level;
 		const UINT32 start = first << 12, end = ((page - 1) << 12) | 0xfff;
 
+		if (bY2Profile) Y2Perf.mapRanges++;
 		if (level == PROTECT_WRITE) {
 			Mips3MapHandler(3, start, end, MAP_READ | MAP_WRITE);
 		} else {
-			Mips3MapMemory(DrvRAM + start, start, end, MAP_READ | MAP_WRITE);
+			Mips3MapMemory(DrvRAM + start, start, end, level == PROTECT_READ && bY2BatchMap ? MAP_READ : MAP_READ | MAP_WRITE);
 			if (level == PROTECT_READ) Mips3MapHandler(3, start, end, MAP_WRITE);
 		}
 	}
+
+	if (bY2BatchMap) Mips3EndMapBatch();
 
 	if (full && !any) {
 		nMapMin = ~0U;
@@ -2077,6 +2082,10 @@ static void RenderSync()
 {
 	if (!bRenderBusy) return;
 	Y2PerfScope perf(Y2Perf.sync);
+	if (bY2Profile) {
+		Y2Perf.syncCalls++;
+		Y2Perf.syncPending += JobsPending->n;
+	}
 
 	BgWait();
 
@@ -2096,30 +2105,48 @@ static void RenderSyncRange(UINT32 start, UINT64 bytes, INT32 write)
 	UINT64 end = (UINT64)start + bytes - 1;
 	if (end >= RAM_SIZE) end = RAM_SIZE - 1;
 
-	for (UINT32 page = start >> 12; page <= (UINT32)(end >> 12); page++) {
-		const UINT8 level = PageLevel(page);
-		if (write ? level : (level == PROTECT_WRITE)) {
-			RenderSync();
-			return;
+	const UINT32 first = start >> 12, last = UINT32(end >> 12);
+	if (!bY2SelectiveSync) {
+		for (UINT32 page = first; page <= last; page++) {
+			const UINT8 level = PageLevel(page);
+			if (write ? level : (level == PROTECT_WRITE)) {
+				RenderSync();
+				return;
+			}
 		}
+		return;
+	}
+
+	// Pending jobs execute in queue order. If they conflict, preserve the
+	// original full fence. If only running jobs conflict, join those jobs
+	// and launch the non-conflicting pending batch on the worker instead
+	// of executing it synchronously on the CPU thread.
+	const auto action = Y2JobSync::Plan(PendingMap, RunningMap, first, last, write != 0);
+	if (action == Y2JobSync::DrainAll) {
+		RenderSync();
+	} else if (action == Y2JobSync::WaitRunning) {
+		Y2PerfScope perf(Y2Perf.sync);
+		if (bY2Profile) { Y2Perf.syncCalls++; Y2Perf.syncSelective++; }
+		BgWait();
+		if (bRenderAsync) BgLaunch();
 	}
 }
 
 static inline UINT32 RamReadSynced(UINT32 a)
 {
-	if (bRenderBusy && PageLevel((a >> 12) & ((RAM_SIZE >> 12) - 1)) == PROTECT_WRITE) RenderSync();
+	if (bRenderBusy && PageLevel((a >> 12) & ((RAM_SIZE >> 12) - 1)) == PROTECT_WRITE) RenderSyncRange(a, 4, 0);
 	return Ram32(a);
 }
 
 // protected pages: the access waits for the background work, which gives the page back to RAM
-static UINT8 ProtReadByte(UINT32 a) { RenderSync(); return DrvRAM[a]; }
-static UINT16 ProtReadHalf(UINT32 a) { RenderSync(); return Ram16(a); }
-static UINT32 ProtReadWord(UINT32 a) { RenderSync(); return Ram32(a); }
-static UINT64 ProtReadDouble(UINT32 a) { RenderSync(); return Ram32(a) | ((UINT64)Ram32(a + 4) << 32); }
-static void ProtWriteByte(UINT32 a, UINT8 d) { RenderSync(); RamWritten(a & ~7, 8); DrvRAM[a] = d; Mips3InvalidateRange(a, a); }
-static void ProtWriteHalf(UINT32 a, UINT16 d) { RenderSync(); RamWritten(a & ~7, 8); RamW16(a, d); Mips3InvalidateRange(a, a + 1); }
-static void ProtWriteWord(UINT32 a, UINT32 d) { RenderSync(); RamWritten(a & ~7, 8); RamW32(a, d); Mips3InvalidateRange(a, a + 3); }
-static void ProtWriteDouble(UINT32 a, UINT64 d) { RenderSync(); RamWritten(a & ~7, 8); RamW32(a, (UINT32)d); RamW32(a + 4, (UINT32)(d >> 32)); Mips3InvalidateRange(a, a + 7); }
+static UINT8 ProtReadByte(UINT32 a) { RenderSyncRange(a, 1, 0); return DrvRAM[a]; }
+static UINT16 ProtReadHalf(UINT32 a) { RenderSyncRange(a, 2, 0); return Ram16(a); }
+static UINT32 ProtReadWord(UINT32 a) { RenderSyncRange(a, 4, 0); return Ram32(a); }
+static UINT64 ProtReadDouble(UINT32 a) { RenderSyncRange(a, 8, 0); return Ram32(a) | ((UINT64)Ram32(a + 4) << 32); }
+static void ProtWriteByte(UINT32 a, UINT8 d) { RenderSyncRange(a, 1, 1); RamWritten(a & ~7, 8); DrvRAM[a] = d; Mips3InvalidateRange(a, a); }
+static void ProtWriteHalf(UINT32 a, UINT16 d) { RenderSyncRange(a, 2, 1); RamWritten(a & ~7, 8); RamW16(a, d); Mips3InvalidateRange(a, a + 1); }
+static void ProtWriteWord(UINT32 a, UINT32 d) { RenderSyncRange(a, 4, 1); RamWritten(a & ~7, 8); RamW32(a, d); Mips3InvalidateRange(a, a + 3); }
+static void ProtWriteDouble(UINT32 a, UINT64 d) { RenderSyncRange(a, 8, 1); RamWritten(a & ~7, 8); RamW32(a, (UINT32)d); RamW32(a + 4, (UINT32)(d >> 32)); Mips3InvalidateRange(a, a + 7); }
 
 static void RenderAsyncInit()
 {
@@ -2231,7 +2258,14 @@ static void geometry_start()
 			break;
 		}
 
-		for (UINT32 i = 0; i < count; i++) list[words + i] = RamReadSynced(base + i * 4);
+		// No guest CPU runs while this list is copied. Fence the entire
+		// input range once, rather than checking the same page for each word.
+		RenderSyncRange(base, UINT64(count) * 4, 0);
+#if defined(LSB_FIRST)
+		memcpy(list + words, DrvRAM + base, count * sizeof(UINT32));
+#else
+		for (UINT32 i = 0; i < count; i++) list[words + i] = Ram32(base + i * 4);
+#endif
 		words += count;
 	}
 }
@@ -3222,6 +3256,10 @@ static void Y2PerfFrameDone(UINT64 start)
 	bprintf(PRINT_UI, _T("Y2 PERF CACHE: payload %.2f MiB, mapped %.2f MiB, capacity %.0f MiB, rejected %llu\n"),
 		cur.cachePayloadBytes / 1048576.0, cur.cacheMappedBytes / 1048576.0,
 		cur.cacheCapacityBytes / 1048576.0, (unsigned long long)(cur.cacheRejected - Y2CpuPrev.cacheRejected));
+	bprintf(PRINT_UI, _T("Y2 PERF FLOW: native branches %llu; sync calls %llu, pending jobs %llu, selective %llu, map updates %llu, ranges %llu\n"),
+		(unsigned long long)(cur.nativeBranches - Y2CpuPrev.nativeBranches),
+		(unsigned long long)Y2Perf.syncCalls, (unsigned long long)Y2Perf.syncPending,
+		(unsigned long long)Y2Perf.syncSelective, (unsigned long long)Y2Perf.mapUpdates, (unsigned long long)Y2Perf.mapRanges);
 	Y2CpuPrev = cur;
 	Y2Perf = {};
 }
