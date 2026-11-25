@@ -17,6 +17,53 @@
 #define THREADY_NO_GLOBAL
 #include "thready.h"
 #include <math.h>
+#include <chrono>
+#include <stdlib.h>
+#include <string.h>
+
+// Experimental branch diagnostics. Main-thread timers include nested work;
+// background batches are handed back only after the existing worker join.
+static bool bY2Profile = false;
+struct Y2PerfCounters {
+	UINT64 frame, peak, cpuDevices, audio, scanout, sync, wait, protect;
+	UINT64 nandFill, nandRead, nandMisses, bgRender, bgBatches;
+	UINT32 frames, lateFrames;
+};
+static Y2PerfCounters Y2Perf;
+static Mips3PerfStats Y2CpuPrev;
+static UINT64 Y2BgBatchNs = 0;
+
+static UINT64 Y2PerfNow()
+{
+	if (!bY2Profile) return 0;
+	return (UINT64)std::chrono::duration_cast<std::chrono::nanoseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+static UINT64 Y2PerfElapsed(UINT64 start)
+{
+	return start ? Y2PerfNow() - start : 0;
+}
+
+struct Y2PerfScope {
+	UINT64 &sum;
+	UINT64 start;
+	explicit Y2PerfScope(UINT64 &total) : sum(total), start(Y2PerfNow()) {}
+	~Y2PerfScope() { if (start) sum += Y2PerfElapsed(start); }
+};
+
+static void Y2PerfBegin()
+{
+	const char *profile = getenv("FBNEO_Y2_PROFILE");
+#if defined(__aarch64__) && defined(__linux__)
+	bY2Profile = !profile || strcmp(profile, "0") != 0;
+#else
+	bY2Profile = profile && strcmp(profile, "1") == 0;
+#endif
+	Y2Perf = {};
+	Y2CpuPrev = {};
+	Y2BgBatchNs = 0;
+}
 
 static UINT8 *AllMem;
 static UINT8 *MemEnd;
@@ -522,8 +569,13 @@ static void NandInitDecrypt()
 // each record decrypts on its own: the key is in its spare area, the mask depends on the position
 static void NandFill(NandCacheLine *line, INT32 chip, UINT32 record)
 {
+	Y2PerfScope fill(Y2Perf.nandFill);
+	if (bY2Profile) Y2Perf.nandMisses++;
 	UINT8 src[NAND_RECORD];
-	BurnHDDReadBytes(Nand[chip], (UINT64)record * NAND_RECORD, NAND_RECORD, src);
+	{
+		Y2PerfScope read(Y2Perf.nandRead);
+		BurnHDDReadBytes(Nand[chip], (UINT64)record * NAND_RECORD, NAND_RECORD, src);
+	}
 
 	INT32 erased = 1;
 	for (INT32 i = 0; i < NAND_RECORD && erased; i++) erased = (src[i] == 0xff);
@@ -1439,6 +1491,18 @@ static void RenderInit()
 	if (nY2Workers > Y2_MAX_WORKERS) nY2Workers = Y2_MAX_WORKERS;
 	if (nY2Workers < 0) nY2Workers = 0;
 
+	// Cap helper threads for controlled A/B tests on heterogeneous CPUs.
+	// Leave the upstream automatic policy unchanged unless explicitly set.
+	const char *workers = getenv("FBNEO_Y2_RENDER_WORKERS");
+	if (workers && *workers) {
+		char *end = NULL;
+		long count = strtol(workers, &end, 10);
+		if (end != workers && !*end && count >= 0 && count <= nY2Workers)
+			nY2Workers = (INT32)count;
+	}
+	if (bY2Profile) bprintf(PRINT_NORMAL, _T("Y2 profile: host CPUs %d, render helpers %d, async %d\n"),
+		cpus, nY2Workers, bRenderAsync);
+
 	for (INT32 i = 0; i < nY2Workers; i++) Y2Workers[i].init(RenderWorkers[i]);
 
 	RenderQueue = (Y2Queued*)malloc(Y2_QUEUE * sizeof(Y2Queued));
@@ -1868,6 +1932,7 @@ static INT32 execute_list(const UINT32 *list, UINT32 words, INT32 render)
 // brings the cpu's map in line with the jobs' needs: the newly marked pages, or all of them when jobs ended
 static void ProtectUpdate(INT32 full)
 {
+	Y2PerfScope perf(Y2Perf.protect);
 	UINT32 from = full ? nMapMin : nDirtyMin, to = full ? nMapMax : nDirtyMax;
 	nDirtyMin = ~0U;
 	nDirtyMax = 0;
@@ -1940,7 +2005,9 @@ static void ExecJob(const Y2Job &job)
 
 static void RenderThreadProc()
 {
+	UINT64 start = Y2PerfNow();
 	for (UINT32 i = 0; i < JobsRunning->n; i++) ExecJob(JobsRunning->job[i]);
+	Y2BgBatchNs = Y2PerfElapsed(start);
 	bBgDone = 1;
 }
 
@@ -1949,7 +2016,14 @@ static void BgWait()
 {
 	if (!bBgRunning) return;
 
-	RenderThread.notify_wait();
+	{
+		Y2PerfScope wait(Y2Perf.wait);
+		RenderThread.notify_wait();
+	}
+	if (bY2Profile) {
+		Y2Perf.bgRender += Y2BgBatchNs;
+		Y2Perf.bgBatches++;
+	}
 
 	bBgRunning = 0;
 	JobsRunning->n = 0;
@@ -1998,6 +2072,7 @@ static void BgQueue(const Y2Job &job)
 static void RenderSync()
 {
 	if (!bRenderBusy) return;
+	Y2PerfScope perf(Y2Perf.sync);
 
 	BgWait();
 
@@ -2859,6 +2934,7 @@ static void DrvDoReset()
 
 static INT32 DrvInit(UINT16 seed, const UINT8 *data_bits, const UINT8 *key_bits, INT32 snd_roms, UINT32 state_megabytes)
 {
+	Y2PerfBegin();
 	ScanMainRamInit(state_megabytes);
 
 	nSndROMLen = snd_roms * 0x8000000;
@@ -2944,6 +3020,8 @@ static INT32 DrvInit(UINT16 seed, const UINT8 *data_bits, const UINT8 *key_bits,
 	RPP324Init(DrvSndROM, nSndROMLen, CpuCycles, CPU_CLOCK);
 
 	DrvDoReset();
+	Y2Perf = {}; // exclude initial NAND and CPU boot setup
+	Mips3GetPerfStats(&Y2CpuPrev);
 
 	return 0;
 }
@@ -3103,8 +3181,43 @@ static void MakeInputs()
 	}
 }
 
+static void Y2PerfFrameDone(UINT64 start)
+{
+	if (!start) return;
+	UINT64 ns = Y2PerfElapsed(start);
+	Y2Perf.frame += ns;
+	if (ns > Y2Perf.peak) Y2Perf.peak = ns;
+	if (ns > 16666667ULL) Y2Perf.lateFrames++;
+	if (++Y2Perf.frames < 120) return;
+
+	const double scale = 1.0 / (Y2Perf.frames * 1000000.0);
+	bprintf(PRINT_NORMAL, _T("Y2 PERF %d frames: core avg %.2f ms peak %.2f ms late %d; CPU+devices %.2f audio %.2f scanout %.2f ms/frame\n"),
+		Y2Perf.frames, Y2Perf.frame * scale, Y2Perf.peak / 1000000.0, Y2Perf.lateFrames,
+		Y2Perf.cpuDevices * scale, Y2Perf.audio * scale, Y2Perf.scanout * scale);
+	// Nested timers overlap (and background render can run in parallel).
+	bprintf(PRINT_NORMAL, _T("Y2 PERF detail ms/frame: wait %.2f sync %.2f map %.2f NAND %.2f (I/O %.2f); background %.2f; NAND misses %llu, batches %llu\n"),
+		Y2Perf.wait * scale, Y2Perf.sync * scale, Y2Perf.protect * scale,
+		Y2Perf.nandFill * scale, Y2Perf.nandRead * scale, Y2Perf.bgRender * scale,
+		(unsigned long long)Y2Perf.nandMisses, (unsigned long long)Y2Perf.bgBatches);
+
+	Mips3PerfStats cur;
+	Mips3GetPerfStats(&cur);
+	const UINT64 guest = cur.guestInstructions - Y2CpuPrev.guestInstructions;
+	const UINT64 native = cur.nativeInstructions - Y2CpuPrev.nativeInstructions;
+	bprintf(PRINT_NORMAL, _T("Y2 PERF JIT %d: native %.2f%% of executed guest ops (%llu/%llu), spans %llu, built %llu, cache flushes %llu, cache %.2f MiB, denied %d\n"),
+		(int)cur.jitEnabled, guest ? (100.0 * native / guest) : 0.0,
+		(unsigned long long)native, (unsigned long long)guest,
+		(unsigned long long)(cur.nativeSpans - Y2CpuPrev.nativeSpans),
+		(unsigned long long)(cur.nativeBuilt - Y2CpuPrev.nativeBuilt),
+		(unsigned long long)(cur.cacheFlushes - Y2CpuPrev.cacheFlushes),
+		cur.cacheBytes / 1048576.0, (int)cur.mappingDenied);
+	Y2CpuPrev = cur;
+	Y2Perf = {};
+}
+
 static INT32 DrvFrame()
 {
+	UINT64 profileStart = Y2PerfNow();
 	if (DrvReset) DrvDoReset();
 
 	// runahead was turned off: stop copying pages
@@ -3114,6 +3227,7 @@ static INT32 DrvFrame()
 	MakeInputs();
 
 	UINT64 nFrameStart = CpuCycles();
+	UINT64 cpuStart = Y2PerfNow();
 
 	for (INT32 line = 0; line < V_TOTAL; line++) {
 		nCurrentLine = line;
@@ -3154,9 +3268,16 @@ static INT32 DrvFrame()
 	// a background render may run on into the next frame: what can see its results waits for it
 	// (Draw for the displayed buffer, savestates in DrvScan, the cpu and devices through the protection)
 
-	RPP324Update(pBurnSoundOut, nBurnSoundLen);
-
-	if (pBurnDraw) DrvDraw();
+	Y2Perf.cpuDevices += Y2PerfElapsed(cpuStart);
+	{
+		Y2PerfScope audio(Y2Perf.audio);
+		RPP324Update(pBurnSoundOut, nBurnSoundLen);
+	}
+	if (pBurnDraw) {
+		Y2PerfScope scanout(Y2Perf.scanout);
+		DrvDraw();
+	}
+	Y2PerfFrameDone(profileStart);
 
 	return 0;
 }

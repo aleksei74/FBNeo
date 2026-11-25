@@ -137,6 +137,11 @@ int Mips3UseRecompiler(bool use)
 	return mips3_set_recompiler(use);
 }
 
+void Mips3GetPerfStats(Mips3PerfStats *stats)
+{
+	mips3_get_perf_stats(stats);
+}
+
 // ---------------------------------------------------------------------------
 // cpu core config (cheats, debugger)
 

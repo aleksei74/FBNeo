@@ -26,6 +26,13 @@ int Mips3Init(int nType = MIPS3_TYPE_R4600);
 // Experimental native backend; call after init and outside CPU execution.
 // Returns nonzero if enable is unavailable on the host.
 int Mips3UseRecompiler(bool use);
+// Cumulative host-work counters, not emulated cycle counts or serialized state.
+struct Mips3PerfStats {
+	uint64_t guestInstructions, uncachedSteps, nativeInstructions, nativeSpans;
+	uint64_t nativeBuilt, cacheFlushes, cacheBytes;
+	bool jitEnabled, mappingDenied;
+};
+void Mips3GetPerfStats(Mips3PerfStats *stats);
 int Mips3Exit();
 void Mips3Reset();
 int Mips3Run(int cycles);

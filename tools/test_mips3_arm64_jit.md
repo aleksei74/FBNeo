@@ -28,6 +28,28 @@ JIT reports compiled/executed spans and native guest ALU instruction counts.
 Those counters demonstrate coverage, not measured speedup. A Linux executable
 mapping failure or a full code cache falls back to the interpreter.
 
+### Y2 bottleneck profiling
+
+On Linux ARM64 the experimental branch logs `Y2 PERF` every 120 emulated
+frames by default. `FBNEO_Y2_PROFILE=0` disables the profiling timers and
+guest-instruction counters. Set `FBNEO_Y2_PROFILE=1` to enable driver timings
+on other hosts (JIT instruction counters are ARM64-only).
+
+The core frame times exclude frontend shaders/presentation, frame pacing and
+most frontend overhead. CPU+devices includes device handlers; wait, sync,
+map and NAND times are nested and **must not be added together**. Background
+render time is batch wall time collected at join, not extra serial frame cost.
+The native ratio compares executed/attempted interpreter instructions with
+native ALU instructions; idle-loop skipped cycles are not counted as work.
+Save/runahead/other driver callbacks outside DrvFrame can also contribute to
+the nested timers, so disable runahead and rewind for controlled comparisons.
+
+Test the same fight with JIT on/off using `FBNEO_MIPS3_ARM64_JIT=1/0`.
+Also try `FBNEO_Y2_RENDER_WORKERS=2` or `=4` (maximum is the automatic count).
+This limits only the renderer helper threads, not the main CPU thread or the
+asynchronous renderer coordinator. Unset the variable to restore automatic
+thread selection. Compare core average, peak and late frames, not just FPS.
+
 ## Differential test
 
 `tools/test_mips3_arm64_jit.cpp` is a standalone AArch64 test (not linked into

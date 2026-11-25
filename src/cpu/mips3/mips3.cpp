@@ -249,6 +249,8 @@ static UINT32 ArenaUsed = 0;
 static Mips3Arm64Jit::Cache JitCache;
 static bool bMips3Jit = false;
 static UINT64 nJitSpansBuilt = 0, nJitSpansRun = 0, nJitInsns = 0;
+static UINT64 nPerfGuest = 0, nPerfUncached = 0, nPerfFlushes = 0;
+static bool bMips3CollectPerf = false;
 #endif
 
 static Mips3Handler Mips3Decode(UINT32 op, UINT32 *flags);
@@ -2322,6 +2324,7 @@ static void Mips3FlushCache()
 	ArenaUsed = 0;
 #if MIPS3_ARM64_JIT
 	JitCache.Reset(); // decoded blocks referring to native code are gone
+	if (bMips3CollectPerf) nPerfFlushes++;
 #endif
 	FAST_INVALIDATE();
 }
@@ -2951,6 +2954,9 @@ static MIPS3_INLINE void ExecBlock(Mips3Block *b)
 	}
 
 	INT32 n = I[-1].cyc;
+#if MIPS3_ARM64_JIT
+	if (bMips3CollectPerf) nPerfGuest += n;
+#endif
 	M.total_cycles += n;
 #if MIPS3_PROFILE
 	b->vpc = Mx.vpage + b->start;
@@ -3007,6 +3013,9 @@ static void StepOne()
 	Mx.brk = 0;
 
 	M.total_cycles++;
+#if MIPS3_ARM64_JIT
+	if (bMips3CollectPerf) { nPerfGuest++; nPerfUncached++; }
+#endif
 #if MIPS3_PROFILE
 	nProfStep++;
 #endif
@@ -3320,6 +3329,9 @@ INT32 mips3_init(INT32 type)
 	bMips3Initted = 1;
 #if MIPS3_ARM64_JIT
 	nJitSpansBuilt = nJitSpansRun = nJitInsns = 0;
+	nPerfGuest = nPerfUncached = nPerfFlushes = 0;
+	const char *perf = getenv("FBNEO_Y2_PROFILE");
+	bMips3CollectPerf = IS_VR5500 && (!perf || strcmp(perf, "0") != 0);
 	JitCache.Enable();
 	const char *jit = getenv("FBNEO_MIPS3_ARM64_JIT");
 	// This experimental branch defaults to Y2 only. An explicit 0/1
@@ -3330,6 +3342,22 @@ INT32 mips3_init(INT32 type)
 	bprintf(PRINT_NORMAL, _T("MIPS3 ARM64 experimental JIT: %s\n"), bMips3Jit ? _T("enabled") : _T("disabled"));
 #endif
 	return 0;
+}
+
+void mips3_get_perf_stats(Mips3PerfStats *stats)
+{
+	*stats = {};
+#if MIPS3_ARM64_JIT
+	stats->guestInstructions = nPerfGuest;
+	stats->uncachedSteps = nPerfUncached;
+	stats->nativeInstructions = nJitInsns;
+	stats->nativeSpans = nJitSpansRun;
+	stats->nativeBuilt = nJitSpansBuilt;
+	stats->cacheFlushes = nPerfFlushes;
+	stats->cacheBytes = JitCache.Used();
+	stats->jitEnabled = bMips3Jit;
+	stats->mappingDenied = JitCache.Denied();
+#endif
 }
 
 // Only change backend outside mips3_run(), at a CPU lifecycle boundary.

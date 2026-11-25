@@ -149,6 +149,15 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 		}
 		M.pc = 0x80000000;
 	}
+	if (type == MIPS3_TYPE_VR5500) {
+		Mips3PerfStats stats;
+		Mips3GetPerfStats(&stats);
+		Require(stats.guestInstructions > 0, "missing guest instruction counters");
+		Require(stats.nativeInstructions <= stats.guestInstructions, "invalid native instruction count");
+		Require(stats.jitEnabled == enable, "wrong reported backend");
+		Require((stats.nativeInstructions > 0) == enable, "incorrect native work counter");
+		Require(stats.cacheFlushes > 0, "missing cache flush counter");
+	}
 	if (enable) {
 		Require(nJitSpansBuilt > 0 && nJitSpansRun > 0 && nJitInsns > 0, "no native span executed");
 		printf("Core type %d: %llu native spans run, %llu guest instructions\n", type,
