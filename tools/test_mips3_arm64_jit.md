@@ -31,7 +31,7 @@ mapping failure or a full code cache falls back to the interpreter.
 ### Y2 bottleneck profiling
 
 On Linux ARM64 the experimental branch logs `Y2 PERF` every 120 emulated
-frames by default. `FBNEO_Y2_PROFILE=0` disables the profiling timers and
+frames by default at INFO level in libretro release builds. `FBNEO_Y2_PROFILE=0` disables the profiling timers and
 guest-instruction counters. Set `FBNEO_Y2_PROFILE=1` to enable driver timings
 on other hosts (JIT instruction counters are ARM64-only).
 

@@ -1500,7 +1500,7 @@ static void RenderInit()
 		if (end != workers && !*end && count >= 0 && count <= nY2Workers)
 			nY2Workers = (INT32)count;
 	}
-	if (bY2Profile) bprintf(PRINT_NORMAL, _T("Y2 profile: host CPUs %d, render helpers %d, async %d\n"),
+	if (bY2Profile) bprintf(PRINT_UI, _T("Y2 profile: host CPUs %d, render helpers %d, async %d\n"),
 		cpus, nY2Workers, bRenderAsync);
 
 	for (INT32 i = 0; i < nY2Workers; i++) Y2Workers[i].init(RenderWorkers[i]);
@@ -3191,11 +3191,11 @@ static void Y2PerfFrameDone(UINT64 start)
 	if (++Y2Perf.frames < 120) return;
 
 	const double scale = 1.0 / (Y2Perf.frames * 1000000.0);
-	bprintf(PRINT_NORMAL, _T("Y2 PERF %d frames: core avg %.2f ms peak %.2f ms late %d; CPU+devices %.2f audio %.2f scanout %.2f ms/frame\n"),
+	bprintf(PRINT_UI, _T("Y2 PERF %d frames: core avg %.2f ms peak %.2f ms late %d; CPU+devices %.2f audio %.2f scanout %.2f ms/frame\n"),
 		Y2Perf.frames, Y2Perf.frame * scale, Y2Perf.peak / 1000000.0, Y2Perf.lateFrames,
 		Y2Perf.cpuDevices * scale, Y2Perf.audio * scale, Y2Perf.scanout * scale);
 	// Nested timers overlap (and background render can run in parallel).
-	bprintf(PRINT_NORMAL, _T("Y2 PERF detail ms/frame: wait %.2f sync %.2f map %.2f NAND %.2f (I/O %.2f); background %.2f; NAND misses %llu, batches %llu\n"),
+	bprintf(PRINT_UI, _T("Y2 PERF detail ms/frame: wait %.2f sync %.2f map %.2f NAND %.2f (I/O %.2f); background %.2f; NAND misses %llu, batches %llu\n"),
 		Y2Perf.wait * scale, Y2Perf.sync * scale, Y2Perf.protect * scale,
 		Y2Perf.nandFill * scale, Y2Perf.nandRead * scale, Y2Perf.bgRender * scale,
 		(unsigned long long)Y2Perf.nandMisses, (unsigned long long)Y2Perf.bgBatches);
@@ -3204,7 +3204,7 @@ static void Y2PerfFrameDone(UINT64 start)
 	Mips3GetPerfStats(&cur);
 	const UINT64 guest = cur.guestInstructions - Y2CpuPrev.guestInstructions;
 	const UINT64 native = cur.nativeInstructions - Y2CpuPrev.nativeInstructions;
-	bprintf(PRINT_NORMAL, _T("Y2 PERF JIT %d: native %.2f%% of executed guest ops (%llu/%llu), spans %llu, built %llu, cache flushes %llu, cache %.2f MiB, denied %d\n"),
+	bprintf(PRINT_UI, _T("Y2 PERF JIT %d: native %.2f%% of executed guest ops (%llu/%llu), spans %llu, built %llu, cache flushes %llu, cache %.2f MiB, denied %d\n"),
 		(int)cur.jitEnabled, guest ? (100.0 * native / guest) : 0.0,
 		(unsigned long long)native, (unsigned long long)guest,
 		(unsigned long long)(cur.nativeSpans - Y2CpuPrev.nativeSpans),
