@@ -252,6 +252,7 @@ static bool bMips3Jit = false;
 static unsigned nJitMinSpan = 3;
 static bool bMips3FastRam = false;
 static UINT64 nJitRamHits = 0, nJitRamMisses = 0;
+static UINT64 nJitCacheRejected = 0;
 static UINT64 nJitSpansBuilt = 0, nJitSpansRun = 0, nJitInsns = 0;
 static UINT64 nPerfGuest = 0, nPerfUncached = 0, nPerfFlushes = 0;
 static bool bMips3CollectPerf = false;
@@ -2566,6 +2567,7 @@ static void BuildNativeSpans(Mips3Block *b)
 	}
 	uint32_t base = 0;
 	bool published = used && JitCache.Publish(words, used, base);
+	if (used && !published && !JitCache.Denied()) nJitCacheRejected++;
 	for (unsigned i = 0; i < b->count; i++) {
 		if (!b->insn[i].jit_count) continue;
 		if (published) {
@@ -2954,7 +2956,7 @@ static MIPS3_INLINE void ExecBlock(Mips3Block *b)
 	Mx.lim = I + b->count;
 
 #if MIPS3_ARM64_JIT
-	if (bMips3Jit) {
+	if (bMips3Jit && !JitCache.Denied()) {
 		do {
 			if (I->jit_count) {
 				const unsigned count = I->jit_count;
@@ -3363,9 +3365,17 @@ INT32 mips3_init(INT32 type)
 #if MIPS3_ARM64_JIT
 	nJitSpansBuilt = nJitSpansRun = nJitInsns = 0;
 	nJitRamHits = nJitRamMisses = 0;
+	nJitCacheRejected = 0;
 	nPerfGuest = nPerfUncached = nPerfFlushes = 0;
 	const char *perf = getenv("FBNEO_Y2_PROFILE");
 	bMips3CollectPerf = IS_VR5500 && (!perf || strcmp(perf, "0") != 0);
+	const char *cache = getenv("FBNEO_MIPS3_JIT_CACHE_MB");
+	unsigned cacheMB = 128;
+	if (cache && strcmp(cache, "32") == 0) cacheMB = 32;
+	if (cache && strcmp(cache, "64") == 0) cacheMB = 64;
+	const char *packing = getenv("FBNEO_MIPS3_JIT_PACKED");
+	const bool packed = !packing || strcmp(packing, "0") != 0;
+	JitCache.Configure(size_t(cacheMB) * 1024 * 1024, packed);
 	JitCache.Enable();
 	const char *jit = getenv("FBNEO_MIPS3_ARM64_JIT");
 	const char *span = getenv("FBNEO_MIPS3_JIT_MIN_SPAN");
@@ -3383,6 +3393,8 @@ INT32 mips3_init(INT32 type)
 	if (fastRam && strcmp(fastRam, "1") == 0) bMips3FastRam = true;
 	bprintf(PRINT_UI, _T("MIPS3 ARM64 experimental JIT: %s, min span %u, guarded Fast RAM %s\n"),
 		bMips3Jit ? _T("enabled") : _T("disabled"), nJitMinSpan, bMips3FastRam ? _T("enabled") : _T("disabled"));
+	bprintf(PRINT_UI, _T("MIPS3 ARM64 JIT cache: %u MiB, %s allocation\n"),
+		cacheMB, packed ? _T("packed W^X") : _T("page aligned W^X"));
 #endif
 	return 0;
 }
@@ -3400,6 +3412,10 @@ void mips3_get_perf_stats(Mips3PerfStats *stats)
 	stats->nativeBuilt = nJitSpansBuilt;
 	stats->cacheFlushes = nPerfFlushes;
 	stats->cacheBytes = JitCache.Used();
+	stats->cachePayloadBytes = JitCache.Payload();
+	stats->cacheMappedBytes = JitCache.MappedCodeBytes();
+	stats->cacheCapacityBytes = JitCache.CapacityBytes();
+	stats->cacheRejected = nJitCacheRejected;
 	stats->jitEnabled = bMips3Jit;
 	stats->mappingDenied = JitCache.Denied();
 #endif

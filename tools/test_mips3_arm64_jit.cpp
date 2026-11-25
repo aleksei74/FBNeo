@@ -57,6 +57,66 @@ static uint32_t RandomOp(unsigned kind)
 	return R(rs, rt, rd, 0, variable[kind - 27]);
 }
 
+// Multiple independent spans can now share a host page. Verify that
+// rewriting its permissions to append code does not damage earlier spans.
+static void TestPackedCache()
+{
+	const size_t page = size_t(sysconf(_SC_PAGESIZE));
+	Mips3Arm64Jit::Cache packed(page * 2, true), legacy(page * 2, false);
+	uint32_t offsets[3], oldOffsets[2], off = 0;
+	uint64_t regs[32] = {};
+	for (unsigned i = 0; i < 3; i++) {
+		uint32_t words[] = {
+			Mips3Arm64Jit::Entry,
+			Mips3Arm64Jit::Immediate(1, uint16_t(i + 42), false),
+			Mips3Arm64Jit::Store(5),
+			Mips3Arm64Jit::Ret
+		};
+		Require(packed.Publish(words, 4, offsets[i]), "packed cache publication failed");
+		Require(offsets[i] == i * 16, "packed offsets not code-aligned");
+		if (i < 2) {
+			Require(legacy.Publish(words, 4, oldOffsets[i]), "legacy cache publication failed");
+			Require(oldOffsets[i] == i * page, "legacy offsets not page-aligned");
+		} else {
+			Require(!legacy.Publish(words, 4, off) && !legacy.Denied(), "legacy capacity not enforced");
+		}
+		for (unsigned j = 0; j <= i; j++) {
+			packed.Run(offsets[j], regs);
+			Require(regs[5] == j + 42, "earlier executable span changed after appending");
+		}
+	}
+	Require(packed.Used() == 48 && packed.Payload() == 48 &&
+		packed.MappedCodeBytes() == page, "wrong packed cache accounting");
+	Require(legacy.Used() == 2 * page && legacy.Payload() == 32, "wrong legacy cache accounting");
+	// Append a span that crosses into the next page, then fill to capacity.
+	std::vector<uint32_t> large(page / 4 + 5, 0xd503201fu); // NOP
+	large.front() = Mips3Arm64Jit::Entry;
+	large.back() = Mips3Arm64Jit::Ret;
+	Require(packed.Publish(large.data(), large.size(), off), "cross-page span failed");
+	Require(off == 48 && packed.MappedCodeBytes() == 2 * page, "cross-page accounting differs");
+	packed.Run(off, regs);
+	for (unsigned j = 0; j < 3; j++) {
+		packed.Run(offsets[j], regs);
+		Require(regs[5] == j + 42, "cross-page append damaged old code");
+	}
+	std::vector<uint32_t> tail((packed.CapacityBytes() - packed.Used()) / 4, 0xd503201fu);
+	Require(tail.size() >= 2, "unexpected test cache geometry");
+	tail.front() = Mips3Arm64Jit::Entry;
+	tail.back() = Mips3Arm64Jit::Ret;
+	Require(packed.Publish(tail.data(), tail.size(), off), "exact capacity append failed");
+	Require(packed.Used() == packed.CapacityBytes(), "cache capacity mismatch");
+	packed.Run(off, regs);
+	Require(!packed.Publish(large.data(), large.size(), off) && !packed.Denied(), "full cache not rejected");
+	packed.Run(offsets[0], regs);
+	Require(regs[5] == 42, "capacity rejection damaged cached code");
+	packed.Reset();
+	Require(packed.Used() == 0 && packed.Payload() == 0 && packed.MappedCodeBytes() == 0, "cache reset accounting differs");
+	uint32_t words[] = {Mips3Arm64Jit::Entry, Mips3Arm64Jit::Ret};
+	Require(packed.Publish(words, 2, off) && off == 0, "cache cannot reuse after reset");
+	packed.Run(off, regs);
+	printf("Packed W^X cache: shared-page, cross-page, capacity and reset OK (host page %zu bytes)\n", page);
+}
+
 static void TestEmitter(int type)
 {
 	nMips3Type = type;
@@ -295,6 +355,7 @@ static std::vector<Snapshot> RunProgram(int type, bool enable)
 
 int main()
 {
+	TestPackedCache();
 	// Verify default policy and explicit process-environment overrides.
 	for (int type = 0; type < 2; type++) {
 		unsetenv("FBNEO_MIPS3_ARM64_JIT");

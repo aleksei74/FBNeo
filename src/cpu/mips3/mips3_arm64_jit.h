@@ -240,45 +240,76 @@ inline int EmitMemory(uint32_t op, uint32_t *out, unsigned completed, unsigned m
 	return n;
 }
 
-// Bounded W^X code cache: publish whole page-aligned batches, never rewrite
-// executable pages. Exhaustion or a denied executable mapping means fallback.
+// Bounded W^X code cache. Like MAME's drc_cache bump allocation, packed
+// batches use code alignment instead of allocating one whole OS page each.
+// Publish and Run are confined to the owning CPU thread; generated code
+// never calls back into the core. Only the tail page can contain older code
+// when it temporarily becomes writable. No page is ever RWX. If a permission
+// transition fails, Denied() also disables dispatch of ALL existing spans.
 // Lifetime follows the interpreter's decoded-block arena, not guest state.
 class Cache {
 	uint8_t *base_;
-	size_t used_, page_;
-	bool denied_;
-	static const size_t Capacity = 32u * 1024u * 1024u;
+	size_t used_, payload_, page_, capacity_;
+	bool denied_, packed_;
 	Cache(const Cache&);
 	Cache& operator=(const Cache&);
 public:
-	Cache() : base_(NULL), used_(0), page_(0), denied_(false) {}
+	static const size_t DefaultCapacity = 128u * 1024u * 1024u;
+	explicit Cache(size_t capacity = DefaultCapacity, bool packed = true)
+		: base_(NULL), used_(0), payload_(0), page_(0), capacity_(capacity),
+		  denied_(false), packed_(packed) {}
 	~Cache() { Reset(); }
 	void Reset() {
-		if (base_) munmap(base_, Capacity);
-		base_ = NULL; used_ = 0; page_ = 0;
+		if (base_) munmap(base_, capacity_);
+		base_ = NULL; used_ = 0; payload_ = 0; page_ = 0;
 		// A permission failure is sticky until the next explicit enable/init.
+	}
+	void Configure(size_t capacity, bool packed) {
+		Reset();
+		capacity_ = capacity;
+		packed_ = packed;
 	}
 	void Enable() { denied_ = false; }
 	bool Publish(const uint32_t *words, size_t count, uint32_t &offset) {
 		if (!count || denied_) return false;
 		if (!base_) {
 			long page = sysconf(_SC_PAGESIZE);
-			if (page <= 0 || Capacity % size_t(page)) { denied_ = true; return false; }
+			if (page <= 0 || !capacity_ || capacity_ % size_t(page) ||
+				capacity_ > UINT32_MAX) { denied_ = true; return false; }
 			page_ = size_t(page);
-			void *p = mmap(NULL, Capacity, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+			void *p = mmap(NULL, capacity_, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
 			if (p == MAP_FAILED) { denied_ = true; return false; }
 			base_ = static_cast<uint8_t *>(p);
 		}
-		if (count > Capacity / sizeof(uint32_t)) return false;
-		size_t bytes = count * sizeof(uint32_t);
-		size_t rounded = ((bytes + page_ - 1) / page_) * page_;
-		if (rounded > Capacity - used_) return false;
-		uint8_t *dst = base_ + used_;
+		if (count > capacity_ / sizeof(uint32_t)) return false;
+		const size_t bytes = count * sizeof(uint32_t);
+		const size_t align = packed_ ? 16 : page_;
+		const size_t rounded = ((bytes + align - 1) / align) * align;
+		if (rounded > capacity_ - used_) return false;
+
+		const size_t start = used_;
+		const size_t end = start + rounded;
+		const size_t pageStart = start / page_ * page_;
+		const size_t pageEnd = ((end + page_ - 1) / page_) * page_;
+		// Existing code on the partially filled page is not running here.
+		// New, untouched pages already have RW permission.
+		if (start != pageStart &&
+			mprotect(base_ + pageStart, page_, PROT_READ | PROT_WRITE)) {
+			denied_ = true;
+			return false;
+		}
+		uint8_t *dst = base_ + start;
 		memcpy(dst, words, bytes);
 		__builtin___clear_cache(reinterpret_cast<char *>(dst), reinterpret_cast<char *>(dst + bytes));
-		if (mprotect(dst, rounded, PROT_READ | PROT_EXEC)) { denied_ = true; return false; }
-		offset = uint32_t(used_);
-		used_ += rounded;
+		if (mprotect(base_ + pageStart, pageEnd - pageStart, PROT_READ | PROT_EXEC)) {
+			// Even older spans on the tail page may no longer be executable.
+			// The owning CPU must never enter the cache after this failure.
+			denied_ = true;
+			return false;
+		}
+		offset = uint32_t(start);
+		used_ = end;
+		payload_ += bytes;
 		return true;
 	}
 	void Run(uint32_t offset, uint64_t *r) const {
@@ -289,6 +320,9 @@ public:
 	}
 	bool Denied() const { return denied_; }
 	size_t Used() const { return used_; }
+	size_t Payload() const { return payload_; }
+	size_t CapacityBytes() const { return capacity_; }
+	size_t MappedCodeBytes() const { return page_ ? ((used_ + page_ - 1) / page_) * page_ : 0; }
 };
 
 } // namespace Mips3Arm64Jit

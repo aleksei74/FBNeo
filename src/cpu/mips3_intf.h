@@ -31,6 +31,7 @@ struct Mips3PerfStats {
 	uint64_t guestInstructions, uncachedSteps, nativeInstructions, nativeSpans;
 	uint64_t nativeBuilt, cacheFlushes, cacheBytes;
 	uint64_t nativeRamHits, nativeRamMisses;
+	uint64_t cachePayloadBytes, cacheMappedBytes, cacheCapacityBytes, cacheRejected;
 	bool jitEnabled, mappingDenied;
 };
 void Mips3GetPerfStats(Mips3PerfStats *stats);

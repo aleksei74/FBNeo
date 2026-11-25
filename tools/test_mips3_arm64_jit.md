@@ -115,3 +115,29 @@ whose tags are invalidated when translation, mappings, or write tracking change.
   address offsets, tag collisions, alignment, protected-page remapping,
   write tracking, code invalidation, restore, CPU state and cycle debt.
 - QEMU correctness tests are not an Odin 3 throughput benchmark.
+
+
+## Packed native-code cache (MAME-inspired)
+
+MAME's [drccache.cpp](https://github.com/mamedev/mame/blob/master/src/devices/cpu/drccache.cpp)
+advances an aligned code pointer after emission instead of consuming an entire
+page per block. FBNeo now packs publications at 16-byte boundaries, reserves
+up to 128 MiB of virtual address space, and uses RW then RX permissions
+(no RWX). Only the tail page can temporarily become writable; compilation
+and generated-code execution are serialized on the CPU thread. If a
+permission transition fails, the dispatcher refuses all native spans until
+the next explicit enable/init. Decoded blocks and native code still share
+their original invalidation/reset lifetime.
+
+- Default: packed 128 MiB cache. Unused virtual address space is not a
+  preallocated 128 MiB physical RAM buffer.
+- FBNEO_MIPS3_JIT_CACHE_MB=32 or =64 selects a smaller limit.
+- FBNEO_MIPS3_JIT_PACKED=0 selects the old page-aligned allocation.
+  Combine with FBNEO_MIPS3_JIT_CACHE_MB=32 for the old cache policy.
+- Y2 PERF CACHE shows emitted payload, page-rounded code extent, capacity,
+  and rejected publications in the last interval. Mapped code extent is
+  not an RSS measurement.
+- TestPackedCache covers multiple executable spans sharing one page,
+  a span crossing a page boundary, exact capacity, overflow rejection,
+  preservation of old code, and reset/reuse.
+- This change does not implement MAME's UML compiler or block linking.

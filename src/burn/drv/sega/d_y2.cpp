@@ -3219,6 +3219,9 @@ static void Y2PerfFrameDone(UINT64 start)
 		(unsigned long long)(cur.nativeRamHits - Y2CpuPrev.nativeRamHits),
 		(unsigned long long)(cur.nativeRamMisses - Y2CpuPrev.nativeRamMisses),
 		(unsigned long long)(cur.uncachedSteps - Y2CpuPrev.uncachedSteps));
+	bprintf(PRINT_UI, _T("Y2 PERF CACHE: payload %.2f MiB, mapped %.2f MiB, capacity %.0f MiB, rejected %llu\n"),
+		cur.cachePayloadBytes / 1048576.0, cur.cacheMappedBytes / 1048576.0,
+		cur.cacheCapacityBytes / 1048576.0, (unsigned long long)(cur.cacheRejected - Y2CpuPrev.cacheRejected));
 	Y2CpuPrev = cur;
 	Y2Perf = {};
 }
