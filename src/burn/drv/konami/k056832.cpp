@@ -702,20 +702,26 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 	}
 
 
+	// Page/layer and tile decode registers are invariant across this draw.
+	if (m_layer_association)
+	{
+		layer = m_layer_assoc_with_page[pageIndex];
+		if (layer == -1)
+			layer = 0;  // use layer 0's palette info for unmapped pages
+	}
+	else
+		layer = m_active_layer;
+
+	INT32 fbits = (BURN_ENDIAN_SWAP_INT16(k056832Regs[3]) >> 6) & 3;
+	const INT32 flip_override = (BURN_ENDIAN_SWAP_INT16(k056832Regs[1]) >> (layer << 1)) & 0x3; // tile-flip override (see p.20 3.2.2 "REG2")
+	smptr = &k056832_shiftmasks[fbits];
+	const INT32 palette_colors = 0x2000 / K056832ColorGranularity;
+
 	for (INT32 offs = 0; offs < 64 * 32; offs++)
 	{
 		INT32 sx = (offs & 0x3f) * 8;
 		INT32 sy = (offs / 0x40) * 8; // sy handling in blitter (down below...)
-
-		sx -= scrollx;
-		if (sx < -7) sx += 512;
-		if (tilemap_flip & 1) sx = (512 - 8) - sx;
-		// A 512-pixel page repeats across the visible raster, including GX 576px.
-		while (sx + 7 < minx) sx += 512;
-		while (sx - 512 + 7 >= minx) sx -= 512;
-		for (; sx <= maxx; sx += 512) {
-
-		{ // speed-up
+		if ((offs & 0x3f) == 0) { // all 64 tiles share the same y extent
 			// y is calculated in the tile blitter (see "// blitter" below)
 			// but we need to check clipping here in order to not need 8ghz to
 			// do linescrolling. (see: martial champ., 2nd attract game)
@@ -739,25 +745,23 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 				syyl = ((sy + 0) - scrolly) & 0xff;
 			}
 
-			if ( (syyh < (miny-7) || syyh > (maxy+7)) && (syyl < (miny-7) || syyl > (maxy+7)) ) continue;
+			if ( (syyh < (miny-7) || syyh > (maxy+7)) && (syyl < (miny-7) || syyl > (maxy+7)) ) { offs += 63; continue; }
 		}
+
+		sx -= scrollx;
+		if (sx < -7) sx += 512;
+		if (tilemap_flip & 1) sx = (512 - 8) - sx;
+		// A 512-pixel page repeats across the visible raster, including GX 576px.
+		while (sx + 7 < minx) sx += 512;
+		while (sx - 512 + 7 >= minx) sx -= 512;
+		for (; sx <= maxx; sx += 512) {
+
 
 		UINT16 *pMem = &K056832VideoRAM[(pageIndex << 12) + (offs << 1)];
 
 		INT32 attr  = BURN_ENDIAN_SWAP_INT16(pMem[0]);
 		INT32 code  = BURN_ENDIAN_SWAP_INT16(pMem[1]);
-		if (m_layer_association)
-		{
-			layer = m_layer_assoc_with_page[pageIndex];
-			if (layer == -1)
-				layer = 0;  // use layer 0's palette info for unmapped pages
-		}
-		else
-			layer = m_active_layer;
-
-		INT32 fbits = (BURN_ENDIAN_SWAP_INT16(k056832Regs[3]) >> 6) & 3;
-		INT32 flip  = (BURN_ENDIAN_SWAP_INT16(k056832Regs[1]) >> (layer << 1)) & 0x3; // tile-flip override (see p.20 3.2.2 "REG2")
-		smptr = &k056832_shiftmasks[fbits];
+		INT32 flip = flip_override;
 
 		flip &= (attr >> smptr->flips) & 3;
 		INT32 color = (attr & smptr->palm1) | (attr >> smptr->pals2 & smptr->palm2);
@@ -806,12 +810,14 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 			if (tilemap_flip & 2) g_flags ^= 2;
 
 			UINT8 *rom = K056832RomExp + (code * 0x40);
-			INT32 palette_colors = 0x2000 / K056832ColorGranularity;
 			UINT32 *pal = konami_palette32 + ((color % palette_colors) * K056832ColorGranularity);
 
 			INT32 flip_tile = 0;
 			if (g_flags & 0x01) flip_tile |= 0x07;
 			if (g_flags & 0x02) flip_tile |= 0x38;
+
+			const INT32 ix0 = (minx > sx) ? minx - sx : 0;
+			const INT32 ix1 = (maxx - sx < 7) ? maxx - sx : 7;
 
 			{ // blitter
 				for (INT32 iy = 0; iy < 8; iy++) {
@@ -829,10 +835,8 @@ static void draw_layer_internal(INT32 layer, INT32 pageIndex, INT32 *clip, INT32
 
 					if (yy < miny || yy > maxy) continue;
 
-					for (INT32 ix = 0; ix < 8; ix++) {
+					for (INT32 ix = ix0; ix <= ix1; ix++) {
 						INT32 xx = sx+ix;
-
-						if (xx < minx || xx > maxx) continue;
 
 						INT32 pxl = rom[((iy*8)+ix)^flip_tile];
 
