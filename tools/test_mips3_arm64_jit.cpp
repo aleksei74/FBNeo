@@ -101,6 +101,27 @@ static void TestEmitter(int type)
 	Require(Mips3Arm64Jit::Emit(Imm(0x23, 1, 2, 0), scratch) < 0, "LW must fallback");
 	Require(Mips3Arm64Jit::Emit(Imm(4, 1, 2, 1), scratch) < 0, "branch must fallback");
 	Require(Mips3Arm64Jit::Emit(R(1, 2, 3, 7, 2), scratch) < 0, "VR5500 rotate must fallback");
+	// Adjacent emission forwards x1 and removes stores proven unobservable.
+	uint32_t pair[16];
+	pair[0] = Mips3Arm64Jit::Entry;
+	int a = Mips3Arm64Jit::Emit(R(4, 5, 6, 0, 0x21), pair + 1);
+	int b = Mips3Arm64Jit::EmitAdjacent(R(6, 7, 6, 0, 0x21), pair + 1 + a, true);
+	Require(b == a - 2, "dependent overwrite must forward x1 and remove both words");
+	Require(pair[1 + a] != Mips3Arm64Jit::Load(1, 6), "dependent adjacent result was not forwarded");
+	Require(pair[a] == Mips3Arm64Jit::Load(2, 7), "self-overwrite must remove the forwarded and dead-store words");
+	// MOVZ preserves the old destination when its condition is zero.
+	pair[0] = Mips3Arm64Jit::Entry;
+	a = Mips3Arm64Jit::Emit(Imm(9, 1, 9, 5), pair + 1);
+	b = Mips3Arm64Jit::EmitAdjacent(R(4, 5, 9, 0, 0x0a), pair + 1 + a, true);
+	Require(pair[a] == Mips3Arm64Jit::Store(9), "MOVZ must retain its preserved destination");
+	pair[0] = Mips3Arm64Jit::Entry;
+	a = Mips3Arm64Jit::Emit(R(1, 2, 3, 0, 0x21), pair + 1);
+	b = Mips3Arm64Jit::EmitAdjacent(Imm(9, 4, 3, 1), pair + 1 + a, true);
+	Require(b == a - 1, "overwritten destination store must be eliminated");
+	pair[0] = Mips3Arm64Jit::Entry;
+	a = Mips3Arm64Jit::Emit(R(1, 2, 3, 0, 0x21), pair + 1);
+	b = Mips3Arm64Jit::EmitAdjacent(R(3, 5, 6, 0, 0x21), pair + 1 + a, true);
+	Require(b == a - 1 && pair[a] == Mips3Arm64Jit::Store(3) && pair[1 + a] == Mips3Arm64Jit::Load(2, 5), "destination read as a source must retain the store and forward the load");
 	printf("Emitter type %d: %u native sequences / %u guest instructions OK\n", type, cases, cases * length);
 }
 

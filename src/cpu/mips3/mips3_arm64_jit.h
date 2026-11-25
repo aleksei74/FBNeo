@@ -137,17 +137,43 @@ inline int Emit(uint32_t op, uint32_t *out)
 	return n;
 }
 
-// Keep x1 live across adjacent emitted instructions when the preceding
-// instruction stored the same guest register. Never cross a span boundary.
+// Adjacent native instructions can exchange a result in x1 instead of
+// reloading it from the guest register file. A following instruction that
+// overwrites the previous destination also makes its store unobservable.
+// Only rewrite complete instruction sequences and never cross a span boundary.
 inline int EmitAdjacent(uint32_t op, uint32_t *out, bool hasPrevious)
 {
 	int n = Emit(op, out);
-	if (n > 0 && hasPrevious) {
-		const uint32_t prev = out[-1];
-		if ((prev & ~uint32_t(31u << 10)) == Store(0) &&
-			out[0] == Load(1, (prev >> 10) & 31)) {
-			memmove(out, out + 1, size_t(--n) * sizeof(uint32_t));
+	if (n <= 0 || !hasPrevious) return n;
+
+	const uint32_t prev = out[-1];
+	if ((prev & ~uint32_t(31u << 10)) != Store(0)) return n;
+	const unsigned previousGuest = (prev >> 10) & 31;
+	const bool forwardsX1 = out[0] == Load(1, previousGuest);
+
+	// x1 already holds the value from the preceding store. Every other guest
+	// read must still come from the register array, including MOVZ/MOVN
+	// condition reads and second operands loaded into x2.
+	bool otherRead = false;
+	for (int i = forwardsX1 ? 1 : 0; i < n; i++) {
+		if (out[i] == Load(2, previousGuest)) {
+			otherRead = true;
+			break;
 		}
+	}
+
+	if (forwardsX1 && !otherRead && out[n - 1] == Store(previousGuest)) {
+		// Remove both the dead store and the forwarded reload.
+		memmove(out - 1, out + 1, size_t(n - 1) * sizeof(uint32_t));
+		return n - 2;
+	}
+	if (forwardsX1) {
+		memmove(out, out + 1, size_t(--n) * sizeof(uint32_t));
+		return n;
+	}
+	if (!otherRead && out[n - 1] == Store(previousGuest)) {
+		memmove(out - 1, out, size_t(n) * sizeof(uint32_t));
+		return n - 1;
 	}
 	return n;
 }
