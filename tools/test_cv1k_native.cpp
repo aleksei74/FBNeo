@@ -130,10 +130,13 @@ static UINT32 __fastcall ReadLongTest(UINT32 a) {
 	handlerHits++;
 	return 0x12345678u ^ a;
 }
-static Snapshot RunCore(bool native, bool patch, bool handler)
+static Snapshot RunCore(unsigned mode, bool patch, bool handler)
 {
 	Sh3MapInit();
-	Sh3SetCv1kNative(native);
+	setenv("FBNEO_CV1K_JIT",mode==2?"1":"0",1);
+	setenv("FBNEO_CV1K_DISPATCH",mode==1?"1":"0",1);
+	Sh3SetCv1kNative(1);
+	Require(cv1kNativeEnabled==(mode==2) && cv1kFlatEnabled==(mode==1),"wrong CPU execution policy");
 	static uint16_t code[32768];
 	memset(code,0,sizeof(code));
 	// MOV #3,R0; ADD #5,R0; MOV R0,R1; ADD R1,R0;
@@ -163,7 +166,7 @@ static Snapshot RunCore(bool native, bool patch, bool handler)
 	Snapshot out={};
 	memcpy(out.r,m_r,sizeof(m_r));out.sr=m_sr;out.pc=m_pc;out.ppc=m_ppc;out.ea=m_ea;out.delay=m_delay;
 	out.cycles=cycles;out.total=sh3_total_cycles;out.hits=handlerHits;
-	if(native){
+	if(mode==2){
 		Require(cv1kNativeOps>0 && cv1kNativeBuilt>0,"native CPU execution path unused");
 		printf("Core native ops %llu, spans %llu, built %llu\n",
 			(unsigned long long)cv1kNativeOps,(unsigned long long)cv1kNativeSpans,(unsigned long long)cv1kNativeBuilt);
@@ -187,10 +190,103 @@ static void TestLongOnlyMap(){
 }
 static void TestCore(){
 	for(unsigned p=0;p<2;p++)for(unsigned h=0;h<2;h++){
-		Snapshot a=RunCore(false,p,h),b=RunCore(true,p,h);
-		Require(!memcmp(&a,&b,sizeof(a)),"CPU run loop/state/cycle mismatch");
-		if(h)Require(b.hits>0,"read handler not called");
+		Snapshot a=RunCore(0,p,h),b=RunCore(1,p,h),c=RunCore(2,p,h);
+		Require(!memcmp(&a,&b,sizeof(a)),"flat CPU run loop/state/cycle mismatch");
+		Require(!memcmp(&a,&c,sizeof(a)),"JIT CPU run loop/state/cycle mismatch");
+		if(h)Require(b.hits>0 && c.hits>0,"read handler not called");
 	}
-	puts("SH3 run-loop, code rewrite, handler and cycle comparisons PASS");
+	puts("SH3 switch/flat/JIT run-loop, code rewrite, handler and cycle comparisons PASS");
 }
-int main(){TestEmitter();TestTimers();TestCore();TestLongOnlyMap();return 0;}
+static Snapshot RunDispatchProgram(bool flat,unsigned seed)
+{
+	setenv("FBNEO_CV1K_JIT","0",1);
+	setenv("FBNEO_CV1K_DISPATCH",flat?"1":"0",1);
+	Sh3MapInit();Sh3SetCv1kNative(1);
+	static UINT16 code[32768],data[32768];
+	memset(code,0,sizeof(code));memset(data,0,sizeof(data));
+	// Mix comparison, taken/untaken branches, delay slots, direct
+	// memory writes/reads and a changing program loop. R15 is RAM.
+	const UINT16 program[]={0xe001,0xe105,0x301c,0x2f02,0x62f2,
+		0x3210,0x8901,0x72ff,0x72fe,0x4028,0x2029,0x4019,
+		0x71ff,0x2118,0x8df1,0xe105,0xafeF,0x0009};
+	memcpy(code,program,sizeof(program));
+	Sh3MapMemory((UINT8*)code,0,0xffff,MAP_RAM);
+	Sh3MapMemory((UINT8*)data,0xc000000,0xc00ffff,MAP_RAM);
+	m_pc=0x80000000;m_ppc=m_ea=m_delay=m_sr=0;
+	m_test_irq=m_pending_irq=m_cpu_off=0;sh3_total_cycles=0;
+	memset(m_r,0,sizeof(m_r));m_r[15]=0x8c000000u;m_r[0]=seed;
+	m_ratio=1.0;
+	for(unsigned i=0;i<3;i++){m_timer[i]={};m_timer[i].timer_prescaler=64;}
+	for(unsigned i=0;i<4;i++)m_dma_timer[i]={};
+	cave_blitter_delay={};
+	int cycles=0;
+	for(unsigned i=0;i<64;i++)cycles+=Sh3Run_timerhack(13+(seed+i)%31);
+	Snapshot out={};
+	memcpy(out.r,m_r,sizeof(m_r));out.sr=m_sr;out.pc=m_pc;out.ppc=m_ppc;out.ea=m_ea;out.delay=m_delay;
+	out.cycles=cycles;out.total=sh3_total_cycles;
+	out.hits=uint32_t(data[0])|(uint32_t(data[1])<<16);
+	Sh3SetCv1kNative(0);return out;
+}
+static void TestFlat(){
+	for(unsigned i=0;i<64;i++){
+		Snapshot a=RunDispatchProgram(false,i),b=RunDispatchProgram(true,i);
+		Require(!memcmp(&a,&b,sizeof(a)),"flat dispatch branch or store state differs");
+	}
+	puts("SH3 flat dispatcher mixed branch/store programs: 64 PASS");
+}
+static void TestDtLoop(){
+#if BUSY_LOOP_HACKS
+	Sh3MapInit();
+	static UINT16 code[32768]={};
+	code[0]=0x8bfd;
+	Sh3MapMemory((UINT8*)code,0,0xffff,MAP_RAM);
+	for(unsigned i=0;i<20000;i++){
+		UINT32 r=(i%4==0)?Random():Random()%2000;
+		INT32 cyc=INT32(Random()%20001)-10;
+		UINT32 sr=Random();
+		UINT32 expected=r-1;
+		INT32 left=cyc,spent=0;
+		UINT32 expectedSr=(sr&~T)|(expected==0?T:0);
+		while(expected>1 && left>4){expected--;left-=4;spent+=4;}
+		m_r[0]=r;m_sr=sr;m_ppc=0;m_sh4_icount=cyc;sh3_total_cycles=0;
+		DT(0x4010);
+		Require(m_r[0]==expected && m_sr==expectedSr &&
+			m_sh4_icount==left && sh3_total_cycles==spent,"DT busy loop cycle mismatch");
+	}
+	puts("SH3 DT/BF busy-loop batching: 20000 PASS");
+#endif
+}
+
+// Force a tiny cache to fill, then verify that no new emission/reset
+// occurs and previously published code remains callable.
+static void TestCachePressure(){
+	setenv("FBNEO_CV1K_JIT","1",1);
+	Sh3MapInit();Sh3SetCv1kNative(1);
+	cv1kCode.Configure(size_t(sysconf(_SC_PAGESIZE)),true);
+	static UINT16 code[32768];
+	for(unsigned i=0;i<32768;i+=16){
+		for(unsigned j=0;j<8;j++)code[i+j]=0x7001;
+		code[i+8]=0xafff;
+	}
+	Sh3MapMemory((UINT8*)code,0,0xffff,MAP_RAM);
+	m_test_irq=m_delay=0;
+	for(unsigned i=0;i<1024 && !cv1kCodeFull;i++){
+		for(unsigned h=0;h<Cv1kHot;h++){
+			m_pc=i*32;m_sh4_icount=128;
+			Cv1kTryNative(code[i*16]);
+		}
+	}
+	Require(cv1kCodeFull && cv1kNativeFull==1 && cv1kNativeBuilt>0,"tiny cache did not saturate");
+	const auto built=cv1kNativeBuilt;
+	const auto used=cv1kCode.Used();
+	for(unsigned i=1024;i<1200;i++)for(unsigned h=0;h<Cv1kHot;h++){
+		m_pc=i*32;m_sh4_icount=128;Cv1kTryNative(code[i*16]);
+	}
+	Require(cv1kNativeFull==1 && cv1kNativeBuilt==built && cv1kCode.Used()==used,"full cache recompiled or reset");
+	m_pc=0;m_sh4_icount=128;UINT32 before=m_r[0];
+	Require(Cv1kTryNative(code[0]) && m_r[0]==before+8 && m_pc==16,"cached span unavailable after saturation");
+	Sh3SetCv1kNative(0);
+	cv1kCode.Configure(Sh3Native::Cache::DefaultCapacity,true);
+	puts("SH3 saturated cache preserves prior spans: PASS");
+}
+int main(){TestEmitter();TestTimers();TestCore();TestFlat();TestLongOnlyMap();TestDtLoop();TestCachePressure();return 0;}

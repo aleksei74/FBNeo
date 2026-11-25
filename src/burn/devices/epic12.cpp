@@ -12,6 +12,8 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "thready.h"
 #include "rectangle.h"
 #include "epic12_fast.h"
+#include <chrono>
+#include <atomic>
 #include <math.h> // floor()
 
 static const int EP1C_VRAM_CLK_NANOSEC = 13;
@@ -77,6 +79,9 @@ static UINT8 epic12_device_colrtable[0x20][0x40];
 static UINT8 epic12_device_colrtable_rev[0x20][0x40];
 static UINT8 epic12_device_colrtable_add[0x20][0x20];
 
+#if EPIC12_NEON
+static bool epic12_blend_neon = true;
+#endif
 static UINT16 *pal16 = NULL; // palette lut for 16bpp video emulation
 
 #include "epic12.h"
@@ -297,12 +302,46 @@ static void blitter_delay_callback(int)
 	//bprintf(0, _T("cyc @ blitdelay callback: %d\n"), Sh3TotalCycles());
 }
 
+// Profile only at whole-list boundaries. Worker wall time overlaps CPU
+// time and must not be added to frame total. Counters are monotonic,
+// with completion of a job attributed to the interval where it finishes.
+static bool blitProfile = false;
+static UINT64 blitSubmitWaitNs, blitShadowNs, blitSyncNs, blitJobs, blitAsyncJobs;
+static std::atomic<UINT64> blitWorkerNs{0};
+static bool blitJobAsync;
+static UINT64 BlitNow()
+{
+	return (UINT64)std::chrono::duration_cast<std::chrono::nanoseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+
+void epic12_set_perf_enabled(bool enabled)
+{
+	// Called only during driver initialization, before submitting work.
+	blitProfile=enabled;
+	blitSubmitWaitNs=blitShadowNs=blitSyncNs=blitJobs=blitAsyncJobs=0;
+	blitWorkerNs.store(0,std::memory_order_relaxed);
+	blitJobAsync=false;
+}
+
+void epic12_get_perf_stats(Epic12PerfStats *stats)
+{
+	*stats={blitSubmitWaitNs,blitShadowNs,blitSyncNs,
+		blitWorkerNs.load(std::memory_order_relaxed),blitJobs,blitAsyncJobs};
+}
+
 static void gfx_exec(); // forward
 
 static void run_blitter_cb()
 {
 	epic12_device_blit_delay = 0;
+	const UINT64 start = blitProfile ? BlitNow() : 0;
 	gfx_exec();
+	if (blitProfile) {
+		const UINT64 elapsed = BlitNow()-start;
+		if (blitJobAsync) blitWorkerNs.fetch_add(elapsed,std::memory_order_relaxed);
+		else blitSyncNs+=elapsed;
+	}
 }
 
 void epic12_exit()
@@ -320,6 +359,11 @@ void epic12_exit()
 
 void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 {
+#if EPIC12_NEON
+	const char *blend = getenv("FBNEO_CV1K_NEON_BLEND");
+	epic12_blend_neon = !blend || strcmp(blend,"0") != 0;
+	bprintf(PRINT_UI,_T("CV1000 EPIC12 NEON blend: %s\n"),epic12_blend_neon?_T("enabled"):_T("disabled"));
+#endif
 	m_main_ramsize = ram_size;
 	m_main_rammask = ram_size - 1;
 
@@ -1040,7 +1084,9 @@ static void gfx_exec_write(UINT32 data)
 	{
 		if (data & 1)
 		{
+			const UINT64 waitStart = blitProfile ? BlitNow() : 0;
 			thready.notify_wait();
+			if (blitProfile) blitSubmitWaitNs+=BlitNow()-waitStart;
 
 			m_gfx_clip_x_shadowcopy = m_gfx_clip_x;
 			m_gfx_clip_y_shadowcopy = m_gfx_clip_y;
@@ -1048,7 +1094,9 @@ static void gfx_exec_write(UINT32 data)
 			// Create a copy of the blit list so we can safely thread it.
 			// Copying the Blitter operations will also estimate the delay needed for processing.
 			m_blit_delay_ns = 0;
+			const UINT64 shadowStart = blitProfile ? BlitNow() : 0;
 			gfx_create_shadow_copy();
+			if (blitProfile) blitShadowNs+=BlitNow()-shadowStart;
 
 			m_gfx_addr_shadowcopy = m_gfx_addr;
 
@@ -1089,6 +1137,13 @@ static void gfx_exec_write(UINT32 data)
 			}
 
 			epic12_device_blit_delay = 0;
+			if (blitProfile) {
+				// The previous list has been joined before changing this
+				// flag; notify's semaphore publishes it to the worker.
+				blitJobAsync=thready.is_threaded()!=0;
+				blitJobs++;
+				if (blitJobAsync) blitAsyncJobs++;
+			}
 			thready.notify(); // run gfx_exec(), w/ threading if set (via dip option)
 		}
 	}

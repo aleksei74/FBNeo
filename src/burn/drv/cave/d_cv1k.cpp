@@ -48,6 +48,8 @@ static INT32 speedhack_burn; // 10ms @ cpu clock, calculated in DrvFrame
 static bool cv1kProfile;
 static UINT64 cv1kFrameNs, cv1kCpuNs, cv1kAudioNs, cv1kWaitNs, cv1kDrawNs, cv1kPeakNs;
 static UINT64 cv1kPrevOps, cv1kPrevSpans, cv1kPrevBuilt;
+static UINT64 cv1kPrevMiss, cv1kPrevReject, cv1kPrevFull;
+static Epic12PerfStats cv1kPrevBlit = {};
 static unsigned cv1kFrames, cv1kLate;
 static UINT64 Cv1kNow() {
 	return cv1kProfile ? (UINT64)std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -62,6 +64,8 @@ static void Cv1kProfileInit() {
 #endif
 	cv1kFrameNs = cv1kCpuNs = cv1kAudioNs = cv1kWaitNs = cv1kDrawNs = cv1kPeakNs = 0;
 	cv1kPrevOps = cv1kPrevSpans = cv1kPrevBuilt = 0;
+	cv1kPrevMiss = cv1kPrevReject = cv1kPrevFull = 0;
+	cv1kPrevBlit = {};
 	cv1kFrames = cv1kLate = 0;
 }
 static void Cv1kProfileFrame(UINT64 start) {
@@ -80,6 +84,22 @@ static void Cv1kProfileFrame(UINT64 start) {
 	bprintf(PRINT_UI, _T("CV1K JIT: native ops %llu spans %llu built %llu\n"),
 		(unsigned long long)(ops-cv1kPrevOps), (unsigned long long)(spans-cv1kPrevSpans),
 		(unsigned long long)(built-cv1kPrevBuilt));
+	UINT64 misses, rejected, full;
+	Sh3Cv1kCacheStats(&misses,&rejected,&full);
+	bprintf(PRINT_UI,_T("CV1K CACHE: misses %llu rejected %llu full %llu\n"),
+		(unsigned long long)(misses-cv1kPrevMiss),(unsigned long long)(rejected-cv1kPrevReject),
+		(unsigned long long)(full-cv1kPrevFull));
+	Epic12PerfStats blit;
+	epic12_get_perf_stats(&blit);
+	bprintf(PRINT_UI,_T("CV1K BLIT: submit wait %.3f ms shadow %.3f ms sync exec %.3f ms worker exec %.3f ms jobs %llu (async %llu)\n"),
+		(blit.submitWaitNs-cv1kPrevBlit.submitWaitNs)*scale,
+		(blit.shadowNs-cv1kPrevBlit.shadowNs)*scale,
+		(blit.syncExecNs-cv1kPrevBlit.syncExecNs)*scale,
+		(blit.workerExecNs-cv1kPrevBlit.workerExecNs)*scale,
+		(unsigned long long)(blit.jobs-cv1kPrevBlit.jobs),
+		(unsigned long long)(blit.asyncJobs-cv1kPrevBlit.asyncJobs));
+	cv1kPrevBlit=blit;
+	cv1kPrevMiss=misses;cv1kPrevReject=rejected;cv1kPrevFull=full;
 	cv1kPrevOps = ops; cv1kPrevSpans = spans; cv1kPrevBuilt = built;
 	cv1kFrameNs = cv1kCpuNs = cv1kAudioNs = cv1kWaitNs = cv1kDrawNs = cv1kPeakNs = 0;
 	cv1kFrames = cv1kLate = 0;
@@ -354,10 +374,11 @@ static UINT32 hacky_idle_pc;
 
 static UINT32 __fastcall speedhack_read_long(UINT32 offset)
 {
-	UINT32 pc = Sh3GetPC(-1);
-	if ( offset == hacky_idle_ram && (pc == hacky_idle_pc || pc == hacky_idle_pc+2)) {
-		//bprintf(0, _T("l"));
-		Sh3BurnCycles(speedhack_burn);
+	// Only query PC on the actual idle-loop address, not on every
+	// long read of this high-traffic RAM page.
+	if (offset == hacky_idle_ram) {
+		const UINT32 pc = Sh3GetPC(-1);
+		if (pc == hacky_idle_pc || pc == hacky_idle_pc+2) Sh3BurnCycles(speedhack_burn);
 	}
 	UINT32 V = *((UINT32 *)(DrvMainRAM + (offset & 0xfffffc)));
 #ifdef LSB_FIRST
@@ -565,6 +586,7 @@ static INT32 DrvInit()
 	Sh3Close();
 
 	epic12_init((is_type_d) ? 0x1000000 : 0x0800000, (UINT16*)DrvMainRAM, &DrvDips[0]);
+	epic12_set_perf_enabled(cv1kProfile);
 	serflash_init(DrvFlashROM, 0x8400000);
 	rtc9701_init();
 

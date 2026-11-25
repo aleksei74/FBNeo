@@ -285,7 +285,7 @@ struct sh4_dtimer
 
 	void run_prescale(INT32 cyc) {
 		prescale_counter += cyc * m_ratio;
-		if (timer_prescaler > 0 && prescale_counter >= (UINT32)timer_prescaler) {
+		if (timer_prescaler > 0 && prescale_counter / 4 >= (UINT32)timer_prescaler) {
 			const UINT32 ticks = prescale_counter / (UINT32)timer_prescaler;
 			if (!running) {
 				prescale_counter %= (UINT32)timer_prescaler;
@@ -1676,11 +1676,15 @@ static inline void DT(const UINT16 opcode)
 		 */
 		if (next_opcode == 0x8bfd)
 		{
-			while (m_r[n] > 1 && m_sh4_icount > 4)
+			if (m_r[n] > 1 && m_sh4_icount > 4)
 			{
-				m_r[n]--;
-				m_sh4_icount -= 4;   /* cycles for DT (1) and BF taken (3) */
-				sh3_total_cycles += 4;
+				// Same busy-loop speedhack, but advance the repeated
+				// DT/BF pairs in O(1), preserving T and cycle overshoot.
+				const UINT32 budget = (UINT32(m_sh4_icount) - 1) >> 2;
+				const UINT32 remaining = m_r[n] - 1;
+				const UINT32 skip = budget < remaining ? budget : remaining;
+				m_r[n] -= skip;
+				EAT(INT32(skip * 4));
 			}
 		}
 	}
@@ -3925,742 +3929,46 @@ void sh4_base_device::device_reset()
 }
 #endif
 
-static inline void execute_one_0000(const UINT16 opcode)
+#define SH3_DEC_RET void
+#define SH3_DEC_NAME(name) name
+#define SH3_DEC_SUB(name) name(opcode)
+#define SH3_DEC_OP(name) name(opcode)
+#define SH3_DEC_DEFAULT() return
+#include "sh3_decode.inc"
+#undef SH3_DEC_RET
+#undef SH3_DEC_NAME
+#undef SH3_DEC_SUB
+#undef SH3_DEC_OP
+#undef SH3_DEC_DEFAULT
+
+#if defined(__GNUC__) && defined(__aarch64__) && defined(__linux__)
+#define SH3_FLAT_DISPATCH 1
+enum Sh3OpId {
+#define SH3_OPCODE(name) SH3_ID_##name,
+#include "sh3_decode_ops.inc"
+#undef SH3_OPCODE
+	SH3_ID_COUNT
+};
+static_assert(SH3_ID_COUNT <= 256, "SH3 decode IDs exceed one byte");
+#define SH3_DEC_RET Sh3OpId
+#define SH3_DEC_NAME(name) id_##name
+#define SH3_DEC_SUB(name) return id_##name(opcode)
+#define SH3_DEC_OP(name) return SH3_ID_##name
+#define SH3_DEC_DEFAULT() return SH3_ID_NOP
+#include "sh3_decode.inc"
+#undef SH3_DEC_RET
+#undef SH3_DEC_NAME
+#undef SH3_DEC_SUB
+#undef SH3_DEC_OP
+#undef SH3_DEC_DEFAULT
+static UINT8 sh3OpIds[65536];
+static void InitFlatDecode()
 {
-	switch(opcode & 0xff)
-	{
-		// 0x00
-		case 0x00:  NOP(opcode); break;
-		case 0x10:  NOP(opcode); break;
-		case 0x20:  NOP(opcode); break;
-		case 0x30:  NOP(opcode); break;
-		case 0x40:  NOP(opcode); break;
-		case 0x50:  NOP(opcode); break;
-		case 0x60:  NOP(opcode); break;
-		case 0x70:  NOP(opcode); break;
-		case 0x80:  NOP(opcode); break;
-		case 0x90:  NOP(opcode); break;
-		case 0xa0:  NOP(opcode); break;
-		case 0xb0:  NOP(opcode); break;
-		case 0xc0:  NOP(opcode); break;
-		case 0xd0:  NOP(opcode); break;
-		case 0xe0:  NOP(opcode); break;
-		case 0xf0:  NOP(opcode); break;
-		// 0x10
-		case 0x01:  NOP(opcode); break;
-		case 0x11:  NOP(opcode); break;
-		case 0x21:  NOP(opcode); break;
-		case 0x31:  NOP(opcode); break;
-		case 0x41:  NOP(opcode); break;
-		case 0x51:  NOP(opcode); break;
-		case 0x61:  NOP(opcode); break;
-		case 0x71:  NOP(opcode); break;
-		case 0x81:  NOP(opcode); break;
-		case 0x91:  NOP(opcode); break;
-		case 0xa1:  NOP(opcode); break;
-		case 0xb1:  NOP(opcode); break;
-		case 0xc1:  NOP(opcode); break;
-		case 0xd1:  NOP(opcode); break;
-		case 0xe1:  NOP(opcode); break;
-		case 0xf1:  NOP(opcode); break;
-		// 0x20
-		case 0x02:  STCSR(opcode); break;
-		case 0x12:  STCGBR(opcode); break;
-		case 0x22:  STCVBR(opcode); break;
-		case 0x32:  STCSSR(opcode); break;
-		case 0x42:  STCSPC(opcode); break;
-		case 0x52:  NOP(opcode); break;
-		case 0x62:  NOP(opcode); break;
-		case 0x72:  NOP(opcode); break;
-		case 0x82:  STCRBANK(opcode); break;
-		case 0x92:  STCRBANK(opcode); break;
-		case 0xa2:  STCRBANK(opcode); break;
-		case 0xb2:  STCRBANK(opcode); break;
-		case 0xc2:  STCRBANK(opcode); break;
-		case 0xd2:  STCRBANK(opcode); break;
-		case 0xe2:  STCRBANK(opcode); break;
-		case 0xf2:  STCRBANK(opcode); break;
-		// 0x30
-		case 0x03:  BSRF(opcode); break;
-		case 0x13:  NOP(opcode); break;
-		case 0x23:  BRAF(opcode); break;
-		case 0x33:  NOP(opcode); break;
-		case 0x43:  NOP(opcode); break;
-		case 0x53:  NOP(opcode); break;
-		case 0x63:  NOP(opcode); break;
-		case 0x73:  NOP(opcode); break;
-		case 0x83:  PREFM(opcode); break;
-		case 0x93:  TODO(opcode); break;
-		case 0xa3:  TODO(opcode); break;
-		case 0xb3:  TODO(opcode); break;
-		case 0xc3:  MOVCAL(opcode); break;
-		case 0xd3:  NOP(opcode); break;
-		case 0xe3:  NOP(opcode); break;
-		case 0xf3:  NOP(opcode); break;
-		// 0x40
-		case 0x04:  MOVBS0(opcode); break;
-		case 0x14:  MOVBS0(opcode); break;
-		case 0x24:  MOVBS0(opcode); break;
-		case 0x34:  MOVBS0(opcode); break;
-		case 0x44:  MOVBS0(opcode); break;
-		case 0x54:  MOVBS0(opcode); break;
-		case 0x64:  MOVBS0(opcode); break;
-		case 0x74:  MOVBS0(opcode); break;
-		case 0x84:  MOVBS0(opcode); break;
-		case 0x94:  MOVBS0(opcode); break;
-		case 0xa4:  MOVBS0(opcode); break;
-		case 0xb4:  MOVBS0(opcode); break;
-		case 0xc4:  MOVBS0(opcode); break;
-		case 0xd4:  MOVBS0(opcode); break;
-		case 0xe4:  MOVBS0(opcode); break;
-		case 0xf4:  MOVBS0(opcode); break;
-		// 0x50
-		case 0x05:  MOVWS0(opcode); break;
-		case 0x15:  MOVWS0(opcode); break;
-		case 0x25:  MOVWS0(opcode); break;
-		case 0x35:  MOVWS0(opcode); break;
-		case 0x45:  MOVWS0(opcode); break;
-		case 0x55:  MOVWS0(opcode); break;
-		case 0x65:  MOVWS0(opcode); break;
-		case 0x75:  MOVWS0(opcode); break;
-		case 0x85:  MOVWS0(opcode); break;
-		case 0x95:  MOVWS0(opcode); break;
-		case 0xa5:  MOVWS0(opcode); break;
-		case 0xb5:  MOVWS0(opcode); break;
-		case 0xc5:  MOVWS0(opcode); break;
-		case 0xd5:  MOVWS0(opcode); break;
-		case 0xe5:  MOVWS0(opcode); break;
-		case 0xf5:  MOVWS0(opcode); break;
-		// 0x60
-		case 0x06:  MOVLS0(opcode); break;
-		case 0x16:  MOVLS0(opcode); break;
-		case 0x26:  MOVLS0(opcode); break;
-		case 0x36:  MOVLS0(opcode); break;
-		case 0x46:  MOVLS0(opcode); break;
-		case 0x56:  MOVLS0(opcode); break;
-		case 0x66:  MOVLS0(opcode); break;
-		case 0x76:  MOVLS0(opcode); break;
-		case 0x86:  MOVLS0(opcode); break;
-		case 0x96:  MOVLS0(opcode); break;
-		case 0xa6:  MOVLS0(opcode); break;
-		case 0xb6:  MOVLS0(opcode); break;
-		case 0xc6:  MOVLS0(opcode); break;
-		case 0xd6:  MOVLS0(opcode); break;
-		case 0xe6:  MOVLS0(opcode); break;
-		case 0xf6:  MOVLS0(opcode); break;
-		// 0x70
-		case 0x07:  MULL(opcode); break;
-		case 0x17:  MULL(opcode); break;
-		case 0x27:  MULL(opcode); break;
-		case 0x37:  MULL(opcode); break;
-		case 0x47:  MULL(opcode); break;
-		case 0x57:  MULL(opcode); break;
-		case 0x67:  MULL(opcode); break;
-		case 0x77:  MULL(opcode); break;
-		case 0x87:  MULL(opcode); break;
-		case 0x97:  MULL(opcode); break;
-		case 0xa7:  MULL(opcode); break;
-		case 0xb7:  MULL(opcode); break;
-		case 0xc7:  MULL(opcode); break;
-		case 0xd7:  MULL(opcode); break;
-		case 0xe7:  MULL(opcode); break;
-		case 0xf7:  MULL(opcode); break;
-		// 0x80
-		case 0x08:  CLRT(opcode); break;
-		case 0x18:  SETT(opcode); break;
-		case 0x28:  CLRMAC(opcode); break;
-		case 0x38:  TODO(opcode); break;
-		case 0x48:  CLRS(opcode); break;
-		case 0x58:  SETS(opcode); break;
-		case 0x68:  NOP(opcode); break;
-		case 0x78:  NOP(opcode); break;
-		case 0x88:  CLRT(opcode); break;
-		case 0x98:  SETT(opcode); break;
-		case 0xa8:  CLRMAC(opcode); break;
-		case 0xb8:  TODO(opcode); break;
-		case 0xc8:  CLRS(opcode); break;
-		case 0xd8:  SETS(opcode); break;
-		case 0xe8:  NOP(opcode); break;
-		case 0xf8:  NOP(opcode); break;
-		// 0x90
-		case 0x09:  NOP(opcode); break;
-		case 0x19:  DIV0U(opcode); break;
-		case 0x29:  MOVT(opcode); break;
-		case 0x39:  NOP(opcode); break;
-		case 0x49:  NOP(opcode); break;
-		case 0x59:  DIV0U(opcode); break;
-		case 0x69:  MOVT(opcode); break;
-		case 0x79:  NOP(opcode); break;
-		case 0x89:  NOP(opcode); break;
-		case 0x99:  DIV0U(opcode); break;
-		case 0xa9:  MOVT(opcode); break;
-		case 0xb9:  NOP(opcode); break;
-		case 0xc9:  NOP(opcode); break;
-		case 0xd9:  DIV0U(opcode); break;
-		case 0xe9:  MOVT(opcode); break;
-		case 0xf9:  NOP(opcode); break;
-		// 0xa0
-		case 0x0a:  STSMACH(opcode); break;
-		case 0x1a:  STSMACL(opcode); break;
-		case 0x2a:  STSPR(opcode); break;
-		case 0x3a:  STCSGR(opcode); break;
-		case 0x4a:  NOP(opcode); break;
-		case 0x5a:  STSFPUL(opcode); break;
-		case 0x6a:  STSFPSCR(opcode); break;
-		case 0x7a:  STCDBR(opcode); break;
-		case 0x8a:  STSMACH(opcode); break;
-		case 0x9a:  STSMACL(opcode); break;
-		case 0xaa:  STSPR(opcode); break;
-		case 0xba:  STCSGR(opcode); break;
-		case 0xca:  NOP(opcode); break;
-		case 0xda:  STSFPUL(opcode); break;
-		case 0xea:  STSFPSCR(opcode); break;
-		case 0xfa:  STCDBR(opcode); break;
-		// 0xb0
-		case 0x0b:  RTS(opcode); break;
-		case 0x1b:  SLEEP(opcode); break;
-		case 0x2b:  RTE(opcode); break;
-		case 0x3b:  NOP(opcode); break;
-		case 0x4b:  RTS(opcode); break;
-		case 0x5b:  SLEEP(opcode); break;
-		case 0x6b:  RTE(opcode); break;
-		case 0x7b:  NOP(opcode); break;
-		case 0x8b:  RTS(opcode); break;
-		case 0x9b:  SLEEP(opcode); break;
-		case 0xab:  RTE(opcode); break;
-		case 0xbb:  NOP(opcode); break;
-		case 0xcb:  RTS(opcode); break;
-		case 0xdb:  SLEEP(opcode); break;
-		case 0xeb:  RTE(opcode); break;
-		case 0xfb:  NOP(opcode); break;
-		// 0xc0
-		case 0x0c:  MOVBL0(opcode); break;
-		case 0x1c:  MOVBL0(opcode); break;
-		case 0x2c:  MOVBL0(opcode); break;
-		case 0x3c:  MOVBL0(opcode); break;
-		case 0x4c:  MOVBL0(opcode); break;
-		case 0x5c:  MOVBL0(opcode); break;
-		case 0x6c:  MOVBL0(opcode); break;
-		case 0x7c:  MOVBL0(opcode); break;
-		case 0x8c:  MOVBL0(opcode); break;
-		case 0x9c:  MOVBL0(opcode); break;
-		case 0xac:  MOVBL0(opcode); break;
-		case 0xbc:  MOVBL0(opcode); break;
-		case 0xcc:  MOVBL0(opcode); break;
-		case 0xdc:  MOVBL0(opcode); break;
-		case 0xec:  MOVBL0(opcode); break;
-		case 0xfc:  MOVBL0(opcode); break;
-		// 0xd0
-		case 0x0d:  MOVWL0(opcode); break;
-		case 0x1d:  MOVWL0(opcode); break;
-		case 0x2d:  MOVWL0(opcode); break;
-		case 0x3d:  MOVWL0(opcode); break;
-		case 0x4d:  MOVWL0(opcode); break;
-		case 0x5d:  MOVWL0(opcode); break;
-		case 0x6d:  MOVWL0(opcode); break;
-		case 0x7d:  MOVWL0(opcode); break;
-		case 0x8d:  MOVWL0(opcode); break;
-		case 0x9d:  MOVWL0(opcode); break;
-		case 0xad:  MOVWL0(opcode); break;
-		case 0xbd:  MOVWL0(opcode); break;
-		case 0xcd:  MOVWL0(opcode); break;
-		case 0xdd:  MOVWL0(opcode); break;
-		case 0xed:  MOVWL0(opcode); break;
-		case 0xfd:  MOVWL0(opcode); break;
-		// 0xe0
-		case 0x0e:  MOVLL0(opcode); break;
-		case 0x1e:  MOVLL0(opcode); break;
-		case 0x2e:  MOVLL0(opcode); break;
-		case 0x3e:  MOVLL0(opcode); break;
-		case 0x4e:  MOVLL0(opcode); break;
-		case 0x5e:  MOVLL0(opcode); break;
-		case 0x6e:  MOVLL0(opcode); break;
-		case 0x7e:  MOVLL0(opcode); break;
-		case 0x8e:  MOVLL0(opcode); break;
-		case 0x9e:  MOVLL0(opcode); break;
-		case 0xae:  MOVLL0(opcode); break;
-		case 0xbe:  MOVLL0(opcode); break;
-		case 0xce:  MOVLL0(opcode); break;
-		case 0xde:  MOVLL0(opcode); break;
-		case 0xee:  MOVLL0(opcode); break;
-		case 0xfe:  MOVLL0(opcode); break;
-		// 0xf0
-		case 0x0f:  MAC_L(opcode); break;
-		case 0x1f:  MAC_L(opcode); break;
-		case 0x2f:  MAC_L(opcode); break;
-		case 0x3f:  MAC_L(opcode); break;
-		case 0x4f:  MAC_L(opcode); break;
-		case 0x5f:  MAC_L(opcode); break;
-		case 0x6f:  MAC_L(opcode); break;
-		case 0x7f:  MAC_L(opcode); break;
-		case 0x8f:  MAC_L(opcode); break;
-		case 0x9f:  MAC_L(opcode); break;
-		case 0xaf:  MAC_L(opcode); break;
-		case 0xbf:  MAC_L(opcode); break;
-		case 0xcf:  MAC_L(opcode); break;
-		case 0xdf:  MAC_L(opcode); break;
-		case 0xef:  MAC_L(opcode); break;
-		case 0xff:  MAC_L(opcode); break;
-	}
+	for (unsigned op=0; op<65536; op++) sh3OpIds[op] = id_execute_one(UINT16(op));
 }
-
-static inline void execute_one_4000(const UINT16 opcode)
-{
-	switch(opcode & 0xff)
-	{
-		// 0x00
-		case 0x00:  SHLL(opcode); break;
-		case 0x10:  DT(opcode); break;
-		case 0x20:  SHAL(opcode); break;
-		case 0x30:  NOP(opcode); break;
-		case 0x40:  SHLL(opcode); break;
-		case 0x50:  DT(opcode); break;
-		case 0x60:  SHAL(opcode); break;
-		case 0x70:  NOP(opcode); break;
-		case 0x80:  SHLL(opcode); break;
-		case 0x90:  DT(opcode); break;
-		case 0xa0:  SHAL(opcode); break;
-		case 0xb0:  NOP(opcode); break;
-		case 0xc0:  SHLL(opcode); break;
-		case 0xd0:  DT(opcode); break;
-		case 0xe0:  SHAL(opcode); break;
-		case 0xf0:  NOP(opcode); break;
-		// 0x10
-		case 0x01:  SHLR(opcode); break;
-		case 0x11:  CMPPZ(opcode); break;
-		case 0x21:  SHAR(opcode); break;
-		case 0x31:  NOP(opcode); break;
-		case 0x41:  SHLR(opcode); break;
-		case 0x51:  CMPPZ(opcode); break;
-		case 0x61:  SHAR(opcode); break;
-		case 0x71:  NOP(opcode); break;
-		case 0x81:  SHLR(opcode); break;
-		case 0x91:  CMPPZ(opcode); break;
-		case 0xa1:  SHAR(opcode); break;
-		case 0xb1:  NOP(opcode); break;
-		case 0xc1:  SHLR(opcode); break;
-		case 0xd1:  CMPPZ(opcode); break;
-		case 0xe1:  SHAR(opcode); break;
-		case 0xf1:  NOP(opcode); break;
-		// 0x20
-		case 0x02:  STSMMACH(opcode); break;
-		case 0x12:  STSMMACL(opcode); break;
-		case 0x22:  STSMPR(opcode); break;
-		case 0x32:  STCMSGR(opcode); break;
-		case 0x42:  NOP(opcode); break;
-		case 0x52:  STSMFPUL(opcode); break;
-		case 0x62:  STSMFPSCR(opcode); break;
-		case 0x72:  NOP(opcode); break;
-		case 0x82:  NOP(opcode); break;
-		case 0x92:  NOP(opcode); break;
-		case 0xa2:  NOP(opcode); break;
-		case 0xb2:  NOP(opcode); break;
-		case 0xc2:  NOP(opcode); break;
-		case 0xd2:  NOP(opcode); break;
-		case 0xe2:  NOP(opcode); break;
-		case 0xf2:  STCMDBR(opcode); break;
-		// 0x30
-		case 0x03:  STCMSR(opcode); break;
-		case 0x13:  STCMGBR(opcode); break;
-		case 0x23:  STCMVBR(opcode); break;
-		case 0x33:  STCMSSR(opcode); break;
-		case 0x43:  STCMSPC(opcode); break;
-		case 0x53:  NOP(opcode); break;
-		case 0x63:  NOP(opcode); break;
-		case 0x73:  NOP(opcode); break;
-		case 0x83:  STCMRBANK(opcode); break;
-		case 0x93:  STCMRBANK(opcode); break;
-		case 0xa3:  STCMRBANK(opcode); break;
-		case 0xb3:  STCMRBANK(opcode); break;
-		case 0xc3:  STCMRBANK(opcode); break;
-		case 0xd3:  STCMRBANK(opcode); break;
-		case 0xe3:  STCMRBANK(opcode); break;
-		case 0xf3:  STCMRBANK(opcode); break;
-		// 0x40
-		case 0x04:  ROTL(opcode); break;
-		case 0x14:  NOP(opcode); break;
-		case 0x24:  ROTCL(opcode); break;
-		case 0x34:  NOP(opcode); break;
-		case 0x44:  ROTL(opcode); break;
-		case 0x54:  NOP(opcode); break;
-		case 0x64:  ROTCL(opcode); break;
-		case 0x74:  NOP(opcode); break;
-		case 0x84:  ROTL(opcode); break;
-		case 0x94:  NOP(opcode); break;
-		case 0xa4:  ROTCL(opcode); break;
-		case 0xb4:  NOP(opcode); break;
-		case 0xc4:  ROTL(opcode); break;
-		case 0xd4:  NOP(opcode); break;
-		case 0xe4:  ROTCL(opcode); break;
-		case 0xf4:  NOP(opcode); break;
-		// 0x50
-		case 0x05:  ROTR(opcode); break;
-		case 0x15:  CMPPL(opcode); break;
-		case 0x25:  ROTCR(opcode); break;
-		case 0x35:  NOP(opcode); break;
-		case 0x45:  ROTR(opcode); break;
-		case 0x55:  CMPPL(opcode); break;
-		case 0x65:  ROTCR(opcode); break;
-		case 0x75:  NOP(opcode); break;
-		case 0x85:  ROTR(opcode); break;
-		case 0x95:  CMPPL(opcode); break;
-		case 0xa5:  ROTCR(opcode); break;
-		case 0xb5:  NOP(opcode); break;
-		case 0xc5:  ROTR(opcode); break;
-		case 0xd5:  CMPPL(opcode); break;
-		case 0xe5:  ROTCR(opcode); break;
-		case 0xf5:  NOP(opcode); break;
-		// 0x60
-		case 0x06:  LDSMMACH(opcode); break;
-		case 0x16:  LDSMMACL(opcode); break;
-		case 0x26:  LDSMPR(opcode); break;
-		case 0x36:  NOP(opcode); break;
-		case 0x46:  NOP(opcode); break;
-		case 0x56:  LDSMFPUL(opcode); break;
-		case 0x66:  LDSMFPSCR(opcode); break;
-		case 0x76:  NOP(opcode); break;
-		case 0x86:  NOP(opcode); break;
-		case 0x96:  NOP(opcode); break;
-		case 0xa6:  NOP(opcode); break;
-		case 0xb6:  NOP(opcode); break;
-		case 0xc6:  NOP(opcode); break;
-		case 0xd6:  NOP(opcode); break;
-		case 0xe6:  NOP(opcode); break;
-		case 0xf6:  LDCMDBR(opcode); break;
-		// 0x70
-		case 0x07:  LDCMSR(opcode); break;
-		case 0x17:  LDCMGBR(opcode); break;
-		case 0x27:  LDCMVBR(opcode); break;
-		case 0x37:  LDCMSSR(opcode); break;
-		case 0x47:  LDCMSPC(opcode); break;
-		case 0x57:  NOP(opcode); break;
-		case 0x67:  NOP(opcode); break;
-		case 0x77:  NOP(opcode); break;
-		case 0x87:  LDCMRBANK(opcode); break;
-		case 0x97:  LDCMRBANK(opcode); break;
-		case 0xa7:  LDCMRBANK(opcode); break;
-		case 0xb7:  LDCMRBANK(opcode); break;
-		case 0xc7:  LDCMRBANK(opcode); break;
-		case 0xd7:  LDCMRBANK(opcode); break;
-		case 0xe7:  LDCMRBANK(opcode); break;
-		case 0xf7:  LDCMRBANK(opcode); break;
-		// 0x80
-		case 0x08:  SHLL2(opcode); break;
-		case 0x18:  SHLL8(opcode); break;
-		case 0x28:  SHLL16(opcode); break;
-		case 0x38:  NOP(opcode); break;
-		case 0x48:  SHLL2(opcode); break;
-		case 0x58:  SHLL8(opcode); break;
-		case 0x68:  SHLL16(opcode); break;
-		case 0x78:  NOP(opcode); break;
-		case 0x88:  SHLL2(opcode); break;
-		case 0x98:  SHLL8(opcode); break;
-		case 0xa8:  SHLL16(opcode); break;
-		case 0xb8:  NOP(opcode); break;
-		case 0xc8:  SHLL2(opcode); break;
-		case 0xd8:  SHLL8(opcode); break;
-		case 0xe8:  SHLL16(opcode); break;
-		case 0xf8:  NOP(opcode); break;
-		// 0x90
-		case 0x09:  SHLR2(opcode); break;
-		case 0x19:  SHLR8(opcode); break;
-		case 0x29:  SHLR16(opcode); break;
-		case 0x39:  NOP(opcode); break;
-		case 0x49:  SHLR2(opcode); break;
-		case 0x59:  SHLR8(opcode); break;
-		case 0x69:  SHLR16(opcode); break;
-		case 0x79:  NOP(opcode); break;
-		case 0x89:  SHLR2(opcode); break;
-		case 0x99:  SHLR8(opcode); break;
-		case 0xa9:  SHLR16(opcode); break;
-		case 0xb9:  NOP(opcode); break;
-		case 0xc9:  SHLR2(opcode); break;
-		case 0xd9:  SHLR8(opcode); break;
-		case 0xe9:  SHLR16(opcode); break;
-		case 0xf9:  NOP(opcode); break;
-		// 0xa0
-		case 0x0a:  LDSMACH(opcode); break;
-		case 0x1a:  LDSMACL(opcode); break;
-		case 0x2a:  LDSPR(opcode); break;
-		case 0x3a:  NOP(opcode); break;
-		case 0x4a:  NOP(opcode); break;
-		case 0x5a:  LDSFPUL(opcode); break;
-		case 0x6a:  LDSFPSCR(opcode); break;
-		case 0x7a:  NOP(opcode); break;
-		case 0x8a:  NOP(opcode); break;
-		case 0x9a:  NOP(opcode); break;
-		case 0xaa:  NOP(opcode); break;
-		case 0xba:  NOP(opcode); break;
-		case 0xca:  NOP(opcode); break;
-		case 0xda:  NOP(opcode); break;
-		case 0xea:  NOP(opcode); break;
-		case 0xfa:  LDCDBR(opcode); break;
-		// 0xb0
-		case 0x0b:  JSR(opcode); break;
-		case 0x1b:  TAS(opcode); break;
-		case 0x2b:  JMP(opcode); break;
-		case 0x3b:  NOP(opcode); break;
-		case 0x4b:  JSR(opcode); break;
-		case 0x5b:  TAS(opcode); break;
-		case 0x6b:  JMP(opcode); break;
-		case 0x7b:  NOP(opcode); break;
-		case 0x8b:  JSR(opcode); break;
-		case 0x9b:  TAS(opcode); break;
-		case 0xab:  JMP(opcode); break;
-		case 0xbb:  NOP(opcode); break;
-		case 0xcb:  JSR(opcode); break;
-		case 0xdb:  TAS(opcode); break;
-		case 0xeb:  JMP(opcode); break;
-		case 0xfb:  NOP(opcode); break;
-		// 0xc0
-		case 0x0c:  SHAD(opcode); break;
-		case 0x1c:  SHAD(opcode); break;
-		case 0x2c:  SHAD(opcode); break;
-		case 0x3c:  SHAD(opcode); break;
-		case 0x4c:  SHAD(opcode); break;
-		case 0x5c:  SHAD(opcode); break;
-		case 0x6c:  SHAD(opcode); break;
-		case 0x7c:  SHAD(opcode); break;
-		case 0x8c:  SHAD(opcode); break;
-		case 0x9c:  SHAD(opcode); break;
-		case 0xac:  SHAD(opcode); break;
-		case 0xbc:  SHAD(opcode); break;
-		case 0xcc:  SHAD(opcode); break;
-		case 0xdc:  SHAD(opcode); break;
-		case 0xec:  SHAD(opcode); break;
-		case 0xfc:  SHAD(opcode); break;
-		// 0xd0
-		case 0x0d:  SHLD(opcode); break;
-		case 0x1d:  SHLD(opcode); break;
-		case 0x2d:  SHLD(opcode); break;
-		case 0x3d:  SHLD(opcode); break;
-		case 0x4d:  SHLD(opcode); break;
-		case 0x5d:  SHLD(opcode); break;
-		case 0x6d:  SHLD(opcode); break;
-		case 0x7d:  SHLD(opcode); break;
-		case 0x8d:  SHLD(opcode); break;
-		case 0x9d:  SHLD(opcode); break;
-		case 0xad:  SHLD(opcode); break;
-		case 0xbd:  SHLD(opcode); break;
-		case 0xcd:  SHLD(opcode); break;
-		case 0xdd:  SHLD(opcode); break;
-		case 0xed:  SHLD(opcode); break;
-		case 0xfd:  SHLD(opcode); break;
-		// 0xe0
-		case 0x0e:  LDCSR(opcode); break;
-		case 0x1e:  LDCGBR(opcode); break;
-		case 0x2e:  LDCVBR(opcode); break;
-		case 0x3e:  LDCSSR(opcode); break;
-		case 0x4e:  LDCSPC(opcode); break;
-		case 0x5e:  NOP(opcode); break;
-		case 0x6e:  NOP(opcode); break;
-		case 0x7e:  NOP(opcode); break;
-		case 0x8e:  LDCRBANK(opcode); break;
-		case 0x9e:  LDCRBANK(opcode); break;
-		case 0xae:  LDCRBANK(opcode); break;
-		case 0xbe:  LDCRBANK(opcode); break;
-		case 0xce:  LDCRBANK(opcode); break;
-		case 0xde:  LDCRBANK(opcode); break;
-		case 0xee:  LDCRBANK(opcode); break;
-		case 0xfe:  LDCRBANK(opcode); break;
-		// 0xf0
-		case 0x0f:  MAC_W(opcode); break;
-		case 0x1f:  MAC_W(opcode); break;
-		case 0x2f:  MAC_W(opcode); break;
-		case 0x3f:  MAC_W(opcode); break;
-		case 0x4f:  MAC_W(opcode); break;
-		case 0x5f:  MAC_W(opcode); break;
-		case 0x6f:  MAC_W(opcode); break;
-		case 0x7f:  MAC_W(opcode); break;
-		case 0x8f:  MAC_W(opcode); break;
-		case 0x9f:  MAC_W(opcode); break;
-		case 0xaf:  MAC_W(opcode); break;
-		case 0xbf:  MAC_W(opcode); break;
-		case 0xcf:  MAC_W(opcode); break;
-		case 0xdf:  MAC_W(opcode); break;
-		case 0xef:  MAC_W(opcode); break;
-		case 0xff:  MAC_W(opcode); break;
-	}
-}
-
-
-static inline void execute_one(const UINT16 opcode)
-{
-	switch(opcode & 0xf000)
-	{
-		case 0x0000:
-			execute_one_0000(opcode);
-			break;
-
-		case 0x1000:
-			MOVLS4(opcode);
-			break;
-
-		case 0x2000:
-			switch(opcode & 0x0f)
-			{
-				case 0x00:  MOVBS(opcode); break;
-				case 0x01:  MOVWS(opcode); break;
-				case 0x02:  MOVLS(opcode); break;
-				case 0x03:  NOP(opcode); break;
-				case 0x04:  MOVBM(opcode); break;
-				case 0x05:  MOVWM(opcode); break;
-				case 0x06:  MOVLM(opcode); break;
-				case 0x07:  DIV0S(opcode); break;
-				case 0x08:  TST(opcode); break;
-				case 0x09:  AND(opcode); break;
-				case 0x0a:  XOR(opcode); break;
-				case 0x0b:  OR(opcode); break;
-				case 0x0c:  CMPSTR(opcode); break;
-				case 0x0d:  XTRCT(opcode); break;
-				case 0x0e:  MULU(opcode); break;
-				case 0x0f:  MULS(opcode); break;
-			}
-			break;
-
-		case 0x3000:
-			switch(opcode & 0x0f)
-			{
-				case 0x00:  CMPEQ(opcode); break;
-				case 0x01:  NOP(opcode); break;
-				case 0x02:  CMPHS(opcode); break;
-				case 0x03:  CMPGE(opcode); break;
-				case 0x04:  DIV1(opcode); break;
-				case 0x05:  DMULU(opcode); break;
-				case 0x06:  CMPHI(opcode); break;
-				case 0x07:  CMPGT(opcode); break;
-				case 0x08:  SUB(opcode); break;
-				case 0x09:  NOP(opcode); break;
-				case 0x0a:  SUBC(opcode); break;
-				case 0x0b:  SUBV(opcode); break;
-				case 0x0c:  ADD(opcode); break;
-				case 0x0d:  DMULS(opcode); break;
-				case 0x0e:  ADDC(opcode); break;
-				case 0x0f:  ADDV(opcode); break;
-			}
-			break;
-
-		case 0x4000:
-			execute_one_4000(opcode);
-			break;
-
-		case 0x5000:
-			MOVLL4(opcode);
-			break;
-
-		case 0x6000:
-			switch(opcode & 0x0f)
-			{
-				case 0x00:  MOVBL(opcode); break;
-				case 0x01:  MOVWL(opcode); break;
-				case 0x02:  MOVLL(opcode); break;
-				case 0x03:  MOV(opcode); break;
-				case 0x04:  MOVBP(opcode); break;
-				case 0x05:  MOVWP(opcode); break;
-				case 0x06:  MOVLP(opcode); break;
-				case 0x07:  NOT(opcode); break;
-				case 0x08:  SWAPB(opcode); break;
-				case 0x09:  SWAPW(opcode); break;
-				case 0x0a:  NEGC(opcode); break;
-				case 0x0b:  NEG(opcode); break;
-				case 0x0c:  EXTUB(opcode); break;
-				case 0x0d:  EXTUW(opcode); break;
-				case 0x0e:  EXTSB(opcode); break;
-				case 0x0f:  EXTSW(opcode); break;
-			}
-			break;
-
-		case 0x7000:
-			ADDI(opcode);
-			break;
-
-		case 0x8000:
-			switch((opcode >> 8) & 0x0f)
-			{
-				case 0x00:  MOVBS4(opcode); break;
-				case 0x01:  MOVWS4(opcode); break;
-				case 0x02:  NOP(opcode); break;
-				case 0x03:  NOP(opcode); break;
-				case 0x04:  MOVBL4(opcode); break;
-				case 0x05:  MOVWL4(opcode); break;
-				case 0x06:  NOP(opcode); break;
-				case 0x07:  NOP(opcode); break;
-				case 0x08:  CMPIM(opcode); break;
-				case 0x09:  BT(opcode); break;
-				case 0x0a:  NOP(opcode); break;
-				case 0x0b:  BF(opcode); break;
-				case 0x0c:  NOP(opcode); break;
-				case 0x0d:  BTS(opcode); break;
-				case 0x0e:  NOP(opcode); break;
-				case 0x0f:  BFS(opcode); break;
-			}
-			break;
-
-		case 0x9000:
-			MOVWI(opcode);
-			break;
-
-		case 0xa000:
-			BRA(opcode);
-			break;
-
-		case 0xb000:
-			BSR(opcode);
-			break;
-
-		case 0xc000:
-			switch((opcode >> 8) & 0x0f)
-			{
-				case 0x00:  MOVBSG(opcode); break;
-				case 0x01:  MOVWSG(opcode); break;
-				case 0x02:  MOVLSG(opcode); break;
-				case 0x03:  TRAPA(opcode); break;
-				case 0x04:  MOVBLG(opcode); break;
-				case 0x05:  MOVWLG(opcode); break;
-				case 0x06:  MOVLLG(opcode); break;
-				case 0x07:  MOVA(opcode); break;
-				case 0x08:  TSTI(opcode); break;
-				case 0x09:  ANDI(opcode); break;
-				case 0x0a:  XORI(opcode); break;
-				case 0x0b:  ORI(opcode); break;
-				case 0x0c:  TSTM(opcode); break;
-				case 0x0d:  ANDM(opcode); break;
-				case 0x0e:  XORM(opcode); break;
-				case 0x0f:  ORM(opcode); break;
-			}
-			break;
-
-		case 0xd000:
-			MOVLI(opcode);
-			break;
-
-		case 0xe000:
-			MOVI(opcode);
-			break;
-
-		case 0xf000:
-			switch(opcode & 0x0f)
-			{
-				case 0x00:  FADD(opcode); break;
-				case 0x01:  FSUB(opcode); break;
-				case 0x02:  FMUL(opcode); break;
-				case 0x03:  FDIV(opcode); break;
-				case 0x04:  FCMP_EQ(opcode); break;
-				case 0x05:  FCMP_GT(opcode); break;
-				case 0x06:  FMOVS0FR(opcode); break;
-				case 0x07:  FMOVFRS0(opcode); break;
-				case 0x08:  FMOVMRFR(opcode); break;
-				case 0x09:  FMOVMRIFR(opcode); break;
-				case 0x0a:  FMOVFRMR(opcode); break;
-				case 0x0b:  FMOVFRMDR(opcode); break;
-				case 0x0c:  FMOVFR(opcode); break;
-				case 0x0d:  op1111_0x13(opcode); break;
-				case 0x0e:  FMAC(opcode); break;
-				case 0x0f:  dbreak(opcode); break;
-			}
-			break;
-	}
-}
+#else
+#define SH3_FLAT_DISPATCH 0
+#endif
 
 	static inline void sh4_check_pending_irq(/*const char *message*/) // look for highest priority active exception and handle it
 	{
@@ -4687,81 +3995,142 @@ static inline void execute_one(const UINT16 opcode)
 
 
 static bool cv1kNativeEnabled = false;
+static bool cv1kFlatEnabled = false;
 static UINT64 cv1kNativeOps, cv1kNativeSpans, cv1kNativeBuilt;
+static UINT64 cv1kNativeMisses, cv1kNativeRejected, cv1kNativeFull;
 #if SH3_NATIVE
 static_assert(SH3_SHIFT==16 && SH3_MAXHANDLER==8 && AM==0x1fffffff && T==1,
 	"native SH3 guards must match the interpreter");
 struct Cv1kSpan {
 	UINT32 pc, offset;
 	UINT16 ops[Sh3Native::MaxOps];
-	UINT8 count, checked, hot;
+	UINT8 count, checked, hot, shortExits;
 	bool valid;
 };
-static Cv1kSpan cv1kSpans[8192];
+static const unsigned Cv1kSets=8192, Cv1kWays=4, Cv1kHot=8, Cv1kMin=8;
+struct Cv1kSet {
+	Cv1kSpan ways[Cv1kWays];
+	UINT8 next;
+};
+static Cv1kSet cv1kSets[Cv1kSets];
 static Sh3Native::Cache cv1kCode;
+static bool cv1kCodeFull;
+
+static unsigned Cv1kHash(UINT32 pc)
+{
+	UINT32 h=pc>>1;
+	h ^= h>>13; h *= 0x9e3779b1u; h ^= h>>16;
+	return h & (Cv1kSets-1);
+}
 
 static bool Cv1kTryNative(UINT16 opcode)
 {
 	if (!Sh3Native::Candidate(opcode) || cv1kCode.Denied() || m_test_irq ||
-		m_sh4_icount < INT32(Sh3Native::MinOps) || (m_pc & 1)) return false;
-	const UINT32 pc = m_pc & AM, inpage = pc & SH3_PAGEM;
-	const UINT8 *page = MemMapF[pc >> SH3_SHIFT];
-	if ((uintptr_t)page < SH3_MAXHANDLER) return false;
-	const UINT16 *code = (const UINT16 *)(page + inpage);
-	unsigned available = (SH3_PAGE_SIZE - inpage) / 2;
-	if (available < Sh3Native::MinOps) return false;
-	if (available > Sh3Native::MaxOps) available = Sh3Native::MaxOps;
-	Cv1kSpan &b = cv1kSpans[((pc >> 1) ^ (pc >> 14)) & 8191];
-	if (b.pc != pc || !b.checked || b.checked > available ||
-		memcmp(b.ops, code, b.checked * sizeof(UINT16))) {
-		b = {}; b.pc = pc; b.hot = 1; b.checked = 1; b.ops[0] = code[0];
+		m_sh4_icount < INT32(Cv1kMin) || (m_pc & 1)) return false;
+	const UINT32 pc=m_pc&AM, inpage=pc&SH3_PAGEM;
+	const UINT8 *page=MemMapF[pc>>SH3_SHIFT];
+	if ((uintptr_t)page<SH3_MAXHANDLER) return false;
+	const UINT16 *code=(const UINT16 *)(page+inpage);
+	unsigned available=(SH3_PAGE_SIZE-inpage)/2;
+	if (available<Cv1kMin) return false;
+	if (available>Sh3Native::MaxOps) available=Sh3Native::MaxOps;
+	Cv1kSet &set=cv1kSets[Cv1kHash(pc)];
+	Cv1kSpan *slot=NULL;
+	for (unsigned i=0;i<Cv1kWays;i++) {
+		Cv1kSpan &w=set.ways[i];
+		if(w.checked && w.pc==pc) {slot=&w;break;}
+	}
+	if (!slot) {
+		cv1kNativeMisses++;
+		if(cv1kCodeFull) return false;
+		// Keep compiled spans resident. Prefer empty or non-native slots.
+		for(unsigned i=0;i<Cv1kWays;i++) if(!set.ways[i].checked){slot=&set.ways[i];break;}
+		if(!slot) for(unsigned i=0;i<Cv1kWays;i++) {
+			unsigned j=(set.next+i)&(Cv1kWays-1);
+			if(!set.ways[j].valid){slot=&set.ways[j];set.next=(j+1)&(Cv1kWays-1);break;}
+		}
+		if(!slot) {cv1kNativeRejected++;return false;}
+		*slot={};slot->pc=pc;slot->checked=1;slot->ops[0]=opcode;slot->hot=1;
 		return false;
 	}
-	if (!b.valid && b.hot < 2) {
-		b.hot = 2;
+	Cv1kSpan &b=*slot;
+	if(b.checked>available || memcmp(b.ops,code,b.checked*sizeof(UINT16))) {
+		b={};b.pc=pc;b.checked=1;b.ops[0]=opcode;b.hot=1;
+		return false;
+	}
+	if(!b.valid) {
+		if(cv1kCodeFull || b.hot>Cv1kHot) return false;
+		if(++b.hot<Cv1kHot) return false;
+		// Scan cheap opcode candidates before entering the emitter. Negative
+		// entries retain the full rejected prefix including its terminator.
+		unsigned n=0;
+		while(n<available && Sh3Native::Candidate(code[n])) n++;
+		b.checked=n<available?n+1:n;
+		memcpy(b.ops,code,b.checked*sizeof(UINT16));
+		b.hot=Cv1kHot+1;
+		if(n<Cv1kMin){cv1kNativeRejected++;return false;}
 		UINT32 words[Sh3Native::MaxWords];
 		Sh3Native::Emitter emit(words);
-		unsigned n = 0;
-		for (; n < available; n++) if (!emit.Emit(code[n], n)) break;
-		b.checked = n < available ? n + 1 : n;
-		memcpy(b.ops, code, b.checked * sizeof(UINT16));
-		if (n < Sh3Native::MinOps) return false;
-		emit.Finish(n);
-		if (!cv1kCode.Publish(words, emit.End()-words, b.offset)) {
-			if (!cv1kCode.Denied()) {
-				// Whole-cache reset, not a partial overwrite of live code.
-				cv1kCode.Reset(); memset(cv1kSpans, 0, sizeof(cv1kSpans));
-			}
+		unsigned count=0;
+		for(;count<n;count++) if(!emit.Emit(code[count],count))break;
+		if(count<Cv1kMin){cv1kNativeRejected++;return false;}
+		emit.Finish(count);
+		if(!cv1kCode.Publish(words,emit.End()-words,b.offset)){
+			// No repeated global resets or mprotect storms under pressure:
+			// retain published code, interpret every new site when full.
+			cv1kCodeFull=true;cv1kNativeFull++;
 			return false;
 		}
-		b.count = n; b.valid = true; cv1kNativeBuilt++;
+		b.count=count;b.valid=true;cv1kNativeBuilt++;
 	}
-	if (!b.valid || b.count > m_sh4_icount) return false;
-	unsigned done = cv1kCode.Run(b.offset, m_r, &m_sr, &m_ea, MemMapR, MemMapRL);
+	if(b.count>m_sh4_icount)return false;
+	const unsigned done=cv1kCode.Run(b.offset,m_r,&m_sr,&m_ea,MemMapR,MemMapRL);
 	cv1kNativeSpans++;
-	if (!done) return false;
-	m_pc += done * 2;
-	m_ppc = m_pc;
-	EAT(done);
-	cv1kNativeOps += done;
+	// Do not call the same generated code indefinitely if a hot MMIO
+	// or alignment guard repeatedly leaves less than a useful span.
+	if (done < Cv1kMin) {
+		if (++b.shortExits >= 8) {
+			b.valid = false;
+			b.hot = Cv1kHot + 1;
+			cv1kNativeRejected++;
+		}
+	} else b.shortExits = 0;
+	if(!done)return false;
+	m_pc+=done*2;m_ppc=m_pc;EAT(done);
+	cv1kNativeOps+=done;
 	return true;
 }
 #endif
 
 void Sh3SetCv1kNative(INT32 enable)
 {
-	cv1kNativeEnabled = false;
-	cv1kNativeOps = cv1kNativeSpans = cv1kNativeBuilt = 0;
+	cv1kNativeEnabled = cv1kFlatEnabled = false;
+	cv1kNativeOps=cv1kNativeSpans=cv1kNativeBuilt=0;
+	cv1kNativeMisses=cv1kNativeRejected=cv1kNativeFull=0;
 #if SH3_NATIVE
-	cv1kCode.Reset(); cv1kCode.Enable();
-	memset(cv1kSpans, 0, sizeof(cv1kSpans));
-	const char *option = getenv("FBNEO_CV1K_JIT");
-	cv1kNativeEnabled = enable && (!option || strcmp(option, "0") != 0);
-	if (enable) bprintf(PRINT_UI, _T("CV1000 SH3 native spans: %s (timerhack only)\n"),
-		cv1kNativeEnabled ? _T("enabled") : _T("disabled"));
+	cv1kCode.Reset();cv1kCode.Enable();cv1kCodeFull=false;
+	memset(cv1kSets,0,sizeof(cv1kSets));
+	// Actual RK3566 trace showed significant short-span overhead. Do not
+	// automatically enable experimental JIT on any CPU until measured.
+	const char *option=getenv("FBNEO_CV1K_JIT");
+	cv1kNativeEnabled=enable && option && strcmp(option,"1")==0;
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 native spans: %s (opt-in, hot >=8 ops)\n"),
+		cv1kNativeEnabled?_T("enabled"):_T("disabled"));
+#endif
+#if SH3_FLAT_DISPATCH
+	const char *flat=getenv("FBNEO_CV1K_DISPATCH");
+	cv1kFlatEnabled=enable && !cv1kNativeEnabled && (!flat || strcmp(flat,"0")!=0);
+	if(cv1kFlatEnabled)InitFlatDecode();
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 flat dispatch: %s\n"),
+		cv1kFlatEnabled?_T("enabled"):_T("disabled"));
 #else
 	(void)enable;
 #endif
+}
+
+void Sh3Cv1kCacheStats(UINT64 *misses, UINT64 *rejected, UINT64 *full)
+{
+	*misses=cv1kNativeMisses;*rejected=cv1kNativeRejected;*full=cv1kNativeFull;
 }
 
 void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built)
@@ -4769,7 +4138,7 @@ void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built)
 	*instructions = cv1kNativeOps; *spans = cv1kNativeSpans; *built = cv1kNativeBuilt;
 }
 
-static int Sh3Run_timerhack(int cycles)
+template<bool Native> static int Sh3Run_timerhack_switch(int cycles)
 {
 	m_sh4_icount = cycles;
 	sh3_end_run = 0;
@@ -4796,7 +4165,7 @@ static int Sh3Run_timerhack(int cycles)
 		{
 			const UINT16 opcode = sh3_cpu_readop16((UINT32)(m_pc & AM));
 #if SH3_NATIVE
-			if (cv1kNativeEnabled && Cv1kTryNative(opcode)) continue;
+			if (Native && Cv1kTryNative(opcode)) continue;
 #endif
 			m_pc += 2;
 			m_ppc = m_pc;
@@ -4818,6 +4187,53 @@ static int Sh3Run_timerhack(int cycles)
 	m_sh4_icount = 0;
 
 	return cycles;
+}
+
+#if SH3_FLAT_DISPATCH
+// Single flat dispatch, retaining the exact original instruction handlers,
+// IRQ check, delay-slot PC, CPU-off behavior and timerhack accounting.
+static int Sh3Run_timerhack_flat(int cycles)
+{
+	static const void *const handlers[]={
+#define SH3_OPCODE(name) &&sh3_op_##name,
+#include "sh3_decode_ops.inc"
+#undef SH3_OPCODE
+	};
+	m_sh4_icount=cycles;sh3_end_run=0;
+	if(m_cpu_off){m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
+	UINT16 opcode;
+next:
+	if(m_delay){
+		opcode=sh3_cpu_readop16(UINT32(m_delay&AM));
+		m_delay=0;m_ppc=m_pc;
+	}else{
+		opcode=sh3_cpu_readop16(UINT32(m_pc&AM));
+		m_pc+=2;m_ppc=m_pc;
+	}
+	goto *handlers[sh3OpIds[opcode]];
+#define SH3_OPCODE(name) sh3_op_##name: name(opcode); goto finished;
+#include "sh3_decode_ops.inc"
+#undef SH3_OPCODE
+finished:
+	if(m_test_irq && !m_delay)sh4_check_pending_irq();
+	EAT(1);
+	if(m_sh4_icount>0)goto next;
+	cycles-=m_sh4_icount;
+	sh4_run_timers(cycles);
+	m_sh4_icount=0;
+	return cycles;
+}
+#endif
+
+static int Sh3Run_timerhack(int cycles)
+{
+#if SH3_NATIVE
+	if(cv1kNativeEnabled)return Sh3Run_timerhack_switch<true>(cycles);
+#endif
+#if SH3_FLAT_DISPATCH
+	if(cv1kFlatEnabled)return Sh3Run_timerhack_flat(cycles);
+#endif
+	return Sh3Run_timerhack_switch<false>(cycles);
 }
 
 static int Sh3Run_normal(int cycles)

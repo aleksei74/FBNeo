@@ -158,6 +158,22 @@ static const void FUNCNAME(BLIT_PARAMS)
 #if REALLY_SIMPLE == 1 && FLIPX == 0
 		Epic12Fast::Copy(bmp, gfx2, dimx-startx > 0 ? dimx-startx : 0, TRANSPARENT != 0);
 #else
+#if EPIC12_NEON && REALLY_SIMPLE == 0
+		if (epic12_blend_neon && dimx-startx >= 8) {
+#if BLENDED == 1
+			const size_t n = Epic12Fast::BlendRow<_SMODE,_DMODE,TINT,true,FLIPX,TRANSPARENT>(
+#else
+			const size_t n = Epic12Fast::BlendRow<0,0,TINT,false,FLIPX,TRANSPARENT>(
+#endif
+				bmp,gfx2,dimx-startx,s_alpha,d_alpha,tint_clr->r,tint_clr->g,tint_clr->b);
+			bmp+=n;
+#if FLIPX == 1
+			gfx2-=n;
+#else
+			gfx2+=n;
+#endif
+		}
+#endif
 		while (bmp<end)
 		{
 			#include "epic12pixel.inc"
