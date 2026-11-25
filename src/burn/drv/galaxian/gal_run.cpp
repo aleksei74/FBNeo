@@ -1,79 +1,5 @@
 #include "gal.h"
 
-// Harem (Galaxian bootleg) protection: an opcode/data ROM bankswitch driven by
-// a 4-bit shift register clocked through 0x5801-0x5803 (dispatched in the write
-// handler below). Kept here in the shared machine code that references it so a
-// single galaxian driver builds standalone without the whole game driver; the
-// game driver sets up GalZ80Rom1Op then drives it via harem_bankswitch() /
-// harem_decrypt_scan() (declared in gal.h).
-static INT32 harem_decrypt_mode = 0;
-static INT32 harem_decrypt_count = 0;
-static INT32 harem_decrypt_clk = 0;
-static INT32 harem_decrypt_bit = 0;
-static INT32 harem_bank = 0;
-
-void harem_bankswitch(INT32 bank)
-{
-	UINT8 *data = GalZ80Rom1Op + 0x0000 + (0x2000 * bank);
-	UINT8 *opcodes = GalZ80Rom1Op + 0x6000 + (0x2000 * bank);
-
-	harem_bank = bank;
-
-	ZetMapMemory(data	, 0x8000, 0x9fff, MAP_READ | MAP_FETCHARG);
-	ZetMapMemory(opcodes, 0x8000, 0x9fff, MAP_FETCHOP);
-}
-
-void harem_decrypt_bit_write(UINT8 data)
-{
-	harem_decrypt_bit = data;
-}
-
-void harem_decrypt_rst_write(UINT8 data)
-{
-	harem_decrypt_mode = 0;
-	harem_decrypt_count = 0;
-}
-
-void harem_decrypt_clk_write(UINT8 data)
-{
-	if (data & 1 && ~harem_decrypt_clk & 1) {
-		harem_decrypt_mode = ((harem_decrypt_mode >> 1) | ((harem_decrypt_bit & 1) << 3)) & 0x0f;
-		harem_decrypt_count++;
-	}
-
-	harem_decrypt_clk = data;
-
-	if (harem_decrypt_count == 4) {
-		INT32 bank = 0;
-		switch (harem_decrypt_mode) {
-			case 0x03: bank = 0; break;
-			case 0x09: bank = 1; break;
-			case 0x0a: bank = 2; break;
-		}
-
-		harem_bankswitch(bank);
-
-		harem_decrypt_rst_write(0);
-	}
-}
-
-void harem_decrypt_scan(INT32 nAction)
-{
-	if (nAction & ACB_DRIVER_DATA) {
-		SCAN_VAR(harem_decrypt_mode);
-		SCAN_VAR(harem_decrypt_count);
-		SCAN_VAR(harem_decrypt_clk);
-		SCAN_VAR(harem_decrypt_bit);
-		SCAN_VAR(harem_bank);
-	}
-
-	if (nAction & ACB_WRITE) {
-		ZetOpen(0);
-		harem_bankswitch(harem_bank);
-		ZetClose();
-	}
-}
-
 UINT8 GalInputPort0[8]       = {0, 0, 0, 0, 0, 0, 0, 0};
 UINT8 GalInputPort1[8]       = {0, 0, 0, 0, 0, 0, 0, 0};
 UINT8 GalInputPort2[8]       = {0, 0, 0, 0, 0, 0, 0, 0};
@@ -95,6 +21,7 @@ UINT8 *GalZ80Rom1Op          = NULL;
 UINT8 *GalZ80Rom2            = NULL;
 UINT8 *GalZ80Rom3            = NULL;
 UINT8 *GalS2650Rom1          = NULL;
+UINT8 *GalM6502Rom1          = NULL;
 UINT8 *GalZ80Ram1            = NULL;
 UINT8 *GalZ80Ram2            = NULL;
 UINT8 *GalZ80Ram3            = NULL;
@@ -107,7 +34,7 @@ UINT8 *GalChars              = NULL;
 UINT8 *GalSprites            = NULL;
 UINT8 *GalTempRom            = NULL;
 UINT8 *digitalk_rom          = NULL;
-UINT8 *namenayo_extattr      = NULL;
+UINT8 *GalExtraRam            = NULL;
 
 UINT32  *GalPalette            = NULL;
 
@@ -119,6 +46,8 @@ UINT32   GalZ80Rom3Size        = 0;
 UINT32   GalZ80Rom3Num         = 0;
 UINT32   GalS2650Rom1Size      = 0;
 UINT32   GalS2650Rom1Num       = 0;
+UINT32   GalM6502Rom1Size      = 0;
+UINT32   GalM6502Rom1Num       = 0;
 UINT32   GalTilesSharedRomSize = 0;
 UINT32   GalTilesSharedRomNum  = 0;
 UINT32   GalTilesCharRomSize   = 0;
@@ -134,6 +63,16 @@ INT32 GalSndROMOffset 		   = -1;
 INT32 GalSndROMNum			   = 0;
 
 GalPostLoadCallback GalPostLoadCallbackFunction;
+GalDriverReset GalDriverResetFunction = NULL;
+GalDriverFrameStart GalDriverFrameStartFunction = NULL;
+GalDriverScan GalDriverScanFunction = NULL;
+INT32 GalIrqFireSlice = -1;
+INT32 GalSoundIrqDivider = 1;
+GalSoundBoardReset GalSoundBoardResetFunction = NULL;
+GalSoundBoardRun GalSoundBoardRunFunction = NULL;
+GalSoundBoardRender GalSoundBoardRenderFunction = NULL;
+GalSoundBoardScan GalSoundBoardScanFunction = NULL;
+GalSoundBoardExit GalSoundBoardExitFunction = NULL;
 
 // CPU Control
 UINT8 GalIrqType;
@@ -156,14 +95,9 @@ UINT8 MoonwarDialX[2];
 UINT8 MshuttleAY8910CS;
 UINT8 GmgalaxSelectedGame;
 UINT8 Fourin1Bank;
-UINT8 GameIsGmgalax;
-UINT8 GameIsBagmanmc;
-UINT8 GameIsMoonwar = 0;
 UINT8 CavelonBankSwitch;
 UINT8 GalVBlank;
-UINT8 Dingo = 0;
-UINT8 Harem = 0;
-UINT8 Namenayo = 0;
+UINT32 GalExtraRamSize = 0;
 
 INT32 Gal4Way				 = 0;
 UINT8 *GalUDLR[2][4]		 = { { NULL, NULL, NULL, NULL }, { NULL, NULL, NULL, NULL } };
@@ -229,7 +163,12 @@ static INT32 GalMemIndex()
 	GalZ80Rom2             = Next; Next += GalZ80Rom2Size;
 	GalZ80Rom3             = Next; Next += GalZ80Rom3Size;
 	GalS2650Rom1           = Next; Next += GalS2650Rom1Size;
+	GalM6502Rom1           = Next; Next += GalM6502Rom1Size;
 	GalProm                = Next; Next += GalPromRomSize;
+
+	if (GalSndROMSize) {
+		digitalk_rom   = Next; Next += GalSndROMSize;
+	}
 
 	GalRamStart            = Next;
 
@@ -247,16 +186,8 @@ static INT32 GalMemIndex()
 		GalZ80Ram3     = Next; Next += 0x00400;
 	}
 
-	if (Harem) {
-		GalZ80Ram3     = Next; Next += 0x00800;
-	}
-
-	if (GalSndROMSize) {
-		digitalk_rom   = Next; Next += GalSndROMSize;
-	}
-
-	if (Namenayo) {
-		namenayo_extattr = Next; Next += 0x00020;
+	if (GalExtraRamSize) {
+		GalExtraRam    = Next; Next += GalExtraRamSize;
 	}
 
 	GalRamEnd              = Next;
@@ -270,20 +201,22 @@ static INT32 GalMemIndex()
 	return 0;
 }
 
-static INT32 GalDoReset()
+INT32 GalDoReset()
 {
 	if (GalS2650Rom1Size) {
 		s2650Open(0);
 		s2650Reset();
 		s2650Close();
 	}
+
+	if (GalM6502Rom1Size) {
+		M6502Open(0);
+		M6502Reset();
+		M6502Close();
+	}
 	
 	if (GalZ80Rom1Size) {
 		ZetOpen(0);
-		if (!strcmp(BurnDrvGetTextA(DRV_NAME), "4in1")) {
-			ZetMapArea(0x0000, 0x3fff, 0, GalZ80Rom1);
-			ZetMapArea(0x0000, 0x3fff, 2, GalZ80Rom1);
-		}
 		ZetReset();
 		ZetClose();
 	}
@@ -300,7 +233,10 @@ static INT32 GalDoReset()
 		ZetClose();
 	}
 	
+	memset(GalGfxBank, 0, 0x20);
+
 	GalSoundReset();
+	if (GalSoundBoardResetFunction) GalSoundBoardResetFunction();
 	HiscoreReset();
 	
 	GalIrqFire = 0;
@@ -327,6 +263,8 @@ static INT32 GalDoReset()
 	CavelonBankSwitch = 0;
 	GalVBlank = 0;
 
+	if (GalDriverResetFunction) GalDriverResetFunction();
+
 	return 0;
 }
 
@@ -349,7 +287,7 @@ static INT32 GalLoadRoms(bool bLoad)
 			ri.nType = 0;
 			BurnDrvGetRomInfo(&ri, ++nOffset);
 
-			if (ri.nType & BRF_SND) { // used for Scorpion, Harem
+			if (ri.nType & BRF_SND) { // digitalker roms (Scorpion, Harem)
 				if (GalSndROMOffset == -1) {
 					GalSndROMOffset = nOffset;
 				}
@@ -387,6 +325,10 @@ static INT32 GalLoadRoms(bool bLoad)
 			if ((ri.nType & 0xff) == GAL_ROM_S2650_PROG1) {
 				GalS2650Rom1Size += ri.nLen;
 				GalS2650Rom1Num++;
+			}
+			if ((ri.nType & 0xff) == GAL_ROM_M6502_PROG1) {
+				GalM6502Rom1Size += ri.nLen;
+				GalM6502Rom1Num++;
 			}
 		} while (ri.nLen);
 		
@@ -514,6 +456,17 @@ static INT32 GalLoadRoms(bool bLoad)
 			for (i = GAL_ROM_OFFSET_S2650_PROG1; i < GAL_ROM_OFFSET_S2650_PROG1 + GalS2650Rom1Num; i++) {
 				nRet = BurnLoadRom(GalS2650Rom1 + Offset, i, 1); if (nRet) return 1;
 			
+				BurnDrvGetRomInfo(&ri, i + 0);
+				Offset += ri.nLen;
+			}
+		}
+
+		// M6502 #1 Program Roms
+		if (GalM6502Rom1Size) {
+			Offset = 0;
+			for (i = GAL_ROM_OFFSET_M6502_PROG1; i < GAL_ROM_OFFSET_M6502_PROG1 + GalM6502Rom1Num; i++) {
+				nRet = BurnLoadRom(GalM6502Rom1 + Offset, i, 1); if (nRet) return 1;
+
 				BurnDrvGetRomInfo(&ri, i + 0);
 				Offset += ri.nLen;
 			}
@@ -1251,206 +1204,6 @@ void MapFrogger()
 	ZetClose();
 }
 
-// Harem Memory Map
-UINT8 __fastcall HaremZ80Read(UINT16 a)
-{
-	if ((a & 0xfc0c) == 0x6000) {
-		switch (a & 0x300) {
-			case 0x100: return ppi8255_r(0, a & 3);
-			case 0x200: return ppi8255_r(1, a & 3);
-		}
-	}
-
-	switch (a) {
-		case 0x5000: {
-			return GalGfxBank[0];
-		}
-
-		case 0x5800: {
-			// watchdog read
-			return 0xff;
-		}
-
-		default: {
-			bprintf(PRINT_NORMAL, _T("harem Z80 #1 Read => %04X\n"), a);
-		}
-	}
-
-	return 0xff;
-}
-
-void __fastcall HaremZ80Write(UINT16 a, UINT8 d)
-{
-	if (a >= 0x4000 && a <= 0x40ff) {
-		INT32 Offset = a & 0xff;
-
-		GalSpriteRam[Offset] = d;
-
-		if (Offset < 0x40) {
-			if ((Offset & 0x01) == 0) {
-				GalScrollVals[Offset >> 1] = d;
-			}
-		}
-
-		return;
-	}
-
-	if ((a & 0xfc0c) == 0x6000) {
-		switch (a & 0x300) {
-			case 0x100: ppi8255_w(0, a & 3, d); return;
-			case 0x200: ppi8255_w(1, a & 3, d); return;
-		}
-		return;
-	}
-
-	switch (a) {
-		case 0x5000: {
-			GalGfxBank[1] = d; // tiles
-		}
-		case 0x5805: {
-			GalGfxBank[0] = d; // sprites
-		}
-
-		case 0x5801: {
-			harem_decrypt_clk_write(d);
-			return;
-		}
-		case 0x5802: {
-			harem_decrypt_bit_write(d);
-			return;
-		}
-		case 0x5803: {
-			harem_decrypt_rst_write(d);
-			return;
-		}
-
-		case 0x5800: {
-			GalIrqFire = d & 1;
-			return;
-		}
-
-		case 0x5804: {
-			GalStarsEnable = d & 0x01;
-			if (!GalStarsEnable) GalStarsScrollPos = -1;
-			return;
-		}
-
-		case 0x5806: {
-			GalFlipScreenX = d & 1;
-			return;
-		}
-
-		case 0x5807: {
-			GalFlipScreenY = d & 1;
-			return;
-		}
-
-		case 0x7005: {
-			return; // NOP
-		}
-
-		default: {
-			bprintf(PRINT_NORMAL, _T("harem Z80 #1 Write => %04X, %02X\n"), a, d);
-		}
-	}
-}
-
-// Namenayo Memory Map
-UINT8 __fastcall NamenayoZ80Read(UINT16 a)
-{
-	if ((a & 0xf4fc) == 0xf000) {
-		switch (a & 0x300) {
-			case 0x100: return ppi8255_r(0, a & 3);
-			case 0x200: return ppi8255_r(1, a & 3);
-		}
-		return 0xff; // watchdog @ 0xf000
-	}
-
-	if ((a & 0xffe0) == 0xe000) {
-		return namenayo_extattr[a & 0x1f];
-	}
-
-	switch (a) {
-		case 0xf000: {
-			// watchdog read
-			return 0xff;
-		}
-
-		default: {
-			bprintf(PRINT_NORMAL, _T("namenayo Z80 #1 Read => %04X\n"), a);
-		}
-	}
-
-	return 0xff;
-}
-
-void __fastcall NamenayoZ80Write(UINT16 a, UINT8 d)
-{
-	if (a >= 0xc800 && a <= 0xc8ff) {
-		INT32 Offset = a & 0xff;
-
-		GalSpriteRam[Offset] = d;
-
-		if (Offset < 0x40 && ~Offset & 1) {
-			GalScrollVals[Offset >> 1] = d;
-		}
-
-		return;
-	}
-
-	if ((a & 0xf4fc) == 0xf000) {
-		switch (a & 0x300) {
-			case 0x100: ppi8255_w(0, a & 3, d); return;
-			case 0x200: ppi8255_w(1, a & 3, d); return;
-		}
-		return;
-	}
-
-	if ((a & 0xffe0) == 0xe000) {
-		namenayo_extattr[a & 0x1f] = d;
-		return;
-	}
-
-	switch (a) {
-		case 0xd800: {
-			return; // unk?
-		}
-
-		case 0xe801: {
-			GalIrqFire = d & 1;
-			return;
-		}
-
-		case 0xe802: {
-			return; // coin counter
-		}
-
-		case 0xe804: {
-			GalStarsEnable = d & 0x01;
-			if (!GalStarsEnable) GalStarsScrollPos = -1;
-			return;
-		}
-
-		case 0xe806: {
-			GalFlipScreenX = d & 1;
-			return;
-		}
-
-		case 0xe807: {
-			GalFlipScreenY = d & 1;
-			return;
-		}
-
-		case 0x7005: {
-			return; // NOP
-		}
-
-		default: {
-			bprintf(PRINT_NORMAL, _T("namenayo Z80 #1 Write => %04X, %02X\n"), a, d);
-		}
-	}
-}
-
 // The End Memory Map
 UINT8 __fastcall TheendZ80Read(UINT16 a)
 {
@@ -1569,56 +1322,6 @@ void __fastcall TheendZ80PortWrite(UINT16 a, UINT8 d)
 			bprintf(PRINT_NORMAL, _T("Z80 #1 Port Write => %02X, %02X\n"), a, d);
 		}
 	}
-}
-
-void MapHarem()
-{
-	ZetOpen(0);
-	ZetMemCallback(0x0000, 0xffff, 0);
-	ZetMemCallback(0x0000, 0xffff, 1);
-	ZetMemCallback(0x0000, 0xffff, 2);
-	ZetSetReadHandler(HaremZ80Read);
-	ZetSetWriteHandler(HaremZ80Write);
-	ZetSetInHandler(TheendZ80PortRead);
-	ZetSetOutHandler(TheendZ80PortWrite);
-	ZetMapArea(0x0000, 0x1fff, 0, GalZ80Rom1);
-	ZetMapArea(0x0000, 0x1fff, 2, GalZ80Rom1);
-
-	ZetMapArea(0x4000, 0x40ff, 0, GalSpriteRam);
-	ZetMapArea(0x4000, 0x40ff, 2, GalSpriteRam);
-
-	ZetMapMemory(GalZ80Ram3, 0x2000, 0x27ff, MAP_RAM);
-
-	ZetMapArea(0x4100, 0x47ff, 0, GalZ80Ram1);
-	ZetMapArea(0x4100, 0x47ff, 1, GalZ80Ram1);
-	ZetMapArea(0x4100, 0x47ff, 2, GalZ80Ram1);
-	ZetMapArea(0x4800, 0x4bff, 0, GalVideoRam);
-	ZetMapArea(0x4800, 0x4bff, 1, GalVideoRam);
-	ZetMapArea(0x4800, 0x4bff, 2, GalVideoRam);
-	ZetMapArea(0x4c00, 0x4fff, 0, GalVideoRam);
-	ZetMapArea(0x4c00, 0x4fff, 1, GalVideoRam);
-	ZetMapArea(0x4c00, 0x4fff, 2, GalVideoRam);
-	ZetClose();
-}
-
-void MapNamenayo()
-{
-	ZetOpen(0);
-	ZetMemCallback(0x0000, 0xffff, 0);
-	ZetMemCallback(0x0000, 0xffff, 1);
-	ZetMemCallback(0x0000, 0xffff, 2);
-	ZetSetReadHandler(NamenayoZ80Read);
-	ZetSetWriteHandler(NamenayoZ80Write);
-	ZetSetInHandler(TheendZ80PortRead);
-	ZetSetOutHandler(TheendZ80PortWrite);
-	ZetMapMemory(GalZ80Rom1 + 0x0000,	0x0000, 0x3fff, MAP_ROM);
-	ZetMapMemory(GalZ80Rom1 + 0x5000,	0x5000, 0x5fff, MAP_ROM);
-	ZetMapMemory(GalZ80Rom1 + 0x4000,	0x6000, 0x6fff, MAP_ROM);
-
-	ZetMapMemory(GalZ80Ram1,	0x4000, 0x4fff, MAP_RAM);
-	ZetMapMemory(GalVideoRam,	0xd000, 0xd3ff, MAP_RAM);
-	ZetMapMemory(GalSpriteRam,	0xc800, 0xc8ff, MAP_ROM);
-	ZetClose();
 }
 
 void MapTheend()
@@ -1952,6 +1655,7 @@ INT32 GalExit()
 {
 	if (GalZ80Rom1Size) ZetExit();
 	if (GalS2650Rom1Size) s2650Exit();
+	if (GalM6502Rom1Size) M6502Exit();
 	
 	GenericTilesExit();
 	
@@ -1961,6 +1665,7 @@ INT32 GalExit()
 	BurnFree(RockclimTiles);
 	
 	GalSoundExit();
+	if (GalSoundBoardExitFunction) GalSoundBoardExitFunction();
 	
 	GalIrqFire = 0;
 	GalIrqType = 0;
@@ -1985,11 +1690,9 @@ INT32 GalExit()
 	GalBackgroundEnable = 0;
 	ScrambleProtectionState = 0;
 	ScrambleProtectionResult = 0;
-	Dingo = 0;
-	Harem = 0;
-	Namenayo = 0;
+	GalExtraRamSize = 0;
 
-	namenayo_extattr = NULL;
+	GalExtraRam = NULL;
 	digitalk_rom = NULL;
 
 	GalZ80Rom1Size = 0;
@@ -2000,6 +1703,8 @@ INT32 GalExit()
 	GalZ80Rom3Num = 0;
 	GalS2650Rom1Size = 0;
 	GalS2650Rom1Num = 0;
+	GalM6502Rom1Size = 0;
+	GalM6502Rom1Num = 0;
 	GalTilesSharedRomSize = 0;
 	GalTilesSharedRomNum = 0;
 	GalTilesCharRomSize = 0;
@@ -2015,6 +1720,16 @@ INT32 GalExit()
 	GalSndROMNum = 0;
 	
 	GalPostLoadCallbackFunction = NULL;
+	GalDriverResetFunction = NULL;
+	GalDriverFrameStartFunction = NULL;
+	GalDriverScanFunction = NULL;
+	GalIrqFireSlice = -1;
+	GalSoundIrqDivider = 1;
+	GalSoundBoardResetFunction = NULL;
+	GalSoundBoardRunFunction = NULL;
+	GalSoundBoardRenderFunction = NULL;
+	GalSoundBoardScanFunction = NULL;
+	GalSoundBoardExitFunction = NULL;
 	GalRenderBackgroundFunction = NULL;
 	GalCalcPaletteFunction = NULL;
 	GalDrawBulletsFunction = NULL;
@@ -2027,9 +1742,6 @@ INT32 GalExit()
 	MoonwarPortSelect = 0;
 	MshuttleAY8910CS = 0;
 	Fourin1Bank = 0;
-	GameIsGmgalax = 0;
-	GameIsBagmanmc = 0;
-	GameIsMoonwar = 0;
 	CavelonBankSwitch = 0;
 	DarkplntBulletColour = 0;
 	DambustrBgColour1 = 0;
@@ -2072,32 +1784,19 @@ INT32 GalFrame()
 	INT32 nIrqInterleaveFire = nInterleave / 4;
 
 	if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_RACKNROLSN76496 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_HEXPOOLASN76496) { nInterleave = 8; nIrqInterleaveFire = nInterleave - 1; }
+	if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_BMXSTUNTSSN76489A) { nInterleave = 32; nIrqInterleaveFire = nInterleave - 1; }
 
-	if (GameIsBagmanmc) nIrqInterleaveFire = 0;
+	if (GalIrqFireSlice >= 0) nIrqInterleaveFire = GalIrqFireSlice;
 
 	if (GalReset) GalDoReset();
 	
-	if (GameIsGmgalax && (GmgalaxSelectedGame != GalFakeDip)) {
-		GmgalaxSelectedGame = GalFakeDip;
-		INT32 nAddress = 0x0000;
-		if (GmgalaxSelectedGame == 1) nAddress = 0x4000;
-		ZetOpen(0);
-		ZetMapArea(0x0000, 0x3fff, 0, GalZ80Rom1 + nAddress);
-		ZetMapArea(0x0000, 0x3fff, 2, GalZ80Rom1 + nAddress);
-		ZetClose();
-		
-		GalGfxBank[0] = 0;
-		if (GmgalaxSelectedGame == 1) GalGfxBank[0] = 1;
-		GalPaletteBank = 0;
-		if (GmgalaxSelectedGame == 1) GalPaletteBank = 1;
-		
-		GalDoReset();
-	}
+	if (GalDriverFrameStartFunction) GalDriverFrameStartFunction();
 
 	GalMakeInputs();
 	GalVBlank = 0;
 	
 	if (GalZ80Rom1Size) ZetNewFrame();
+	if (GalM6502Rom1Size) M6502NewFrame();
 
 	nGalCyclesDone[0] = nGalCyclesDone[1] = nGalCyclesDone[2] = 0;
 	
@@ -2118,6 +1817,8 @@ INT32 GalFrame()
 			}
 			ZetClose();
 		}
+
+		if (GalSoundBoardRunFunction) GalSoundBoardRunFunction(i, nInterleave);
 			
 		if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_KINGBALLDAC || GalSoundType == GAL_SOUND_HARDWARE_TYPE_FROGGERAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_KONAMIAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_EXPLORERAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_SCORPIONAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_SFXAY8910DAC || GalSoundType == GAL_SOUND_HARDWARE_TYPE_AD2083AY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_CHECKMANAY8910) {
 			// Run Z80 #2
@@ -2131,7 +1832,6 @@ INT32 GalFrame()
 		}
 			
 		if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_CHECKMAJAY8910) {
-			if (Dingo && !((i%2) == 0)) continue; // slow down dingo music a bit.
 			// Run Z80 #2
 			nCurrentCPU = 1;
 			ZetOpen(nCurrentCPU);
@@ -2139,7 +1839,7 @@ INT32 GalFrame()
 			nGalCyclesSegment = nNext - nGalCyclesDone[nCurrentCPU];
 			nGalCyclesSegment = ZetRun(nGalCyclesSegment);
 			nGalCyclesDone[nCurrentCPU] += nGalCyclesSegment;
-			ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
+			if ((i % GalSoundIrqDivider) == 0) ZetSetIRQLine(0, CPU_IRQSTATUS_HOLD);
 			ZetClose();
 		}
 			
@@ -2162,14 +1862,30 @@ INT32 GalFrame()
 			nGalCyclesDone[nCurrentCPU] += s2650Run(nGalCyclesSegment);
 			if (i == nIrqInterleaveFire) {
 				GalVBlank = 1;
-				s2650SetIRQLine(0, CPU_IRQSTATUS_ACK);
-				s2650Run(0);
-				s2650SetIRQLine(0, CPU_IRQSTATUS_NONE);
-				s2650Run(0);
+				if (GalIrqType != GAL_IRQ_TYPE_NONE && (GalIrqType != GAL_IRQ_TYPE_S2650_GATED || GalIrqFire)) {
+					s2650SetIRQLine(0, CPU_IRQSTATUS_ACK);
+					s2650Run(0);
+					s2650SetIRQLine(0, CPU_IRQSTATUS_NONE);
+					s2650Run(0);
+				}
 			}
 			s2650Close();
 		}
 			
+		// Run M6502 #1
+		if (GalM6502Rom1Size) {
+			nCurrentCPU = 0;
+			M6502Open(nCurrentCPU);
+			nNext = (i + 1) * nGalCyclesTotal[nCurrentCPU] / nInterleave;
+			nGalCyclesSegment = nNext - nGalCyclesDone[nCurrentCPU];
+			nGalCyclesDone[nCurrentCPU] += M6502Run(nGalCyclesSegment);
+			if (i == nIrqInterleaveFire && GalIrqFire) {
+				// held until the irq enable latch is cleared, like the z80 boards
+				M6502SetIRQLine(0, CPU_IRQSTATUS_ACK);
+			}
+			M6502Close();
+		}
+
 		if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_HUNCHBACKAY8910) {
 			// Run Z80 #1
 			nCurrentCPU = 1;
@@ -2232,7 +1948,7 @@ INT32 GalFrame()
 			}
 		}
 		
-		if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_RACKNROLSN76496 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_HEXPOOLASN76496) {
+		if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_RACKNROLSN76496 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_HEXPOOLASN76496 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_BMXSTUNTSSN76489A) {
 			if (pBurnSoundOut) {
 				INT32 nSegmentLength = nBurnSoundLen / nInterleave;
 				INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
@@ -2257,7 +1973,7 @@ INT32 GalFrame()
 			}
 		}
 	}
-	
+
 	if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_ZIGZAGAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_JUMPBUGAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_CHECKMANAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_CHECKMAJAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_EXPLORERAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_SFXAY8910DAC || GalSoundType == GAL_SOUND_HARDWARE_TYPE_MSHUTTLEAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_BONGOAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_AD2083AY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_HUNCHBACKAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_FANTASTCAY8910 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_SCORPIONAY8910) {
 		if (pBurnSoundOut) {
 			INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
@@ -2303,10 +2019,6 @@ INT32 GalFrame()
 					filter_rc_update(5, pAY8910Buffer[5], pSoundBuf, nSegmentLength);
 				}
 			}
-			if (GameIsMoonwar) {
-				// Moonwar[a] has a horrible DC Offset
-				BurnSoundDCFilter();
-			}
 		}
 	}
 	
@@ -2326,7 +2038,7 @@ INT32 GalFrame()
 		if (pBurnSoundOut) DACUpdate(pBurnSoundOut, nBurnSoundLen);
 	}
 	
-	if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_RACKNROLSN76496 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_HEXPOOLASN76496) {
+	if (GalSoundType == GAL_SOUND_HARDWARE_TYPE_RACKNROLSN76496 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_HEXPOOLASN76496 || GalSoundType == GAL_SOUND_HARDWARE_TYPE_BMXSTUNTSSN76489A) {
 		if (pBurnSoundOut) {
 			INT32 nSegmentLength = nBurnSoundLen - nSoundBufferPos;
 			INT16* pSoundBuf = pBurnSoundOut + (nSoundBufferPos << 1);
@@ -2341,6 +2053,8 @@ INT32 GalFrame()
 		}
 	}
 	
+	if (GalSoundBoardRenderFunction && pBurnSoundOut) GalSoundBoardRenderFunction(pBurnSoundOut, nBurnSoundLen);
+
 	if (pBurnDraw) GalDraw();
 
 	return 0;
@@ -2366,8 +2080,10 @@ INT32 GalScan(INT32 nAction, INT32 *pnMin)
 		if (GalZ80Rom1Size) ZetScan(nAction);
 
 		if (GalS2650Rom1Size) s2650Scan(nAction);
+		if (GalM6502Rom1Size) M6502Scan(nAction);
 		
 		GalSoundScan(nAction, pnMin);
+		if (GalSoundBoardScanFunction) GalSoundBoardScanFunction(nAction, pnMin);
 		
 		// Scan critical driver variables
 		SCAN_VAR(GalInput);
@@ -2383,6 +2099,7 @@ INT32 GalScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(KingballSpeechDip);
 		SCAN_VAR(KonamiSoundControl);
 		SCAN_VAR(SfxSampleControl);
+		SCAN_VAR(ScrambleProtectionState);
 		SCAN_VAR(ScrambleProtectionResult);
 		SCAN_VAR(MoonwarPortSelect);
 		SCAN_VAR(MoonwarDialX);
@@ -2410,6 +2127,8 @@ INT32 GalScan(INT32 nAction, INT32 *pnMin)
 		SCAN_VAR(GalStarsLastFrame);
 		SCAN_VAR(GalVBlank);
 	}
+
+	if (GalDriverScanFunction) GalDriverScanFunction(nAction);
 	
 	return 0;
 }

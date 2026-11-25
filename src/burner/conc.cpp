@@ -121,10 +121,12 @@ static INT32 ConfigParseFile(TCHAR* pszFilename)
 	if (NULL == pszReadMode) pszReadMode = _T("rt");
 
 	FILE* h = _tfopen(pszFilename, pszReadMode);
+
 	TCHAR* pszFileHeading = getFilenameFromPath(pszFilename);
+	TCHAR szAlternative[MAX_PATH] = { 0 };
+
 	if (h == NULL) {
 		if ((BurnDrvGetFlags() & BDF_CLONE) && BurnDrvGetText(DRV_PARENT)) {
-			TCHAR szAlternative[MAX_PATH] = { 0 };
 			_stprintf(szAlternative, _T("%s%s.ini"), szAppCheatsPath, BurnDrvGetText(DRV_PARENT));
 
 			pszReadMode = AdaptiveEncodingReads(szAlternative);
@@ -390,9 +392,9 @@ static INT32 ConfigParseNebulaFile(TCHAR* pszFilename)
 
 	FILE *fp = _tfopen(pszFilename, pszReadMode);
 	TCHAR* pszFileHeading = getFilenameFromPath(pszFilename);
+	TCHAR szAlternative[MAX_PATH] = { 0 };
 	if (fp == NULL) {
 		if ((BurnDrvGetFlags() & BDF_CLONE) && BurnDrvGetText(DRV_PARENT)) {
-			TCHAR szAlternative[MAX_PATH] = { 0 };
 			_stprintf(szAlternative, _T("%s%s.dat"), szAppCheatsPath, BurnDrvGetText(DRV_PARENT));
 
 			pszReadMode = AdaptiveEncodingReads(szAlternative);
@@ -528,6 +530,7 @@ static INT32 ConfigParseMAMEFile_internal(FILE *fz, const TCHAR *pszFileHeading,
 #define AddressInfo()	\
 	INT32 k = (flags >> 20) & 3;	\
 	INT32 cpu = (flags >> 24) & 0x1f; \
+	if ((flags & 0xf0000000) == 0x80000000) cpu = (flags >> 26) & 3; \
 	if (cpu > 3) cpu = 0; \
 	for (INT32 i = 0; i < k+1; i++) {	\
 		pCurrentCheat->pOption[n]->AddressInfo[nCurrentAddress].nCPU = cpu;	\
@@ -941,9 +944,9 @@ static INT32 ConfigParseVCT(TCHAR* pszFilename)
 
 	FILE* h = _tfopen(pszFilename, pszReadMode);
 	TCHAR* pszFileHeading = getFilenameFromPath(pszFilename);
+	TCHAR szAlternative[MAX_PATH] = { 0 };
 	if (h == NULL) {
 		if ((BurnDrvGetFlags() & BDF_CLONE) && BurnDrvGetText(DRV_PARENT)) {
-			TCHAR szAlternative[MAX_PATH] = { 0 };
 			_stprintf(szAlternative, _T("%s%s.vct"), szAppCheatsPath, BurnDrvGetText(DRV_PARENT));
 
 			pszReadMode = AdaptiveEncodingReads(szAlternative);

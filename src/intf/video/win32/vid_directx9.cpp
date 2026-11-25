@@ -290,6 +290,225 @@ static void FillEffectTexture()
 
 // ----------------------------------------------------------------------------
 
+// ----------------------------------------------------------------------------
+// Artwork, composited here (both DirectX9 blitters), so the effects / HardFX
+// only touch the game image: out = Add + Mul * (Under + game), see BurnArtworkGetLayers()
+
+static bool bArtLayered = false;
+static IDirect3DTexture9* pArtTexture[3] = { NULL, NULL, NULL };	// under, multiply, add
+static int nArtWidth = 0, nArtHeight = 0, nArtTexWidth = 0, nArtTexHeight = 0, nArtSerial = -1;
+
+struct dx9ArtVertex {
+	float x, y, z, rhw;
+	float u, v;
+};
+#define D3DFVF_ARTVERTEX (D3DFVF_XYZRHW | D3DFVF_TEX1)
+
+static void dx9ArtRelease()
+{
+	for (int i = 0; i < 3; i++) {
+		RELEASE(pArtTexture[i])
+	}
+	nArtWidth = nArtHeight = 0;
+	nArtSerial = -1;
+}
+
+// the artwork's size on screen (in the game's orientation there), false if not layered
+static bool dx9ArtSize(int* pnWidth, int* pnHeight)
+{
+	BurnArtworkLayers L;
+	if (!bArtLayered || !BurnArtworkGetLayers(&L)) {
+		return false;
+	}
+	*pnWidth = (nRotateGame & 1) ? L.nHeight : L.nWidth;
+	*pnHeight = (nRotateGame & 1) ? L.nWidth : L.nHeight;
+	return true;
+}
+
+// where the game goes, inside the artwork at pArt (render target pixels)
+static bool dx9ArtScreenRect(const RECT* pArt, RECT* pScreen)
+{
+	BurnArtworkLayers L;
+	if (!bArtLayered || !BurnArtworkGetLayers(&L)) {
+		return false;
+	}
+
+	float fW = (float)(pArt->right - pArt->left), fH = (float)(pArt->bottom - pArt->top);
+	float u0 = (float)L.nScreenX / L.nWidth, u1 = (float)(L.nScreenX + L.nScreenW) / L.nWidth;
+	float v0 = (float)L.nScreenY / L.nHeight, v1 = (float)(L.nScreenY + L.nScreenH) / L.nHeight;
+	float x0, x1, y0, y1;
+	switch (nRotateGame & 3) {
+		case 0:  x0 = u0 * fW;        x1 = u1 * fW;        y0 = v0 * fH;        y1 = v1 * fH;        break;
+		case 1:  x0 = v0 * fW;        x1 = v1 * fW;        y0 = fH - u1 * fH;   y1 = fH - u0 * fH;   break;
+		case 2:  x0 = fW - u1 * fW;   x1 = fW - u0 * fW;   y0 = fH - v1 * fH;   y1 = fH - v0 * fH;   break;
+		default: x0 = fW - v1 * fW;   x1 = fW - v0 * fW;   y0 = u0 * fH;        y1 = u1 * fH;        break;
+	}
+	pScreen->left = pArt->left + (int)(x0 + 0.5f);
+	pScreen->right = pArt->left + (int)(x1 + 0.5f);
+	pScreen->top = pArt->top + (int)(y0 + 0.5f);
+	pScreen->bottom = pArt->top + (int)(y1 + 0.5f);
+	return true;
+}
+
+static int dx9ArtUpload(BurnArtworkLayers* pL)
+{
+	if (pL->nWidth != nArtWidth || pL->nHeight != nArtHeight || pArtTexture[0] == NULL) {
+		dx9ArtRelease();
+
+		// the exact size if the card can (clamped, no mipmaps: fine for "conditional" support too)
+		D3DCAPS9 caps;
+		bool bPow2 = true;
+		if (SUCCEEDED(pD3DDevice->GetDeviceCaps(&caps))) {
+			bPow2 = (caps.TextureCaps & D3DPTEXTURECAPS_POW2) && !(caps.TextureCaps & D3DPTEXTURECAPS_NONPOW2CONDITIONAL);
+		}
+		nArtTexWidth = bPow2 ? GetTextureSize(pL->nWidth) : pL->nWidth;
+		nArtTexHeight = bPow2 ? GetTextureSize(pL->nHeight) : pL->nHeight;
+		for (int i = 0; i < 3; i++) {
+			if (FAILED(pD3DDevice->CreateTexture(nArtTexWidth, nArtTexHeight, 1, 0, D3DFMT_X8R8G8B8, D3DPOOL_MANAGED, &pArtTexture[i], NULL))) {
+				dx9ArtRelease();
+				return 1;
+			}
+		}
+		nArtWidth = pL->nWidth;
+		nArtHeight = pL->nHeight;
+	}
+
+	if (pL->nSerial != nArtSerial) {
+	// what to send: only the layers that changed, and if we have the previous version,
+	// only the part that changed (a lamp blinking doesn't resend everything)
+	bool bPart = (nArtSerial == pL->nSerial - 1) && pL->nDirtyW > 0 && pL->nDirtyH > 0;
+	int nX = bPart ? pL->nDirtyX : 0, nY = bPart ? pL->nDirtyY : 0;
+	int nW = bPart ? pL->nDirtyW : pL->nWidth, nH = bPart ? pL->nDirtyH : pL->nHeight;
+		UINT32* pLayer[3] = { pL->pUnder, pL->pMul, pL->pAdd };
+		int nLayerSerial[3] = { pL->nSerialUnder, pL->nSerialOver, pL->nSerialOver };
+		for (int i = 0; i < 3; i++) {
+			if (nArtSerial >= 0 && nLayerSerial[i] <= nArtSerial) {
+				continue;					// this one hasn't changed
+			}
+			bool bAll = (nArtSerial < 0) || !bPart;
+			RECT r = { bAll ? 0 : nX, bAll ? 0 : nY, bAll ? pL->nWidth : nX + nW, bAll ? pL->nHeight : nY + nH };
+			D3DLOCKED_RECT lr;
+			if (FAILED(pArtTexture[i]->LockRect(0, &lr, &r, D3DLOCK_NOSYSLOCK))) {	// managed: only r goes to the card
+				return 1;
+			}
+			for (int y = r.top; y < r.bottom; y++) {
+				memcpy((unsigned char*)lr.pBits + (y - r.top) * lr.Pitch, pLayer[i] + y * pL->nPitch + r.left, (r.right - r.left) * 4);
+			}
+			pArtTexture[i]->UnlockRect(0);
+		}
+		nArtSerial = pL->nSerial;
+	}
+
+	return 0;
+}
+
+// Clear the artwork's area (in a window, nothing else clears the back buffer)
+static void dx9ArtClear(const RECT* pArt)
+{
+	D3DVIEWPORT9 vp;
+	vp.X = pArt->left;
+	vp.Y = pArt->top;
+	vp.Width = pArt->right - pArt->left;
+	vp.Height = pArt->bottom - pArt->top;
+	vp.MinZ = 0.0f;
+	vp.MaxZ = 1.0f;
+	pD3DDevice->SetViewport(&vp);
+	pD3DDevice->Clear(0, NULL, D3DCLEAR_TARGET, D3DCOLOR_XRGB(0, 0, 0), 0.0f, 0);
+}
+
+// Draw the layers over the artwork's area (inside BeginScene / EndScene, after the game)
+static void dx9ArtDraw(const RECT* pArt)
+{
+	BurnArtworkLayers L;
+	if (!bArtLayered || !BurnArtworkGetLayers(&L) || dx9ArtUpload(&L)) {
+		return;
+	}
+
+	D3DVIEWPORT9 vp;
+	vp.X = pArt->left;
+	vp.Y = pArt->top;
+	vp.Width = pArt->right - pArt->left;
+	vp.Height = pArt->bottom - pArt->top;
+	vp.MinZ = 0.0f;
+	vp.MaxZ = 1.0f;
+	pD3DDevice->SetViewport(&vp);
+
+	// texture corners TL, TR, BL, BR -> screen corners, rotated like the game
+	float x0 = (float)pArt->left - 0.5f, x1 = (float)pArt->right - 0.5f;
+	float y0 = (float)pArt->top - 0.5f, y1 = (float)pArt->bottom - 0.5f;
+	float px[4], py[4];
+	switch (nRotateGame & 3) {
+		case 0:  px[0] = x0; py[0] = y0;  px[1] = x1; py[1] = y0;  px[2] = x0; py[2] = y1;  px[3] = x1; py[3] = y1;  break;
+		case 1:  px[0] = x0; py[0] = y1;  px[1] = x0; py[1] = y0;  px[2] = x1; py[2] = y1;  px[3] = x1; py[3] = y0;  break;
+		case 2:  px[0] = x1; py[0] = y1;  px[1] = x0; py[1] = y1;  px[2] = x1; py[2] = y0;  px[3] = x0; py[3] = y0;  break;
+		default: px[0] = x1; py[0] = y0;  px[1] = x1; py[1] = y1;  px[2] = x0; py[2] = y0;  px[3] = x0; py[3] = y1;  break;
+	}
+	float u1 = (float)nArtWidth / nArtTexWidth, v1 = (float)nArtHeight / nArtTexHeight;
+	float pu[4] = { 0.0f, u1, 0.0f, u1 }, pv[4] = { 0.0f, 0.0f, v1, v1 };
+	dx9ArtVertex v[4];
+	for (int i = 0; i < 4; i++) {
+		v[i].x = px[i]; v[i].y = py[i]; v[i].z = 0.0f; v[i].rhw = 1.0f;
+		v[i].u = pu[i]; v[i].v = pv[i];
+	}
+
+	// save what we change: the effects (scanlines!) leave stage 0 on other texture coordinates,
+	// address modes and ops, and DirectX9 Alt doesn't set everything again each frame
+	static const D3DTEXTURESTAGESTATETYPE nStageState[] = { D3DTSS_COLOROP, D3DTSS_COLORARG1, D3DTSS_ALPHAOP, D3DTSS_TEXCOORDINDEX, D3DTSS_TEXTURETRANSFORMFLAGS };
+	static const D3DSAMPLERSTATETYPE nSamplerState[] = { D3DSAMP_MAGFILTER, D3DSAMP_MINFILTER, D3DSAMP_MIPFILTER, D3DSAMP_ADDRESSU, D3DSAMP_ADDRESSV };
+	const int nStages = sizeof(nStageState) / sizeof(nStageState[0]), nSamplers = sizeof(nSamplerState) / sizeof(nSamplerState[0]);
+	DWORD nStage0[nStages], nSampler0[nSamplers], nColorOp1, nBlend, nSrc, nDst, nBlendOp;
+	for (int i = 0; i < nStages; i++) {
+		pD3DDevice->GetTextureStageState(0, nStageState[i], &nStage0[i]);
+	}
+	for (int i = 0; i < nSamplers; i++) {
+		pD3DDevice->GetSamplerState(0, nSamplerState[i], &nSampler0[i]);
+	}
+	pD3DDevice->GetTextureStageState(1, D3DTSS_COLOROP, &nColorOp1);
+	pD3DDevice->GetRenderState(D3DRS_ALPHABLENDENABLE, &nBlend);
+	pD3DDevice->GetRenderState(D3DRS_SRCBLEND, &nSrc);
+	pD3DDevice->GetRenderState(D3DRS_DESTBLEND, &nDst);
+	pD3DDevice->GetRenderState(D3DRS_BLENDOP, &nBlendOp);
+
+	pD3DDevice->SetVertexShader(NULL);
+	pD3DDevice->SetPixelShader(NULL);
+	pD3DDevice->SetFVF(D3DFVF_ARTVERTEX);
+	pD3DDevice->SetTextureStageState(0, D3DTSS_COLOROP, D3DTOP_SELECTARG1);
+	pD3DDevice->SetTextureStageState(0, D3DTSS_COLORARG1, D3DTA_TEXTURE);
+	pD3DDevice->SetTextureStageState(0, D3DTSS_ALPHAOP, D3DTOP_DISABLE);
+	pD3DDevice->SetTextureStageState(0, D3DTSS_TEXCOORDINDEX, 0);
+	pD3DDevice->SetTextureStageState(0, D3DTSS_TEXTURETRANSFORMFLAGS, D3DTTFF_DISABLE);
+	pD3DDevice->SetTextureStageState(1, D3DTSS_COLOROP, D3DTOP_DISABLE);
+	pD3DDevice->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR);
+	pD3DDevice->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR);
+	pD3DDevice->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+	pD3DDevice->SetSamplerState(0, D3DSAMP_ADDRESSU, D3DTADDRESS_CLAMP);
+	pD3DDevice->SetSamplerState(0, D3DSAMP_ADDRESSV, D3DTADDRESS_CLAMP);
+	pD3DDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+	pD3DDevice->SetRenderState(D3DRS_BLENDOP, D3DBLENDOP_ADD);
+
+	static const DWORD nSrcBlend[3] = { D3DBLEND_ONE, D3DBLEND_ZERO, D3DBLEND_ONE };		// under: +, multiply: *, add: +
+	static const DWORD nDstBlend[3] = { D3DBLEND_ONE, D3DBLEND_SRCCOLOR, D3DBLEND_ONE };
+	for (int i = 0; i < 3; i++) {
+		pD3DDevice->SetRenderState(D3DRS_SRCBLEND, nSrcBlend[i]);
+		pD3DDevice->SetRenderState(D3DRS_DESTBLEND, nDstBlend[i]);
+		pD3DDevice->SetTexture(0, pArtTexture[i]);
+		pD3DDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, v, sizeof(dx9ArtVertex));
+	}
+
+	pD3DDevice->SetTexture(0, NULL);
+	for (int i = 0; i < nStages; i++) {
+		pD3DDevice->SetTextureStageState(0, nStageState[i], nStage0[i]);
+	}
+	for (int i = 0; i < nSamplers; i++) {
+		pD3DDevice->SetSamplerState(0, nSamplerState[i], nSampler0[i]);
+	}
+	pD3DDevice->SetTextureStageState(1, D3DTSS_COLOROP, nColorOp1);
+	pD3DDevice->SetRenderState(D3DRS_ALPHABLENDENABLE, nBlend);
+	pD3DDevice->SetRenderState(D3DRS_SRCBLEND, nSrc);
+	pD3DDevice->SetRenderState(D3DRS_DESTBLEND, nDst);
+	pD3DDevice->SetRenderState(D3DRS_BLENDOP, nBlendOp);
+}
+
 static void dx9ReleaseResources()
 {
 	RELEASE(pEffect);
@@ -312,6 +531,11 @@ static void dx9ReleaseResources()
 static int dx9Exit()
 {
 	dx9ReleaseResources();
+	dx9ArtRelease();
+	if (bArtLayered) {
+		BurnArtworkSetLayered(0);
+		bArtLayered = false;
+	}
 
 	VidSFreeVidImage();
 
@@ -1211,6 +1435,9 @@ static int dx9Init()
 
 	nGameWidth = nVidImageWidth; nGameHeight = nVidImageHeight;
 
+	// Artwork: composite it here, the game image (and the effects) stay at the game's size
+	bArtLayered = bDrvOkay && BurnArtworkSetLayered(1);
+
 	nRotateGame = 0;
 	if (bDrvOkay) {
 		// Get the game screen size
@@ -1382,7 +1609,13 @@ static int dx9MemToSurf()
 		Dest.top += nMenuHeight; // if don't do this, scanlines get blurry
 	}
 
-	if (bVidArcaderes && nVidFullscreen) {
+	int nArtW, nArtH;
+	bool bArt = dx9ArtSize(&nArtW, &nArtH);
+	RECT ArtRect, GameRect;							// render target pixels: the artwork, the game inside it
+
+	if (bArt) {
+		dx9Scale(&Dest, nArtW, nArtH);
+	} else if (bVidArcaderes && nVidFullscreen) {
 		Dest.left = (Dest.right + Dest.left) / 2;
 		Dest.left -= nGameWidth / 2;
 		Dest.right = Dest.left + nGameWidth;
@@ -1394,9 +1627,19 @@ static int dx9MemToSurf()
 		dx9Scale(&Dest, nGameWidth, nGameHeight);
 	}
 
+	if (nVidFullscreen) {
+		ArtRect = Dest;
+	} else {
+		ArtRect.left = 0; ArtRect.top = 0; ArtRect.right = Dest.right - Dest.left; ArtRect.bottom = Dest.bottom - Dest.top;
+	}
+	GameRect = ArtRect;
+	if (bArt) {
+		dx9ArtScreenRect(&ArtRect, &GameRect);
+	}
+
 	{
-		int nNewImageWidth  = nRotateGame ? (Dest.bottom - Dest.top) : (Dest.right - Dest.left);
-		int nNewImageHeight = nRotateGame ? (Dest.right - Dest.left) : (Dest.bottom - Dest.top);
+		int nNewImageWidth  = nRotateGame ? (GameRect.bottom - GameRect.top) : (GameRect.right - GameRect.left);
+		int nNewImageHeight = nRotateGame ? (GameRect.right - GameRect.left) : (GameRect.bottom - GameRect.top);
 
 		if (nImageWidth != nNewImageWidth || nImageHeight != nNewImageHeight) {
 			nImageWidth  = nNewImageWidth;
@@ -1556,25 +1799,20 @@ static int dx9MemToSurf()
 
 	ClearD3D9SurfaceEntirety<false>();
 
+	if (bArt) {
+		dx9ArtClear(&ArtRect);
+	}
+
 	{
 		D3DVIEWPORT9 vp;
 
-		// Set the size of the image on the PC screen
-		if (nVidFullscreen) {
-			vp.X = Dest.left;
-			vp.Y = Dest.top;
-			vp.Width = Dest.right - Dest.left;
-			vp.Height = Dest.bottom - Dest.top;
-			vp.MinZ = 0.0f;
-			vp.MaxZ = 1.0f;
-		} else {
-			vp.X = 0;
-			vp.Y = 0;
-			vp.Width = Dest.right - Dest.left;
-			vp.Height = Dest.bottom - Dest.top;
-			vp.MinZ = 0.0f;
-			vp.MaxZ = 1.0f;
-		}
+		// Set the size of the image on the PC screen (with artwork: the game's part of it)
+		vp.X = GameRect.left;
+		vp.Y = GameRect.top;
+		vp.Width = GameRect.right - GameRect.left;
+		vp.Height = GameRect.bottom - GameRect.top;
+		vp.MinZ = 0.0f;
+		vp.MaxZ = 1.0f;
 
 		pD3DDevice->SetViewport(&vp);
 
@@ -1592,6 +1830,11 @@ static int dx9MemToSurf()
 			pD3DDevice->DrawPrimitive(D3DPT_TRIANGLESTRIP, 0, 2);
 		}
 		pEffect->EndPass();
+
+		if (bArt) {
+			pD3DDevice->SetStreamSource(0, NULL, 0, 0);
+			dx9ArtDraw(&ArtRect);
+		}
 
 		// draw osd text
 		vid_FontDraw(Dest);
@@ -1677,7 +1920,12 @@ static int dx9Paint(int bValidate)
 		GetClientScreenRect(hVidWnd, &rect);
 		rect.top += nMenuHeight;
 
-		dx9Scale(&rect, nGameWidth, nGameHeight);
+		int nArtW, nArtH;
+		if (dx9ArtSize(&nArtW, &nArtH)) {
+			dx9Scale(&rect, nArtW, nArtH);
+		} else {
+			dx9Scale(&rect, nGameWidth, nGameHeight);
+		}
 
 		if ((rect.right - rect.left) != (Dest.right - Dest.left) || (rect.bottom - rect.top ) != (Dest.bottom - Dest.top)) {
 			bValidate |= 2;
@@ -1864,8 +2112,10 @@ hardfx_config HardFXConfigs[] = {
 #undef D3DFVF_LVERTEX2
 #define D3DFVF_LVERTEX2 (D3DFVF_XYZRHW | D3DFVF_TEX1)
 
-IDirect3DTexture9* emuTexture[2];
-static unsigned char mbCurrentTexture = 0;	// current texture for motion blur
+IDirect3DTexture9* emuTexture[2];			// on the card, used in turn (and both for motion blur)
+static IDirect3DTexture9* pAltStage[2] = { NULL, NULL };	// system memory copies of the image, used in turn so
+static int nAltStage = 0;						// locking one never waits for the card to finish with the other
+static unsigned char mbCurrentTexture = 0;	// current texture (motion blur: the previous one is the other)
 static bool mbTextureEmpty = true;
 static d3dvertex vertex[4];
 static transp_vertex transpVertex[4];
@@ -1897,7 +2147,9 @@ static int dx9AltSelectFullscreenMode(VidSDisplayScoreInfo* pScoreInfo)
 
 static void dx9AltReleaseTexture()
 {
-	RELEASE(pTexture)
+	pTexture = NULL;						// one of pAltStage[]
+	RELEASE(pAltStage[0])
+	RELEASE(pAltStage[1])
 	RELEASE(emuTexture[0])
 	RELEASE(emuTexture[1])
 }
@@ -1907,6 +2159,11 @@ static int dx9AltExit()
 	VidSoftFXExit();
 
 	dx9AltReleaseTexture();
+	dx9ArtRelease();
+	if (bArtLayered) {
+		BurnArtworkSetLayered(0);
+		bArtLayered = false;
+	}
 
 	VidSFreeVidImage();
 
@@ -1930,9 +2187,13 @@ static int dx9AltExit()
 
 static int dx9AltResize(int width, int height)
 {
-	if (FAILED(pD3DDevice->CreateTexture(width, height, 1, 0, textureFormat, D3DPOOL_SYSTEMMEM, &pTexture, NULL))) {
-		return 1;
+	for (int i = 0; i < 2; i++) {
+		if (FAILED(pD3DDevice->CreateTexture(width, height, 1, 0, textureFormat, D3DPOOL_SYSTEMMEM, &pAltStage[i], NULL))) {
+			return 1;
+		}
 	}
+	nAltStage = 0;
+	pTexture = pAltStage[0];
 
 	if (!emuTexture[0]) {
 		if (FAILED(pD3DDevice->CreateTexture(width, height, 1, 0, textureFormat, D3DPOOL_DEFAULT, &emuTexture[0], NULL))) {
@@ -1940,7 +2201,7 @@ static int dx9AltResize(int width, int height)
 		}
 	}
 
-	if (!emuTexture[1] && bVidMotionBlur) {
+	if (!emuTexture[1]) {
 		if (FAILED(pD3DDevice->CreateTexture(width, height, 1, 0, textureFormat, D3DPOOL_DEFAULT, &emuTexture[1], NULL))) {
 			return 1;
 		}
@@ -2279,6 +2540,9 @@ static int dx9AltInit()
 	nRotateGame = 0;
 	nDX9HardFX = -1;
 
+	// Artwork: composite it here, the game image (and the HardFX) stay at the game's size
+	bArtLayered = bDrvOkay && BurnArtworkSetLayered(1);
+
 	if (bDrvOkay) {
 		// Get the game screen size
 		BurnDrvGetVisibleSize(&nGameWidth, &nGameHeight);
@@ -2452,7 +2716,14 @@ static int dx9AltRender()  // MemToSurf
 		Dest.top += nMenuHeight;
 	}
 
-	if (bVidArcaderes && nVidFullscreen) {
+	int nArtW, nArtH;
+	bool bArt = dx9ArtSize(&nArtW, &nArtH);
+	RECT ArtRect, GameRect;							// render target pixels: the artwork, the game inside it
+	static RECT PrevGameRect = { 0, 0, 0, 0 };
+
+	if (bArt) {
+		dx9AltScale(&Dest, nArtW, nArtH);
+	} else if (bVidArcaderes && nVidFullscreen) {
 		Dest.left = (Dest.right + Dest.left) / 2;
 		Dest.left -= nGameWidth / 2;
 		Dest.right = Dest.left + nGameWidth;
@@ -2464,11 +2735,22 @@ static int dx9AltRender()  // MemToSurf
 		dx9AltScale(&Dest, nGameWidth, nGameHeight);
 	}
 
-	{
-		int nNewImageWidth = nRotateGame ? (Dest.bottom - Dest.top) : (Dest.right - Dest.left);
-		int nNewImageHeight = nRotateGame ? (Dest.right - Dest.left) : (Dest.bottom - Dest.top);
+	if (nVidFullscreen) {
+		ArtRect = Dest;
+	} else {
+		ArtRect.left = 0; ArtRect.top = 0; ArtRect.right = Dest.right - Dest.left; ArtRect.bottom = Dest.bottom - Dest.top;
+	}
+	GameRect = ArtRect;
+	if (bArt) {
+		dx9ArtScreenRect(&ArtRect, &GameRect);
+	}
 
-		if (nImageWidth != nNewImageWidth || nImageHeight != nNewImageHeight) {
+	{
+		int nNewImageWidth = nRotateGame ? (GameRect.bottom - GameRect.top) : (GameRect.right - GameRect.left);
+		int nNewImageHeight = nRotateGame ? (GameRect.right - GameRect.left) : (GameRect.bottom - GameRect.top);
+
+		if (nImageWidth != nNewImageWidth || nImageHeight != nNewImageHeight || (bArt && memcmp(&PrevGameRect, &GameRect, sizeof(RECT)))) {
+			PrevGameRect = GameRect;
 			nImageWidth = nNewImageWidth;
 			nImageHeight = nNewImageHeight;
 
@@ -2484,11 +2766,8 @@ static int dx9AltRender()  // MemToSurf
 				}
 			}
 
-			if (nVidFullscreen) {
-				dx9AltSetVertex(0, 0, nWidth, nHeight, nTextureWidth, nTextureHeight, nRotateGame ? Dest.top : Dest.left, nRotateGame ? Dest.left : Dest.top, nImageWidth, nImageHeight);
-			} else {
-				dx9AltSetVertex(0, 0, nWidth, nHeight, nTextureWidth, nTextureHeight, 0, 0, nImageWidth, nImageHeight);
-			}
+			// the game's rectangle (the whole image without artwork), in render target pixels
+			dx9AltSetVertex(0, 0, nWidth, nHeight, nTextureWidth, nTextureHeight, nRotateGame ? GameRect.top : GameRect.left, nRotateGame ? GameRect.left : GameRect.top, nImageWidth, nImageHeight);
 
 			if (pVidEffect && pVidEffect->IsValid()) {
 				pVidEffect->SetParamFloat2("output_size", nImageWidth, nImageHeight);
@@ -2519,14 +2798,33 @@ static int dx9AltRender()  // MemToSurf
 
 	ClearD3D9SurfaceEntirety<true>();
 
+	if (bArt) {
+		dx9ArtClear(&ArtRect);					// also leaves the viewport on the whole artwork
+	}
+
 	UpdateShaderVariables(); // once per frame
 
 	pD3DDevice->BeginScene();
 
 	{
-		// Copy the game image onto a texture for rendering
+		// Copy the game image onto a texture for rendering. Only the part the image uses is
+		// locked: that's all UpdateTexture() sends to the card (the texture is a power of 2,
+		// and sized for the prescale zoom)
+		pTexture = pAltStage[nAltStage];
+
+		RECT rUsed = { 0, 0, nGameImageWidth, nGameImageHeight };
+		if (nPreScaleEffect) {
+			if (nPreScale & 1) rUsed.right *= nPreScaleZoom;
+			if (nPreScale & 2) rUsed.bottom *= nPreScaleZoom;
+		}
+		if (rUsed.right > nTextureWidth) rUsed.right = nTextureWidth;
+		if (rUsed.bottom > nTextureHeight) rUsed.bottom = nTextureHeight;
+
 		D3DLOCKED_RECT d3dlr;
-		pTexture->LockRect(0, &d3dlr, 0, 0);
+		d3dlr.pBits = NULL;
+		if (FAILED(pTexture->LockRect(0, &d3dlr, &rUsed, D3DLOCK_NOSYSLOCK))) {
+			d3dlr.pBits = NULL;
+		}
 		if (d3dlr.pBits) {
 			int pitch = d3dlr.Pitch;
 			unsigned char* pd = (unsigned char*)d3dlr.pBits;
@@ -2552,6 +2850,7 @@ static int dx9AltRender()  // MemToSurf
 	}
 
 	pD3DDevice->UpdateTexture(pTexture, emuTexture[mbCurrentTexture]);
+	nAltStage ^= 1;
 
 	if (bVidMotionBlur) {
 		// Motion Blur enabled
@@ -2583,6 +2882,11 @@ static int dx9AltRender()  // MemToSurf
 		} else {
 			pD3DDevice->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, vertex, sizeof(d3dvertex));
 		}
+		mbCurrentTexture ^= 1;	// next frame goes into the other one, not the one the card may still be drawing
+	}
+
+	if (bArt) {
+		dx9ArtDraw(&ArtRect);
 	}
 
 	// draw osd text
@@ -2637,7 +2941,12 @@ static int dx9AltPaint(int bValidate)
 		GetClientScreenRect(hVidWnd, &rect);
 		rect.top += nMenuHeight;
 
-		dx9AltScale(&rect, nGameWidth, nGameHeight);
+		int nArtW, nArtH;
+		if (dx9ArtSize(&nArtW, &nArtH)) {
+			dx9AltScale(&rect, nArtW, nArtH);
+		} else {
+			dx9AltScale(&rect, nGameWidth, nGameHeight);
+		}
 
 		if ((rect.right - rect.left) != (Dest.right - Dest.left) || (rect.bottom - rect.top ) != (Dest.bottom - Dest.top)) {
 			bValidate |= 2;

@@ -1072,6 +1072,9 @@
     <ClCompile Include="..\..\src\burn\drv\sega\d_xbrd.cpp">
       <Filter>burn\drv\sega</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\burn\drv\sega\d_y2.cpp">
+      <Filter>burn\drv\sega</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\burn\drv\sega\d_ybrd.cpp">
       <Filter>burn\drv\sega</Filter>
     </ClCompile>
@@ -1356,6 +1359,9 @@
     </ClCompile>
     <ClCompile Include="..\..\src\cpu\sh4\sh4.cpp">
       <Filter>cpus\sh4</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\src\cpu\rv32\rv32.cpp">
+      <Filter>cpus\rv32</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\cpu\m68k\m68kcpu.c">
       <Filter>cpus\m68k</Filter>
@@ -2836,6 +2842,9 @@
     <ClCompile Include="..\..\src\burn\snd\ymz770.cpp">
       <Filter>burn\snd</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src\burn\snd\rpp324.cpp">
+      <Filter>burn\snd</Filter>
+    </ClCompile>
     <ClCompile Include="..\..\src\burn\burn_bitmap.cpp">
       <Filter>burn</Filter>
     </ClCompile>
@@ -3284,9 +3293,6 @@
       <Filter>burn\drv\midway</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\burn\drv\midway\williams_adpcm.cpp">
-      <Filter>burn\drv\midway</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\src\burn\drv\midway\williams_cvsd.cpp">
       <Filter>burn\drv\midway</Filter>
     </ClCompile>
     <ClCompile Include="..\..\src\burn\drv\midway\yawdim_sound.cpp">
@@ -4139,6 +4145,9 @@
     </Filter>
     <Filter Include="cpus\sh4">
       <UniqueIdentifier>{1eeb3491-c4c0-441d-a899-df353583a3f3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="cpus\rv32">
+      <UniqueIdentifier>{7c2e9a51-3b4d-4f8e-9a1c-2d5b6e8f0a14}</UniqueIdentifier>
     </Filter>
     <Filter Include="burn\drv\channelf">
       <UniqueIdentifier>{7b328658-4b49-4476-845a-5f20346da25f}</UniqueIdentifier>

@@ -1070,7 +1070,7 @@ static struct BurnRomInfo pwrinst2jaRomDesc[] = {
 	{ "g02_u43-j.u43",		0x080000, 0xc94c596b, BRF_ESS | BRF_PRG }, //  2
 	{ "g02_u42-j.u42",		0x080000, 0x4f4c8270, BRF_ESS | BRF_PRG }, //  3
 	
-	{ "g02_u3-j.u3a",		0x020000, 0xeead01f1, BRF_ESS | BRF_PRG }, //  4 Z80 Code
+	{ "g02_u3-j.u3",		0x020000, 0xeead01f1, BRF_ESS | BRF_PRG }, //  4 Z80 Code
 
 	{ "g02.u61",			0x200000, 0x91e30398, BRF_GRA },           //  5 Sprite data
 	{ "g02.u62",			0x200000, 0xd9455dd7, BRF_GRA },           //  6

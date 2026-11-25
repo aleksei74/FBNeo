@@ -7,10 +7,13 @@
 group_desc = 'Sega Mega Drive drivers'
 group_srcs = [
     'megadrive.cpp',
+    's32x.cpp',
+    'svp.cpp',
     'segacd.cpp',
     'stm95.cpp',
 ]
 drivers = {
-    'd_mdarcbl.cpp': ['burn_md2612', 'i2ceeprom', 'm68000', 'samples', 'sn76496', 'ym2612', 'z80'],
-    'd_megadrive.cpp': ['burn_md2612', 'i2ceeprom', 'm68000', 'samples', 'sn76496', 'ym2612', 'z80'],
+    'd_mdarcbl.cpp': ['burn_md2612', 'i2ceeprom', 'm68000', 'rv32', 'samples', 'sh2', 'sn76496', 'ym2612', 'z80'],
+    'd_megadrive.cpp': ['burn_md2612', 'i2ceeprom', 'm68000', 'rv32', 'samples', 'sh2', 'sn76496', 'ym2612', 'z80'],
+    'd_sega32x.cpp': ['burn_md2612', 'i2ceeprom', 'm68000', 'rv32', 'samples', 'sh2', 'sn76496', 'ym2612', 'z80'],
 }

@@ -12,45 +12,14 @@ int nActiveGame;
 
 static bool bLoading = 0;
 
-#ifdef BUILD_PCE
-static void SetPCECDTitle()
+static void SetCDTitle()
 {
 	TCHAR szText[1024] = _T("");
-	TCHAR* pszTitle = PceCDInfo_Text(DRV_FULLNAME);
+	TCHAR* pszTitle = CDInfo_Text(DRV_FULLNAME);
 	_sntprintf(szText, _countof(szText), _T(APP_TITLE) _T(" v%.20s") _T(SEPERATOR_1) _T("%s") _T(SEPERATOR_1) _T("%s"), szAppBurnVer, BurnDrvGetText(DRV_FULLNAME), pszTitle ? pszTitle : FBALoadStringEx(hAppInst, IDS_UNIDENTIFIED_CD, true));
 	szText[_countof(szText) - 1] = _T('\0');
 	SetWindowText(hScrnWnd, szText);
 }
-#endif
-
-#ifdef BUILD_MEGADRIVE
-static void SetSegaCDTitle()
-{
-	TCHAR szText[1024] = _T("");
-	TCHAR* pszTitle = SegaCDInfo_Text(DRV_FULLNAME);
-	_sntprintf(szText, _countof(szText), _T(APP_TITLE) _T(" v%.20s") _T(SEPERATOR_1) _T("%s") _T(SEPERATOR_1) _T("%s"), szAppBurnVer, BurnDrvGetText(DRV_FULLNAME), pszTitle ? pszTitle : FBALoadStringEx(hAppInst, IDS_UNIDENTIFIED_CD, true));
-	szText[_countof(szText) - 1] = _T('\0');
-	SetWindowText(hScrnWnd, szText);
-}
-#endif
-
-#ifdef BUILD_NEOGEO
-static void SetNeoCDTitle(TCHAR* pszTitle)
-{
-	TCHAR szText[1024] = _T("");
-	_sntprintf(szText, _countof(szText), _T(APP_TITLE) _T(" v%.20s") _T(SEPERATOR_1) _T("%s") _T(SEPERATOR_1) _T("%s"), szAppBurnVer, BurnDrvGetText(DRV_FULLNAME), pszTitle);
-	szText[_countof(szText) - 1] = _T('\0');
-	SetWindowText(hScrnWnd, szText);
-}
-
-void NeoCDInfo_SetTitle()
-{
-	if (!IsNeoGeoCD()) return;
-	TCHAR* pszTitle = NeoCDInfo_Text(DRV_FULLNAME);
-	SetNeoCDTitle(pszTitle ? pszTitle : FBALoadStringEx(hAppInst, IDS_UNIDENTIFIED_CD, true));
-}
-#endif
-
 
 // ----------------------------------------------------------------------------
 // disc change (multi-disc games), for every cd system whose driver handles the tray
@@ -1069,9 +1038,69 @@ INT32 CreateAllDatfilesWindows(bool bSilent, const TCHAR* pszSpecDir)
 	return nRet;
 }
 
+// MAME artwork in auto-size mode (nBurnArtworkScale < 0) is rendered at the size
+// of the window / fullscreen, so the blitter shows it 1:1 and it stays crisp.
+static bool bInSizeMove = false;
+static int nArtTargetW = 0, nArtTargetH = 0;
+
+static bool ScrnGetArtworkTarget(int *pw, int *ph)
+{
+	if (!bDrvOkay || nBurnArtworkScale >= 0 || !BurnArtworkActive() || hScrnWnd == NULL) {
+		return false;
+	}
+
+	int w, h;
+	if (nVidFullscreen) {
+		MONITORINFO mi;
+		memset(&mi, 0, sizeof(mi));
+		mi.cbSize = sizeof(mi);
+		GetMonitorInfo(MonitorFromWindow(hScrnWnd, MONITOR_DEFAULTTOPRIMARY), &mi);
+		w = mi.rcMonitor.right - mi.rcMonitor.left;
+		h = mi.rcMonitor.bottom - mi.rcMonitor.top;
+	} else {
+		RECT rect;
+		if (IsIconic(hScrnWnd) || !GetClientRect(hScrnWnd, &rect)) {
+			return false;
+		}
+		w = rect.right - rect.left;
+		h = rect.bottom - rect.top - nMenuHeight;
+	}
+
+	if ((BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) && (nVidRotationAdjust & 1)) {
+		int t = w; w = h; h = t;	// shown sideways
+	}
+
+	if (w < 16 || h < 16) {
+		return false;
+	}
+
+	*pw = w;
+	*ph = h;
+	return true;
+}
+
+// called by VidInit() before the blitter is initialised
+void ScrnSetArtworkTarget()
+{
+	int w, h;
+	if (ScrnGetArtworkTarget(&w, &h)) {
+		nArtTargetW = w;
+		nArtTargetH = h;
+		BurnArtworkSetTargetSize(w, h);
+	}
+}
+
 // Returns true if a VidInit is needed when the window is resized
 static bool VidInitNeeded()
 {
+	// artwork in auto-size mode: re-render at the new size (but not while dragging)
+	if (!bInSizeMove) {
+		int w, h;
+		if (ScrnGetArtworkTarget(&w, &h) && (w != nArtTargetW || h != nArtTargetH)) {
+			return true;
+		}
+	}
+
 	// D3D blitter needs to re-initialise only when auto-size RGB effects are enabled
 	if (nVidSelect == 1 && (nVidBlitterOpt[nVidSelect] & 0x00030000) == 0x00030000) {
 		return true;
@@ -1286,8 +1315,6 @@ static LRESULT CALLBACK ScrnProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lPar
 				}
 				default:
 				{
-					COLORREF clr;
-
 					HBRUSH hbr = CreateSolidBrush(uiTextFontColor);
 
 					FillRect(pdis->hDC, &pdis->rcItem, hbr);
@@ -1522,15 +1549,6 @@ void PausedRedraw(void)
 
 		pBurnSoundOut = pBtemp;
 	}
-}
-
-static INT32 ScrnHasBezel()
-{
-	if (!nVidFullscreen && hBezelBitmap != NULL) {
-		return 1;
-	}
-
-	return 0;
 }
 
 struct t_hw_Struct {
@@ -1827,6 +1845,27 @@ static void QuitGame()
 	}
 }
 
+// cd systems are flagged as boardROM (bios), they are still launched (with a disc)
+bool BurnerDrvIsCDSystem()
+{
+	const UINT32 nHardware = BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK;
+	return (nHardware == HARDWARE_SNK_NEOCD || nHardware == HARDWARE_PCENGINE_PCE_CD || nHardware == HARDWARE_SEGA_MEGACD);
+}
+
+static INT32 CDSystemGetDrvIndex(const TCHAR* pszDrvName)
+{
+	const UINT32 nOldDrvActive = nBurnDrvActive;
+	INT32 nDrvIdx = BurnDrvGetIndex(_TtoA(pszDrvName));
+
+	if (nDrvIdx >= 0) {
+		nBurnDrvActive = nDrvIdx;
+		if (!BurnerDrvIsCDSystem()) nDrvIdx = -1;
+	}
+
+	nBurnDrvActive = nOldDrvActive;
+	return nDrvIdx;
+}
+
 // Compact driver loading module
 int BurnerLoadDriver(TCHAR *pszDriverName)
 {
@@ -1838,7 +1877,7 @@ int BurnerLoadDriver(TCHAR *pszDriverName)
 		_tcscpy(szBackup, szRomdataName);
 		RomDataExit();
 	}
-	if (bFinder = FindZipNameFromDats(szAppRomdataPath, _TtoA(pszDriverName), szRDDatBackup)) {
+	if ((bFinder = FindZipNameFromDats(szAppRomdataPath, _TtoA(pszDriverName), szRDDatBackup))) {
 		if ((nDrvIdx = RomDataCheck(szRDDatBackup)) >= 0) {
 			bRDMode = true;
 		}
@@ -1846,6 +1885,8 @@ int BurnerLoadDriver(TCHAR *pszDriverName)
 	if (!bFinder || !bRDMode) {
 		nDrvIdx = RomdataGetDrvIndex(pszDriverName);
 	}
+	if (nDrvIdx < 0)
+		nDrvIdx = CDSystemGetDrvIndex(pszDriverName);
 	if (nDrvIdx < 0)
 		return -1;
 
@@ -2086,7 +2127,7 @@ INT32 BurnerQuickLoad(const INT32 nMode, const TCHAR* pszSelect)
 					return -1;
 			}
 
-			nDrvIdx = RomdataGetDrvIndex(pszDrvName);
+			nDrvIdx = CDSystemGetDrvIndex(pszDrvName);
 			break;
 		}
 
@@ -2406,7 +2447,8 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 			nCDEmuSelect = 0;
 			TCHAR szFilter[100] = { 0 };
 			_stprintf(szFilter, _T("%s"), FBALoadStringEx(hAppInst, IDS_CD_SELECT_FILTER, true));
-			memcpy(szFilter + _tcslen(szFilter), _T(" (*.cue,*.chd)\0*.cue;*.chd\0\0"), 39 * sizeof(TCHAR));
+			static const TCHAR szPattern[] = _T(" (*.cue,*.chd)\0*.cue;*.chd\0");
+			memcpy(szFilter + _tcslen(szFilter), szPattern, sizeof(szPattern));
 			TCHAR szTitle[100] = { 0 };
 			_stprintf(szTitle, _T("%s"), FBALoadStringEx(hAppInst, IDS_CD_SELECT_IMAGE_TITLE, true));
 			if (UseDialogs() && !bDrvOkay) {
@@ -2632,8 +2674,57 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 			}
 			break;
 
+		case MENU_ARTWORK_RESET:
+			if (bDrvOkay && BurnArtworkResetSettings()) {
+				POST_INITIALISE_MESSAGE;
+			}
+			break;
+
+		case MENU_ARTWORK_ENABLE:
+			if (bDrvOkay) {
+				if (BurnArtworkSetEnable(!bBurnArtworkEnable)) {
+					POST_INITIALISE_MESSAGE;
+				}
+			} else {
+				bBurnArtworkEnable = !bBurnArtworkEnable;
+			}
+			break;
+
 		// PGM2 per-slot card operations (IDs 10040..10055)
 		default:
+			// Artwork views / parts (the artwork's size can change: re-initialise like a window size change)
+			if (id >= MENU_ARTWORK_VIEW && id < MENU_ARTWORK_VIEW + 32) {
+				if (bDrvOkay && BurnArtworkSetView(id - MENU_ARTWORK_VIEW)) {
+					POST_INITIALISE_MESSAGE;
+				}
+				break;
+			}
+			if (id >= MENU_ARTWORK_TOGGLE && id < MENU_ARTWORK_TOGGLE + 32) {
+				int n = id - MENU_ARTWORK_TOGGLE;
+				if (bDrvOkay && BurnArtworkSetToggle(n, !BurnArtworkGetToggle(n))) {
+					POST_INITIALISE_MESSAGE;
+				}
+				break;
+			}
+			// Artwork defaults / size: global settings, redo the running game's artwork with them
+			if ((id >= MENU_ARTWORK_DEF && id < MENU_ARTWORK_DEF + 5) || (id >= MENU_ARTWORK_DEFVIEW && id < MENU_ARTWORK_DEFVIEW + 8) ||
+				(id >= MENU_ARTWORK_SCALE && id < MENU_ARTWORK_SCALE + 6) || (id >= MENU_ARTWORK_MAXH && id < MENU_ARTWORK_MAXH + 5)) {
+				if (id >= MENU_ARTWORK_DEF && id < MENU_ARTWORK_DEF + 5) {
+					nBurnArtworkDefaults ^= 1 << (id - MENU_ARTWORK_DEF);
+				} else if (id >= MENU_ARTWORK_DEFVIEW && id < MENU_ARTWORK_DEFVIEW + 8) {
+					nBurnArtworkView = id - MENU_ARTWORK_DEFVIEW;
+				} else if (id >= MENU_ARTWORK_SCALE && id < MENU_ARTWORK_SCALE + 6) {
+					int n = id - MENU_ARTWORK_SCALE;
+					nBurnArtworkScale = (n == 0) ? -1 : ((n == 5) ? 0 : n);
+				} else {
+					const int nHeights[5] = { 720, 1080, 1440, 2160, 4320 };
+					nBurnArtworkMaxHeight = nHeights[id - MENU_ARTWORK_MAXH];
+				}
+				if (bDrvOkay && BurnArtworkRefresh()) {
+					POST_INITIALISE_MESSAGE;
+				}
+				break;
+			}
 #ifdef BUILD_PGM2
 			if (id >= MENU_MEMCARD_PGM2_BASE && id < MENU_MEMCARD_PGM2_BASE + 16) {
 				int slot = (id - MENU_MEMCARD_PGM2_BASE) / 4;
@@ -3127,7 +3218,6 @@ static void OnCommand(HWND /*hDlg*/, int id, HWND /*hwndCtl*/, UINT codeNotify)
 					_tcsncat(szDir, _T("\\support\\shaders"), MAX_PATH - 1 - _tcslen(szDir));
 				}
 
-				OPENFILENAME ofn;
 				memset(&ofn, 0, sizeof(ofn));
 				ofn.lStructSize = sizeof(ofn);
 				ofn.hwndOwner = hScrnWnd;
@@ -5034,6 +5124,8 @@ static void OnEnterSizeMove(HWND)
 	Ptblank2UpdateMouseClip(false);
 	AudBlankSound();
 
+	bInSizeMove = true;
+
 	GetClientRect(hScrnWnd, &rect);
 	nPrevWidth = rect.right;
 	nPrevHeight = rect.bottom;
@@ -5042,6 +5134,8 @@ static void OnEnterSizeMove(HWND)
 static void OnExitSizeMove(HWND)
 {
 	RECT rect;
+
+	bInSizeMove = false;
 
 	GetClientRect(hScrnWnd, &rect);
 	if (rect.right != nPrevWidth || rect.bottom != nPrevHeight) {
@@ -5143,9 +5237,11 @@ int ScrnSize()
 		if ((BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) && (nVidRotationAdjust & 1)) {
 			BurnDrvGetVisibleSize(&nBmapHeight, &nBmapWidth);
 			BurnDrvGetAspect(&nGameAspectY, &nGameAspectX);
+			BurnArtworkGetBaseSize(&nBmapHeight, &nBmapWidth);	// artwork: size the window from the 1x artwork, not the window
 		} else {
 			BurnDrvGetVisibleSize(&nBmapWidth, &nBmapHeight);
 			BurnDrvGetAspect(&nGameAspectX, &nGameAspectY);
+			BurnArtworkGetBaseSize(&nBmapWidth, &nBmapHeight);
 		}
 
 		if (nBmapWidth <= 0 || nBmapHeight <= 0) {
@@ -5167,10 +5263,14 @@ int ScrnSize()
 	} else {
 		if (nWindowSize) {
 			nMaxSize = nWindowSize;
-			if (bDrvOkay && nWindowSize > 1 && nBmapWidth >= 400 && nBmapHeight >= 400) {
-				// For Popeye, Hole Land and Syvalion, MCR..etc. when running Windowed: Double Size
-				bprintf(PRINT_NORMAL, _T("  * Game is double-sized to begin with.\n"));
-				nMaxSize--;
+			if (BurnArtworkActive() == false) {
+				// AKA the hires-hack - keeps hires games relatively the same
+				// size as average games (256x224, .. etc)
+				if (bDrvOkay && nWindowSize > 1 && nBmapWidth >= 400 && nBmapHeight >= 400) {
+					// For Popeye, Hole Land and Syvalion, MCR..etc. when running Windowed: Double Size
+					bprintf(PRINT_NORMAL, _T("  * Game is double-sized to begin with.\n"));
+					nMaxSize--;
+				}
 			}
 		} else {
 			if (nBmapWidth < nBmapHeight) {
@@ -5350,23 +5450,10 @@ int ScrnTitle()
 			pszPosition += _stprintf(pszPosition, _T(SEPERATOR_2) _T("%s"), pszName);
 		}
 
-		if (IsNeoGeoCD()) {
-			NeoCDInfo_SetTitle();
+		if (IsCDGame()) {
+			SetCDTitle();
 			return 0;
 		}
-#ifdef BUILD_PCE
-		if ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_PCENGINE_PCE_CD) {
-			SetPCECDTitle();
-			return 0;
-		}
-#endif
-#ifdef BUILD_MEGADRIVE
-		if ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SEGA_MEGACD) {
-			SetSegaCDTitle();
-			return 0;
-		}
-#endif
-
 	} else {
 		_stprintf(szText, _T(APP_TITLE) _T( " v%.20s") _T(SEPERATOR_1) _T("[%s]"), szAppBurnVer, FBALoadStringEx(hAppInst, IDS_SCRN_NOGAME, true));
 	}
@@ -5385,7 +5472,6 @@ int ScrnInit()
 	RECT rect;
 	int nWindowStyles, nWindowExStyles;
 
-	ScrnExitLua();
 	ScrnExit();
 
 	if (ScrnRegister() != 0) {

@@ -87,9 +87,6 @@ static inline INT32 gba_tick_dma(gba_t*gba, INT32 cycle_delta)
 				}
 				if (mode == 0 && !enable_edge && !startup_active)
 					continue;
-				if (dst_addr_ctl == 3) {
-					gba->dma[i].dest_addr = gba_io_read32(gba, GBA_DMA0DAD + 12 * i);
-				}
 				// PPU-timed triggers: fire at most once per hblank/vblank rising
 				// edge.  The seq counters increment inside the ppu event at the
 				// edge, so this is exact regardless of when the poll runs.
@@ -147,7 +144,6 @@ static inline INT32 gba_tick_dma(gba_t*gba, INT32 cycle_delta)
 						ticks += gba_compute_access_cycles_dma(gba, gba->dma[i].source_addr, 2) <= 4;
 				}
 				gba->last_transaction_dma = true;
-				UINT32 cnt = gba->dma[i].latched_count;	// latched at enable / last completion
 
 				static const UINT32 src_mask[] = { 0x07FFFFFF, 0x0FFFFFFF, 0x0FFFFFFF, 0x0FFFFFFF };
 				static const UINT32 dst_mask[] = { 0x07FFFFFF, 0x07FFFFFF, 0x07FFFFFF, 0x0FFFFFFF };

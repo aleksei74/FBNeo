@@ -135,38 +135,12 @@ void RacknrolExtendTileInfo(UINT16 *Code, INT32*, INT32, INT32 x, INT32)
 	*Code |= Bank << 8;
 }
 
-void HaremExtendTileInfo(UINT16 *Code, INT32 *color, INT32, INT32 x, INT32)
-{
-	UINT8 Bank = (GalGfxBank[1] >> (x / 4)) & 1;
-	*Code |= Bank * 0x200;
-	*color |= GAL_TMAP_OPAQUE; // all Opaque
-}
-
-void NamenayoExtendTileInfo(UINT16 *code, INT32 *color, INT32 attr, INT32 x, INT32 y)
-{
-	if (~attr & 1) { // pf/hud
-		INT32 e_at = namenayo_extattr[y & 0x1f];
-		*code += (e_at & 0x38) << 5;
-		*color = (e_at & 0x07);
-		if (x < (0x1f - 8)) *color |= GAL_TMAP_OPAQUE; // pf: opaque, hud: transparent
-	} else {
-		// map
-		*code += ((attr & 0xfe) == 0x20) ? 0x400 : 0;
-	}
-}
-
 void BagmanmcExtendTileInfo(UINT16 *Code, INT32*, INT32, INT32, INT32)
 {
 	*Code |= GalGfxBank[0] << 9;
 }
 
 // Sprite extend helpers
-void NamenayoExtendSpriteInfo(const UINT8 *base, INT32*, INT32*, UINT8*, UINT8*, UINT16 *code, UINT8 *color)
-{
-	*code += (base[2] & 0x08) << 3;
-	*color += 0x08;
-}
-
 void PacmanblExtendSpriteInfo(const UINT8*, INT32 *sx, INT32*, UINT8*, UINT8*, UINT16 *Code, UINT8*)
 {
 	// Sprites on the topmost row of the maze are ok, everywhere else need
@@ -347,7 +321,7 @@ void HardCodeMooncrstPROM()
 // Palette generation
 #define RGB_MAXIMUM			224
 
-void GalaxianCalcPalette()
+static void GalaxianCalcPaletteInternal(bool bSwapGB)
 {
 	static const INT32 RGBResistances[3] = {1000, 470, 220};
 	double rWeights[3], gWeights[3], bWeights[2];
@@ -372,7 +346,7 @@ void GalaxianCalcPalette()
 		Bit1 = BIT(GalProm[i + (GalPaletteBank * 0x20)],7);
 		b = combine_2_weights(bWeights, Bit0, Bit1);
 
-		GalPalette[i] = BurnHighCol(r, g, b, 0);
+		GalPalette[i] = bSwapGB ? BurnHighCol(r, b, g, 0) : BurnHighCol(r, g, b, 0);
 	}
 	
 	// Stars
@@ -387,14 +361,25 @@ void GalaxianCalcPalette()
 		Bits = (i >> 4) & 0x03;
 		b = Map[Bits];
 
-		GalPalette[i + GAL_PALETTE_STARS_OFFSET] = BurnHighCol(r, g, b, 0);
+		GalPalette[i + GAL_PALETTE_STARS_OFFSET] = bSwapGB ? BurnHighCol(r, b, g, 0) : BurnHighCol(r, g, b, 0);
 	}
 
 	// Bullets
 	for (INT32 i = 0; i < GAL_PALETTE_NUM_COLOURS_BULLETS - 1; i++) {
 		GalPalette[i + GAL_PALETTE_BULLETS_OFFSET] = BurnHighCol(0xff, 0xff, 0xff, 0);
 	}
-	GalPalette[GAL_PALETTE_NUM_COLOURS_BULLETS - 1 + GAL_PALETTE_BULLETS_OFFSET] = BurnHighCol(0xff, 0xff, 0x00, 0);
+	GalPalette[GAL_PALETTE_NUM_COLOURS_BULLETS - 1 + GAL_PALETTE_BULLETS_OFFSET] = bSwapGB ? BurnHighCol(0xff, 0x00, 0xff, 0) : BurnHighCol(0xff, 0xff, 0x00, 0);
+}
+
+void GalaxianCalcPalette()
+{
+	GalaxianCalcPaletteInternal(false);
+}
+
+// Hoei Space Battle: the wiring harness swaps RGB -> RBG
+void SbhoeiCalcPalette()
+{
+	GalaxianCalcPaletteInternal(true);
 }
 
 void RockclimCalcPalette()

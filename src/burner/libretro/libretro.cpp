@@ -33,6 +33,7 @@
 #include <file/file_path.h>
 
 #include <streams/file_stream.h>
+#include <retro_dirent.h>
 #include <string/stdstring.h>
 
 #define PRINTF_BUFFER_SIZE 512
@@ -91,6 +92,7 @@ static bool bRotationDone            = false;
 static int16_t *pAudBuffer           = NULL;
 static char text_missing_files[2048] = "";
 static bool bCDEmuStarted            = false;
+static bool bBurnDrvInitCalled       = false;
 static bool bRomdataStarting         = false;
 
 // Frameskipping v2 Support
@@ -155,6 +157,7 @@ TCHAR szAppRomdatasPath[MAX_PATH];
 TCHAR szAppPathDefPath[MAX_PATH];
 TCHAR szAppSnesMsu1Path[MAX_PATH];
 TCHAR szAppOstPath[MAX_PATH];
+TCHAR szAppArtworkPath[MAX_PATH];
 TCHAR szAppBurnVer[16];
 
 static char szRomsetPath[MAX_PATH]        = { 0 };
@@ -369,6 +372,17 @@ static bool apply_dipswitches_from_variables()
 void retro_set_environment(retro_environment_t cb)
 {
 	environ_cb = cb;
+
+	// Must be done before any file is opened: a stream must be closed by the implementation that opened it
+	struct retro_vfs_interface_info vfs_iface_info;
+	vfs_iface_info.required_interface_version = FILESTREAM_REQUIRED_VFS_VERSION;
+	vfs_iface_info.iface                      = NULL;
+	if (environ_cb(RETRO_ENVIRONMENT_GET_VFS_INTERFACE, &vfs_iface_info))
+	{
+		dirent_vfs_init(&vfs_iface_info);
+		filestream_vfs_init(&vfs_iface_info);
+		path_vfs_init(&vfs_iface_info);
+	}
 
 	struct retro_core_options_update_display_callback update_display_cb;
 	update_display_cb.callback = apply_dipswitches_from_variables;
@@ -2123,6 +2137,7 @@ static bool retro_load_game_common()
 {
 	const char *dir = NULL;
 	bCDEmuStarted = false;
+	bBurnDrvInitCalled = false;
 	// If save directory is defined use it, ...
 	if (environ_cb(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) && dir) {
 		memcpy(g_save_dir, dir, sizeof(g_save_dir));
@@ -2159,6 +2174,9 @@ static bool retro_load_game_common()
 
 	// Initialize OST path
 	snprintf_nowarn (szAppOstPath, sizeof(szAppOstPath), "%s%cfbneo%cost%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
+
+	// Initialize artwork path
+	snprintf_nowarn (szAppArtworkPath, sizeof(szAppArtworkPath), "%s%cfbneo%cartwork%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
 
 	// Initialize Cheats path
 	snprintf_nowarn (szAppCheatsPath, sizeof(szAppCheatsPath), "%s%cfbneo%ccheats%c", g_system_dir, PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C(), PATH_DEFAULT_SLASH_C());
@@ -2226,20 +2244,18 @@ static bool retro_load_game_common()
 			goto end;
 		}
 
-		// If the game is a bios, let's stop here
-		if ((BurnDrvGetFlags() & BDF_BOARDROM)) {
+		// If the game is a bios, let's stop here (cd systems can be flagged as bios, they are launched with a disc)
+		if ((BurnDrvGetFlags() & BDF_BOARDROM)
+#if defined(BUILD_NEOGEO) || defined(BUILD_PCE) || defined(BUILD_MEGADRIVE)
+		 && CDEmuImage[0] == '\0'
+#endif
+		) {
 			SetUguiError(RETRO_ERROR_MESSAGES_02);
 			HandleMessage(RETRO_LOG_ERROR, "[FBNeo] Bioses aren't meant to be launched this way\n");
 			goto end;
 		}
 
 #ifdef BUILD_NEOGEO
-		if ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SNK_NEOCD && CDEmuImage[0] == '\0') {
-			SetUguiError(RETRO_ERROR_MESSAGES_03);
-			HandleMessage(RETRO_LOG_ERROR, "[FBNeo] You need a disc image to launch neogeo CD\n");
-			goto end;
-		}
-
 		bIsNeogeoCartGame = ((BurnDrvGetHardwareCode() & HARDWARE_PUBLIC_MASK) == HARDWARE_SNK_NEOGEO);
 #endif
 
@@ -2261,6 +2277,52 @@ static bool retro_load_game_common()
 		// Initialize debug variables
 		nBurnLayer    = 0xff;
 		nSpriteEnable = 0xff;
+
+#if defined(BUILD_NEOGEO) || defined(BUILD_PCE) || defined(BUILD_MEGADRIVE)
+		// Start CD reader emulation if needed, the disc identifies the game (cheats, nvram...)
+		if (nGameType == RETRO_GAME_TYPE_NEOCD || nGameType == RETRO_GAME_TYPE_PCECD || nGameType == RETRO_GAME_TYPE_SEGACD) {
+			const char* ext = path_get_extension(CDEmuImage);
+			if (!string_is_equal_noncase(ext, "cue")
+			 && !string_is_equal_noncase(ext, "ccd")
+#ifdef INCLUDE_CHD_SUPPORT
+			 && !string_is_equal_noncase(ext, "chd")
+#endif
+			) {
+				static char uguiText[4096];
+				const char* s1 = RETRO_ERROR_MESSAGES_13;
+				const char* s2 = RETRO_ERROR_MESSAGES_07;
+				sprintf(uguiText, "%s\n\n%s", s1, s2);
+				SetUguiError(uguiText);
+				goto end;
+			}
+			if (CDEmuInit() != 0) {
+				SetUguiError("Failed initializing CD image");
+				HandleMessage(RETRO_LOG_ERROR, "[FBNeo] Failed initializing CD image\n");
+				goto end;
+			}
+			// cd emulation is started
+			bCDEmuStarted = true;
+			disc_control_register();
+#ifdef BUILD_NEOGEO
+			if (nGameType == RETRO_GAME_TYPE_NEOCD) {
+				NeoCDInfo_Init();
+				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Starting Neo-Geo CD\n");
+			}
+#endif
+#ifdef BUILD_PCE
+			if (nGameType == RETRO_GAME_TYPE_PCECD) {
+				PceCDInfo_Init();
+				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Starting PC Engine CD\n");
+			}
+#endif
+#ifdef BUILD_MEGADRIVE
+			if (nGameType == RETRO_GAME_TYPE_SEGACD) {
+				SegaCDInfo_Init();
+				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Starting Sega CD\n");
+			}
+#endif
+		}
+#endif
 
 		// Create cheats core options
 		create_variables_from_cheats();
@@ -2334,52 +2396,6 @@ static bool retro_load_game_common()
 		AudioBufferInit(nBurnSoundRate, 6000);
 		HandleMessage(RETRO_LOG_INFO, "[FBNeo] Samplerate set to %d\n", nBurnSoundRate);
 
-#if defined(BUILD_NEOGEO) || defined(BUILD_PCE) || defined(BUILD_MEGADRIVE)
-		// Start CD reader emulation if needed
-		if (nGameType == RETRO_GAME_TYPE_NEOCD || nGameType == RETRO_GAME_TYPE_PCECD || nGameType == RETRO_GAME_TYPE_SEGACD) {
-			const char* ext = path_get_extension(CDEmuImage);
-			if (!string_is_equal_noncase(ext, "cue")
-			 && !string_is_equal_noncase(ext, "ccd")
-#ifdef INCLUDE_CHD_SUPPORT
-			 && !string_is_equal_noncase(ext, "chd")
-#endif
-			) {
-				static char uguiText[4096];
-				const char* s1 = RETRO_ERROR_MESSAGES_13;
-				const char* s2 = RETRO_ERROR_MESSAGES_07;
-				sprintf(uguiText, "%s\n\n%s", s1, s2);
-				SetUguiError(uguiText);
-				goto end;
-			}
-			if (CDEmuInit() != 0) {
-				SetUguiError("Failed initializing CD image");
-				HandleMessage(RETRO_LOG_ERROR, "[FBNeo] Failed initializing CD image\n");
-				goto end;
-			}
-			// cd emulation is started
-			bCDEmuStarted = true;
-			disc_control_register();
-#ifdef BUILD_NEOGEO
-			if (nGameType == RETRO_GAME_TYPE_NEOCD) {
-				NeoCDInfo_Init();
-				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Starting Neo-Geo CD\n");
-			}
-#endif
-#ifdef BUILD_PCE
-			if (nGameType == RETRO_GAME_TYPE_PCECD) {
-				PceCDInfo_Init();
-				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Starting PC Engine CD\n");
-			}
-#endif
-#ifdef BUILD_MEGADRIVE
-			if (nGameType == RETRO_GAME_TYPE_SEGACD) {
-				SegaCDInfo_Init();
-				HandleMessage(RETRO_LOG_INFO, "[FBNeo] Starting Sega CD\n");
-			}
-#endif
-		}
-#endif
-
 		// Apply dipswitches
 		// note: apply_dipswitches_from_variables won't be able to detect changed dips at boot if they are the defaults,
 		//       but we want to call set_dipswitches_visibility at least once since some dips should be hidden even at defaults
@@ -2397,6 +2413,7 @@ static bool retro_load_game_common()
 		bSpeedLimit60hz = false;
 
 		// Initialize game driver
+		bBurnDrvInitCalled = true;
 		if(BurnDrvInit() == 0)
 			HandleMessage(RETRO_LOG_INFO, "[FBNeo] Initialized driver for %s\n", g_driver_name);
 		else
@@ -2483,7 +2500,9 @@ static bool retro_load_game_common()
 
 end:
 	if (nBurnDrvActive != ~0U) {
-		BurnDrvExit();
+		// drivers expect BurnDrvExit() to follow BurnDrvInit(), even a failed one
+		if (bBurnDrvInitCalled)
+			BurnDrvExit();
 		nBurnDrvActive = ~0U;
 	}
 #if defined(BUILD_NEOGEO) || defined(BUILD_PCE)

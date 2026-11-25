@@ -41,6 +41,8 @@ static INT32 nIOShuffle[16];
 static INT32 wwfmania = 0;
 static INT32 is_umk3 = 0;
 static INT32 is_umk3_patchable = 0;
+static INT32 is_umk3w_boss_patchable = 0;
+static UINT32 nUMK3PalHackStart = 0;
 
 static INT32 nExtraCycles = 0;
 
@@ -227,11 +229,10 @@ void WolfUnitCMOSWriteEnable(UINT32 address, UINT16 value)
 
 void WolfUnitUMK3PaletteHack(UINT32 address, UINT16 value)
 {
-	if (address >= 0x0106a060 && address <= 0x0106a09f) {
+	if (address >= nUMK3PalHackStart && address <= nUMK3PalHackStart + 0x3f) {
 		tms34010_modify_timeslice(-100);
 	}
-	address &= 0xFFF;
-	*(UINT16*)(&DrvRAM[TOBYTE(0x6a000 + address)]) = BURN_ENDIAN_SWAP_INT16(value);
+	*(UINT16*)(&DrvRAM[TOBYTE(address & 0x3fffff)]) = BURN_ENDIAN_SWAP_INT16(value);
 }
 
 UINT16 WolfUnitPalRead(UINT32 address)
@@ -402,6 +403,61 @@ static INT32 LoadGfxBanks()
     return 0;
 }
 
+static UINT32 WolfUnitBootRomRead32(UINT32 address)
+{
+	UINT32 offs = (address - 0xff800000) >> 3;
+	return DrvBootROM[offs + 0] | (DrvBootROM[offs + 1] << 8) | (DrvBootROM[offs + 2] << 16) | ((UINT32)DrvBootROM[offs + 3] << 24);
+}
+
+static void WolfUnitBootRomWrite32(UINT32 address, UINT32 data)
+{
+	UINT32 offs = (address - 0xff800000) >> 3;
+	DrvBootROM[offs + 0] = data >> 0;
+	DrvBootROM[offs + 1] = data >> 8;
+	DrvBootROM[offs + 2] = data >> 16;
+	DrvBootROM[offs + 3] = data >> 24;
+}
+
+// umk3w / umk3wp: Noob Saibot's teleport slam uses the "thrown by" animations (0x26-0x3f) of the victim,
+// Motaro / Shao Kahn tables stop at 0x25 and the slam crashes the game. Build extended copies of both
+// tables in unused rom space, missing entries use the stance animation (entry 0).
+// The master table is pointed to them on reset, depending on the dipswitch.
+static const UINT32 umk3w_boss_tables[2] = { 0xff9376a0, 0xff93fab0 }; // Motaro (0x18), Shao Kahn (0x19)
+static const UINT32 umk3w_anim_master = 0xffb46a70;
+static const UINT32 umk3w_boss_cave = 0xfff80000;
+
+static void UMK3WBossAnimTablesInit()
+{
+	for (UINT32 a = umk3w_boss_cave; a < umk3w_boss_cave + 2 * 0x40 * 32; a += 32) {
+		if (WolfUnitBootRomRead32(a) != 0xffffffff) return;
+	}
+	for (INT32 i = 0; i < 2; i++) {
+		if (WolfUnitBootRomRead32(umk3w_anim_master + (0x18 + i) * 32) != umk3w_boss_tables[i]) return;
+	}
+
+	for (INT32 i = 0; i < 2; i++) {
+		UINT32 table = umk3w_boss_cave + i * 0x40 * 32;
+		for (INT32 j = 0; j < 0x40; j++) {
+			WolfUnitBootRomWrite32(table + j * 32, WolfUnitBootRomRead32(umk3w_boss_tables[i] + ((j < 0x26) ? j : 0) * 32));
+		}
+	}
+
+	is_umk3w_boss_patchable = 1;
+}
+
+static void UMK3WBossAnimTablesPatch()
+{
+	INT32 enable = (~nWolfUnitDSW[2] & 1);
+
+	for (INT32 i = 0; i < 2; i++) {
+		WolfUnitBootRomWrite32(umk3w_anim_master + (0x18 + i) * 32, enable ? (umk3w_boss_cave + i * 0x40 * 32) : umk3w_boss_tables[i]);
+	}
+
+	if (enable) {
+		bprintf(0, _T("**  Hot-Patched UMK3W w/Motaro / Shao Kahn animation tables Bugfix!\n"));
+	}
+}
+
 static void WolfDoReset()
 {
 	memset (AllRam, 0, RamEnd - AllRam);
@@ -421,6 +477,10 @@ static void WolfDoReset()
 		if (~nWolfUnitDSW[2] & 1) {
 			bprintf(0, _T("**  Hot-Patched UMK3 w/Scorpion voice Bugfix!\n"));
 		}
+	}
+
+	if (is_umk3w_boss_patchable) {
+		UMK3WBossAnimTablesPatch();
 	}
 
 	bCMOSWriteEnable = false;
@@ -459,6 +519,10 @@ INT32 WolfUnitInit()
     nRet = BurnLoadRom(DrvBootROM + 1, 1, 2);
     if (nRet != 0)
         return 1;
+
+    if (strcmp(BurnDrvGetTextA(DRV_NAME), "umk3w") == 0 || strcmp(BurnDrvGetTextA(DRV_NAME), "umk3wp") == 0) {
+        UMK3WBossAnimTablesInit();
+    }
 
     nRet = LoadSoundBanks();
     if (nRet != 0)
@@ -527,9 +591,11 @@ INT32 WolfUnitInit()
     TMS34010MapHandler(11, 0x00000000, 0x003fffff, MAP_READ | MAP_WRITE);
 
 	if (is_umk3) {
+		// palette queue pointers moved in the WaveNet builds
+		nUMK3PalHackStart = (strstr(BurnDrvGetTextA(DRV_NAME), "umk3w") ? 0x010869a0 : 0x0106a060);
 		bprintf(0, _T("*** UMK3 Palette Fix active.\n"));
 		TMS34010SetWriteHandler(12, WolfUnitUMK3PaletteHack);
-		TMS34010MapHandler(12, 0x0106a000, 0x0106afff, MAP_WRITE);
+		TMS34010MapHandler(12, nUMK3PalHackStart & ~0xfff, nUMK3PalHackStart | 0xfff, MAP_WRITE);
 	}
 
 	TMS34010Close();
@@ -617,6 +683,7 @@ INT32 WolfUnitExit()
 	wwfmania = 0;
 	is_umk3 = 0;
 	is_umk3_patchable = 0;
+	is_umk3w_boss_patchable = 0;
 
     return 0;
 }

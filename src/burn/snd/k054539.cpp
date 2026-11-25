@@ -276,7 +276,7 @@ void K054539Write(INT32 chip, INT32 offset, UINT8 data)
 				break;
 			}
 			if(regbase[0x22e] == 0x80)
-				info->cur_zone[info->cur_ptr] = data;
+				info->cur_zone[(info->cur_ptr & 0x3fff) | ((info->cur_ptr & 0x10000) >> 2)] = data;
 			info->cur_ptr++;
 			if(info->cur_ptr == info->cur_limit)
 				info->cur_ptr = 0;
@@ -286,7 +286,7 @@ void K054539Write(INT32 chip, INT32 offset, UINT8 data)
 			info->cur_zone =
 				data == 0x80 ? info->delay_ram :
 				info->rom + 0x20000*data;
-			info->cur_limit = data == 0x80 ? 0x4000 : 0x20000;
+			info->cur_limit = 0x20000;
 			info->cur_ptr = 0;
 		break;
 
@@ -327,7 +327,7 @@ UINT8 K054539Read(INT32 chip, INT32 offset)
 				info->cur_ptr = (info->cur_ptr + 1) & 0x1ffff;
 				return res;
 			}
-			UINT8 res = info->cur_zone[info->cur_ptr];
+			UINT8 res = (info->regs[0x22e] == 0x80) ? info->cur_zone[(info->cur_ptr & 0x3fff) | ((info->cur_ptr & 0x10000) >> 2)] : info->cur_zone[info->cur_ptr];
 			info->cur_ptr++;
 			if(info->cur_ptr == info->cur_limit)
 				info->cur_ptr = 0;
@@ -925,7 +925,7 @@ void K054539Scan(INT32 nAction, INT32 *)
 			info->cur_zone =
 				data == 0x80 ? info->delay_ram :
 				info->rom + 0x20000*data;
-			info->cur_limit = data == 0x80 ? 0x4000 : 0x20000;
+			info->cur_limit = 0x20000;
 
 			if (~nAction & ACB_RUNAHEAD) {
 				for (INT32 chip = 0; chip < 2; chip++) {

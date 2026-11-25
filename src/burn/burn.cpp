@@ -107,6 +107,23 @@ struct BurnNameCopy {
 };
 static BurnNameCopy* pBurnNameCopies = NULL;
 
+// Full names may hold several titles ("A\0B\0"), copy them all and keep the double null
+static void BurnNameCopyMultiA(char* pDst, const char* pSrc, INT32 nSize)
+{
+	INT32 n = 0;
+	while (n < nSize - 2 && (pSrc[n] || pSrc[n + 1])) n++;
+	memcpy(pDst, pSrc, n + 1);
+}
+
+#if defined (_UNICODE)
+static void BurnNameCopyMultiW(wchar_t* pDst, const wchar_t* pSrc, INT32 nSize)
+{
+	INT32 n = 0;
+	while (n < nSize - 2 && (pSrc[n] || pSrc[n + 1])) n++;
+	memcpy(pDst, pSrc, (n + 1) * sizeof(wchar_t));
+}
+#endif
+
 static BurnNameCopy* BurnNameCopyGet(UINT32 i)
 {
 	if (i >= nBurnDrvCount) return NULL;
@@ -123,11 +140,11 @@ static BurnNameCopy* BurnNameCopyGet(UINT32 i)
 	p->szOrigFullNameA = pDriver[i]->szFullNameA;
 	p->szOrigFullNameW = pDriver[i]->szFullNameW;
 	if (pDriver[i]->szShortName) strncpy(p->szShortName, pDriver[i]->szShortName, sizeof(p->szShortName) - 1);
-	if (pDriver[i]->szFullNameA) strncpy(p->szFullNameA, pDriver[i]->szFullNameA, MAX_PATH - 1);
+	if (pDriver[i]->szFullNameA) BurnNameCopyMultiA(p->szFullNameA, pDriver[i]->szFullNameA, MAX_PATH);
 	pDriver[i]->szShortName = p->szShortName;
 	pDriver[i]->szFullNameA = p->szFullNameA;
 #if defined (_UNICODE)
-	if (pDriver[i]->szFullNameW) wcsncpy(p->szFullNameW, pDriver[i]->szFullNameW, MAX_PATH - 1);
+	if (pDriver[i]->szFullNameW) BurnNameCopyMultiW(p->szFullNameW, pDriver[i]->szFullNameW, MAX_PATH);
 	pDriver[i]->szFullNameW = p->szFullNameW;
 #endif
 	p->pNext = pBurnNameCopies;
@@ -294,7 +311,12 @@ extern "C" TCHAR* BurnDrvGetText(UINT32 i)
 				pszStringW = pDriver[nBurnDrvActive]->szFullNameW;
 
 				if (i & DRV_NEXTNAME) {
+					pszStringW = NULL;
 					if (pszCurrentNameW && pDriver[nBurnDrvActive]->szFullNameW) {
+						// Never step past the terminating null, extra calls must keep returning NULL
+						if (!pszCurrentNameW[0]) {
+							return NULL;
+						}
 						pszCurrentNameW += wcslen(pszCurrentNameW) + 1;
 						if (!pszCurrentNameW[0]) {
 							return NULL;
@@ -318,6 +340,8 @@ extern "C" TCHAR* BurnDrvGetText(UINT32 i)
 						// If all titles can be printed, we can use the Unicode versions
 						if (nRet >= 0) {
 							pszStringW = pszCurrentNameW = pDriver[nBurnDrvActive]->szFullNameW;
+						} else {
+							pszStringW = pszCurrentNameW = NULL;
 						}
 					}
 
@@ -407,6 +431,9 @@ extern "C" TCHAR* BurnDrvGetText(UINT32 i)
 
 			if (i & DRV_NEXTNAME) {
 				if (!pszCurrentNameW && pDriver[nBurnDrvActive]->szFullNameA) {
+					if (!pszCurrentNameA || !pszCurrentNameA[0]) {
+						return NULL;
+					}
 					pszCurrentNameA += strlen(pszCurrentNameA) + 1;
 					if (!pszCurrentNameA[0]) {
 						return NULL;
@@ -616,7 +643,10 @@ extern "C" INT32 BurnDrvGetIndex(char* szName)
 
 extern "C" wchar_t* BurnDrvGetFullNameW(UINT32 i)
 {
-	return pDriver[i]->szFullNameW;
+	// Callers compare/copy the result, never return NULL for drivers without a Unicode title
+	static wchar_t szEmpty[1] = { L'\0' };
+
+	return (NULL != pDriver[i]->szFullNameW) ? pDriver[i]->szFullNameW : szEmpty;
 }
 
 // Get the zip names for the driver
@@ -692,9 +722,33 @@ extern "C" INT32 BurnDrvGetHDDName(char** pszName, UINT32 i, INT32 nAka)		// For
 	}
 }
 
+// artwork: while a driver callback runs the driver sees its own (native) size,
+// everything else (the frontend) sees the size of the composited artwork view
+static INT32 bArtworkInDriver = 0;
+
+#define ARTWORK_DRIVER_CALL(call) do { INT32 bSave = bArtworkInDriver; bArtworkInDriver = 1; call; bArtworkInDriver = bSave; } while (0)
+
+// unrotated size of the driver's own framebuffer, regardless of artwork
+extern "C" INT32 BurnDrvGetNativeSize(INT32* pnWidth, INT32* pnHeight)
+{
+	if (pDriver[nBurnDrvActive]->Flags & BDF_ORIENTATION_VERTICAL) {
+		*pnWidth =pDriver[nBurnDrvActive]->nHeight;
+		*pnHeight=pDriver[nBurnDrvActive]->nWidth;
+	} else {
+		*pnWidth =pDriver[nBurnDrvActive]->nWidth;
+		*pnHeight=pDriver[nBurnDrvActive]->nHeight;
+	}
+
+	return 0;
+}
+
 // Get the screen size
 extern "C" INT32 BurnDrvGetVisibleSize(INT32* pnWidth, INT32* pnHeight)
 {
+	if (!bArtworkInDriver && BurnArtworkGetDisplaySize(pnWidth, pnHeight)) {
+		return 0;
+	}
+
 	*pnWidth =pDriver[nBurnDrvActive]->nWidth;
 	*pnHeight=pDriver[nBurnDrvActive]->nHeight;
 
@@ -711,6 +765,13 @@ extern "C" INT32 BurnDrvGetVisibleOffs(INT32* pnLeft, INT32* pnTop)
 
 extern "C" INT32 BurnDrvGetFullSize(INT32* pnWidth, INT32* pnHeight)
 {
+	if (!bArtworkInDriver && BurnArtworkGetDisplaySize(pnWidth, pnHeight)) {
+		if (pDriver[nBurnDrvActive]->Flags & BDF_ORIENTATION_VERTICAL) {
+			INT32 t = *pnWidth; *pnWidth = *pnHeight; *pnHeight = t;
+		}
+		return 0;
+	}
+
 	if (pDriver[nBurnDrvActive]->Flags & BDF_ORIENTATION_VERTICAL) {
 		*pnWidth =pDriver[nBurnDrvActive]->nHeight;
 		*pnHeight=pDriver[nBurnDrvActive]->nWidth;
@@ -725,6 +786,10 @@ extern "C" INT32 BurnDrvGetFullSize(INT32* pnWidth, INT32* pnHeight)
 // Get screen aspect ratio
 extern "C" INT32 BurnDrvGetAspect(INT32* pnXAspect, INT32* pnYAspect)
 {
+	if (!bArtworkInDriver && BurnArtworkGetAspect(pnXAspect, pnYAspect)) {
+		return 0;
+	}
+
 	*pnXAspect = pDriver[nBurnDrvActive]->nXAspect;
 	*pnYAspect = pDriver[nBurnDrvActive]->nYAspect;
 
@@ -739,6 +804,13 @@ extern "C" INT32 BurnDrvSetVisibleSize(INT32 pnWidth, INT32 pnHeight)
 	} else {
 		pDriver[nBurnDrvActive]->nWidth = pnWidth;
 		pDriver[nBurnDrvActive]->nHeight = pnHeight;
+	}
+
+	if (BurnArtworkActive()) {
+		// driver changed its resolution: re-fit the artwork, and let the
+		// Reinitialise() that usually follows see the artwork's new size
+		BurnArtworkNativeSizeChanged();
+		bArtworkInDriver = 0;
 	}
 
 	return 0;
@@ -903,7 +975,13 @@ extern "C" INT32 BurnDrvInit()
 	BurnSoundDCFilterReset();
 	BurnTimerPreInit();
 
-	nReturnValue = pDriver[nBurnDrvActive]->Init();	// Forward to drivers function
+	BurnOutputReset();
+
+	ARTWORK_DRIVER_CALL(nReturnValue = pDriver[nBurnDrvActive]->Init());	// Forward to drivers function
+
+	if (nReturnValue == 0) {
+		BurnArtworkInit();
+	}
 
 	if (-1 != nBurnDrvSubActive) {
 		BurnLocalisationSetNameEx();
@@ -976,7 +1054,12 @@ extern "C" INT32 BurnDrvExit()
 #endif
 	}
 
-	INT32 nRet = pDriver[nBurnDrvActive]->Exit();			// Forward to drivers function
+	BurnArtworkExit();
+
+	INT32 nRet;
+	ARTWORK_DRIVER_CALL(nRet = pDriver[nBurnDrvActive]->Exit());	// Forward to drivers function
+
+	BurnOutputReset();
 
 	nBurnDrvSubActive = -1;	// Rest to -1;
 
@@ -1044,14 +1127,24 @@ extern "C" INT32 BurnDrvFrame()
 {
 	CheatApply();									// Apply cheats (if any)
 	HiscoreApply();
-	return pDriver[nBurnDrvActive]->Frame();		// Forward to drivers function
+
+	INT32 nRet;
+	BurnArtworkFrameBegin();
+	ARTWORK_DRIVER_CALL(nRet = pDriver[nBurnDrvActive]->Frame());		// Forward to drivers function
+	BurnArtworkFrameEnd();
+
+	return nRet;
 }
 
 // Force redraw of the screen
 extern "C" INT32 BurnDrvRedraw()
 {
 	if (pDriver[nBurnDrvActive]->Redraw) {
-		return pDriver[nBurnDrvActive]->Redraw();	// Forward to drivers function
+		INT32 nRet;
+		BurnArtworkFrameBegin();
+		ARTWORK_DRIVER_CALL(nRet = pDriver[nBurnDrvActive]->Redraw());	// Forward to drivers function
+		BurnArtworkFrameEnd();
+		return nRet;
 	}
 
 	return 1;										// No funtion provide, so simply return
@@ -1246,8 +1339,10 @@ INT32 BurnAreaScan(INT32 nAction, INT32* pnMin)
 
 	// Forward to the driver
 	if (pDriver[nBurnDrvActive]->AreaScan) {
-		nRet |= pDriver[nBurnDrvActive]->AreaScan(nAction, pnMin);
+		ARTWORK_DRIVER_CALL(nRet |= pDriver[nBurnDrvActive]->AreaScan(nAction, pnMin));
 	}
+
+	BurnArtworkScan(nAction);
 
 #ifdef __LIBRETRO__
 	// standalone method to handle hiscores with runahead

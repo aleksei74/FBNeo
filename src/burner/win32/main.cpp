@@ -1446,7 +1446,7 @@ int ProcessCmdLine()
 
 			for (i = 0; i < nBurnDrvCount; i++) {
 				nBurnDrvActive = i;
-				if ((_tcscmp(BurnDrvGetText(DRV_NAME), szName) == 0) && (!(BurnDrvGetFlags() & BDF_BOARDROM))) {
+				if ((_tcscmp(BurnDrvGetText(DRV_NAME), szName) == 0) && (!(BurnDrvGetFlags() & BDF_BOARDROM) || BurnerDrvIsCDSystem())) {
 					TCHAR* szSub = _tcsstr(szCmdLine, _T("-sub"));	// Handling -sub additional parameters
 					if (szSub) {									// With -sub parameters
 						szSub += _tcslen(_T("-sub"));				// The parameter does not contain the identifier itself
@@ -1595,6 +1595,7 @@ static void CreateSupportFolders()
 		{_T("support/lua/")},
 		{_T("support/shaders/")},
 		{_T("support/bezel/")},
+		{_T("support/artwork/")},
 		{_T("cdiso/")},
 		// rom directories
 		{_T("roms/arcade/")},

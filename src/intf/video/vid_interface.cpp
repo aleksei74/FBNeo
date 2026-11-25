@@ -193,6 +193,12 @@ INT32 VidInit()
 
 	VidExit();
 
+	BurnArtworkSetLayered(0);	// MAME artwork: blitters that composite it themselves turn this back on
+
+#if defined (BUILD_WIN32)
+	ScrnSetArtworkTarget();		// Artwork: render at the window / fullscreen size
+#endif
+
 #if defined (BUILD_WIN32) && defined (ENABLE_PREVIEW)
 	if (!bDrvOkay) {
 		if (_tcslen(szPlaceHolder)) {

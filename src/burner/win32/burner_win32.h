@@ -289,12 +289,14 @@ extern int nSavestateSlot;
 int ScrnInit();
 int ScrnExit();
 int ScrnSize();
+void ScrnSetArtworkTarget();
 int ScrnTitle();
 void SetPauseMode(bool bPause);
 void Ptblank2UpdateMouseClip(bool enable);
 int ActivateChat();
 void DeActivateChat();
 int BurnerLoadDriver(TCHAR *pszDriverName);
+bool BurnerDrvIsCDSystem();
 int StartFromReset(TCHAR *szDriverName, bool bLoadSram);
 void PausedRedraw(void);
 INT32 is_netgame_or_recording();
@@ -359,6 +361,9 @@ bool unzip_unzip_context(zip_t **zip_context, char *szFn, void **buf, size_t *bu
 bool unzip_exists_context(zip_t **zip_context, char *szFn);
 
 extern UINT64 nLoadMenuShowX;
+extern UINT64 nLoadMenuHwButton[4];
+extern TCHAR szLoadMenuHwButtonName[4][MAX_PATH];
+extern INT32 nLoadMenuHwActiveBtn;
 extern int nLoadMenuShowY;
 extern int nLoadMenuExpand;
 extern int nLoadMenuBoardTypeFilter;

@@ -45,6 +45,7 @@ ADSP2100_CPU_DIR		:= $(FBNEO_CPU_DIR)/adsp2100
 ARM_CPU_DIR				:= $(FBNEO_CPU_DIR)/arm
 ARM7_CPU_DIR			:= $(FBNEO_CPU_DIR)/arm7
 ARM9_CPU_DIR			:= $(FBNEO_CPU_DIR)/arm9
+CCPU_CPU_DIR			:= $(FBNEO_CPU_DIR)/ccpu
 E132XS_CPU_DIR			:= $(FBNEO_CPU_DIR)/e132xs
 F8_CPU_DIR				:= $(FBNEO_CPU_DIR)/f8
 H6280_CPU_DIR			:= $(FBNEO_CPU_DIR)/h6280
@@ -69,6 +70,7 @@ MIPS3_X64_DRC_CPU_DIR	:= $(MIPS3_CPU_DIR)/x64
 NEC_CPU_DIR				:= $(FBNEO_CPU_DIR)/nec
 PIC16C5X_CPU_DIR		:= $(FBNEO_CPU_DIR)/pic16c5x
 PSX_CPU_DIR		:= $(FBNEO_CPU_DIR)/psx
+RV32_CPU_DIR			:= $(FBNEO_CPU_DIR)/rv32
 SH2_CPU_DIR				:= $(FBNEO_CPU_DIR)/sh2
 SH4_CPU_DIR				:= $(FBNEO_CPU_DIR)/sh4
 S2650_CPU_DIR			:= $(FBNEO_CPU_DIR)/s2650
@@ -130,6 +132,7 @@ FBNEO_CPU_DIRS := $(FBNEO_CPU_DIR) \
 	$(ARM_CPU_DIR) \
 	$(ARM7_CPU_DIR) \
 	$(ARM9_CPU_DIR) \
+	$(CCPU_CPU_DIR) \
 	$(E132XS_CPU_DIR) \
 	$(F8_CPU_DIR) \
 	$(H6280_CPU_DIR) \
@@ -159,6 +162,7 @@ FBNEO_CPU_DIRS := $(FBNEO_CPU_DIR) \
 	$(M6800_CPU_DIR) \
 	$(M6805_CPU_DIR) \
 	$(M6809_CPU_DIR) \
+	$(RV32_CPU_DIR) \
 	$(S2650_CPU_DIR) \
 	$(T11_CPU_DIR) \
 	$(TLCS90_CPU_DIR) \
@@ -177,6 +181,7 @@ SOURCES_C += $(FBNEO_BURNER_DIR)/ioapi.c \
 	$(FBNEO_BURNER_DIR)/unzip.c
 
 SOURCES_CXX += $(FBNEO_BURN_DIR)/burn.cpp \
+	$(FBNEO_BURN_DIR)/burn_artwork.cpp \
 	$(FBNEO_BURN_DIR)/burn_gun.cpp \
 	$(FBNEO_BURN_DIR)/burn_memory.cpp \
 	$(FBNEO_BURN_DIR)/burn_sound.cpp \
@@ -251,6 +256,7 @@ INCLUDE_DIRS := $(FBNEO_BURNER_DIR)/win32 \
 	$(Z80_CPU_DIR) \
 	$(Z180_CPU_DIR) \
 	$(SH4_CPU_DIR) \
+	$(RV32_CPU_DIR) \
 	$(PIC16C5X_CPU_DIR) \
 	$(PSX_CPU_DIR) \
 	$(FBNEO_LIB_DIR)/zlib \
@@ -258,6 +264,8 @@ INCLUDE_DIRS := $(FBNEO_BURNER_DIR)/win32 \
 	$(FBNEO_LIB_DIR)/dr_libs \
 	$(FBNEO_LIB_DIR)/stb_vorbis \
 	$(FBNEO_LIB_DIR)/r8brain \
+	$(FBNEO_LIB_DIR)/libspng \
+	$(FBNEO_LIB_DIR)/plutosvg \
 	$(CAPCOM_DIR) \
 	$(KONAMI_DIR) \
 	$(DATAEAST_DIR) \
@@ -316,7 +324,8 @@ else
 		$(FBNEO_LIB_DIR)/zlib/adler32.c \
 		$(FBNEO_LIB_DIR)/zlib/inftrees.c \
 		$(FBNEO_LIB_DIR)/zlib/deflate.c \
-		$(FBNEO_LIB_DIR)/zlib/trees.c
+		$(FBNEO_LIB_DIR)/zlib/trees.c \
+		$(FBNEO_LIB_DIR)/zlib/compress.c
 endif
 
 ifeq ($(INCLUDE_7Z_SUPPORT), 1)
@@ -362,6 +371,9 @@ SOURCES_C += $(UGUI_DIR)/ugui.c \
 	$(LIBRETRO_DIR)/ugui_tools.c
 
 SOURCES_C += $(FBNEO_LIB_DIR)/libchdr/libchdr_flac.c
+
+SOURCES_C += $(FBNEO_LIB_DIR)/libspng/spng.c \
+	$(FBNEO_LIB_DIR)/plutosvg/plutosvg_all.c
 
 ifeq ($(INCLUDE_CHD_SUPPORT), 1)
 	FBNEO_DEFINES += -DINCLUDE_CHD_SUPPORT -DUSE_LIBRETRO_VFS

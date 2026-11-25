@@ -7,7 +7,10 @@
 #include "z80_intf.h"
 #include "narc_sound.h"
 #include "williams_adpcm.h"
-#include "williams_cvsd.h"
+#include "midcvsd.h"
+#include "burn_ym2151.h"
+#include "dac.h"
+#include "hc55516.h"
 #include "yawdim_sound.h"
 #include "burn_ym2151.h"
 #include "burn_pal.h"
@@ -26,6 +29,7 @@ static UINT8 *MemEnd;
 static UINT8 *DrvMainROM;
 static UINT8 *DrvGfxROM;
 static UINT8 *DrvSndROM[2];
+static UINT8 *DrvSndRAM;
 static UINT8 *DrvVidRAM;
 static UINT8 *DrvCMOSRAM;
 static UINT8 *DrvMainRAM;
@@ -894,7 +898,7 @@ static struct BurnDIPInfo Term2DIPList[]=
 	{0x01, 0x01, 0xc0, 0x80, "French"				},
 	{0x01, 0x01, 0xc0, 0x40, "German"				},
 
-	{0   , 0xfe, 0   ,    2, "Emulated Crosshair"	},
+	{0   , 0xfd, 0   ,    2, "Emulated Crosshair"	},
 	{0x02, 0x01, 0x01, 0x00, "Off"					},
 	{0x02, 0x01, 0x01, 0x01, "On"					},
 };
@@ -1346,7 +1350,19 @@ static UINT16 midyunit_main_read(UINT32 address)
 
 static void midyunit_cvsd_write(UINT16 data)
 {
-	williams_cvsd_write((data & 0xff) | ((data & 0x200) >> 1));
+	cvsd_data_write((data & 0xff) | ((data & 0x200) >> 1));
+}
+
+static void midyunit_cvsd_reset_write(UINT16 state)
+{
+	cvsd_reset_write(state);
+}
+
+static INT32 midyunit_cvsd_scan(INT32 nAction, INT32 *pnMin)
+{
+	cvsd_scan(nAction, pnMin);
+
+	return 0;
 }
 
 static void to_shiftreg(UINT32 address, UINT16 *shiftreg)
@@ -1483,6 +1499,7 @@ static INT32 MemIndex()
 	DrvVidRAM			= Next; Next += 0x080000;
 	BurnPalRAM			= Next; Next += 0x004000;
 	DrvMainRAM			= Next; Next += 0x020000;
+	DrvSndRAM			= Next; Next += 0x000800;
 	DrvPalMAP           = (UINT16*)Next; Next += 0x002000 * sizeof(UINT16); // in ram section!
 
 	RamEnd				= Next;
@@ -1759,16 +1776,24 @@ static INT32 CommonInit(void (*load_callback)(), INT32 sound_system, UINT32 cloc
 
 		case 1: // CVSD
 		{
-			williams_cvsd_init(DrvSndROM[0], sndprot_start, sndprot_end, sound_system & 0x80 /* small/large mode */);
+			cvsd_init(0, 0, 0, DrvSndROM[0] + 0x10000, DrvSndRAM);
+			cvsd_set_protection(sndprot_start, sndprot_end, (sound_system & 0x80) ? 1 : 0); // 0x80: small board, protection patches rom bank 0
+			cvsd_set_dac_signed(1);
+			cvsd_set_reset_line_resets_sound(0);
+			BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_1, 0.10, BURN_SND_ROUTE_LEFT);
+			BurnYM2151SetRoute(BURN_SND_YM2151_YM2151_ROUTE_2, 0.10, BURN_SND_ROUTE_RIGHT);
+			DACSetRoute(0, 0.25, BURN_SND_ROUTE_BOTH);
+			DACDCBlock(1);
+			hc55516_volume(0.35);
 			sound_write = midyunit_cvsd_write;
-			sound_reset_write = williams_cvsd_reset_write;
+			sound_reset_write = midyunit_cvsd_reset_write;
 			sound_response_read = NULL;
 			sound_irq_state_read = NULL;
-			sound_reset = williams_cvsd_reset;
-			sound_scan = williams_cvsd_scan;
-			sound_exit = williams_cvsd_exit;
-			sound_update = williams_cvsd_update;
-			sound_in_reset = williams_cvsd_in_reset;
+			sound_reset = cvsd_reset;
+			sound_scan = midyunit_cvsd_scan;
+			sound_exit = cvsd_exit;
+			sound_update = cvsd_update;
+			sound_in_reset = cvsd_reset_status;
 			has_ym2151 = 1;
 		}
 		break;
@@ -2720,7 +2745,7 @@ static struct BurnRomInfo mkla4RomDesc[] = {
 STD_ROM_PICK(mkla4)
 STD_ROM_FN(mkla4)
 
-static INT32 MkInit()
+static INT32 MkCommonInit(void (*load_callback)())
 {
 	static const struct protection_data mk_protection_data =
 	{
@@ -2730,7 +2755,12 @@ static INT32 MkInit()
 
 	prot_data = &mk_protection_data;
 
-	return CommonInit(NULL, 0, 48000000, 6, 0xfb9c, 0xfbc6);
+	return CommonInit(load_callback, 0, 48000000, 6, 0xfb9c, 0xfbc6);
+}
+
+static INT32 MkInit()
+{
+	return MkCommonInit(NULL);
 }
 
 struct BurnDriver BurnDrvMkla4 = {
@@ -3420,6 +3450,13 @@ static struct BurnRomInfo mkyawdim4RomDesc[] = {
 	{ "29.bin",											0x80000, 0x2a6c10a0, 4 | BRF_GRA },           // 14
 	{ "28.bin",											0x80000, 0x23308979, 4 | BRF_GRA },           // 15
 	{ "27.bin",											0x80000, 0xcafc47bb, 4 | BRF_GRA },           // 16
+
+	{ "16as15hb1.u143",									0x00117, 0x90454160, 0 | BRF_OPT },           // 17 PLDs
+	{ "16as15hb1.u18",									0x00117, 0x99d3af1c, 0 | BRF_OPT },           // 18
+	{ "gal20v8a-25lp.1",								0x00157, 0x23366379, 0 | BRF_OPT },           // 19
+	{ "gal20v8a-25lp.2",								0x00157, 0x23366379, 0 | BRF_OPT },           // 20
+	{ "gal20v8a-25lp.3",								0x00157, 0x25f7e58d, 0 | BRF_OPT },           // 21
+	{ "gal20v8a-25lp.4",								0x00157, 0x25f7e58d, 0 | BRF_OPT },           // 22
 };
 
 STD_ROM_PICK(mkyawdim4)
@@ -3528,6 +3565,57 @@ struct BurnDriver BurnDrvMkyawdim6 = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_PREFIX_MIDWAY, GBF_VSFIGHT, 0,
 	NULL, mkyawdim6RomInfo, mkyawdim6RomName, NULL, NULL, NULL, NULL, Mkla4InputInfo, Mkla4DIPInfo,
 	Mkyawdim2Init, DrvExit, YawdimFrame, DrvDraw, DrvScan, &BurnRecalc, 256,
+	400, 256, 4, 3
+};
+
+
+// Mortal Kombat (Victor bootleg of rev 3.0 08/31/92)
+
+static struct BurnRomInfo mkla3blRomDesc[] = {
+	{ "m1-a003",										0x40000, 0xc615844c, 1 | BRF_PRG | BRF_ESS }, //  0 M6809 Code (Sound)
+
+	{ "m1-a001",										0x40000, 0x258bd7f9, 2 | BRF_SND },           //  1 MSM6295 Samples
+	{ "m1-a002",										0x40000, 0x7b7ec3b6, 2 | BRF_SND },           //  2
+
+	{ "ax422-m1-5",										0x80000, 0x2ce843c5, 3 | BRF_PRG | BRF_ESS }, //  3 TMS34010 Code
+	{ "ax422-m1-4",										0x80000, 0x49a46e10, 3 | BRF_PRG | BRF_ESS }, //  4
+
+	{ "pw3412-m1-a",									0x200000, 0x87776f14, 4 | BRF_GRA },          //  5 Graphics (Blitter data)
+	{ "pw3412-m1-b",									0x200000, 0x30724e04, 4 | BRF_GRA },          //  6
+	{ "pw3412-m1-c",									0x200000, 0x96612f94, 4 | BRF_GRA },          //  7
+};
+
+STD_ROM_PICK(mkla3bl)
+STD_ROM_FN(mkla3bl)
+
+static void Mkla3blLoadCallback()
+{
+	UINT8 *tmp = (UINT8*)BurnMalloc(0x400000);
+
+	memcpy (tmp, DrvGfxROM, 0x400000);
+
+	for (INT32 i = 0; i < 0x100000; i++) {
+		DrvGfxROM[0x000000 + i] = tmp[0x200000 | (i * 2 + 1)];
+		DrvGfxROM[0x100000 + i] = tmp[0x000000 | (i * 2 + 1)];
+		DrvGfxROM[0x200000 + i] = tmp[0x200000 | (i * 2 + 0)];
+		DrvGfxROM[0x300000 + i] = tmp[0x000000 | (i * 2 + 0)];
+	}
+
+	BurnFree (tmp);
+}
+
+static INT32 Mkla3blInit()
+{
+	return MkCommonInit(Mkla3blLoadCallback);
+}
+
+struct BurnDriver BurnDrvMkla3bl = {
+	"mkla3bl", "mk", NULL, NULL, "1992",
+	"Mortal Kombat (Victor bootleg of rev 3.0 08/31/92)\0", NULL, "bootleg (Victor)", "Y Unit",
+	NULL, NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_BOOTLEG, 2, HARDWARE_PREFIX_MIDWAY, GBF_VSFIGHT, 0,
+	NULL, mkla3blRomInfo, mkla3blRomName, NULL, NULL, NULL, NULL, Mkla4InputInfo, Mkla4DIPInfo,
+	Mkla3blInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &BurnRecalc, 256,
 	400, 256, 4, 3
 };
 

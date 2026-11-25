@@ -323,6 +323,7 @@ int DrvExit()
 	Ptblank2UpdateMouseClip(false);
 
 	if (bDrvOkay) {
+		ScrnExitLua();					// Stop Lua script & close console
 		NeoCDZRateChangeback();
 		StopReplay();
 		VidExit();
