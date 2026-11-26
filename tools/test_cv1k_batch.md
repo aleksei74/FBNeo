@@ -38,3 +38,39 @@ Cortex-A55 QEMU regression with GCC -O3:
 QEMU is functional validation, not a host performance benchmark.
 Full core build, sustained real-device speed and audio continuity
 remain unverified.
+
+## Astra-assisted EPIC12 ordered segments
+
+The 99cddb89b akatana trace had 4119 rejected split jobs, including
+3091 with upload commands and 237 with read/write dependencies.
+The whole-list fast path is retained. For lists rejected for upload,
+dependency or geometry, preflight a bounded sequence of disjoint
+draw ranges, split at upload, RAW/WAR hazards, self-overlap or
+unsafe geometry. Adjacent serial ranges coalesce. Each parallel
+range joins both lanes before any dependent draw or upload.
+The original upload handler executes exactly once and guest pixel
+delay totals are preserved. Preflight completes before changing
+VRAM, with bounded command count, RAM traversal and range count.
+FBNEO_CV1K_BLIT_SEGMENTS=0 restores whole-list-only parallelization.
+
+CV1K PARALLEL split counts a list once if whole-list or segmented
+parallel rendering succeeded. CV1K SEGMENT reports the subset of
+split jobs recovered by segmented execution and number of actual
+parallel ranges. CV1K SPLIT reasons describe final fallback jobs,
+not all lists which contain uploads. Segments still require the
+existing safe asynchronous and accurate-timing conditions.
+
+Codex gpt-6-astra developed the initial segmentation patch in an
+isolated worktree; the integration agent reviewed, corrected the
+segment-cap fixture after serial-range coalescing, added consecutive
+upload and actual callback/counter A/B tests, and ran final checks.
+Independent implementation using existing FBNeo code, not imported
+GPL-3.0-only native-port source.
+
+GCC -O3 Cortex-A55 QEMU regression: 4096 blend cases, 36 original
+dual-worker lists, 41 segmented differential lists including wrap,
+uploads, clips, flips, RAW/WAR hazards, self-overlap and consecutive
+uploads; 8 bounded side-effect-free rejection cases and actual job
+callback/counter A/B test. Modified EPIC12, SH3 and CV1000 driver
+objects compile for Cortex-A55 and x86-64. Real performance, full
+libretro link and target audio continuity remain unverified.

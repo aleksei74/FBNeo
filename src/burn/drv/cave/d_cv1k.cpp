@@ -123,6 +123,9 @@ static void Cv1kProfileFrame(UINT64 start) {
 	bprintf(PRINT_UI,_T("CV1K PARALLEL: split %llu fallback %llu\n"),
 		(unsigned long long)(blit.parallelJobs-cv1kPrevBlit.parallelJobs),
 		(unsigned long long)(blit.parallelFallback-cv1kPrevBlit.parallelFallback));
+	bprintf(PRINT_UI,_T("CV1K SEGMENT: jobs %llu parallel ranges %llu\n"),
+		(unsigned long long)(blit.segmentedJobs-cv1kPrevBlit.segmentedJobs),
+		(unsigned long long)(blit.segmentedRanges-cv1kPrevBlit.segmentedRanges));
 	bprintf(PRINT_UI,_T("CV1K SPLIT: small %llu dependency %llu geometry %llu upload %llu balance %llu other %llu\n"),
 		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_SMALL]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_SMALL]),
 		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_DEPENDENCY]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_DEPENDENCY]),
