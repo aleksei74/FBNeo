@@ -64,13 +64,17 @@ inline uint16x8_t Reverse(uint16x8_t a){a=vrev64q_u16(a);return vextq_u16(a,a,4)
 #endif
 // Runtime mode/tint/alpha are invariant for the entire row. Keep this
 // shared rather than emitting another 512 full copies of the rasterizer.
-template<bool Flip,bool Trans>
+template<bool Flip,bool Trans,int SM=-1,int DM=-1,int Tint=-1,int Blend=-1>
 #if defined(__GNUC__) || defined(__clang__)
 __attribute__((noinline))
 #endif
-inline void Row(uint16_t *dst,const uint16_t *src,size_t n,
+inline void RowKernel(uint16_t *dst,const uint16_t *src,size_t n,
 	unsigned sm,unsigned dm,unsigned sa,unsigned da,unsigned tr,unsigned tg,unsigned tb,
 	bool tint,bool blend,bool neon=true){
+	if(SM>=0)sm=SM;
+	if(DM>=0)dm=DM;
+	if(Tint>=0)tint=Tint;
+	if(Blend>=0)blend=Blend;
 	if(!n)return;
 	const uintptr_t d=(uintptr_t)dst,s=(uintptr_t)(Flip?src-(n-1):src);
 	const size_t bytes=n*2;
@@ -119,6 +123,29 @@ inline void Row(uint16_t *dst,const uint16_t *src,size_t n,
 		const uint16_t p=Flip?src[-(ptrdiff_t)i]:src[i];
 		if(!Trans||(p&0x8000))dst[i]=(tint||blend)?Pixel(p,dst[i],sm,dm,sa,da,tr,tg,tb,tint,blend):p;
 	}
+}
+// Common paths bypass mode/tint branches for each eight-pixel group.
+// Keep the generic kernel for uncommon blend modes and A/B tests.
+static bool specialized=true;
+template<bool Flip,bool Trans>
+inline void Row(uint16_t *dst,const uint16_t *src,size_t n,
+	unsigned sm,unsigned dm,unsigned sa,unsigned da,unsigned tr,unsigned tg,unsigned tb,
+	bool tint,bool blend,bool neon=true){
+#define PACKED_KERNEL(S,D,T,B) return RowKernel<Flip,Trans,S,D,T,B>(dst,src,n,sm,dm,sa,da,tr,tg,tb,tint,blend,neon)
+	if(specialized){
+		if(!blend){
+			if(tint){PACKED_KERNEL(0,0,1,0);}
+			PACKED_KERNEL(0,0,0,0);
+		}
+		if(!tint){
+			if(sm==0 && dm==0){PACKED_KERNEL(0,0,0,1);}
+			if(sm==0 && dm==3){PACKED_KERNEL(0,3,0,1);}
+			if(sm==3 && dm==0){PACKED_KERNEL(3,0,0,1);}
+			if(sm==3 && dm==3){PACKED_KERNEL(3,3,0,1);}
+		} else if(sm==0 && dm==0){PACKED_KERNEL(0,0,1,1);}
+	}
+	PACKED_KERNEL(-1,-1,-1,-1);
+#undef PACKED_KERNEL
 }
 }
 #endif

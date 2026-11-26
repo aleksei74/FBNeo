@@ -844,8 +844,19 @@ static void __fastcall Sh3UpperWriteLong(UINT32 a, UINT32 d)
 	sh3_internal_high_w((a - SH3_UPPER_REGBASE)>>2, d, 0xffffffff);
 }
 
-static inline void WB(UINT32 A, UINT8 V); // forward
-static inline UINT8 RB(UINT32 A); // forward
+// Keep direct mapped memory in the instruction handler on Cortex-A55.
+// The bodies (including handler/idle-page semantics) are shared unchanged.
+// Build with -DSH3_INLINE_MEMORY=0 for the compiler's original heuristic.
+#ifndef SH3_INLINE_MEMORY
+#define SH3_INLINE_MEMORY 1
+#endif
+#if SH3_INLINE_MEMORY && defined(__GNUC__) && (defined(__aarch64__) || defined(SH3_INTERPRETER_TEST))
+#define SH3_MEMORY_INLINE static inline __attribute__((always_inline))
+#else
+#define SH3_MEMORY_INLINE static inline
+#endif
+SH3_MEMORY_INLINE void WB(UINT32 A, UINT8 V); // forward
+SH3_MEMORY_INLINE UINT8 RB(UINT32 A); // forward
 
 static void cheat_write(UINT32 a, UINT8 d)
 {
@@ -978,7 +989,7 @@ static inline UINT16 sh3_cpu_readop16(UINT32 A)
 	return *((UINT16 *)(pr + (A & SH3_PAGEM)));
 }
 
-static inline UINT8 RB(UINT32 A)
+SH3_MEMORY_INLINE UINT8 RB(UINT32 A)
 {
 	if (A < 0xe0000000) {
 		A &= AM;
@@ -995,7 +1006,7 @@ static inline UINT8 RB(UINT32 A)
 	return ReadByte[(uintptr_t)pr](A);
 }
 
-static inline UINT16 RW(UINT32 A)
+SH3_MEMORY_INLINE UINT16 RW(UINT32 A)
 {
 	if (A < 0xe0000000) {
 		A &= AM;
@@ -1019,7 +1030,7 @@ static inline UINT16 RW(UINT32 A)
 	return ReadWord[(uintptr_t)pr](A);
 }
 
-static inline UINT32 RL(UINT32 A)
+SH3_MEMORY_INLINE UINT32 RL(UINT32 A)
 {
 	if (A < 0xe0000000) {
 		A &= AM;
@@ -1053,7 +1064,7 @@ static inline UINT32 RL(UINT32 A)
 	return ReadLong[(uintptr_t)pr](A);
 }
 
-static inline void WB(UINT32 A, UINT8 V)
+SH3_MEMORY_INLINE void WB(UINT32 A, UINT8 V)
 {
 	if (A < 0xe0000000) {
 		A &= AM;
@@ -1071,7 +1082,7 @@ static inline void WB(UINT32 A, UINT8 V)
 	WriteByte[(uintptr_t)pr](A, V);
 }
 
-static inline void WW(UINT32 A, UINT16 V)
+SH3_MEMORY_INLINE void WW(UINT32 A, UINT16 V)
 {
 	if (A < 0xe0000000) {
 		A &= AM;
@@ -1089,7 +1100,7 @@ static inline void WW(UINT32 A, UINT16 V)
 	WriteWord[(uintptr_t)pr](A, V);
 }
 
-static inline void WL(UINT32 A, UINT32 V)
+SH3_MEMORY_INLINE void WL(UINT32 A, UINT32 V)
 {
 	if (A < 0xe0000000) {
 		A &= AM;
@@ -3979,7 +3990,7 @@ void sh4_base_device::device_reset()
 #undef SH3_DEC_OP
 #undef SH3_DEC_DEFAULT
 
-#if defined(__GNUC__) && defined(__aarch64__) && defined(__linux__)
+#if defined(__GNUC__) && defined(__linux__) && (defined(__aarch64__) || defined(SH3_INTERPRETER_TEST))
 #define SH3_FLAT_DISPATCH 1
 enum Sh3OpId {
 #define SH3_OPCODE(name) SH3_ID_##name,
@@ -4036,11 +4047,13 @@ static bool cv1kNativeEnabled = false;
 static bool cv1kFlatEnabled = false;
 static bool cv1kCompactEnabled = false;
 static bool cv1kBatchEnabled = false;
+static bool cv1kFetchPageEnabled = false;
 static bool cv1kHybridEnabled = false;
 static bool cv1kLoopEnabled = false;
 #if SH3_FLAT_DISPATCH
 static bool cv1kCompactActive = false;
 static bool cv1kBatchActive = false;
+static bool cv1kFetchPageActive = false;
 #endif
 static UINT64 cv1kNativeOps, cv1kNativeSpans, cv1kNativeBuilt;
 static UINT64 cv1kNativeMisses, cv1kNativeRejected, cv1kNativeFull;
@@ -4250,8 +4263,9 @@ static bool Cv1kTryNative(UINT16 opcode)
 void Sh3SetCv1kNative(INT32 enable)
 {
 	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = cv1kLoopEnabled = false;
+	cv1kFetchPageEnabled = false;
 #if SH3_FLAT_DISPATCH
-	cv1kCompactActive=cv1kBatchActive=false;
+	cv1kCompactActive=cv1kBatchActive=cv1kFetchPageActive=false;
 #endif
 	cv1kNativeOps=cv1kNativeSpans=cv1kNativeBuilt=0;
 	cv1kNativeMisses=cv1kNativeRejected=cv1kNativeFull=0;
@@ -4289,6 +4303,10 @@ void Sh3SetCv1kNative(INT32 enable)
 		cv1kFlatEnabled?_T("enabled"):_T("disabled"));
 	const char *batch=getenv("FBNEO_CV1K_BATCH");
 	cv1kBatchEnabled=cv1kFlatEnabled && cv1kCompactEnabled && (!batch || strcmp(batch,"0")!=0);
+	const char *fetchPage=getenv("FBNEO_CV1K_FETCH_PAGE");
+	cv1kFetchPageEnabled=cv1kBatchEnabled && !cv1kNativeEnabled && (!fetchPage || strcmp(fetchPage,"0")!=0);
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 pure fetch-page reuse: %s\n"),
+		cv1kFetchPageEnabled?_T("enabled"):_T("disabled"));
 	// Hybrid mode uses the batched interpreter between native blocks.
 	if (cv1kHybridEnabled && !cv1kBatchEnabled)
 		cv1kLoopEnabled=cv1kHybridEnabled=cv1kNativeEnabled=false;
@@ -4424,7 +4442,7 @@ finished:
 // operations. Slow handlers see exactly the published state they saw in
 // the original interpreter (including memory callbacks and IRQ tests).
 // Delay slots and pending IRQs use the original single-step path.
-template<bool Hybrid> static int Sh3Run_timerhack_batch(int cycles)
+template<bool Hybrid, bool FetchPage=false> static int Sh3Run_timerhack_batch(int cycles)
 {
 	static const void *const handlers[]={
 #define SH3_OPCODE(name) &&batch_op_##name,
@@ -4447,10 +4465,13 @@ template<bool Hybrid> static int Sh3Run_timerhack_batch(int cycles)
 	}
 	if (!fits) return Sh3Run_timerhack_flat<true>(cycles);
 	cv1kBatchActive=true;
+	if(FetchPage)cv1kFetchPageActive=true;
 	m_sh4_icount=cycles;sh3_end_run=0;
 	if (m_cpu_off) {m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
 	UINT32 pc=m_pc;
 	INT32 remaining=cycles,pure=0;
+	const UINT16 *fetch=NULL;
+	INT32 window=0;
 	UINT16 opcode;
 start:
 	// Enter native spans only at a run/control-flow boundary, not on
@@ -4480,17 +4501,30 @@ start:
 		// Other exits interpret the next instruction without another lookup.
 	}
 #endif
+reload_fetch:
+	if (FetchPage) {
+		// Only audited pure handlers can reuse this pointer. Every slow
+		// handler, IRQ/delay boundary and run entry reloads the live map.
+		// Do not cache opcodes: stores through aliases remain visible.
+		const UINT32 address=pc&AM;
+		fetch=(const UINT16 *)(MemMapF[address>>SH3_SHIFT]+(address&SH3_PAGEM));
+		window=(SH3_PAGE_SIZE-(address&SH3_PAGEM))/2;
+		if (remaining<window) window=remaining;
+	}
 batch_base:
 fast_next:
-	opcode=sh3_cpu_readop16(pc&AM);
-	pc+=2;
+	opcode=FetchPage?*fetch++:sh3_cpu_readop16(pc&AM);
+	if (!FetchPage) pc+=2;
 	goto *(void *)(base+offsets[opcode]);
 #define SH3_OPCODE(name) batch_op_##name: \
-	m_pc=m_ppc=pc; m_sh4_icount=remaining; sh3_total_cycles+=pure; \
+	if (FetchPage) pc+=(pure+1)*2; \
+	m_pc=m_ppc=pc; m_sh4_icount=remaining-(FetchPage?pure:0); sh3_total_cycles+=pure; \
 	name(opcode); goto slow_finished;
 #define SH3_PURE_OPCODE(name) batch_op_##name: \
-	name(opcode); ++pure; if (--remaining>0) goto fast_next; \
-	m_pc=m_ppc=pc; m_sh4_icount=remaining; sh3_total_cycles+=pure; goto done;
+	name(opcode); ++pure; if (FetchPage?--window>0:--remaining>0) goto fast_next; \
+	if (FetchPage) {remaining-=pure; pc+=pure*2;} \
+	m_pc=m_ppc=pc; m_sh4_icount=remaining; sh3_total_cycles+=pure; \
+	if (FetchPage && remaining>0) {pure=0; goto reload_fetch;} goto done;
 #include "sh3_decode_ops.inc"
 #undef SH3_PURE_OPCODE
 #undef SH3_OPCODE
@@ -4500,7 +4534,7 @@ slow_finished:
 	if (m_sh4_icount<=0) goto done;
 	if (m_delay || m_test_irq || (Hybrid && m_pc!=pc)) goto start;
 	pc=m_pc;remaining=m_sh4_icount;pure=0;
-	goto fast_next;
+	goto reload_fetch;
 done:
 	cycles-=m_sh4_icount;
 	sh4_run_timers(cycles);
@@ -4516,6 +4550,7 @@ static int Sh3Run_timerhack(int cycles)
 	if(cv1kNativeEnabled && !cv1kHybridEnabled)return Sh3Run_timerhack_switch<true>(cycles);
 #endif
 #if SH3_FLAT_DISPATCH
+	if(cv1kFetchPageEnabled)return Sh3Run_timerhack_batch<false,true>(cycles);
 	if(cv1kBatchEnabled)return cv1kHybridEnabled?Sh3Run_timerhack_batch<true>(cycles):Sh3Run_timerhack_batch<false>(cycles);
 	if(cv1kFlatEnabled)return cv1kCompactEnabled?Sh3Run_timerhack_flat<true>(cycles):Sh3Run_timerhack_flat<false>(cycles);
 #endif

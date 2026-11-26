@@ -141,6 +141,10 @@ static void Cv1kProfileFrame(UINT64 start) {
 		(unsigned long long)(blit.tileJobs-cv1kPrevBlit.tileJobs),
 		(unsigned long long)(blit.tilePhases-cv1kPrevBlit.tilePhases),
 		(unsigned long long)(blit.tileDraws-cv1kPrevBlit.tileDraws));
+	bprintf(PRINT_UI,_T("CV1K PLAN: avg %.3f ms tile %.3f ms first hits %llu\n"),
+		(blit.planNs-cv1kPrevBlit.planNs)*scale,
+		(blit.tilePlanNs-cv1kPrevBlit.tilePlanNs)*scale,
+		(unsigned long long)(blit.tileFirstHits-cv1kPrevBlit.tileFirstHits));
 	bprintf(PRINT_UI,_T("CV1K SPLIT: small %llu dependency %llu geometry %llu upload %llu balance %llu other %llu\n"),
 		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_SMALL]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_SMALL]),
 		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_DEPENDENCY]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_DEPENDENCY]),

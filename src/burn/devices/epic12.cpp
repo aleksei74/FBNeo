@@ -313,10 +313,12 @@ static UINT64 blitSubmitWaitNs, blitShadowNs, blitSyncNs, blitJobs, blitAsyncJob
 static std::atomic<UINT64> blitWorkerNs{0}, blitParallelJobs{0}, blitParallelFallback{0};
 static std::atomic<UINT64> blitSplitReject[EPIC12_SPLIT_REASONS];
 static std::atomic<UINT64> blitSegmentedJobs{0}, blitSegmentedRanges{0}, blitLaneRanges{0}, blitTileJobs{0}, blitTilePhases{0}, blitTileDraws{0};
+static std::atomic<UINT64> blitTileFirstHits{0},blitPlanNs{0},blitTilePlanNs{0};
 #if EPIC12_NEON && THREADY == THREADY_PTHREAD
 static threadystruct blitHelper;
 static bool blitParallelReady, blitParallelAllowed;
 static bool blitSegmentsEnabled=true, blitPreciseEnabled=true, blitTilesEnabled=false;
+static bool blitTileFirstEnabled=true,blitTilePreferred=false;
 static int blitSplitY;
 static UINT64 blitHelperDelay;
 static void gfx_helper_cb();
@@ -343,6 +345,9 @@ void epic12_set_perf_enabled(bool enabled)
 	blitTileJobs.store(0,std::memory_order_relaxed);
 	blitTilePhases.store(0,std::memory_order_relaxed);
 	blitTileDraws.store(0,std::memory_order_relaxed);
+	blitTileFirstHits.store(0,std::memory_order_relaxed);
+	blitPlanNs.store(0,std::memory_order_relaxed);
+	blitTilePlanNs.store(0,std::memory_order_relaxed);
 	blitJobAsync=false;
 }
 
@@ -352,7 +357,8 @@ void epic12_get_perf_stats(Epic12PerfStats *stats)
 		blitWorkerNs.load(std::memory_order_relaxed),blitJobs,blitAsyncJobs,
 		blitParallelJobs.load(std::memory_order_relaxed),blitParallelFallback.load(std::memory_order_relaxed),{},
 		blitSegmentedJobs.load(std::memory_order_relaxed),blitSegmentedRanges.load(std::memory_order_relaxed),blitLaneRanges.load(std::memory_order_relaxed),
-		blitTileJobs.load(std::memory_order_relaxed),blitTilePhases.load(std::memory_order_relaxed),blitTileDraws.load(std::memory_order_relaxed)};
+		blitTileJobs.load(std::memory_order_relaxed),blitTilePhases.load(std::memory_order_relaxed),blitTileDraws.load(std::memory_order_relaxed),
+		blitTileFirstHits.load(std::memory_order_relaxed),blitPlanNs.load(std::memory_order_relaxed),blitTilePlanNs.load(std::memory_order_relaxed)};
 	for (unsigned i=0;i<EPIC12_SPLIT_REASONS;i++) stats->splitReject[i]=blitSplitReject[i].load(std::memory_order_relaxed);
 }
 
@@ -424,11 +430,14 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	// callback consumes a byte stream, not named standalone areas.
 #if defined(__LIBRETRO__) && EPIC12_NEON
 	const char *packed=getenv("FBNEO_CV1K_VRAM16");
+	const char *special=getenv("FBNEO_CV1K_PACKED_FAST");
+	Epic12Packed::specialized=!special || strcmp(special,"0")!=0;
 	if (packed && !strcmp(packed,"1"))
 		m_bitmaps16=(UINT16*)BurnMalloc(m_gfx_size*2);
 #endif
 	if (!m_bitmaps16) m_bitmaps=(UINT32*)BurnMalloc(m_gfx_size*4);
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 VRAM: %s\n"),m_bitmaps16?_T("16-bit packed (experimental)"):_T("32-bit expanded"));
+	if(m_bitmaps16)bprintf(PRINT_UI,_T("CV1000 EPIC12 packed specialized rows: %s\n"),Epic12Packed::specialized?_T("enabled"):_T("disabled"));
 
 	m_clip.set(0, 0x2000-1, 0, 0x1000-1);
 
@@ -458,6 +467,9 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	const char *precise=getenv("FBNEO_CV1K_BLIT_PRECISE");
 	const char *tiles=getenv("FBNEO_CV1K_BLIT_TILES");
 	blitTilesEnabled=tiles && !strcmp(tiles,"1");
+	const char *first=getenv("FBNEO_CV1K_TILE_FIRST");
+	blitTileFirstEnabled=!first || strcmp(first,"0")!=0;
+	blitTilePreferred=false;
 	blitPreciseEnabled=!precise || strcmp(precise,"0")!=0;
 	blitSegmentsEnabled=!segments || strcmp(segments,"0")!=0;
 	blitParallelReady=false;
@@ -470,6 +482,7 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 segmented parallel: %s\n"),(blitParallelReady && blitSegmentsEnabled)?_T("enabled"):_T("disabled"));
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 exact cross-lane hazards: %s\n"),(blitParallelReady && blitPreciseEnabled)?_T("enabled"):_T("disabled"));
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 tile command scheduling: %s\n"),(blitParallelReady && blitTilesEnabled)?_T("enabled (experimental)"):_T("disabled"));
+	if(blitTilesEnabled)bprintf(PRINT_UI,_T("CV1000 EPIC12 adaptive tile-first planning: %s\n"),blitTileFirstEnabled?_T("enabled"):_T("disabled"));
 #endif
 
 	sh4_set_cave_blitter_delay_func(blitter_delay_callback);
@@ -1646,7 +1659,14 @@ static void gfx_helper_cb()
 static bool gfx_exec_tiles()
 {
 	Epic12TilePlan plan;
-	if(!gfx_tile_plan(plan))return false;
+	const UINT64 begin=blitProfile?BlitNow():0;
+	const bool planned=gfx_tile_plan(plan);
+	if(blitProfile){
+		const UINT64 elapsed=BlitNow()-begin;
+		blitPlanNs.fetch_add(elapsed,std::memory_order_relaxed);
+		blitTilePlanNs.fetch_add(elapsed,std::memory_order_relaxed);
+	}
+	if(!planned)return false;
 	unsigned phases=0,draws=0;
 	for(unsigned i=0;i<plan.phaseCount;i++){
 		const auto &p=plan.phases[i];
@@ -1674,12 +1694,11 @@ static bool gfx_exec_segmented()
 {
 	Epic12Segment segments[EPIC12_MAX_SEGMENTS];
 	unsigned count;
-	if (!gfx_segment_plan(segments,count)) {
-		// Only retry lists that otherwise have no parallel ranges.
-		// Uploads and unsafe geometry remain barriers. The range
-		// planner must prove independence for the selected row cut.
-		if (!blitPreciseEnabled || !gfx_segment_plan(segments,count,true)) return false;
-	}
+	const UINT64 begin=blitProfile?BlitNow():0;
+	bool planned=gfx_segment_plan(segments,count);
+	if(!planned && blitPreciseEnabled)planned=gfx_segment_plan(segments,count,true);
+	if(blitProfile)blitPlanNs.fetch_add(BlitNow()-begin,std::memory_order_relaxed);
+	if(!planned)return false;
 	unsigned splitCount=0, preciseCount=0;
 	for (unsigned i=0;i<count;i++) {
 		const Epic12Segment &s=segments[i];
@@ -1708,25 +1727,44 @@ static bool gfx_exec_segmented()
 
 static bool gfx_exec_parallel()
 {
+	// mmpork used tile scheduling for >94% of async lists. Reuse
+	// the previous successful choice, not its stale command plan.
+	// Every list is still preflighted from current shadow RAM.
+	bool triedTiles=false;
+	auto tryTiles=[&](){
+		triedTiles=true;
+		const bool ok=gfx_exec_tiles();
+		blitTilePreferred=ok;
+		return ok;
+	};
+	if(blitTilesEnabled && blitTileFirstEnabled && blitTilePreferred){
+		if(tryTiles()){
+			if(blitProfile)blitTileFirstHits.fetch_add(1,std::memory_order_relaxed);
+			return true;
+		}
+	}
 	Epic12SplitReject why=EPIC12_SPLIT_OTHER;
 	bool precise=false;
-	if (!gfx_split_plan(blitSplitY,&why,&precise)) {
-		// Prefer tile ownership for dependency-heavy lists when selected.
-		// Unprofitable plans make no changes; retain existing fast paths.
-		if(blitTilesEnabled && (why==EPIC12_SPLIT_DEPENDENCY || why==EPIC12_SPLIT_BALANCE)
-			&& gfx_exec_tiles())return true;
-		if (blitSegmentsEnabled && (why==EPIC12_SPLIT_UPLOAD || why==EPIC12_SPLIT_DEPENDENCY || why==EPIC12_SPLIT_GEOMETRY)
-			&& gfx_exec_segmented()) return true;
-		if(blitTilesEnabled && (why==EPIC12_SPLIT_UPLOAD || why==EPIC12_SPLIT_SMALL)
-			&& gfx_exec_tiles())return true;
-		if (blitProfile) blitSplitReject[why].fetch_add(1,std::memory_order_relaxed);
+	const UINT64 begin=blitProfile?BlitNow():0;
+	const bool split=gfx_split_plan(blitSplitY,&why,&precise);
+	if(blitProfile)blitPlanNs.fetch_add(BlitNow()-begin,std::memory_order_relaxed);
+	if(!split){
+		if(blitTilesEnabled && !triedTiles && (why==EPIC12_SPLIT_DEPENDENCY || why==EPIC12_SPLIT_BALANCE)
+			&& tryTiles())return true;
+		blitTilePreferred=false;
+		if(blitSegmentsEnabled && (why==EPIC12_SPLIT_UPLOAD || why==EPIC12_SPLIT_DEPENDENCY || why==EPIC12_SPLIT_GEOMETRY)
+			&& gfx_exec_segmented())return true;
+		if(blitTilesEnabled && !triedTiles && (why==EPIC12_SPLIT_UPLOAD || why==EPIC12_SPLIT_SMALL)
+			&& tryTiles())return true;
+		if(blitProfile)blitSplitReject[why].fetch_add(1,std::memory_order_relaxed);
 		return false;
 	}
+	blitTilePreferred=false;
 	blitHelper.notify();
 	gfx_exec_band(0,blitSplitY-1,&epic12_device_blit_delay,true);
 	blitHelper.notify_wait();
 	epic12_device_blit_delay+=blitHelperDelay;
-	if (precise && blitProfile) blitLaneRanges.fetch_add(1,std::memory_order_relaxed);
+	if(precise && blitProfile)blitLaneRanges.fetch_add(1,std::memory_order_relaxed);
 	return true;
 }
 #endif

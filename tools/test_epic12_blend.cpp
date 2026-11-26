@@ -442,6 +442,21 @@ static bool TileCommandTest(){
 			fprintf(stderr,"tile VRAM/delay/counter mismatch case=%u phases=%u actual=%llu\n",c,phases,(unsigned long long)stats.tilePhases);
 			pass=false;
 		}
+		// Force the next-list prediction, with a fresh full preflight.
+		// Compare a second run to serial and check that the new counter
+		// attributes exactly one shortcut.
+		if(c<8 && pass){
+			parallel=base;m_bitmaps=parallel.data();
+			epic12_set_perf_enabled(true);
+			blitTilePreferred=true;blitTileFirstEnabled=true;
+			blitJobAsync=true;epic12_device_blit_delay=0;
+			if(!gfx_exec_parallel())pass=false;
+			epic12_get_perf_stats(&stats);
+			if(!pass || parallel!=serial || delay!=epic12_device_blit_delay || stats.tileFirstHits!=1 ||
+				stats.tileJobs!=1 || stats.planNs<stats.tilePlanNs) {
+				fprintf(stderr,"adaptive tile first mismatch %u\n",c);pass=false;
+			}
+		}
 		epic12_set_perf_enabled(false);
 		if(c<8 && pass){
 			for(size_t i=0;i<pixels;i++)compact[i]=Epic12Packed::Pack(base[i]);
@@ -461,9 +476,9 @@ static bool TileCommandTest(){
 		parallel=base;m_bitmaps=parallel.data();epic12_device_blit_delay=123;
 		if(gfx_exec_tiles() || parallel!=base || epic12_device_blit_delay!=123)pass=false;
 	}
-	blitTilesEnabled=blitParallelReady=blitParallelAllowed=false;
+	blitTilesEnabled=blitParallelReady=blitParallelAllowed=blitTilePreferred=false;
 	blitHelper.exit();
-	if(pass)puts("EPIC12 tile ownership: 32 expanded and 8 packed lists, cross-lane RAW/WAR/WAW barriers and 2 safe fallbacks PASS");
+	if(pass)puts("EPIC12 tile ownership: 32 expanded and 8 packed lists, 8 adaptive tile-first lists, cross-lane RAW/WAR/WAW barriers and 2 safe fallbacks PASS");
 	else puts("EPIC12 tile ownership FAILED");
 	return pass;
 }
@@ -519,7 +534,9 @@ int main(){
 		}
 		// Same real generated rasterizer with the packed backend, scalar
 		// and NEON; compare every VRAM pixel and delay to the legacy path.
-		for(unsigned simd=0;simd<2;simd++){
+		for(unsigned variant=0;variant<4;variant++){
+			const unsigned simd=variant&1;
+			Epic12Packed::specialized=variant>=2;
 			for(unsigned i=0;i<sizeof(packed)/sizeof(packed[0]);i++)packed[i]=Epic12Packed::Pack(original[i]);
 			m_bitmaps16=packed;m_bitmaps=nullptr;epic12_blend_neon=simd;
 			epic12_device_blit_delay=0;
@@ -534,7 +551,8 @@ int main(){
 		}
 		cases++;
 	}
-	printf("EPIC12 packed scalar/NEON: %u cases each PASS (512 modes)\n",cases);
+	Epic12Packed::specialized=true;
+	printf("EPIC12 packed generic/specialized scalar/NEON: %u cases each PASS (512 modes)\n",cases);
 	printf("EPIC12 real scalar/NEON blitter: %u cases PASS (all 512 blend variants)\n",cases);
 #if THREADY == THREADY_PTHREAD
 	blitPreciseEnabled=false; // Preserve legacy acceptance/rejection fixtures.
