@@ -126,6 +126,8 @@ static void Cv1kProfileFrame(UINT64 start) {
 	bprintf(PRINT_UI,_T("CV1K SEGMENT: jobs %llu parallel ranges %llu\n"),
 		(unsigned long long)(blit.segmentedJobs-cv1kPrevBlit.segmentedJobs),
 		(unsigned long long)(blit.segmentedRanges-cv1kPrevBlit.segmentedRanges));
+	bprintf(PRINT_UI,_T("CV1K LANES: precise ranges %llu\n"),
+		(unsigned long long)(blit.laneRanges-cv1kPrevBlit.laneRanges));
 	bprintf(PRINT_UI,_T("CV1K SPLIT: small %llu dependency %llu geometry %llu upload %llu balance %llu other %llu\n"),
 		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_SMALL]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_SMALL]),
 		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_DEPENDENCY]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_DEPENDENCY]),

@@ -18,7 +18,7 @@ static void Require(bool b,const char *s) { if(!b){fprintf(stderr,"FAIL: %s\n",s
 static uint32_t rng=0xc711e1u;
 static uint32_t Random(){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;}
 static uint16_t ram[32768];
-static uint8_t *mapR[65536],*mapL[65536];
+static uint8_t *mapR[65536],*mapL[65536],*mapW[65536];
 static void InitRegs(uint32_t *regs) {
 	for(unsigned i=0;i<16;i++)regs[i]=Random();
 }
@@ -26,8 +26,11 @@ static void TestEmitter() {
 	using namespace Sh3Native;
 	Cache cache;
 	for(unsigned i=0;i<32768;i++)ram[i]=uint16_t(Random());
-	mapR[0xc00]=mapL[0xc00]=(uint8_t*)ram;
-	MemMapR[0xc00]=MemMapRL[0xc00]=(uint8_t*)ram;
+	const unsigned pages[]={0xc00u,0xec00u,0xfc00u};
+	for(unsigned page : pages) {
+		mapR[page]=mapL[page]=mapW[page]=(uint8_t*)ram;
+		MemMapR[page]=MemMapRL[page]=MemMapW[page]=(uint8_t*)ram;
+	}
 	unsigned tested=0;
 	for(unsigned op=0;op<65536;op++) {
 		if(!Candidate(uint16_t(op)))continue;
@@ -39,28 +42,36 @@ static void TestEmitter() {
 		Require(cache.Publish(words,e.End()-words,offset),"publish");
 		uint32_t regs[16],sr=Random(),ea=Random();
 		InitRegs(regs);
-		const unsigned top=op>>12,f=op&15,m=(op>>4)&15;
-		const bool memory=top==5||(top==6&&(f<=2||(f>=4&&f<=6)));
-		if(memory)regs[m]=0x8c000000u|(Random()&0xff00);
+		const unsigned top=op>>12,f=op&15,m=(op>>4)&15,n=(op>>8)&15;
+		const bool store=top==1||(top==2&&(f<=2||(f>=4&&f<=6)));
+		const bool pre=top==2&&f>=4&&f<=6;
+		const bool memory=store||top==5||(top==6&&(f<=2||(f>=4&&f<=6)));
+		const unsigned addr=store?n:m;
+		const uint32_t aliases[]={0x0c000000u,0x8c000000u,0xac000000u,0xcc000000u,0xec000000u,0xfc000000u};
+		if(memory)regs[addr]=(aliases[tested%6]|(Random()&0xff00))+(pre?(1u<<(f&3)):0);
+		uint16_t beforeRam[32768],expectedRam[32768];
+		if(store)memcpy(beforeRam,ram,sizeof(ram));
 		memcpy(m_r,regs,sizeof(regs));m_sr=sr;m_ea=ea;
 		m_sh4_icount=10;sh3_total_cycles=0;
 		execute_one(uint16_t(op));
 		Require(m_sh4_icount==10 && sh3_total_cycles==0,"non-unit-cycle instruction accepted");
-		unsigned done=cache.Run(offset,regs,&sr,&ea,mapR,mapL);
+		if(store){memcpy(expectedRam,ram,sizeof(ram));memcpy(ram,beforeRam,sizeof(ram));}
+		unsigned done=cache.Run(offset,regs,&sr,&ea,mapR,mapL,mapW);
+		if(store)Require(!memcmp(ram,expectedRam,sizeof(ram)),"native store memory mismatch");
 		if(done!=1 || memcmp(regs,m_r,sizeof(regs)) || sr!=m_sr || ea!=m_ea) {
 			fprintf(stderr,"opcode %04x failed done=%u SR=%08x/%08x EA=%08x/%08x\n",op,done,sr,m_sr,ea,m_ea);
 			exit(2);
 		}
 		if(memory) {
-			InitRegs(regs);regs[m]=0x8d000000u;
+			InitRegs(regs);regs[addr]=0x8d000100u;
 			uint32_t before[16];memcpy(before,regs,sizeof(regs));uint32_t oldsr=sr,oldea=ea;
-			Require(cache.Run(offset,regs,&sr,&ea,mapR,mapL)==0 &&
+			Require(cache.Run(offset,regs,&sr,&ea,mapR,mapL,mapW)==0 &&
 				!memcmp(before,regs,sizeof(regs)) && sr==oldsr && ea==oldea,"unmapped memory guard");
 			// Long-only handler must override direct byte/word map.
-			if(top==5 || (f&3)==2) {
+			if(!store && (top==5 || (f&3)==2)) {
 				regs[m]=0x8c000000;memcpy(before,regs,sizeof(regs));
 				mapL[0xc00]=(uint8_t*)1;
-				Require(cache.Run(offset,regs,&sr,&ea,mapR,mapL)==0 && !memcmp(before,regs,sizeof(regs)),"long handler bypassed");
+				Require(cache.Run(offset,regs,&sr,&ea,mapR,mapL,mapW)==0 && !memcmp(before,regs,sizeof(regs)),"long handler bypassed");
 				mapL[0xc00]=(uint8_t*)ram;
 			}
 		}
@@ -75,12 +86,13 @@ static void TestEmitter() {
 		memcpy(m_r,regs,sizeof(regs));m_sr=sr;m_ea=ea;
 		Emitter e(words);
 		unsigned expected=0;
-		const unsigned miss=c%25;
+		const unsigned miss=c%(MaxOps+1);
 		for(unsigned i=0;i<MaxOps;i++){
 			uint16_t op;
 			if(i==miss){op=0x60f2;mapL[0xc00]=(uint8_t*)1;}
 			else {
-				do {op=uint16_t(Random());}while(!Candidate(op)||((op>>12)==5)||
+				do {op=uint16_t(Random());}while(!Candidate(op)||((op>>12)==1)||
+					((op>>12)==2&&((op&15)<=2||((op&15)>=4&&(op&15)<=6)))||((op>>12)==5)||
 					((op>>12)==6 && ((op&15)<=2||((op&15)>=4&&(op&15)<=6)))||
 					((op>>8)&15)==15);
 			}
@@ -89,13 +101,48 @@ static void TestEmitter() {
 		}
 		e.Finish(MaxOps);
 		Require(cache.Publish(words,e.End()-words,offset),"mixed publish");
-		unsigned done=cache.Run(offset,regs,&sr,&ea,mapR,mapL);
+		unsigned done=cache.Run(offset,regs,&sr,&ea,mapR,mapL,mapW);
 		if(done!=expected || memcmp(regs,m_r,sizeof(regs)) || sr!=m_sr || ea!=m_ea) {
 			fprintf(stderr,"mixed %u done=%u expected=%u SR=%08x/%08x\n",c,done,expected,sr,m_sr);exit(3);
 		}
 		mapL[0xc00]=(uint8_t*)ram;
 	}
 	puts("SH3 mixed spans and dirty state at guard exits: 4096 PASS");
+}
+
+// Exercise both edges of the protected HOST interval. A guest write mapping
+// can alias a different fetch page, including a long store straddling its start.
+static void TestStoreGuards() {
+	using namespace Sh3Native;
+	Cache cache;
+	const uint16_t stores[]={0x2f00,0x2f01,0x2f02,0x2f04,0x2f05,0x2f06,0x1f03};
+	unsigned tested=0;
+	for(uint16_t op:stores) {
+		uint32_t words[MaxWords],offset;
+		Emitter e(words);
+		for(unsigned i=0;i<16;i++)Require(e.Emit(0x7001|((i%14)<<8),i),"store prefix");
+		Require(e.Emit(op,16),"guard store emit");e.Finish(17);
+		Require(cache.Publish(words,e.End()-words,offset),"guard store publish");
+		const unsigned bytes=(op>>12)==1?4:1u<<(op&3);
+		const bool pre=(op>>12)==2&&(op&15)>=4;
+		for(unsigned dest=90;dest<240;dest++) {
+			for(unsigned i=0;i<32768;i++)ram[i]=uint16_t(i*173+dest);
+			uint16_t before[32768],expected[32768];memcpy(before,ram,sizeof(ram));
+			uint32_t regs[16],sr=Random(),ea=Random();InitRegs(regs);
+			regs[15]=0xac000000u+dest+(pre?bytes:0)-((op>>12)==1?12:0);
+			memcpy(m_r,regs,sizeof(regs));m_sr=sr;m_ea=ea;
+			for(unsigned i=0;i<16;i++)execute_one(0x7001|((i%14)<<8));
+			const unsigned host=bytes==1?dest^1:dest;
+			const bool guard=(dest&(bytes-1)) || (host<230 && host+bytes>102);
+			if(!guard)execute_one(op);
+			memcpy(expected,ram,sizeof(ram));memcpy(ram,before,sizeof(ram));
+			unsigned done=cache.Run(offset,regs,&sr,&ea,mapR,mapL,mapW,(uint8_t*)ram+102,128);
+			Require(done==(guard?16u:17u) && !memcmp(regs,m_r,sizeof(regs)) && sr==m_sr && ea==m_ea &&
+				!memcmp(expected,ram,sizeof(ram)),"store alignment/code overlap guard or prefix state");
+			tested++;
+		}
+	}
+	printf("SH3 store alias/overlap/alignment guards and dirty prefix: %u PASS\n",tested);
 }
 
 static void TestTimers() {
@@ -181,6 +228,79 @@ static Snapshot RunCore(unsigned mode, bool patch, bool handler)
 	Sh3SetCv1kNative(0);
 	return out;
 }
+static uint16_t storeData[32768];
+static void StoreTrace(UINT32 a,UINT32 v) {
+	handlerHits++;
+	callbackTrace=callbackTrace*33+Sh3GetPC(-1)+UINT32(Sh3TotalCycles())*17+UINT32(m_sh4_icount)+a+v;
+}
+static void __fastcall StoreByteTest(UINT32 a,UINT8 v) {
+	StoreTrace(a,v);((UINT8*)storeData)[(a&0xffff)^1]=v;
+}
+static void __fastcall StoreWordTest(UINT32 a,UINT16 v) {
+	StoreTrace(a,v);storeData[(a&0xffff)>>1]=v;
+}
+static void __fastcall StoreLongTest(UINT32 a,UINT32 v) {
+	StoreTrace(a,v);UINT32 swapped=(v<<16)|(v>>16);memcpy((UINT8*)storeData+(a&0xffff),&swapped,4);
+}
+struct StoreResult {
+	Snapshot state;
+	UINT16 code[164],data[32768];
+	int timerTime, prescale;
+};
+static StoreResult RunStoreProgram(bool hybrid,unsigned scenario) {
+	setenv("FBNEO_CV1K_JIT",hybrid?"2":"0",1);
+	setenv("FBNEO_CV1K_DISPATCH",hybrid?"1":"0",1);
+	setenv("FBNEO_CV1K_COMPACT","1",1);setenv("FBNEO_CV1K_BATCH","1",1);
+	Sh3MapInit();Sh3SetCv1kNative(1);
+	static UINT16 code[32768];memset(code,0,sizeof(code));memset(storeData,0,sizeof(storeData));
+	const UINT16 pattern[]={0x7001,0x2f02,0x61f2,0x321c,0x2f04,0x63f4,0x0018,0x6453};
+	for(unsigned i=0;i<160;i++)code[i]=pattern[i%8];
+	code[22]=0x2dc1;code[40]=0x7001;
+	code[160]=0xa000|((-162)&0xfff);code[161]=0x7401; // branch with nontrivial delay
+	Sh3MapMemory((UINT8*)code,0,0xffff,MAP_RAM);
+	Sh3MapMemory((UINT8*)code,0x10000,0x1ffff,MAP_RAM); // distinct guest alias
+	Sh3MapMemory((UINT8*)storeData,0xc000000,0xc00ffff,MAP_RAM);
+	Sh3SetWriteByteHandler(1,StoreByteTest);Sh3SetWriteWordHandler(1,StoreWordTest);Sh3SetWriteLongHandler(1,StoreLongTest);
+	m_pc=0x80000000;m_ppc=m_ea=m_delay=m_sr=0;
+	m_test_irq=m_pending_irq=m_cpu_off=0;sh3_total_cycles=0;
+	memset(m_r,0,sizeof(m_r));m_r[15]=0x8c000100;m_r[13]=0xac000200;m_r[12]=0x7007;
+	m_ratio=1;handlerHits=0;callbackTrace=0;
+	for(unsigned i=0;i<3;i++){m_timer[i]={};m_timer[i].timer_prescaler=64;}
+	m_timer[0].running=1;m_timer[0].time_trig=100000;
+	for(unsigned i=0;i<4;i++)m_dma_timer[i]={};cave_blitter_delay={};
+	int cycles=0;
+	for(unsigned i=0;i<96;i++) {
+		if(i==32) {
+			if(hybrid)Require(cv1kNativeOps>cv1kNativeSpans*24 && cv1kNativeBuilt>0,"long store spans not executing");
+			if(scenario==1)Sh3MapHandler(1,0xc000000,0xc00ffff,MAP_WRITE);
+			if(scenario==2)m_r[13]=0xa0010050; // rewrite upcoming opcode through alias
+			if(scenario==3)m_r[13]=0xa0010000; // rewrite already executed opcode
+			if(scenario==4)code[40]=0x7009; // direct DMA/save-style RAM replacement
+			if(scenario==5){cheat_write(0xa0010050,0x70);cheat_write(0xa0010051,0x09);}
+			if(scenario==6)Sh3MapMemory((UINT8*)storeData,0x10000,0x1ffff,MAP_WRITE);
+		}
+		if(i==64 && scenario==1)Sh3MapMemory((UINT8*)storeData,0xc000000,0xc00ffff,MAP_WRITE);
+		// Include budgets below/at/above the cap, mid-block starts and delay slots.
+		cycles+=Sh3Run_timerhack(i<32?521:1+((i*37)%257));
+	}
+	StoreResult out={};Snapshot &v=out.state;
+	memcpy(v.r,m_r,sizeof(m_r));v.sr=m_sr;v.pc=m_pc;v.ppc=m_ppc;v.ea=m_ea;v.delay=m_delay;
+	v.cycles=cycles;v.total=sh3_total_cycles;v.hits=handlerHits;v.callbackTrace=callbackTrace;
+	memcpy(out.code,code,sizeof(out.code));memcpy(out.data,storeData,sizeof(storeData));
+	out.timerTime=m_timer[0].time_current;out.prescale=m_timer[0].prescale_counter;
+	if(scenario==1)Require(handlerHits>0,"store handlers unused");
+	if(scenario==2)Require(code[40]==0x7007,"future SMC unused");
+	if(scenario==3)Require(code[0]==0x7007,"past SMC unused");
+	Sh3SetCv1kNative(0);return out;
+}
+static void TestStorePrograms() {
+	for(unsigned scenario=0;scenario<7;scenario++) {
+		StoreResult a=RunStoreProgram(false,scenario),b=RunStoreProgram(true,scenario);
+		Require(!memcmp(&a,&b,sizeof(a)),"long store span run-loop, SMC, handler trace or timer mismatch");
+	}
+	puts("SH3 long store spans: 7 switch/hybrid RAM, alias SMC, external rewrite, cheat, remap, MMIO and timer comparisons PASS");
+}
+
 static UINT16 __fastcall ReadWordTest(UINT32 a) {
 	return ram[(a&0xffff)>>1];
 }
@@ -404,8 +524,8 @@ static UINT32 __fastcall IrqReadTest(UINT32 a){
 	Sh3SetIRQLine(2,CPU_IRQSTATUS_HOLD);
 	return ReadLongTest(a);
 }
-static Snapshot RunIrq(bool batch,bool delay){
-	setenv("FBNEO_CV1K_JIT","0",1);
+static Snapshot RunIrq(bool batch,bool delay,bool hybrid=false){
+	setenv("FBNEO_CV1K_JIT",hybrid?"2":"0",1);
 	setenv("FBNEO_CV1K_DISPATCH",batch?"1":"0",1);
 	setenv("FBNEO_CV1K_COMPACT","1",1);
 	setenv("FBNEO_CV1K_BATCH",batch?"1":"0",1);
@@ -415,12 +535,21 @@ static Snapshot RunIrq(bool batch,bool delay){
 	// Pure operations, then a device load either directly or as a
 	// branch delay instruction; the IRQ handler contains pure ops.
 	code[0]=0xe003;code[1]=0x7005;
-	code[2]=delay?0xa002:0x0009;code[3]=0x62f2;
+	code[18]=delay?0xa002:0x0009;code[19]=0x62f2;
+	// Bound the direct-load block too: the JIT requires the whole
+	// candidate span to fit the 35-cycle slice even when the MMIO
+	// guard will exit at instruction 19.
+	code[20]=0xa000;
 	code[0x300]=0xe70a;code[0x301]=0x7701;
 	Sh3MapMemory((UINT8*)code,0,0xffff,MAP_RAM);
 	Sh3MapMemory((UINT8*)ram,0xc000000,0xc00ffff,MAP_RAM);
 	Sh3MapReadLongHandler(1,0xc000000,0xc00ffff);
 	Sh3SetReadLongHandler(1,IrqReadTest);
+	if(hybrid) {
+		m_test_irq=m_delay=0;
+		for(unsigned h=0;h<Cv1kHot;h++){m_pc=0x80000000;m_sh4_icount=128;Cv1kTryNative(code[0]);}
+		Require(cv1kNativeBuilt>0,"IRQ native prefix not built");
+	}
 	m_cpu_type=CPU_TYPE_SH3;
 	m_pc=0x80000000;m_vbr=0x80000000;m_ppc=m_ea=m_delay=m_sr=m_spc=m_ssr=0;
 	m_test_irq=m_pending_irq=m_cpu_off=0;sh3_total_cycles=0;
@@ -433,16 +562,40 @@ static Snapshot RunIrq(bool batch,bool delay){
 	for(unsigned i=0;i<3;i++){m_timer[i]={};m_timer[i].timer_prescaler=64;}
 	for(unsigned i=0;i<4;i++)m_dma_timer[i]={};
 	cave_blitter_delay={};
-	int cycles=Sh3Run_timerhack(19);
-	Require(handlerHits==1 && (m_sr&BL) && m_spc==(delay?0x8000000c:0x80000008),"IRQ was not delivered at expected PC");
+	const UINT64 beforeNative=cv1kNativeOps;
+	int cycles=Sh3Run_timerhack(35);
+	if(hybrid)Require(cv1kNativeOps>beforeNative,"IRQ native prefix unused");
+	Require(handlerHits==1 && (m_sr&BL) && m_spc==(delay?0x8000002c:0x80000028),"IRQ was not delivered at expected PC");
 	Snapshot out={};memcpy(out.r,m_r,sizeof(m_r));out.sr=m_sr;out.pc=m_pc;out.ppc=m_ppc;out.ea=m_spc;out.delay=m_delay;out.cycles=cycles;out.total=sh3_total_cycles;out.hits=handlerHits;out.callbackTrace=callbackTrace;
 	Sh3SetCv1kNative(0);return out;
 }
 static void TestBatchIrq(){
 	for(unsigned d=0;d<2;d++){
-		Snapshot a=RunIrq(false,d),b=RunIrq(true,d);
-		Require(!memcmp(&a,&b,sizeof(a)),"batched IRQ boundary state differs");
+		Snapshot a=RunIrq(false,d),b=RunIrq(true,d),c=RunIrq(true,d,true);
+		Require(!memcmp(&a,&b,sizeof(a)) && !memcmp(&a,&c,sizeof(a)),"batched/hybrid IRQ boundary state differs");
 	}
-	puts("SH3 batched callback IRQ and delay slot IRQ: PASS");
+	puts("SH3 batched/hybrid native prefix, callback IRQ and delay slot IRQ: PASS");
 }
-int main(){TestEmitter();TestTimers();TestCore();TestFlat();TestPureHandlers();TestPurePages();TestBatchIrq();TestLongOnlyMap();TestIdleDirect();TestDtLoop();TestCachePressure();return 0;}
+static void TestHotPC(){
+	setenv("FBNEO_CV1K_HOTPCS","1",1);
+	setenv("FBNEO_CV1K_JIT","0",1);
+	Sh3MapInit();Sh3SetCv1kNative(1);
+	static UINT16 code[32768];
+	code[0]=0x7001;
+	Sh3MapMemory((UINT8*)code,0,0xffff,MAP_RAM);
+	m_pc=0x80000000;m_delay=m_cpu_off=0;
+	m_sh4_icount=123;sh3_total_cycles=456;
+	for(unsigned i=0;i<1000000 && cv1kSampleEnabled;i++)Cv1kSamplePC();
+	Require(!cv1kSampleEnabled && cv1kSamples==32768 && !cv1kSampleDropped,
+		"hot PC sample bound incorrect");
+	unsigned found=0;
+	for(const auto &e:cv1kHotPC) if(e.hits) {
+		Require(e.pc==0x80000000 && e.opcode==0x7001 && e.hits==32768,"hot PC sample value incorrect");
+		found++;
+	}
+	Require(found==1 && m_pc==0x80000000 && !m_delay && m_sh4_icount==123 &&
+		sh3_total_cycles==456,"hot PC sample affected execution state");
+	Sh3SetCv1kNative(0);unsetenv("FBNEO_CV1K_HOTPCS");
+	puts("SH3 bounded opt-in hot PC sampling: PASS");
+}
+int main(){TestEmitter();TestStoreGuards();TestTimers();TestCore();TestStorePrograms();TestFlat();TestPureHandlers();TestPurePages();TestBatchIrq();TestLongOnlyMap();TestIdleDirect();TestDtLoop();TestCachePressure();TestHotPC();return 0;}

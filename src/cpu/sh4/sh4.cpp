@@ -4068,6 +4068,52 @@ static unsigned Cv1kHash(UINT32 pc)
 	return h & (Cv1kSets-1);
 }
 
+// Bounded, opt-in run-entry sampling. This deliberately has no per-instruction
+// hook: PCs are biased toward timer-slice boundaries, not an instruction census.
+struct Cv1kHotPC { UINT32 pc, hits; UINT16 opcode; };
+static Cv1kHotPC cv1kHotPC[1024];
+static bool cv1kSampleEnabled;
+static unsigned cv1kSamples, cv1kSampleDropped;
+static UINT32 cv1kSampleRng;
+static void Cv1kSamplePC()
+{
+	if(m_cpu_off)return;
+	// Decimate slice-entry sampling so the bounded capture covers
+	// thousands of frames instead of only the initial loading screen.
+	cv1kSampleRng^=cv1kSampleRng<<13;
+	cv1kSampleRng^=cv1kSampleRng>>17;
+	cv1kSampleRng^=cv1kSampleRng<<5;
+	if(cv1kSampleRng&15)return;
+	const UINT32 pc=m_delay?m_delay:m_pc, physical=pc&AM;
+	const UINT8 *page=MemMapF[physical>>SH3_SHIFT];
+	if((uintptr_t)page<SH3_MAXHANDLER || (pc&1))return;
+	const UINT16 opcode=*(const UINT16 *)(page+(physical&SH3_PAGEM));
+	const unsigned hash=((pc>>1)^(pc>>11))&1023;
+	unsigned i=0;
+	for(;i<4;i++) {
+		Cv1kHotPC &entry=cv1kHotPC[(hash+i)&1023];
+		if(!entry.hits || entry.pc==pc) {entry.pc=pc;entry.opcode=opcode;entry.hits++;break;}
+	}
+	if(i==4)cv1kSampleDropped++;
+	if((++cv1kSamples&4095)==0) {
+		bprintf(PRINT_UI,_T("CV1K HOT samples=%u dropped=%u native_ops=%llu spans=%llu built=%llu (slice-entry samples)\n"),
+			cv1kSamples,cv1kSampleDropped,(unsigned long long)cv1kNativeOps,
+			(unsigned long long)cv1kNativeSpans,(unsigned long long)cv1kNativeBuilt);
+		unsigned top[8];
+		for(unsigned rank=0;rank<8;rank++) {
+			unsigned best=1024;
+			for(unsigned j=0;j<1024;j++) {
+				bool used=false;for(unsigned k=0;k<rank;k++)if(top[k]==j)used=true;
+				if(!used && cv1kHotPC[j].hits && (best==1024 || cv1kHotPC[j].hits>cv1kHotPC[best].hits))best=j;
+			}
+			top[rank]=best;
+			if(best!=1024)bprintf(PRINT_UI,_T("CV1K HOT pc=%08x opcode=%04x samples=%u\n"),
+				cv1kHotPC[best].pc,unsigned(cv1kHotPC[best].opcode),cv1kHotPC[best].hits);
+		}
+	}
+	if(cv1kSamples==32768)cv1kSampleEnabled=false;
+}
+
 static bool Cv1kTryNative(UINT16 opcode)
 {
 	if (!Sh3Native::Candidate(opcode) || cv1kCode.Denied() || m_test_irq ||
@@ -4129,7 +4175,7 @@ static bool Cv1kTryNative(UINT16 opcode)
 		b.count=count;b.valid=true;cv1kNativeBuilt++;
 	}
 	if(b.count>m_sh4_icount)return false;
-	const unsigned done=cv1kCode.Run(b.offset,m_r,&m_sr,&m_ea,MemMapR,MemMapRL);
+	const unsigned done=cv1kCode.Run(b.offset,m_r,&m_sr,&m_ea,MemMapR,MemMapRL,MemMapW,code,b.count*sizeof(UINT16));
 	cv1kNativeSpans++;
 	// Do not call the same generated code indefinitely if a hot MMIO
 	// or alignment guard repeatedly leaves less than a useful span.
@@ -4158,6 +4204,14 @@ void Sh3SetCv1kNative(INT32 enable)
 #if SH3_NATIVE
 	cv1kCode.Reset();cv1kCode.Enable();cv1kCodeFull=false;
 	memset(cv1kSets,0,sizeof(cv1kSets));
+	const char *sample=getenv("FBNEO_CV1K_HOTPCS");
+	cv1kSampleEnabled=enable && sample && !strcmp(sample,"1");
+	cv1kSamples=cv1kSampleDropped=0;
+	cv1kSampleRng=0x9e3779b9u;
+	if(cv1kSampleEnabled){
+		memset(cv1kHotPC,0,sizeof(cv1kHotPC));
+		bprintf(PRINT_UI,_T("CV1000 SH3 hot PC sampling: enabled (approx 1/16 slice entries, max 32768)\n"));
+	}
 	// Actual RK3566 trace showed significant short-span overhead. Do not
 	// automatically enable experimental JIT on any CPU until measured.
 	const char *option=getenv("FBNEO_CV1K_JIT");
@@ -4357,9 +4411,11 @@ start:
 #if SH3_NATIVE
 	if (Hybrid && Cv1kTryNative(sh3_cpu_readop16(pc&AM))) {
 		if (m_sh4_icount<=0) goto done;
+		// A full capped block may continue at the next block boundary.
+		// Guard exits still interpret the failing instruction immediately.
+		if (m_pc==pc+Sh3Native::MaxOps*2) goto start;
 		pc=m_pc;remaining=m_sh4_icount;
-		// The next instruction is interpreted, avoiding redundant
-		// native lookup in the middle of a linear block.
+		// Other exits interpret the next instruction without another lookup.
 	}
 #endif
 batch_base:
@@ -4394,6 +4450,7 @@ done:
 static int Sh3Run_timerhack(int cycles)
 {
 #if SH3_NATIVE
+	if(cv1kSampleEnabled)Cv1kSamplePC();
 	if(cv1kNativeEnabled && !cv1kHybridEnabled)return Sh3Run_timerhack_switch<true>(cycles);
 #endif
 #if SH3_FLAT_DISPATCH

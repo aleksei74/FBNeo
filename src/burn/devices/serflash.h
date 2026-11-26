@@ -18,6 +18,8 @@ void serflash_cmd_write(UINT8 data);
 void serflash_data_write(UINT8 data);
 void serflash_addr_write(UINT8 data);
 UINT8 serflash_io_read();
+// Even byte count, even direct-RAM address, contained in one mapped page.
+void serflash_io_read_words(UINT8 *dst, UINT32 bytes);
 UINT8 serflash_ready_read();
 
 UINT8 serflash_n3d_flash_read(INT32 offset);

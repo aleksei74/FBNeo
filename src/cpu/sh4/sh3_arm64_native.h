@@ -1,5 +1,5 @@
 // Experimental SH-3 ARM64 spans. Native integer operations and guarded
-// direct loads only; timing, delay slots, stores and devices remain in
+// direct RAM access; timing, delay slots, branches and devices remain in
 // the existing core. The emitter is independent of MAME/Flycast code.
 #ifndef FBNEO_SH3_ARM64_NATIVE_H
 #define FBNEO_SH3_ARM64_NATIVE_H
@@ -15,11 +15,12 @@
 #endif
 #if SH3_NATIVE
 namespace Sh3Native {
-static const unsigned MaxOps=24, MinOps=4, MaxWords=40*MaxOps+32;
+static const unsigned MaxOps=64, MinOps=4, MaxWords=80*MaxOps+32;
 static const uint32_t Ret=0xd65f03c0u;
 inline bool Candidate(uint16_t op) {
 	const unsigned top=op>>12, f=op&15, imm=op&255;
-	if(top==2)return (f>=8 && f<=11)||f==13;
+	if(top==1)return true;
+	if(top==2)return f<=2||(f>=4 && f<=6)||(f>=8 && f<=11)||f==13;
 	if(top==3)return f==0||f==2||f==3||f==6||f==7||f==8||f==12;
 	if(top==4)return imm==0||imm==1||imm==8||imm==9||imm==0x11||imm==0x15||imm==0x18||imm==0x19||imm==0x20||imm==0x21||imm==0x28||imm==0x29;
 	if(top==5||top==7||top==14)return true;
@@ -27,6 +28,16 @@ inline bool Candidate(uint16_t op) {
 	return op==0x0009||op==0x0008||op==0x0018||(op&0xf0ff)==0x0029||
 		(op&0xff00)==0x8800||(op&0xff00)==0xc800||(op&0xff00)==0xc900||(op&0xff00)==0xca00;
 }
+// A call-local context keeps all map lookups live. The code interval is
+// a HOST address range, so stores through guest aliases cannot change an
+// opcode that this invocation has already validated. No page epochs.
+struct Memory {
+	uint8_t *const *read, *const *readLong, *const *write;
+	const void *code;
+	uintptr_t codeBytes;
+};
+static_assert(offsetof(Memory,readLong)==8 && offsetof(Memory,write)==16 &&
+	offsetof(Memory,code)==24 && offsetof(Memory,codeBytes)==32,"native memory ABI");
 static inline uint32_t Mov(unsigned d,unsigned s) { return 0x2a0003e0u|(s<<16)|d; }
 class Emitter {
 	uint32_t *p_;
@@ -103,6 +114,40 @@ public:
 			else{d=W(n);*p_++=base|(b<<16)|(a<<5)|d;}
 			return true;
 		}
+		if(top==1 || (top==2 && (f<=2 || (f>=4 && f<=6)))) {
+			const bool pre=top==2 && f>=4;
+			const unsigned size=top==1?2:f&3, bytes=1u<<size;
+			a=R(n);b=R(m,a);
+			if(top==1)*p_++=0x11000010u|(f*4<<10)|(a<<5);
+			else if(pre)*p_++=0x51000010u|(bytes<<10)|(a<<5);
+			else *p_++=Mov(16,a);
+			*p_++=0x531d7e08u; // lsr w8,w16,#29
+			*p_++=0x71001d1fu; // cmp w8,#7
+			*p_++=0x12007207u; // and w7,w16,#AM
+			*p_++=0x1a9010e7u; // csel w7,w7,w16,ne
+			if(size){*p_++=size==1?0x720000ffu:0x720004ffu;Guard(0,done);}
+			*p_++=0x53107ce8u; // lsr w8,w7,#16
+			*p_++=0xf9400871u; // ldr x17,[x3,#16] (write map)
+			*p_++=0xf8687a31u; // ldr x17,[x17,x8,lsl #3]
+			*p_++=0xf100223fu;Guard(2,done); // handler exits before ANY side effect
+			*p_++=0x12003ce7u; // and w7,w7,#0xffff
+			if(!size)*p_++=0x520000e7u; // byte lane swap
+			*p_++=0x8b070231u; // add x17,x17,x7 (host destination)
+			// Reject overlap with the live code interval, including a long
+			// store starting two bytes before it. Unsigned subtraction also
+			// permits destinations below the interval without a second branch.
+			*p_++=0xf9400c64u; // ldr x4,[x3,#24]
+			*p_++=0xcb040228u; // sub x8,x17,x4
+			*p_++=0x91000108u|((bytes-1)<<10);
+			*p_++=0xf9401064u; // ldr x4,[x3,#32]
+			*p_++=0x91000084u|((bytes-1)<<10);
+			*p_++=0xeb04011fu;Guard(2,done); // cmp x8,x4; allow HS
+			if(size==2){*p_++=0x13804006u|(b<<16)|(b<<5);b=6;}
+			*p_++=(size==0?0x39000220u:size==1?0x79000220u:0xb9000220u)|b;
+			if(pre){W(n);*p_++=Mov(a,16);}
+			else *p_++=0xb9000050u; // EA is unchanged by predecrement stores
+			return true;
+		}
 		if((top==6 && (f<=2 || (f>=4 && f<=6))) || top==5){
 			// Live direct-map lookup, never bypass a handler (including
 			// the CV1000 speedhack long-read page). Alignment failure
@@ -118,7 +163,8 @@ public:
 			*p_++=0x1a9010e7u; // csel w7,w7,w16,ne
 			if(size){*p_++=size==1?0x720000ffu:0x720004ffu;Guard(0,done);}
 			*p_++=0x53107ce8u;
-			*p_++=size==2?0xf8687891u:0xf8687871u;
+			*p_++=size==2?0xf9400471u:0xf9400071u; // current read map
+			*p_++=0xf8687a31u; // ldr x17,[x17,x8,lsl #3]
 			*p_++=0xf100223fu;Guard(2,done);
 			*p_++=0x12003ce7u;
 			if(!size)*p_++=0x520000e7u;
@@ -242,8 +288,10 @@ public:
 		return true;
 	}
 	unsigned Run(uint32_t offset, uint32_t *r, uint32_t *sr, uint32_t *ea,
-		uint8_t *const *read, uint8_t *const *readLong) const {
-		return reinterpret_cast<unsigned (*)(uint32_t*,uint32_t*,uint32_t*,uint8_t *const *,uint8_t *const *)>(base_+offset)(r,sr,ea,read,readLong);
+		uint8_t *const *read, uint8_t *const *readLong, uint8_t *const *write,
+		const void *code = NULL, size_t codeBytes = 0) const {
+		const Memory memory={read,readLong,write,code,codeBytes};
+		return reinterpret_cast<unsigned (*)(uint32_t*,uint32_t*,uint32_t*,const Memory*)>(base_+offset)(r,sr,ea,&memory);
 	}
 	bool Denied() const { return denied_; }
 	size_t Used() const { return used_; }

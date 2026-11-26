@@ -121,28 +121,41 @@ static int sh4_dma_transfer(int channel, int timermode, UINT32 chcr, UINT32 *sar
 	src &= AM;
 	dst &= AM;
 
-	if (size == 1 && (src & AM) == 0x10000000) { // slightly faster path to serialflash-DMA on cv1000
-		INT32 x_or = 0;
-		for(int i=0; i<count; i++)
-		{
-			if(incs == 2)
-				src --;
-			if(incd == 2)
-				dst --;
+	if (size == 1 && (src & AM) == 0x10000000) { // CV1000 serial-flash DMA
+		while (count) {
+			// Common incrementing transfer: process complete guest
+			// words in the current direct-mapped page, leaving odd
+			// addresses/tails, other address modes and handlers scalar.
+			if (incd==1 && !(dst&1) && count>=2) {
+				UINT8 *pw=MemMapW[dst>>SH3_SHIFT];
+				if ((uintptr_t)pw>=SH3_MAXHANDLER) {
+					const UINT32 offset=dst&SH3_PAGEM;
+					const UINT32 available=SH3_PAGE_SIZE-offset;
+					const UINT32 n=(count<available?count:available)&~UINT32(1);
+					if (n) {
+						serflash_io_read_words(pw+offset,n);
+						if (incs==1) src+=n;
+						if (incs==2) src-=n;
+						dst+=n;count-=n;
+						continue;
+					}
+				}
+			}
+			if (incs==2) src--;
+			if (incd==2) dst--;
+			const UINT8 data=serflash_io_read();
+			UINT8 *pw=MemMapW[dst>>SH3_SHIFT];
+			if ((uintptr_t)pw>=SH3_MAXHANDLER) {
 #ifdef LSB_FIRST
-			x_or = 1;
+				pw[(dst^1)&SH3_PAGEM]=data;
+#else
+				pw[dst&SH3_PAGEM]=data;
 #endif
-			UINT8 *pw = MemMapW[ dst >> SH3_SHIFT ];
-			pw[(dst^x_or) & SH3_PAGEM] = serflash_io_read();
-
-			//WB(dst, serflash_io_read());
-
-			if(incs == 1)
-				src ++;
-			if(incd == 1)
-				dst ++;
+			} else WB(dst,data);
+			if (incs==1) src++;
+			if (incd==1) dst++;
+			count--;
 		}
-		count = 0;
 	} else
 	switch(size)
 	{

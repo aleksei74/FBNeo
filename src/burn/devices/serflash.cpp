@@ -419,6 +419,51 @@ UINT8 serflash_io_read()
 	return data;
 }
 
+// CV1000's incrementing byte DMA writes guest bytes into an even
+// direct-RAM interval. Preserve the original word-swapped host layout
+// and the serial device's saturating last-byte behavior exactly.
+// Caller guarantees an even number of bytes in one mapped RAM page.
+void serflash_io_read_words(UINT8 *dst, UINT32 bytes)
+{
+	if (!bytes) return;
+	if (!m_flash_enab) {
+		memset(dst,0xff,bytes);
+		return;
+	}
+	if (m_flash_state==READ && m_flash_page_data && m_flash_page_size && m_flash_page_addr>=0) {
+		const UINT32 pos=UINT32(m_flash_page_addr)<m_flash_page_size?UINT32(m_flash_page_addr):UINT32(m_flash_page_size-1);
+		const UINT32 available=m_flash_page_size-pos;
+		const UINT32 n=bytes<available?bytes:available;
+		const UINT32 pairs=n&~UINT32(1);
+		const UINT8 *src=m_flash_page_data+pos;
+#ifdef LSB_FIRST
+		// A contiguous copy with byte reversal per SH3 word is readily
+		// vectorized; no per-byte device or memory-map callback.
+		for (UINT32 i=0;i<pairs;i+=2) {
+			dst[i]=src[i+1];
+			dst[i+1]=src[i];
+		}
+#else
+		memcpy(dst,src,pairs);
+#endif
+		// An odd remaining byte must be the final flash byte, which is
+		// repeated for all subsequent reads by serflash_io_read().
+		if (pairs<bytes) memset(dst+pairs,m_flash_page_data[m_flash_page_size-1],bytes-pairs);
+		m_flash_page_addr=pos+n;
+		return;
+	}
+	// ID/status/other states retain the exact old callback sequence.
+	for (UINT32 i=0;i<bytes;i+=2) {
+#ifdef LSB_FIRST
+		dst[i+1]=serflash_io_read();
+		dst[i]=serflash_io_read();
+#else
+		dst[i]=serflash_io_read();
+		dst[i+1]=serflash_io_read();
+#endif
+	}
+}
+
 UINT8 serflash_ready_read()
 {
 	return 1;

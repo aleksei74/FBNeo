@@ -310,11 +310,11 @@ static bool blitProfile = false;
 static UINT64 blitSubmitWaitNs, blitShadowNs, blitSyncNs, blitJobs, blitAsyncJobs;
 static std::atomic<UINT64> blitWorkerNs{0}, blitParallelJobs{0}, blitParallelFallback{0};
 static std::atomic<UINT64> blitSplitReject[EPIC12_SPLIT_REASONS];
-static std::atomic<UINT64> blitSegmentedJobs{0}, blitSegmentedRanges{0};
+static std::atomic<UINT64> blitSegmentedJobs{0}, blitSegmentedRanges{0}, blitLaneRanges{0};
 #if EPIC12_NEON && THREADY == THREADY_PTHREAD
 static threadystruct blitHelper;
 static bool blitParallelReady, blitParallelAllowed;
-static bool blitSegmentsEnabled=true;
+static bool blitSegmentsEnabled=true, blitPreciseEnabled=true;
 static int blitSplitY;
 static UINT64 blitHelperDelay;
 static void gfx_helper_cb();
@@ -337,6 +337,7 @@ void epic12_set_perf_enabled(bool enabled)
 	for (auto &n:blitSplitReject) n.store(0,std::memory_order_relaxed);
 	blitSegmentedJobs.store(0,std::memory_order_relaxed);
 	blitSegmentedRanges.store(0,std::memory_order_relaxed);
+	blitLaneRanges.store(0,std::memory_order_relaxed);
 	blitJobAsync=false;
 }
 
@@ -345,7 +346,7 @@ void epic12_get_perf_stats(Epic12PerfStats *stats)
 	*stats={blitSubmitWaitNs,blitShadowNs,blitSyncNs,
 		blitWorkerNs.load(std::memory_order_relaxed),blitJobs,blitAsyncJobs,
 		blitParallelJobs.load(std::memory_order_relaxed),blitParallelFallback.load(std::memory_order_relaxed),{},
-		blitSegmentedJobs.load(std::memory_order_relaxed),blitSegmentedRanges.load(std::memory_order_relaxed)};
+		blitSegmentedJobs.load(std::memory_order_relaxed),blitSegmentedRanges.load(std::memory_order_relaxed),blitLaneRanges.load(std::memory_order_relaxed)};
 	for (unsigned i=0;i<EPIC12_SPLIT_REASONS;i++) stats->splitReject[i]=blitSplitReject[i].load(std::memory_order_relaxed);
 }
 
@@ -438,6 +439,8 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 #if EPIC12_NEON && THREADY == THREADY_PTHREAD
 	const char *parallel=getenv("FBNEO_CV1K_BLIT_PARALLEL");
 	const char *segments=getenv("FBNEO_CV1K_BLIT_SEGMENTS");
+	const char *precise=getenv("FBNEO_CV1K_BLIT_PRECISE");
+	blitPreciseEnabled=!precise || strcmp(precise,"0")!=0;
 	blitSegmentsEnabled=!segments || strcmp(segments,"0")!=0;
 	blitParallelReady=false;
 	blitParallelAllowed=false;
@@ -447,6 +450,7 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	}
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 safe row parallel: %s\n"),blitParallelReady?_T("enabled"):_T("disabled"));
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 segmented parallel: %s\n"),(blitParallelReady && blitSegmentsEnabled)?_T("enabled"):_T("disabled"));
+	bprintf(PRINT_UI,_T("CV1000 EPIC12 exact cross-lane hazards: %s\n"),(blitParallelReady && blitPreciseEnabled)?_T("enabled"):_T("disabled"));
 #endif
 
 	sh4_set_cave_blitter_delay_func(blitter_delay_callback);
@@ -1173,7 +1177,7 @@ struct Epic12TileMap {
 struct Epic12Footprint {
 	int x0,x1,y0,y1,rx0,rx1,ry0,ry1;
 	unsigned weight;
-	bool empty;
+	bool empty, flip_y;
 };
 
 static bool gfx_draw_footprint(UINT32 &addr, UINT16 attr, const rectangle &clip, Epic12Footprint &f)
@@ -1200,13 +1204,95 @@ static bool gfx_draw_footprint(UINT32 &addr, UINT16 attr, const rectangle &clip,
 	const bool tint=((tr&0xff)>>2)!=32 || ((tgb>>8)>>2)!=32 || ((tgb&0xff)>>2)!=32;
 	const bool blend=(attr&0x200) && !((attr&0x77)==4 && (alpha&0xf8f8)==0xf8f8);
 	const unsigned weight=1+((attr&0x100)!=0)+2*blend+tint;
-	f={x0,x1,y0,y1,rx0,rx1,ry0,ry1,weight,false};
+	f={x0,x1,y0,y1,rx0,rx1,ry0,ry1,weight,false,fy};
 	return true;
 }
 
-static bool gfx_split_range(UINT32 addr, UINT32 end, rectangle clip, int &split_y, Epic12SplitReject *why=nullptr)
+// Two workers preserve draw order inside their own destination row bands.
+// A read/write dependency within a band is harmless: it is resolved by
+// that one worker in original order. Only cross-band RAW/WAR hazards,
+// including within a single self-overlapping draw, require serialization.
+// The coarse tile map remains the fast broad phase; exact rectangles
+// are consulted only on a hit. Work and scratch memory are bounded.
+struct Epic12ExactRect {
+	UINT16 x0,x1,y0,y1;
+	bool overlaps(const Epic12ExactRect &r) const {
+		return x0<=r.x1 && r.x0<=x1 && y0<=r.y1 && r.y0<=y1;
+	}
+};
+struct Epic12ExactSet {
+	static const unsigned Limit=2048;
+	Epic12TileMap tiles;
+	Epic12ExactRect rects[Limit];
+	unsigned count=0;
+	bool add(const Epic12ExactRect &r) {
+		if (count==Limit) return false;
+		rects[count++]=r;
+		tiles.add(r.x0,r.x1,r.y0,r.y1);
+		return true;
+	}
+	bool clear_of(const Epic12ExactRect &r,unsigned &budget) const {
+		if (!tiles.intersects(r.x0,r.x1,r.y0,r.y1)) return true;
+		for (unsigned i=0;i<count;i++) {
+			if (!budget) return false;
+			--budget;
+			if (r.overlaps(rects[i])) return false;
+		}
+		return true;
+	}
+};
+static bool gfx_lanes_independent(UINT32 addr,UINT32 end,rectangle clip,int split)
+{
+	Epic12ExactSet reads[2],writes[2];
+	unsigned budget=131072;
+	const UINT32 start=addr;
+	for (unsigned cmd=0;cmd<8192;cmd++) {
+		if (addr==end) return true;
+		if (addr-start+2>UINT32(m_main_ramsize)) return false;
+		const UINT16 attr=READ_NEXT_WORD(&addr);
+		switch (attr&0xf000) {
+			case 0: case 0xf000: return true;
+			case 0xc000:
+				if (addr-start+2>UINT32(m_main_ramsize)) return false;
+				if (READ_NEXT_WORD(&addr)) clip=gfx_initial_clip();
+				else clip.set(0,0x1fff,0,0x0fff);
+				break;
+			case 0x1000: {
+				if (addr-start+18>UINT32(m_main_ramsize)) return false;
+				Epic12Footprint f;
+				if (!gfx_draw_footprint(addr,attr,clip,f)) return false;
+				if (f.empty) break;
+				for (unsigned lane=0;lane<2;lane++) {
+					const int y0=lane?MAX(f.y0,split):f.y0;
+					const int y1=lane?f.y1:MIN(f.y1,split-1);
+					if (y0>y1) continue;
+					const Epic12ExactRect w={UINT16(f.x0),UINT16(f.x1),UINT16(y0),UINT16(y1)};
+					const unsigned other=1-lane;
+					if (!reads[other].clear_of(w,budget) || !writes[lane].add(w)) return false;
+					int sy0=f.flip_y?f.ry1-(y1-f.y0):f.ry0+(y0-f.y0);
+					int sy1=f.flip_y?f.ry1-(y0-f.y0):f.ry0+(y1-f.y0);
+					// Source rows owned by this lane cannot race with
+					// another lane; keep only the other band's rows.
+					if (lane) sy1=MIN(sy1,split-1);
+					else sy0=MAX(sy0,split);
+					if (sy0<=sy1) {
+						const Epic12ExactRect r={UINT16(f.rx0),UINT16(f.rx1),UINT16(sy0),UINT16(sy1)};
+						if (!writes[other].clear_of(r,budget) || !reads[lane].add(r)) return false;
+					}
+				}
+				break;
+			}
+			default: return false;
+		}
+	}
+	return false;
+}
+
+static bool gfx_split_range(UINT32 addr, UINT32 end, rectangle clip, int &split_y, Epic12SplitReject *why=nullptr, bool *precise=nullptr)
 {
 	auto reject=[&](Epic12SplitReject reason) {if (why) *why=reason; return false;};
+	if (precise) *precise=false;
+	const rectangle initial=clip;
 	const UINT32 start=addr;
 	Epic12TileMap reads,writes;
 	// Fine Y bands and relative pixel cost, rather than raw area alone.
@@ -1223,9 +1309,14 @@ static bool gfx_split_range(UINT32 addr, UINT32 end, rectangle clip, int &split_
 			case 0x0000:
 			case 0xf000: {
 				if (pixels<180000) return reject(EPIC12_SPLIT_SMALL);
-				if (reads.intersects(writes)) return reject(EPIC12_SPLIT_DEPENDENCY);
-				UINT64 upper=0,best=~UINT64(0);
-				int best_y=0;
+				const bool collision=reads.intersects(writes);
+				if (collision && !blitPreciseEnabled) return reject(EPIC12_SPLIT_DEPENDENCY);
+				UINT64 upper=0;
+				// Try at most three near-balanced cuts, in increasing
+				// estimated imbalance order. A different cut can avoid
+				// a cross-lane hazard without discarding a whole list.
+				UINT64 best[3]={~UINT64(0),~UINT64(0),~UINT64(0)};
+				int best_y[3]={};
 				for (int i=0;i<511;i++) {
 					upper+=work[i];
 					// Keep each worker busy and choose the closest cut,
@@ -1233,12 +1324,21 @@ static bool gfx_split_range(UINT32 addr, UINT32 end, rectangle clip, int &split_
 					if (upper<total/4 || total-upper<total/4) continue;
 					const UINT64 lower=total-upper;
 					const UINT64 diff=upper>lower?upper-lower:lower-upper;
-					if (diff<best) {best=diff;best_y=(i+1)*8;}
-					if (upper>=lower) break;
+					for (unsigned k=0;k<3;k++) if (diff<best[k]) {
+						for (unsigned j=2;j>k;j--) {best[j]=best[j-1];best_y[j]=best_y[j-1];}
+						best[k]=diff;best_y[k]=(i+1)*8;break;
+					}
+					if (!collision && upper>=lower) break;
 				}
-				if (!best_y) return reject(EPIC12_SPLIT_BALANCE);
-				split_y=best_y;
-				return true;
+				if (!best_y[0]) return reject(EPIC12_SPLIT_BALANCE);
+				for (unsigned k=0;k<3 && best_y[k];k++) {
+					if (!collision || gfx_lanes_independent(start,end,initial,best_y[k])) {
+						split_y=best_y[k];
+						if (precise) *precise=collision;
+						return true;
+					}
+				}
+				return reject(EPIC12_SPLIT_DEPENDENCY);
 			}
 			case 0xc000:
 				if (READ_NEXT_WORD(&addr)) clip=gfx_initial_clip();
@@ -1271,15 +1371,16 @@ static bool gfx_split_range(UINT32 addr, UINT32 end, rectangle clip, int &split_
 	return reject(EPIC12_SPLIT_OTHER);
 }
 
-static bool gfx_split_plan(int &split_y, Epic12SplitReject *why=nullptr)
+static bool gfx_split_plan(int &split_y, Epic12SplitReject *why=nullptr, bool *precise=nullptr)
 {
-	return gfx_split_range(m_gfx_addr_shadowcopy & 0x1fffffff, ~UINT32(0), gfx_initial_clip(), split_y, why);
+	return gfx_split_range(m_gfx_addr_shadowcopy & 0x1fffffff, ~UINT32(0), gfx_initial_clip(), split_y, why, precise);
 }
 
 struct Epic12Segment {
 	UINT32 start,end;
 	rectangle clip;
 	int split_y; // zero: original serial execution, including uploads
+	bool precise;
 };
 static const unsigned EPIC12_MAX_SEGMENTS=64;
 static const Epic12Segment *blitHelperSegment;
@@ -1288,7 +1389,7 @@ static const Epic12Segment *blitHelperSegment;
 // Preflight the ENTIRE list before writing VRAM: failure cannot leave a
 // partially executed list for the caller to replay. No allocation, at most
 // 8192 commands / one RAM traversal / 64 ranges (and helper submissions).
-static bool gfx_segment_plan(Epic12Segment *segments, unsigned &count)
+static bool gfx_segment_plan(Epic12Segment *segments, unsigned &count, bool relaxed=false)
 {
 	count=0;
 	const UINT32 start=m_gfx_addr_shadowcopy & 0x1fffffff;
@@ -1300,7 +1401,8 @@ static bool gfx_segment_plan(Epic12Segment *segments, unsigned &count)
 	auto append=[&](UINT32 first,UINT32 last,const rectangle &initial,bool candidate) {
 		if (first==last) return true;
 		int split=0;
-		if (candidate && gfx_split_range(first,last,initial,split)) any_parallel=true;
+		bool precise=false;
+		if (candidate && gfx_split_range(first,last,initial,split,nullptr,&precise)) any_parallel=true;
 		// Adjacent serial ranges can share an execution pass. Their clip
 		// commands remain in the stream, so only the first snapshot matters.
 		if (!split && count && !segments[count-1].split_y && segments[count-1].end==first) {
@@ -1308,14 +1410,13 @@ static bool gfx_segment_plan(Epic12Segment *segments, unsigned &count)
 			return true;
 		}
 		if (count==EPIC12_MAX_SEGMENTS) return false;
-		segments[count++]={first,last,initial,split};
+		segments[count++]={first,last,initial,split,precise};
 		return true;
 	};
 	auto flush=[&](UINT32 end) {
 		if (!append(run,end,run_clip,run_pixels>=180000)) return false;
 		if (run_pixels) {
-			reads=Epic12TileMap{};
-			writes=Epic12TileMap{};
+			if (!relaxed) {reads=Epic12TileMap{};writes=Epic12TileMap{};}
 			run_pixels=0;
 		}
 		run=end;
@@ -1358,7 +1459,7 @@ static bool gfx_segment_plan(Epic12Segment *segments, unsigned &count)
 				// geometry retain full serial pixel order and original clip.
 				const bool self=safe && (f.rx0>>5)<=(f.x1>>5) && (f.x0>>5)<=(f.rx1>>5)
 					&& (f.ry0>>5)<=(f.y1>>5) && (f.y0>>5)<=(f.ry1>>5);
-				if (!safe || self) {
+				if (!safe || (!relaxed && self)) {
 					if (!flush(at) || !append(at,addr,clip,false)) return false;
 					run=addr;
 					run_clip=clip;
@@ -1366,10 +1467,12 @@ static bool gfx_segment_plan(Epic12Segment *segments, unsigned &count)
 				}
 				// Both RAW and WAR need a barrier. Destination/destination
 				// overlap is safe: each lane keeps the original draw order.
-				if (writes.intersects(f.rx0,f.rx1,f.ry0,f.ry1) || reads.intersects(f.x0,f.x1,f.y0,f.y1))
-					if (!flush(at)) return false;
-				reads.add(f.rx0,f.rx1,f.ry0,f.ry1);
-				writes.add(f.x0,f.x1,f.y0,f.y1);
+				if (!relaxed) {
+					if (writes.intersects(f.rx0,f.rx1,f.ry0,f.ry1) || reads.intersects(f.x0,f.x1,f.y0,f.y1))
+						if (!flush(at)) return false;
+					reads.add(f.rx0,f.rx1,f.ry0,f.ry1);
+					writes.add(f.x0,f.x1,f.y0,f.y1);
+				}
 				run_pixels+=UINT64(f.x1-f.x0+1)*(f.y1-f.y0+1);
 				break;
 			}
@@ -1393,8 +1496,13 @@ static bool gfx_exec_segmented()
 {
 	Epic12Segment segments[EPIC12_MAX_SEGMENTS];
 	unsigned count;
-	if (!gfx_segment_plan(segments,count)) return false;
-	unsigned splitCount=0;
+	if (!gfx_segment_plan(segments,count)) {
+		// Only retry lists that otherwise have no parallel ranges.
+		// Uploads and unsafe geometry remain barriers. The range
+		// planner must prove independence for the selected row cut.
+		if (!blitPreciseEnabled || !gfx_segment_plan(segments,count,true)) return false;
+	}
+	unsigned splitCount=0, preciseCount=0;
 	for (unsigned i=0;i<count;i++) {
 		const Epic12Segment &s=segments[i];
 		if (!s.split_y) {
@@ -1404,6 +1512,7 @@ static bool gfx_exec_segmented()
 		// notify publishes this immutable range; join before reusing it,
 		// uploading, or allowing a dependent draw to read the results.
 		++splitCount;
+		preciseCount+=s.precise;
 		blitHelperSegment=&s;
 		blitHelper.notify();
 		gfx_exec_range(s.start,s.end,s.clip,0,s.split_y-1,&epic12_device_blit_delay,true);
@@ -1414,6 +1523,7 @@ static bool gfx_exec_segmented()
 	if (blitProfile) {
 		blitSegmentedJobs.fetch_add(1,std::memory_order_relaxed);
 		blitSegmentedRanges.fetch_add(splitCount,std::memory_order_relaxed);
+		blitLaneRanges.fetch_add(preciseCount,std::memory_order_relaxed);
 	}
 	return true;
 }
@@ -1421,7 +1531,8 @@ static bool gfx_exec_segmented()
 static bool gfx_exec_parallel()
 {
 	Epic12SplitReject why=EPIC12_SPLIT_OTHER;
-	if (!gfx_split_plan(blitSplitY,&why)) {
+	bool precise=false;
+	if (!gfx_split_plan(blitSplitY,&why,&precise)) {
 		if (blitSegmentsEnabled && (why==EPIC12_SPLIT_UPLOAD || why==EPIC12_SPLIT_DEPENDENCY || why==EPIC12_SPLIT_GEOMETRY)
 			&& gfx_exec_segmented()) return true;
 		if (blitProfile) blitSplitReject[why].fetch_add(1,std::memory_order_relaxed);
@@ -1431,6 +1542,7 @@ static bool gfx_exec_parallel()
 	gfx_exec_band(0,blitSplitY-1,&epic12_device_blit_delay,true);
 	blitHelper.notify_wait();
 	epic12_device_blit_delay+=blitHelperDelay;
+	if (precise && blitProfile) blitLaneRanges.fetch_add(1,std::memory_order_relaxed);
 	return true;
 }
 #endif

@@ -250,6 +250,105 @@ static bool SegmentedTest(){
 	return pass;
 }
 
+// Precise row ownership: conservative tiles overlap, but the exact
+// cross-lane read/write rectangles either prove safety or reject it.
+static bool PreciseLaneTest(){
+	const size_t pixels=0x2000*128;
+	std::vector<UINT32> base(pixels),serial(pixels),parallel(pixels);
+	std::vector<UINT16> commands(1<<17);
+	for (auto &p:base) p=Epic12Fast::Expand(UINT16(Random()));
+	m_main_ramsize=commands.size()*2;m_main_rammask=m_main_ramsize-1;
+	m_ram16_copy=commands.data();m_gfx_addr_shadowcopy=0;
+	m_gfx_clip_x_shadowcopy=64;m_gfx_clip_y_shadowcopy=16;m_clip_margin_shadowcopy=0;
+	blitHelper.init(gfx_helper_cb);
+	if (!blitHelper.is_threaded()) return false;
+	bool pass=true;
+	unsigned n=0;
+	auto put=[&](UINT16 v){commands[n++]=v;};
+	auto draw=[&](unsigned mode,int sx,int sy,int dx,int dy,int w,int h){
+		put(0x1000|mode);put(0x9870);put(sx);put(sy);put(dx);put(dy);
+		put(w-1);put(h-1);put(0x74);put(0x9080);
+	};
+	auto reset=[&](){n=0;put(0xc000);put(0);};
+	auto upload=[&](){
+		put(0x2000);put(0);put(0x9999);put(0x9999);put(0);put(0);put(0);put(0);put(Random());
+	};
+	unsigned tested=0;
+	for (unsigned c=0;c<48 && pass;c++){
+		const unsigned scenario=c%4;
+		reset();
+		if(scenario==3)upload();
+		for (unsigned k=0;k<12;k++){
+			const unsigned mode=0x300|((c+k)&7)|(((c+3*k)&7)<<4)|((c&4)?0x800:0);
+			switch(scenario){
+				case 0: // Same coarse X tile, exact rectangles disjoint, Y flip.
+					draw(mode|0x400,1,16,321,16,320,96);break;
+				case 1: // True RAW/WAR dependencies within one lane only.
+					if(k&1)draw(mode,64,16,1024,16,320,96);
+					else draw(mode,1024,16,64,16,320,96);
+					break;
+				case 2: case 3: // Same-row self-overlap, preserve each row's order.
+					draw(mode,64,16,65,16,320,96);break;
+			}
+		}
+		put(0);
+		blitPreciseEnabled=false;
+		int split=0;
+		if (gfx_split_plan(split)) {fprintf(stderr,"legacy tile check unexpectedly accepted %u\n",c);pass=false;break;}
+		serial=base;m_bitmaps=serial.data();epic12_device_blit_delay=0;gfx_exec();
+		const UINT64 delay=epic12_device_blit_delay;
+		parallel=base;m_bitmaps=parallel.data();
+		blitPreciseEnabled=true;
+		epic12_set_perf_enabled(true);
+		blitParallelReady=blitParallelAllowed=blitJobAsync=true;
+		run_blitter_cb();
+		Epic12PerfStats stats={};epic12_get_perf_stats(&stats);
+		if (serial!=parallel || delay!=epic12_device_blit_delay ||
+			stats.parallelJobs!=1 || stats.laneRanges==0 ||
+			stats.segmentedJobs!=(scenario==3?1:0) || blitHelper.ok_to_wait) {
+			fprintf(stderr,"precise row ownership mismatch case=%u split=%llu lanes=%llu segments=%llu\n",c,
+				(unsigned long long)stats.parallelJobs,(unsigned long long)stats.laneRanges,
+				(unsigned long long)stats.segmentedJobs);pass=false;
+		}
+		epic12_set_perf_enabled(false);blitParallelReady=blitParallelAllowed=false;
+		tested++;
+	}
+	// True cross-lane RAW/WAR, including a single self-overlapping
+	// flipped or vertically shifted sprite, cannot run as two bands.
+	for (unsigned c=0;c<8 && pass;c++){
+		reset();
+		for (unsigned k=0;k<12;k++){
+			const unsigned mode=0x300|((c&1)?0x400:0)|((c&2)?0x800:0);
+			if(c&4) {
+				draw(mode,64,16,64,17,320,96);
+			} else {
+				draw(mode|0x400,64,16,64,16,320,96);
+			}
+		}
+		put(0);
+		int split=0;Epic12SplitReject why=EPIC12_SPLIT_OTHER;
+		if(gfx_split_plan(split,&why) || why!=EPIC12_SPLIT_DEPENDENCY) {
+			fprintf(stderr,"unsafe cross-lane list accepted case=%u\n",c);pass=false;break;
+		}
+		parallel=base;m_bitmaps=parallel.data();epic12_device_blit_delay=123;
+		if(gfx_exec_parallel() || parallel!=base || epic12_device_blit_delay!=123) {
+			fprintf(stderr,"unsafe fallback mutated case=%u\n",c);pass=false;
+		}
+	}
+	// A complex list must fall back when exact rectangle storage is
+	// exhausted, rather than accepting a partially checked list.
+	if(pass){
+		reset();
+		for(unsigned k=0;k<Epic12ExactSet::Limit+1;k++) draw(0,64,16,65,16,32,96);
+		put(0);int split=0;
+		if(gfx_split_plan(split))pass=false;
+	}
+	blitHelper.exit();
+	blitPreciseEnabled=true;
+	if(pass)printf("EPIC12 exact cross-lane ownership: %u differential lists, 8 true hazards and bounded scratch PASS\n",tested);
+	return pass;
+}
+
 #endif
 int main(){
 	Tables();
@@ -260,12 +359,15 @@ int main(){
 		epic12_device_f1_ti1_tr0_blit_funcs,epic12_device_f1_ti1_tr1_blit_funcs};
 	unsigned cases=0;
 	rectangle clip;clip.set(0,0x1fff,0,2);
-	for(unsigned group=0;group<8;group++)for(unsigned mode=0;mode<64;mode++)for(unsigned c=0;c<8;c++){
+	for(unsigned group=0;group<8;group++)for(unsigned mode=0;mode<64;mode++)for(unsigned c=0;c<16;c++){
 		for(unsigned i=0;i<sizeof(original)/sizeof(original[0]);i++)original[i]=Epic12Fast::Expand(uint16_t(c%4==1 ? Random()&0x7fff : c%4==2 ? Random()|0x8000 : Random()));
 		memcpy(scalar,original,sizeof(scalar));memcpy(vectorized,original,sizeof(vectorized));
 		// Non-overlapping rows, horizontal overlap and exact alias.
-		int width=1+Random()%129,srcx=128+Random()%32,dstx=c%4==0?srcx+(int(c%7)-3):512;
-		int srcy=1,dsty=c%4==0?1:0;
+		static const int overlapOffsets[]={-9,-4,-1,0,1,3,4,7};
+		const bool overlap=c>=8 || c%4==0;
+		int width=c>=8?31+Random()%99:1+Random()%129,srcx=128+Random()%32;
+		int dstx=c>=8?srcx+overlapOffsets[c-8]:overlap?srcx+(int(c%7)-3):512;
+		int srcy=1,dsty=overlap?1:0;
 		int flipy=0,height=1;
 		clr_t tint={uint8_t(Random()%64),uint8_t(Random()%64),uint8_t(Random()%64),0};
 		uint8_t sa=Random()%32,da=Random()%32;
@@ -281,7 +383,10 @@ int main(){
 	}
 	printf("EPIC12 real scalar/NEON blitter: %u cases PASS (all 512 blend variants)\n",cases);
 #if THREADY == THREADY_PTHREAD
+	blitPreciseEnabled=false; // Preserve legacy acceptance/rejection fixtures.
 	if(!ParallelTest())return 2;
 	if(!SegmentedTest())return 3;
+	blitPreciseEnabled=true;
+	if(!PreciseLaneTest())return 4;
 #endif
 }

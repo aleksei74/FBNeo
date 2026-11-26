@@ -73,7 +73,13 @@ inline size_t BlendRow(uint32_t *dst,const uint32_t *src,size_t n,
 	const uintptr_t d=(uintptr_t)dst;
 	const uintptr_t s=(uintptr_t)(Flip?src-(n-1):src);
 	const uintptr_t bytes=n*sizeof(uint32_t);
-	if(d>s?d-s<bytes:s-d<bytes)return 0;
+	const bool overlap=d>s?d-s<bytes:s-d<bytes;
+	// A forward row preserves scalar ordering in each four-pixel group
+	// when writes are at/before reads, or at least four pixels ahead.
+	// A subsequent group still sees prior stores; never use a whole-row
+	// snapshot for a positive overlapping offset. Reversed overlap and
+	// a 1..3-pixel forward hazard remain scalar.
+	if(overlap && (Flip || (d>s && d-s<4*sizeof(uint32_t))))return 0;
 	const size_t count=n&~size_t(3);
 	uint8x16x2_t stable,dtable,square,invsquare;
 	if (Blend && (SM==0 || SM==4)) stable=Load5Table(lut[SM==4?sa^31:sa]);
@@ -137,8 +143,12 @@ inline void CopyRow(uint32_t *dst,const uint32_t *src,size_t n,bool transparent)
 	const size_t bytes=n*sizeof(uint32_t);
 	if (!Flip && d==s) return;
 	const bool overlap=d>s ? d-s<bytes : s-d<bytes;
-	if (!overlap) {
-		if (!Flip && !transparent) { memcpy(dst,src,bytes); return; }
+	if (!Flip && !transparent && (!overlap || d<s)) {
+		if (overlap) memmove(dst,src,bytes);
+		else memcpy(dst,src,bytes);
+		return;
+	}
+	if (!overlap || (!Flip && (d<s || d-s>=4*sizeof(uint32_t)))) {
 #if EPIC12_NEON
 		const uint32x4_t flag=vdupq_n_u32(0x20000000);
 		const uint32_t *start=src;
