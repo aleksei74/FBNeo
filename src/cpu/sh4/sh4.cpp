@@ -4037,12 +4037,14 @@ static bool cv1kFlatEnabled = false;
 static bool cv1kCompactEnabled = false;
 static bool cv1kBatchEnabled = false;
 static bool cv1kHybridEnabled = false;
+static bool cv1kLoopEnabled = false;
 #if SH3_FLAT_DISPATCH
 static bool cv1kCompactActive = false;
 static bool cv1kBatchActive = false;
 #endif
 static UINT64 cv1kNativeOps, cv1kNativeSpans, cv1kNativeBuilt;
 static UINT64 cv1kNativeMisses, cv1kNativeRejected, cv1kNativeFull;
+static UINT64 cv1kLoopAttempts, cv1kLoopHits, cv1kLoopOps;
 #if SH3_NATIVE
 static_assert(SH3_SHIFT==16 && SH3_MAXHANDLER==8 && AM==0x1fffffff && T==1,
 	"native SH3 guards must match the interpreter");
@@ -4050,7 +4052,8 @@ struct Cv1kSpan {
 	UINT32 pc, offset;
 	UINT16 ops[Sh3Native::MaxOps];
 	UINT8 count, checked, hot, shortExits;
-	bool valid;
+	UINT8 body;
+	bool valid, loop, delay;
 };
 static const unsigned Cv1kSets=8192, Cv1kWays=4, Cv1kHot=8, Cv1kMin=8;
 struct Cv1kSet {
@@ -4058,6 +4061,8 @@ struct Cv1kSet {
 	UINT8 next;
 };
 static Cv1kSet cv1kSets[Cv1kSets];
+// A tagged front cache only skips the associative search, never validation.
+static Cv1kSpan *cv1kFast[1024];
 static Sh3Native::Cache cv1kCode;
 static bool cv1kCodeFull;
 
@@ -4117,17 +4122,19 @@ static void Cv1kSamplePC()
 static bool Cv1kTryNative(UINT16 opcode)
 {
 	if (!Sh3Native::Candidate(opcode) || cv1kCode.Denied() || m_test_irq ||
-		m_sh4_icount < INT32(Cv1kMin) || (m_pc & 1)) return false;
+		m_delay || m_sh4_icount < INT32(Cv1kMin) || (m_pc & 1)) return false;
 	const UINT32 pc=m_pc&AM, inpage=pc&SH3_PAGEM;
 	const UINT8 *page=MemMapF[pc>>SH3_SHIFT];
 	if ((uintptr_t)page<SH3_MAXHANDLER) return false;
 	const UINT16 *code=(const UINT16 *)(page+inpage);
 	unsigned available=(SH3_PAGE_SIZE-inpage)/2;
-	if (available<Cv1kMin) return false;
+	if (available<(cv1kLoopEnabled?2:Cv1kMin)) return false;
 	if (available>Sh3Native::MaxOps) available=Sh3Native::MaxOps;
 	Cv1kSet &set=cv1kSets[Cv1kHash(pc)];
-	Cv1kSpan *slot=NULL;
-	for (unsigned i=0;i<Cv1kWays;i++) {
+	const unsigned fast=(pc>>1)&1023;
+	Cv1kSpan *slot=cv1kLoopEnabled?cv1kFast[fast]:NULL;
+	if(slot && (!slot->checked || slot->pc!=pc))slot=NULL;
+	for (unsigned i=0;!slot && i<Cv1kWays;i++) {
 		Cv1kSpan &w=set.ways[i];
 		if(w.checked && w.pc==pc) {slot=&w;break;}
 	}
@@ -4144,6 +4151,7 @@ static bool Cv1kTryNative(UINT16 opcode)
 		*slot={};slot->pc=pc;slot->checked=1;slot->ops[0]=opcode;slot->hot=1;
 		return false;
 	}
+	if(cv1kLoopEnabled)cv1kFast[fast]=slot;
 	Cv1kSpan &b=*slot;
 	if(b.checked>available || memcmp(b.ops,code,b.checked*sizeof(UINT16))) {
 		b={};b.pc=pc;b.checked=1;b.ops[0]=opcode;b.hot=1;
@@ -4157,26 +4165,72 @@ static bool Cv1kTryNative(UINT16 opcode)
 		unsigned n=0;
 		while(n<available && Sh3Native::Candidate(code[n])) n++;
 		b.checked=n<available?n+1:n;
+		unsigned regs=0;
+		bool delay=false;
+		bool loop=cv1kLoopEnabled && n>0 && n<available &&
+			Sh3Native::LoopBranch(code[n],n,delay);
+		if(loop && delay) {
+			loop=n+1<available && Sh3Native::Candidate(code[n+1]) && !Sh3Native::MemoryOp(code[n+1]);
+			// Include a rejected slot in the negative-cache validation too.
+			if(n+1<available)b.checked=n+2;
+		}
+		if(loop) {
+			for(unsigned i=0;i<n;i++)regs|=Sh3Native::Registers(code[i]);
+			if(delay)regs|=Sh3Native::Registers(code[n+1]);
+			loop=__builtin_popcount(regs)<=7;
+		}
 		memcpy(b.ops,code,b.checked*sizeof(UINT16));
 		b.hot=Cv1kHot+1;
-		if(n<Cv1kMin){cv1kNativeRejected++;return false;}
+		// Mode 3 spends call/validation overhead on closed loops or longer
+		// spans; modes 1/2 retain their original A/B policy.
+		const unsigned min=cv1kLoopEnabled?16:Cv1kMin;
+		if(!loop && n<min){cv1kNativeRejected++;return false;}
 		UINT32 words[Sh3Native::MaxWords];
 		Sh3Native::Emitter emit(words);
+		if(loop)emit.BeginLoop(regs);
 		unsigned count=0;
 		for(;count<n;count++) if(!emit.Emit(code[count],count))break;
-		if(count<Cv1kMin){cv1kNativeRejected++;return false;}
-		emit.Finish(count);
+		if(count!=n || (!loop && count<min)){cv1kNativeRejected++;return false;}
+		if(loop)emit.EndLoop(code[n],delay?code[n+1]:0,n,delay);
+		else emit.Finish(count);
 		if(!cv1kCode.Publish(words,emit.End()-words,b.offset)){
 			// No repeated global resets or mprotect storms under pressure:
 			// retain published code, interpret every new site when full.
 			cv1kCodeFull=true;cv1kNativeFull++;
 			return false;
 		}
-		b.count=count;b.valid=true;cv1kNativeBuilt++;
+		b.body=n;b.loop=loop;b.delay=delay;
+		b.count=loop?n+1+unsigned(delay):count;b.valid=true;cv1kNativeBuilt++;
 	}
 	if(b.count>m_sh4_icount)return false;
-	const unsigned done=cv1kCode.Run(b.offset,m_r,&m_sr,&m_ea,MemMapR,MemMapRL,MemMapW,code,b.count*sizeof(UINT16));
+	unsigned iterations=0;
+	if(b.loop) {
+		cv1kLoopAttempts++;
+		iterations=unsigned(m_sh4_icount)/(b.body+3);
+		// Amortize entry costs; bound the packed result independently of
+		// caller budget. Short tails retain original branch/IRQ semantics.
+		if(iterations<2)return false;
+		if(iterations>65535)iterations=65535;
+	}
+	unsigned done=cv1kCode.Run(b.offset,m_r,&m_sr,&m_ea,MemMapR,MemMapRL,MemMapW,code,b.count*sizeof(UINT16),iterations,m_pc);
 	cv1kNativeSpans++;
+	unsigned spent=done;
+	UINT32 next=m_pc+done*2,ppc=next;
+	if(b.loop) {
+		const unsigned laps=done>>8,exit=done&255;
+		done=laps*b.count;spent=laps*(b.body+3);
+		if(exit==65) {
+			done+=b.count;spent+=b.count;
+			next=m_pc+b.count*2;ppc=next;
+		} else if(exit==64 || exit==0) {
+			next=m_pc;
+			ppc=laps?(b.delay?m_pc:m_pc+(b.body+1)*2):m_ppc;
+		} else {
+			done+=exit;spent+=exit;
+			next=m_pc+exit*2;ppc=next;
+		}
+		if(done){cv1kLoopHits++;cv1kLoopOps+=done;}
+	}
 	// Do not call the same generated code indefinitely if a hot MMIO
 	// or alignment guard repeatedly leaves less than a useful span.
 	if (done < Cv1kMin) {
@@ -4187,7 +4241,7 @@ static bool Cv1kTryNative(UINT16 opcode)
 		}
 	} else b.shortExits = 0;
 	if(!done)return false;
-	m_pc+=done*2;m_ppc=m_pc;EAT(done);
+	m_pc=next;m_ppc=ppc;EAT(spent);
 	cv1kNativeOps+=done;
 	return true;
 }
@@ -4195,15 +4249,17 @@ static bool Cv1kTryNative(UINT16 opcode)
 
 void Sh3SetCv1kNative(INT32 enable)
 {
-	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = false;
+	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = cv1kLoopEnabled = false;
 #if SH3_FLAT_DISPATCH
 	cv1kCompactActive=cv1kBatchActive=false;
 #endif
 	cv1kNativeOps=cv1kNativeSpans=cv1kNativeBuilt=0;
 	cv1kNativeMisses=cv1kNativeRejected=cv1kNativeFull=0;
+	cv1kLoopAttempts=cv1kLoopHits=cv1kLoopOps=0;
 #if SH3_NATIVE
 	cv1kCode.Reset();cv1kCode.Enable();cv1kCodeFull=false;
 	memset(cv1kSets,0,sizeof(cv1kSets));
+	memset(cv1kFast,0,sizeof(cv1kFast));
 	const char *sample=getenv("FBNEO_CV1K_HOTPCS");
 	cv1kSampleEnabled=enable && sample && !strcmp(sample,"1");
 	cv1kSamples=cv1kSampleDropped=0;
@@ -4215,10 +4271,11 @@ void Sh3SetCv1kNative(INT32 enable)
 	// Actual RK3566 trace showed significant short-span overhead. Do not
 	// automatically enable experimental JIT on any CPU until measured.
 	const char *option=getenv("FBNEO_CV1K_JIT");
-	cv1kNativeEnabled=enable && option && (!strcmp(option,"1") || !strcmp(option,"2"));
-	cv1kHybridEnabled=cv1kNativeEnabled && !strcmp(option,"2");
+	cv1kNativeEnabled=enable && option && (!strcmp(option,"1") || !strcmp(option,"2") || !strcmp(option,"3"));
+	cv1kLoopEnabled=cv1kNativeEnabled && !strcmp(option,"3");
+	cv1kHybridEnabled=cv1kNativeEnabled && (cv1kLoopEnabled || !strcmp(option,"2"));
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 native spans: %s (opt-in, hot >=8 ops)\n"),
-		cv1kNativeEnabled?(cv1kHybridEnabled?_T("hybrid"):_T("enabled")):_T("disabled"));
+		cv1kNativeEnabled?(cv1kLoopEnabled?_T("closed loops (JIT=3)"):cv1kHybridEnabled?_T("hybrid"):_T("enabled")):_T("disabled"));
 #endif
 #if SH3_FLAT_DISPATCH
 	const char *flat=getenv("FBNEO_CV1K_DISPATCH");
@@ -4234,7 +4291,7 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kBatchEnabled=cv1kFlatEnabled && cv1kCompactEnabled && (!batch || strcmp(batch,"0")!=0);
 	// Hybrid mode uses the batched interpreter between native blocks.
 	if (cv1kHybridEnabled && !cv1kBatchEnabled)
-		cv1kHybridEnabled=cv1kNativeEnabled=false;
+		cv1kLoopEnabled=cv1kHybridEnabled=cv1kNativeEnabled=false;
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 batched dispatch: %s\n"),
 		cv1kBatchEnabled?_T("enabled"):_T("disabled"));
 #else
@@ -4250,6 +4307,11 @@ void Sh3Cv1kCacheStats(UINT64 *misses, UINT64 *rejected, UINT64 *full)
 void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built)
 {
 	*instructions = cv1kNativeOps; *spans = cv1kNativeSpans; *built = cv1kNativeBuilt;
+}
+
+void Sh3Cv1kLoopStats(UINT64 *attempts, UINT64 *hits, UINT64 *instructions)
+{
+	*attempts=cv1kLoopAttempts;*hits=cv1kLoopHits;*instructions=cv1kLoopOps;
 }
 
 template<bool Native> static int Sh3Run_timerhack_switch(int cycles)

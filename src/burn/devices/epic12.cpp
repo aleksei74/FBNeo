@@ -12,6 +12,7 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "thready.h"
 #include "rectangle.h"
 #include "epic12_fast.h"
+#include "epic12_packed.h"
 #include <chrono>
 #include <atomic>
 #include <math.h> // floor()
@@ -62,6 +63,7 @@ static int m_clip_margin_shadowcopy;
 
 static int m_gfx_size;
 static UINT32 *m_bitmaps;
+static UINT16 *m_bitmaps16; // optional native RGB555 + flag storage
 static rectangle m_clip;
 
 static UINT64 epic12_device_blit_delay;
@@ -310,11 +312,11 @@ static bool blitProfile = false;
 static UINT64 blitSubmitWaitNs, blitShadowNs, blitSyncNs, blitJobs, blitAsyncJobs;
 static std::atomic<UINT64> blitWorkerNs{0}, blitParallelJobs{0}, blitParallelFallback{0};
 static std::atomic<UINT64> blitSplitReject[EPIC12_SPLIT_REASONS];
-static std::atomic<UINT64> blitSegmentedJobs{0}, blitSegmentedRanges{0}, blitLaneRanges{0};
+static std::atomic<UINT64> blitSegmentedJobs{0}, blitSegmentedRanges{0}, blitLaneRanges{0}, blitTileJobs{0}, blitTilePhases{0}, blitTileDraws{0};
 #if EPIC12_NEON && THREADY == THREADY_PTHREAD
 static threadystruct blitHelper;
 static bool blitParallelReady, blitParallelAllowed;
-static bool blitSegmentsEnabled=true, blitPreciseEnabled=true;
+static bool blitSegmentsEnabled=true, blitPreciseEnabled=true, blitTilesEnabled=false;
 static int blitSplitY;
 static UINT64 blitHelperDelay;
 static void gfx_helper_cb();
@@ -338,6 +340,9 @@ void epic12_set_perf_enabled(bool enabled)
 	blitSegmentedJobs.store(0,std::memory_order_relaxed);
 	blitSegmentedRanges.store(0,std::memory_order_relaxed);
 	blitLaneRanges.store(0,std::memory_order_relaxed);
+	blitTileJobs.store(0,std::memory_order_relaxed);
+	blitTilePhases.store(0,std::memory_order_relaxed);
+	blitTileDraws.store(0,std::memory_order_relaxed);
 	blitJobAsync=false;
 }
 
@@ -346,7 +351,8 @@ void epic12_get_perf_stats(Epic12PerfStats *stats)
 	*stats={blitSubmitWaitNs,blitShadowNs,blitSyncNs,
 		blitWorkerNs.load(std::memory_order_relaxed),blitJobs,blitAsyncJobs,
 		blitParallelJobs.load(std::memory_order_relaxed),blitParallelFallback.load(std::memory_order_relaxed),{},
-		blitSegmentedJobs.load(std::memory_order_relaxed),blitSegmentedRanges.load(std::memory_order_relaxed),blitLaneRanges.load(std::memory_order_relaxed)};
+		blitSegmentedJobs.load(std::memory_order_relaxed),blitSegmentedRanges.load(std::memory_order_relaxed),blitLaneRanges.load(std::memory_order_relaxed),
+		blitTileJobs.load(std::memory_order_relaxed),blitTilePhases.load(std::memory_order_relaxed),blitTileDraws.load(std::memory_order_relaxed)};
 	for (unsigned i=0;i<EPIC12_SPLIT_REASONS;i++) stats->splitReject[i]=blitSplitReject[i].load(std::memory_order_relaxed);
 }
 
@@ -387,6 +393,7 @@ void epic12_exit()
 #endif
 
 	BurnFree(m_bitmaps);
+	BurnFree(m_bitmaps16);
 	BurnFree(m_ram16_copy);
 
 	if (pal16) {
@@ -412,7 +419,16 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	dips = dippy;
 
 	m_gfx_size = 0x2000 * 0x1000;
-	m_bitmaps = (UINT32*)BurnMalloc (m_gfx_size * 4);
+	// Compact VRAM is opt-in until an RK3566 A/B test establishes
+	// speed and real-game correctness. Limit to libretro: its state
+	// callback consumes a byte stream, not named standalone areas.
+#if defined(__LIBRETRO__) && EPIC12_NEON
+	const char *packed=getenv("FBNEO_CV1K_VRAM16");
+	if (packed && !strcmp(packed,"1"))
+		m_bitmaps16=(UINT16*)BurnMalloc(m_gfx_size*2);
+#endif
+	if (!m_bitmaps16) m_bitmaps=(UINT32*)BurnMalloc(m_gfx_size*4);
+	bprintf(PRINT_UI,_T("CV1000 EPIC12 VRAM: %s\n"),m_bitmaps16?_T("16-bit packed (experimental)"):_T("32-bit expanded"));
 
 	m_clip.set(0, 0x2000-1, 0, 0x1000-1);
 
@@ -440,6 +456,8 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	const char *parallel=getenv("FBNEO_CV1K_BLIT_PARALLEL");
 	const char *segments=getenv("FBNEO_CV1K_BLIT_SEGMENTS");
 	const char *precise=getenv("FBNEO_CV1K_BLIT_PRECISE");
+	const char *tiles=getenv("FBNEO_CV1K_BLIT_TILES");
+	blitTilesEnabled=tiles && !strcmp(tiles,"1");
 	blitPreciseEnabled=!precise || strcmp(precise,"0")!=0;
 	blitSegmentsEnabled=!segments || strcmp(segments,"0")!=0;
 	blitParallelReady=false;
@@ -451,6 +469,7 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 safe row parallel: %s\n"),blitParallelReady?_T("enabled"):_T("disabled"));
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 segmented parallel: %s\n"),(blitParallelReady && blitSegmentsEnabled)?_T("enabled"):_T("disabled"));
 	bprintf(PRINT_UI,_T("CV1000 EPIC12 exact cross-lane hazards: %s\n"),(blitParallelReady && blitPreciseEnabled)?_T("enabled"):_T("disabled"));
+	bprintf(PRINT_UI,_T("CV1000 EPIC12 tile command scheduling: %s\n"),(blitParallelReady && blitTilesEnabled)?_T("enabled (experimental)"):_T("disabled"));
 #endif
 
 	sh4_set_cave_blitter_delay_func(blitter_delay_callback);
@@ -608,17 +627,17 @@ static void gfx_upload(UINT32 *addr)
 	for (y = 0; y < dimy; y++)
 	{
 		//dst = &m_bitmaps->pix(dst_y_start + y, 0);
-		dst = m_bitmaps + (dst_y_start + y) * 0x2000;
-
-		dst += dst_x_start;
+		const size_t offset=size_t(dst_y_start+y)*0x2000+dst_x_start;
+		dst=m_bitmaps16?nullptr:m_bitmaps+offset;
+		UINT16 *packed=m_bitmaps16?m_bitmaps16+offset:nullptr;
 
 		UINT32 left = dimx;
 		while (left) {
 			const UINT32 at = (*addr & m_main_rammask) >> 1;
 			const UINT32 available = (m_main_ramsize >> 1) - at;
 			const UINT32 n = left < available ? left : available;
-			Epic12Fast::Upload(dst, m_ram16_copy + at, n);
-			dst += n;
+			if (packed) {memcpy(packed,m_ram16_copy+at,n*sizeof(UINT16));packed+=n;}
+			else {Epic12Fast::Upload(dst,m_ram16_copy+at,n);dst+=n;}
 			*addr += n * 2;
 			left -= n;
 		}
@@ -1483,13 +1502,172 @@ static bool gfx_segment_plan(Epic12Segment *segments, unsigned &count, bool rela
 	return false;
 }
 
+// An alternative to slicing every draw into the same horizontal bands.
+// Assign COMPLETE draws to two lanes based on 32x32 tile broad-phase
+// and exact rectangle dependencies (RAW, WAR, WAW). A draw with
+// self-overlap/flip remains in one lane in the original pixel order.
+// Only join when neither lane can accept the next command. This is
+// command-level tile ownership, not a speculative pixel reorder.
+struct Epic12TileDraw {
+	UINT32 addr;
+	rectangle clip;
+	unsigned lane;
+};
+struct Epic12TilePhase {
+	UINT32 start,end;
+	rectangle clip;
+	unsigned first,last;
+	bool parallel;
+};
+struct Epic12TilePlan {
+	static const unsigned MaxDraws=8192,MaxPhases=64;
+	Epic12TileDraw draws[MaxDraws];
+	Epic12TilePhase phases[MaxPhases];
+	unsigned drawCount=0,phaseCount=0;
+};
+static const Epic12TilePlan *blitHelperTiles;
+static const Epic12TilePhase *blitHelperTilePhase;
+
+static bool gfx_tile_plan(Epic12TilePlan &plan)
+{
+	plan.drawCount=plan.phaseCount=0;
+	const UINT32 start=m_gfx_addr_shadowcopy&0x1fffffff;
+	UINT32 addr=start,run=start;
+	rectangle clip=gfx_initial_clip(),runClip=clip;
+	Epic12ExactSet reads[2],writes[2];
+	UINT64 work[2]={};
+	unsigned first=0,budget=262144;
+	bool profitable=false;
+	auto append=[&](UINT32 a,UINT32 b,const rectangle &c,unsigned f,unsigned l,bool parallel){
+		if(a==b)return true;
+		if(!parallel && plan.phaseCount && !plan.phases[plan.phaseCount-1].parallel &&
+			plan.phases[plan.phaseCount-1].end==a) {
+			plan.phases[plan.phaseCount-1].end=b;return true;
+		}
+		if(plan.phaseCount==Epic12TilePlan::MaxPhases)return false;
+		plan.phases[plan.phaseCount++]={a,b,c,f,l,parallel};
+		profitable|=parallel;
+		return true;
+	};
+	auto flush=[&](UINT32 end){
+		const UINT64 sum=work[0]+work[1],small=MIN(work[0],work[1]);
+		const bool parallel=sum>=90000 && small>=24000 && small>=sum/4;
+		if(!append(run,end,runClip,first,plan.drawCount,parallel))return false;
+		run=end;runClip=clip;first=plan.drawCount;
+		for(unsigned lane=0;lane<2;lane++){
+			work[lane]=0;
+			reads[lane].count=writes[lane].count=0;
+			reads[lane].tiles=Epic12TileMap{};writes[lane].tiles=Epic12TileMap{};
+		}
+		return true;
+	};
+	for(unsigned cmd=0;cmd<8192;cmd++){
+		const UINT32 at=addr;
+		if(addr-start+2>UINT32(m_main_ramsize))return false;
+		const UINT16 attr=READ_NEXT_WORD(&addr);
+		const unsigned type=attr&0xf000;
+		const unsigned bytes=type==0x1000?18:type==0x2000?14:type==0xc000?2:0;
+		if(addr-start+bytes>UINT32(m_main_ramsize))return false;
+		switch(type){
+			case 0:case 0xf000:return flush(at)&&profitable;
+			case 0xc000:
+				if(READ_NEXT_WORD(&addr))clip=gfx_initial_clip();
+				else clip.set(0,0x1fff,0,0x0fff);
+				break;
+			case 0x2000:{
+				addr+=6;
+				const unsigned x=READ_NEXT_WORD(&addr)&0x1fff,y=READ_NEXT_WORD(&addr)&0xfff;
+				const unsigned w=(READ_NEXT_WORD(&addr)&0x1fff)+1,h=(READ_NEXT_WORD(&addr)&0xfff)+1;
+				if(x+w>0x2000 || y+h>0x1000 || addr-start+w*h*2>UINT32(m_main_ramsize))return false;
+				addr+=w*h*2;
+				if(!flush(at)||!append(at,addr,clip,0,0,false))return false;
+				run=addr;runClip=clip;break;
+			}
+			case 0x1000:{
+				Epic12Footprint f;
+				const bool safe=gfx_draw_footprint(addr,attr,clip,f);
+				if(f.empty)break;
+				if(!safe){
+					if(!flush(at)||!append(at,addr,clip,0,0,false))return false;
+					run=addr;runClip=clip;break;
+				}
+				const Epic12ExactRect r={UINT16(f.rx0),UINT16(f.rx1),UINT16(f.ry0),UINT16(f.ry1)};
+				const Epic12ExactRect w={UINT16(f.x0),UINT16(f.x1),UINT16(f.y0),UINT16(f.y1)};
+				auto allowed=[&](unsigned lane){
+					const unsigned other=1-lane;
+					return reads[lane].count<Epic12ExactSet::Limit && writes[lane].count<Epic12ExactSet::Limit &&
+						writes[other].clear_of(r,budget) && reads[other].clear_of(w,budget) &&
+						writes[other].clear_of(w,budget);
+				};
+				unsigned lane=work[0]<=work[1]?0:1;
+				if(!allowed(lane)){
+					lane=1-lane;
+					if(!allowed(lane)){
+						if(!budget||!flush(at))return false;
+						lane=0;
+					}
+				}
+				if(!budget||plan.drawCount==Epic12TilePlan::MaxDraws ||
+					!reads[lane].add(r)||!writes[lane].add(w))return false;
+				plan.draws[plan.drawCount++]={at,clip,lane};
+				work[lane]+=UINT64(f.x1-f.x0+1)*(f.y1-f.y0+1)*f.weight;
+				break;
+			}
+			default:return false;
+		}
+	}
+	return false;
+}
+
+static void gfx_tile_execute_lane(const Epic12TilePlan &plan,const Epic12TilePhase &phase,
+	unsigned lane,UINT64 *delay)
+{
+	for(unsigned i=phase.first;i<phase.last;i++){
+		const auto &d=plan.draws[i];
+		if(d.lane!=lane)continue;
+		UINT32 addr=d.addr;
+		gfx_draw(&addr,&d.clip,delay);
+	}
+}
+
 static void gfx_helper_cb()
 {
 	blitHelperDelay=0;
+	if(blitHelperTiles){
+		gfx_tile_execute_lane(*blitHelperTiles,*blitHelperTilePhase,1,&blitHelperDelay);
+		return;
+	}
 	if (blitHelperSegment) {
 		const Epic12Segment &s=*blitHelperSegment;
 		gfx_exec_range(s.start,s.end,s.clip,s.split_y,0x0fff,&blitHelperDelay,true);
 	} else gfx_exec_band(blitSplitY,0x0fff,&blitHelperDelay,true);
+}
+
+static bool gfx_exec_tiles()
+{
+	Epic12TilePlan plan;
+	if(!gfx_tile_plan(plan))return false;
+	unsigned phases=0,draws=0;
+	for(unsigned i=0;i<plan.phaseCount;i++){
+		const auto &p=plan.phases[i];
+		if(!p.parallel){
+			gfx_exec_range(p.start,p.end,p.clip,0,0x0fff,&epic12_device_blit_delay,false);
+			continue;
+		}
+		phases++;draws+=p.last-p.first;
+		blitHelperTiles=&plan;blitHelperTilePhase=&p;
+		blitHelper.notify();
+		gfx_tile_execute_lane(plan,p,0,&epic12_device_blit_delay);
+		blitHelper.notify_wait();
+		epic12_device_blit_delay+=blitHelperDelay;
+		blitHelperTiles=nullptr;blitHelperTilePhase=nullptr;
+	}
+	if(blitProfile){
+		blitTileJobs.fetch_add(1,std::memory_order_relaxed);
+		blitTilePhases.fetch_add(phases,std::memory_order_relaxed);
+		blitTileDraws.fetch_add(draws,std::memory_order_relaxed);
+	}
+	return true;
 }
 
 static bool gfx_exec_segmented()
@@ -1533,8 +1711,14 @@ static bool gfx_exec_parallel()
 	Epic12SplitReject why=EPIC12_SPLIT_OTHER;
 	bool precise=false;
 	if (!gfx_split_plan(blitSplitY,&why,&precise)) {
+		// Prefer tile ownership for dependency-heavy lists when selected.
+		// Unprofitable plans make no changes; retain existing fast paths.
+		if(blitTilesEnabled && (why==EPIC12_SPLIT_DEPENDENCY || why==EPIC12_SPLIT_BALANCE)
+			&& gfx_exec_tiles())return true;
 		if (blitSegmentsEnabled && (why==EPIC12_SPLIT_UPLOAD || why==EPIC12_SPLIT_DEPENDENCY || why==EPIC12_SPLIT_GEOMETRY)
 			&& gfx_exec_segmented()) return true;
+		if(blitTilesEnabled && (why==EPIC12_SPLIT_UPLOAD || why==EPIC12_SPLIT_SMALL)
+			&& gfx_exec_tiles())return true;
 		if (blitProfile) blitSplitReject[why].fetch_add(1,std::memory_order_relaxed);
 		return false;
 	}
@@ -1630,10 +1814,11 @@ static void gfx_exec_write(UINT32 data)
 static void pal16_check_init()
 {
 	if (nBurnBpp < 3 && !pal16) {
-		pal16 = (UINT16 *)BurnMalloc((1 << 24) * sizeof (UINT16));
-
-		for (INT32 i = 0; i < (1 << 24); i++) {
-			pal16[i] = BurnHighCol(i / 0x10000, (i / 0x100) & 0xff, i & 0xff, 0);
+		// Valid device colors are RGB555, not arbitrary RGB888.
+		pal16=(UINT16*)BurnMalloc(32768*sizeof(UINT16));
+		for (INT32 i=0;i<32768;i++) {
+			const UINT32 p=Epic12Fast::Expand(UINT16(i));
+			pal16[i]=BurnHighCol((p>>16)&255,(p>>8)&255,p&255,0);
 		}
 	}
 }
@@ -1650,7 +1835,9 @@ static void epic12_draw_screen16_24bpp()
 
 	for (INT32 y = 0; y < nScreenHeight; y++)
 	{
-		UINT32 *s0 = &src[((y - scrolly) & heightmask) * 0x2000];
+		const size_t row=((y-scrolly)&heightmask)*0x2000;
+		const UINT32 *s0=m_bitmaps16?nullptr:src+row;
+		const UINT16 *p0=m_bitmaps16?m_bitmaps16+row:nullptr;
 		INT32 sx;
 
 		switch (nBurnBpp) {
@@ -1658,14 +1845,14 @@ static void epic12_draw_screen16_24bpp()
 				for (INT32 x = 0; x < nScreenWidth; x++, dst += nBurnBpp)
 				{
 					sx = x - scrollx;
-					PutPix(dst, pal16[s0[sx & widthmask]&((1<<24)-1)]);
+					PutPix(dst,pal16[(p0?p0[sx&widthmask]:Epic12Packed::Pack(s0[sx&widthmask]))&0x7fff]);
 				}
 				break;
 			case 3: // 24bpp
 				for (INT32 x = 0; x < nScreenWidth; x++, dst += nBurnBpp)
 				{
 					sx = x - scrollx;
-					PutPix(dst, s0[sx & widthmask]);
+					PutPix(dst,p0?Epic12Fast::Expand(p0[sx&widthmask]):s0[sx&widthmask]);
 				}
 				break;
 		}
@@ -1694,14 +1881,17 @@ void epic12_draw_screen(UINT8 &recalc_palette)
 
 	for (INT32 y = 0; y < nScreenHeight; y++)
 	{
-		UINT32 *s0 = &src[((y - scrolly) & heightmask) * 0x2000];
+		const size_t row=((y-scrolly)&heightmask)*0x2000;
+		const UINT32 *s0=m_bitmaps16?nullptr:src+row;
+		const UINT16 *p0=m_bitmaps16?m_bitmaps16+row:nullptr;
 		UINT32 *d0 = dst + (y * nScreenWidth);
 		UINT32 sx = UINT32(-scrollx) & widthmask;
 		INT32 left = nScreenWidth;
 		while (left > 0) {
 			const INT32 available = 0x2000 - sx;
 			const INT32 n = left < available ? left : available;
-			memcpy(d0, s0 + sx, n * sizeof(UINT32));
+			if (p0) Epic12Packed::ExpandRow(d0,p0+sx,n);
+			else memcpy(d0,s0+sx,n*sizeof(UINT32));
 			d0 += n;
 			left -= n;
 			sx = 0;
@@ -1779,6 +1969,25 @@ void epic12_blitter_write(UINT32 offset, UINT32 data)
 	}
 }
 
+// Libretro state callbacks concatenate areas in order. Emit the same
+// expanded byte stream in bounded chunks, not a 128 MiB temporary.
+static void epic12_scan_vram(INT32 nAction)
+{
+	if (!m_bitmaps16) {ScanVar(m_bitmaps,m_gfx_size*4,"epic12 vram");return;}
+	// Metadata-only callbacks (e.g. libretro achievement RAM discovery)
+	// neither serialize nor restore data. Expose the real allocation.
+	if (!(nAction&ACB_ACCESSMASK)) {ScanVar(m_bitmaps16,m_gfx_size*2,"epic12 vram");return;}
+	UINT32 chunk[8192];
+	for (int at=0;at<m_gfx_size;at+=8192) {
+		const int n=MIN(8192,m_gfx_size-at);
+		if (nAction&ACB_READ) Epic12Packed::ExpandRow(chunk,m_bitmaps16+at,n);
+		BurnArea area={chunk,UINT32(n*4),0,(char*)"epic12 vram"};
+		if (BurnAcb(&area)!=0) return;
+		if (nAction&ACB_WRITE)
+			for(int i=0;i<n;i++)m_bitmaps16[at+i]=Epic12Packed::Pack(chunk[i]);
+	}
+}
+
 void epic12_scan(INT32 nAction, INT32 *pnMin)
 {
 	thready.notify_wait();
@@ -1797,7 +2006,7 @@ void epic12_scan(INT32 nAction, INT32 *pnMin)
 	SCAN_VAR(m_blit_idle_op_bytes);
 
 	if (~nAction & ACB_RUNAHEAD) {
-		ScanVar(m_bitmaps, m_gfx_size * 4, "epic12 vram");
+		epic12_scan_vram(nAction);
 	}
 	thready.scan();
 }

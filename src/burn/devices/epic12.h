@@ -22,7 +22,7 @@ enum Epic12SplitReject { EPIC12_SPLIT_SMALL, EPIC12_SPLIT_DEPENDENCY, EPIC12_SPL
 struct Epic12PerfStats {
 	UINT64 submitWaitNs, shadowNs, syncExecNs, workerExecNs, jobs, asyncJobs, parallelJobs, parallelFallback;
 	UINT64 splitReject[EPIC12_SPLIT_REASONS];
-	UINT64 segmentedJobs, segmentedRanges, laneRanges;
+	UINT64 segmentedJobs, segmentedRanges, laneRanges, tileJobs, tilePhases, tileDraws;
 };
 void epic12_set_perf_enabled(bool enabled);
 void epic12_get_perf_stats(Epic12PerfStats *stats);

@@ -52,6 +52,7 @@ static bool cv1kProfile;
 static UINT64 cv1kFrameNs, cv1kCpuNs, cv1kAudioNs, cv1kWaitNs, cv1kDrawNs, cv1kPeakNs;
 static UINT64 cv1kPrevOps, cv1kPrevSpans, cv1kPrevBuilt;
 static UINT64 cv1kPrevMiss, cv1kPrevReject, cv1kPrevFull;
+static UINT64 cv1kPrevLoopAttempts,cv1kPrevLoopHits,cv1kPrevLoopOps;
 static Epic12PerfStats cv1kPrevBlit = {};
 static unsigned cv1kFrames, cv1kLate, cv1kLate25, cv1kLate33;
 static UINT64 cv1kCpuPeakNs, cv1kWaitPeakNs, cv1kThreadNs;
@@ -84,6 +85,7 @@ static void Cv1kProfileInit() {
 	cv1kFrameNs = cv1kCpuNs = cv1kAudioNs = cv1kWaitNs = cv1kDrawNs = cv1kPeakNs = 0;
 	cv1kPrevOps = cv1kPrevSpans = cv1kPrevBuilt = 0;
 	cv1kPrevMiss = cv1kPrevReject = cv1kPrevFull = 0;
+	cv1kPrevLoopAttempts=cv1kPrevLoopHits=cv1kPrevLoopOps=0;
 	cv1kPrevBlit = {};
 	cv1kFrames = cv1kLate = 0;
 	Cv1kResetLatency();
@@ -106,6 +108,13 @@ static void Cv1kProfileFrame(UINT64 start) {
 	bprintf(PRINT_UI, _T("CV1K JIT: native ops %llu spans %llu built %llu\n"),
 		(unsigned long long)(ops-cv1kPrevOps), (unsigned long long)(spans-cv1kPrevSpans),
 		(unsigned long long)(built-cv1kPrevBuilt));
+	UINT64 loopAttempts,loopHits,loopOps;
+	Sh3Cv1kLoopStats(&loopAttempts,&loopHits,&loopOps);
+	bprintf(PRINT_UI,_T("CV1K LOOP: attempts %llu hits %llu native ops %llu\n"),
+		(unsigned long long)(loopAttempts-cv1kPrevLoopAttempts),
+		(unsigned long long)(loopHits-cv1kPrevLoopHits),
+		(unsigned long long)(loopOps-cv1kPrevLoopOps));
+	cv1kPrevLoopAttempts=loopAttempts;cv1kPrevLoopHits=loopHits;cv1kPrevLoopOps=loopOps;
 	UINT64 misses, rejected, full;
 	Sh3Cv1kCacheStats(&misses,&rejected,&full);
 	bprintf(PRINT_UI,_T("CV1K CACHE: misses %llu rejected %llu full %llu\n"),
@@ -128,6 +137,10 @@ static void Cv1kProfileFrame(UINT64 start) {
 		(unsigned long long)(blit.segmentedRanges-cv1kPrevBlit.segmentedRanges));
 	bprintf(PRINT_UI,_T("CV1K LANES: precise ranges %llu\n"),
 		(unsigned long long)(blit.laneRanges-cv1kPrevBlit.laneRanges));
+	bprintf(PRINT_UI,_T("CV1K TILE: jobs %llu phases %llu draws %llu\n"),
+		(unsigned long long)(blit.tileJobs-cv1kPrevBlit.tileJobs),
+		(unsigned long long)(blit.tilePhases-cv1kPrevBlit.tilePhases),
+		(unsigned long long)(blit.tileDraws-cv1kPrevBlit.tileDraws));
 	bprintf(PRINT_UI,_T("CV1K SPLIT: small %llu dependency %llu geometry %llu upload %llu balance %llu other %llu\n"),
 		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_SMALL]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_SMALL]),
 		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_DEPENDENCY]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_DEPENDENCY]),

@@ -9,9 +9,25 @@
 #include <vector>
 static INT32 TestLog(INT32,TCHAR*,...){return 0;}
 INT32 (__cdecl *bprintf)(INT32,TCHAR*,...)=TestLog;
+static std::vector<UINT8> stateStream;
+static size_t statePos=0;
+static bool stateLoading=false;
+static INT32 __cdecl TestScan(BurnArea *area){
+	if(stateLoading){
+		if(statePos+area->nLen>stateStream.size())return 1;
+		memcpy(area->Data,stateStream.data()+statePos,area->nLen);
+		statePos+=area->nLen;
+	} else {
+		const UINT8 *p=(const UINT8*)area->Data;
+		stateStream.insert(stateStream.end(),p,p+area->nLen);
+	}
+	return 0;
+}
+INT32 (__cdecl *BurnAcb)(BurnArea *)=TestScan;
 static uint32_t rng=0x919f55u;
 static uint32_t Random(){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;}
 static uint32_t original[0x2000*3], scalar[0x2000*3], vectorized[0x2000*3];
+static UINT16 packed[0x2000*3];
 static void Tables(){
 	for(unsigned y=0;y<64;y++)for(unsigned x=0;x<32;x++){
 		unsigned v=x*y/31;
@@ -164,6 +180,15 @@ static bool SegmentedTest(){
 		if (!gfx_exec_parallel() || serial!=parallel || delay!=epic12_device_blit_delay ||
 			m_blit_delay_ns!=ns || m_blit_idle_op_bytes!=idle || shadow!=snapshot || blitHelper.ok_to_wait) {
 			fprintf(stderr,"EPIC12 segmented mismatch case=%u ranges=%u splits=%u\n",c,count,splits);pass=false;
+		}
+		if(c<4 && pass) {
+			std::vector<UINT16> compact(pixels);
+			for(size_t i=0;i<pixels;i++)compact[i]=Epic12Packed::Pack(base[i]);
+			m_bitmaps16=compact.data();m_bitmaps=nullptr;epic12_device_blit_delay=19;
+			if(!gfx_exec_parallel() || delay!=epic12_device_blit_delay)pass=false;
+			for(size_t i=0;i<pixels && pass;i++)if(Epic12Fast::Expand(compact[i])!=serial[i])pass=false;
+			m_bitmaps16=nullptr;
+			if(!pass)fprintf(stderr,"EPIC12 packed mixed upload/parallel list mismatch case=%u\n",c);
 		}
 	}
 	// Dependency-only lists must recover too (without an upload trigger).
@@ -349,7 +374,120 @@ static bool PreciseLaneTest(){
 	return pass;
 }
 
+// Complete self-overlapping flipped draws cannot be sliced horizontally,
+// but independent regions can each retain the entire original command.
+static bool TileCommandTest(){
+	const size_t pixels=0x2000*128;
+	std::vector<UINT32> base(pixels),serial(pixels),parallel(pixels);
+	std::vector<UINT16> commands(1<<17),compact(pixels);
+	for(auto &v:base)v=Epic12Fast::Expand(UINT16(Random()));
+	m_main_ramsize=commands.size()*2;m_main_rammask=m_main_ramsize-1;
+	m_ram16_copy=commands.data();m_gfx_addr_shadowcopy=0;
+	m_gfx_clip_x_shadowcopy=64;m_gfx_clip_y_shadowcopy=16;m_clip_margin_shadowcopy=0;
+	blitHelper.init(gfx_helper_cb);
+	if(!blitHelper.is_threaded())return false;
+	unsigned n=0;
+	auto put=[&](UINT16 v){commands[n++]=v;};
+	auto clip=[&](bool on){put(0xc000);put(on);};
+	auto draw=[&](unsigned mode,int sx,int sy,int dx,int dy,int w,int h){
+		put(0x1000|mode);put(0x9870);put(sx);put(sy);put(dx);put(dy);put(w-1);put(h-1);put(0x74);put(0x9080);
+	};
+	auto upload=[&](unsigned x){
+		put(0x2000);put(0);put(0x9999);put(0x9999);put(x);put(16);put(7);put(7);
+		for(unsigned k=0;k<64;k++)put(Random());
+	};
+	auto independent=[&](unsigned mode){
+		for(unsigned k=0;k<4;k++){
+			draw(mode|0x400,64,16,64,16,320,96);
+			draw(mode|0x400,512,16,512,16,320,96);
+		}
+	};
+	bool pass=true;
+	for(unsigned c=0;c<32 && pass;c++){
+		n=0;clip(false);
+		const unsigned mode=0x300|((c&7)<<4)|((c*3)&7)|((c&8)?0x800:0);
+		independent(mode);
+		if(c&1){
+			// One command reads one lane and writes the other, so
+			// the scheduler must join before executing that command.
+			draw(mode,64,16,512,16,320,96);
+			independent(mode);
+		}
+		if(c&2){
+			upload(64);clip(false);independent(mode);
+		}
+		if(c&4){
+			clip(true);draw(mode,512,16,64,16,320,96);
+			clip(false);independent(mode);
+		}
+		put(c&8?0xf000:0);
+		int split=0;
+		if(gfx_split_plan(split)){fprintf(stderr,"tile fixture unexpectedly row-splittable %u\n",c);pass=false;break;}
+		serial=base;m_bitmaps=serial.data();epic12_device_blit_delay=0;gfx_exec();
+		const UINT64 delay=epic12_device_blit_delay;
+		Epic12TilePlan plan;
+		if(!gfx_tile_plan(plan)){fprintf(stderr,"tile plan rejected %u\n",c);pass=false;break;}
+		unsigned phases=0;
+		for(unsigned i=0;i<plan.phaseCount;i++)phases+=plan.phases[i].parallel;
+		if(!phases || ((c&1) && plan.phaseCount<2)){fprintf(stderr,"tile phase count mismatch case=%u phases=%u total=%u\n",c,phases,plan.phaseCount);pass=false;break;}
+		parallel=base;m_bitmaps=parallel.data();epic12_set_perf_enabled(true);
+		blitParallelReady=blitParallelAllowed=blitTilesEnabled=blitJobAsync=true;
+		// For upload lists exercise the new planner explicitly, since
+		// the earlier segment fast path may also be valid.
+		if(c&2){epic12_device_blit_delay=0;if(!gfx_exec_tiles())pass=false;}
+		else run_blitter_cb();
+		Epic12PerfStats stats={};epic12_get_perf_stats(&stats);
+		if(!pass || serial!=parallel || delay!=epic12_device_blit_delay || stats.tileJobs!=1 ||
+			stats.tilePhases!=phases || !stats.tileDraws || blitHelper.ok_to_wait){
+			fprintf(stderr,"tile VRAM/delay/counter mismatch case=%u phases=%u actual=%llu\n",c,phases,(unsigned long long)stats.tilePhases);
+			pass=false;
+		}
+		epic12_set_perf_enabled(false);
+		if(c<8 && pass){
+			for(size_t i=0;i<pixels;i++)compact[i]=Epic12Packed::Pack(base[i]);
+			m_bitmaps16=compact.data();m_bitmaps=nullptr;epic12_device_blit_delay=0;
+			if(!gfx_exec_tiles() || delay!=epic12_device_blit_delay)pass=false;
+			for(size_t i=0;i<pixels&&pass;i++)if(Epic12Fast::Expand(compact[i])!=serial[i])pass=false;
+			m_bitmaps16=nullptr;
+			if(!pass)fprintf(stderr,"tile packed mismatch case=%u\n",c);
+		}
+	}
+	// A malformed suffix must never cause a partial prefix replay.
+	// A same-region list has no independent useful second lane.
+	for(unsigned c=0;c<2&&pass;c++){
+		n=0;clip(false);
+		if(c==0){independent(0x300);put(0x3000);}
+		else {for(unsigned k=0;k<12;k++)draw(0x700,64,16,64,16,320,96);put(0);}
+		parallel=base;m_bitmaps=parallel.data();epic12_device_blit_delay=123;
+		if(gfx_exec_tiles() || parallel!=base || epic12_device_blit_delay!=123)pass=false;
+	}
+	blitTilesEnabled=blitParallelReady=blitParallelAllowed=false;
+	blitHelper.exit();
+	if(pass)puts("EPIC12 tile ownership: 32 expanded and 8 packed lists, cross-lane RAW/WAR/WAW barriers and 2 safe fallbacks PASS");
+	else puts("EPIC12 tile ownership FAILED");
+	return pass;
+}
+
 #endif
+static bool PackedStateTest(){
+	const size_t n=65536+13;
+	std::vector<UINT16> source(n),loaded(n);
+	std::vector<UINT32> legacy(n);
+	for(size_t i=0;i<n;i++){
+		source[i]=UINT16(i);legacy[i]=Epic12Fast::Expand(source[i]);
+		if(Epic12Packed::Pack(legacy[i])!=source[i])return false;
+	}
+	m_gfx_size=n;m_bitmaps16=source.data();m_bitmaps=nullptr;
+	stateStream.clear();stateLoading=false;
+	epic12_scan_vram(ACB_READ);
+	if(stateStream.size()!=n*4 || memcmp(stateStream.data(),legacy.data(),n*4))return false;
+	m_bitmaps16=loaded.data();statePos=0;stateLoading=true;
+	epic12_scan_vram(ACB_WRITE);
+	m_bitmaps16=nullptr;stateLoading=false;
+	if(source!=loaded || statePos!=n*4)return false;
+	puts("EPIC12 packed state: all RGB555 words, byte-identical legacy stream and chunked restore PASS");
+	return true;
+}
 int main(){
 	Tables();
 	epic12_device_blitfunction *funcs[]={
@@ -379,8 +517,24 @@ int main(){
 		if(memcmp(scalar,vectorized,sizeof(scalar)) || delay!=epic12_device_blit_delay){
 			fprintf(stderr,"EPIC12 blend mismatch group=%u mode=%u case=%u width=%d\n",group,mode,c,width);return 1;
 		}
+		// Same real generated rasterizer with the packed backend, scalar
+		// and NEON; compare every VRAM pixel and delay to the legacy path.
+		for(unsigned simd=0;simd<2;simd++){
+			for(unsigned i=0;i<sizeof(packed)/sizeof(packed[0]);i++)packed[i]=Epic12Packed::Pack(original[i]);
+			m_bitmaps16=packed;m_bitmaps=nullptr;epic12_blend_neon=simd;
+			epic12_device_blit_delay=0;
+			funcs[group][mode](&clip,nullptr,srcx,srcy,dstx,dsty,width,height,flipy,sa,da,&tint,&epic12_device_blit_delay);
+			for(unsigned i=0;i<sizeof(packed)/sizeof(packed[0]);i++){
+				if(Epic12Fast::Expand(packed[i])!=scalar[i]){
+					fprintf(stderr,"EPIC12 packed mismatch group=%u mode=%u case=%u simd=%u pixel=%u\n",group,mode,c,simd,i);return 5;
+				}
+			}
+			if(delay!=epic12_device_blit_delay)return 6;
+			m_bitmaps16=nullptr;
+		}
 		cases++;
 	}
+	printf("EPIC12 packed scalar/NEON: %u cases each PASS (512 modes)\n",cases);
 	printf("EPIC12 real scalar/NEON blitter: %u cases PASS (all 512 blend variants)\n",cases);
 #if THREADY == THREADY_PTHREAD
 	blitPreciseEnabled=false; // Preserve legacy acceptance/rejection fixtures.
@@ -388,5 +542,7 @@ int main(){
 	if(!SegmentedTest())return 3;
 	blitPreciseEnabled=true;
 	if(!PreciseLaneTest())return 4;
+	if(!TileCommandTest())return 8;
+	if(!PackedStateTest())return 7;
 #endif
 }

@@ -115,6 +115,36 @@ static const void FUNCNAME(BLIT_PARAMS)
 
 
 
+	// Use precisely the same clipping and delay accounting as the
+	// original generated path, including flip and source wrap rules.
+	if (m_bitmaps16) {
+		if(dimx<=startx || dimy<=starty)return;
+#if EPIC12_NEON
+		const bool neon=epic12_blend_neon;
+#else
+		const bool neon=false;
+#endif
+		for (y=starty;y<dimy;y++) {
+			UINT16 *d=m_bitmaps16+(dst_y_start+y)*0x2000+dst_x_start+startx;
+			const UINT16 *s=m_bitmaps16+((src_y+yf*y)&0x0fff)*0x2000+
+				(FLIPX?src_x-startx:src_x+startx);
+#if BLENDED == 1
+			Epic12Packed::Row<FLIPX,TRANSPARENT>(d,s,dimx>startx?dimx-startx:0,
+				_SMODE,_DMODE,s_alpha,d_alpha,tint_clr->r,tint_clr->g,tint_clr->b,TINT,true,neon);
+#else
+			Epic12Packed::Row<FLIPX,TRANSPARENT>(d,s,dimx>startx?dimx-startx:0,
+				0,0,s_alpha,d_alpha,tint_clr->r,tint_clr->g,tint_clr->b,
+#if REALLY_SIMPLE == 1
+				false,
+#else
+				TINT,
+#endif
+				false,neon);
+#endif
+		}
+		return;
+	}
+
 	for (y = starty; y < dimy; y++)
 	{
 		//bmp = &bitmap->pix(dst_y_start + y, dst_x_start+startx);

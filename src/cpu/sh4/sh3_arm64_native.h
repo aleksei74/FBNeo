@@ -1,6 +1,6 @@
 // Experimental SH-3 ARM64 spans. Native integer operations and guarded
-// direct RAM access; timing, delay slots, branches and devices remain in
-// the existing core. The emitter is independent of MAME/Flycast code.
+// direct RAM access. Opt-in closed loops also translate their back edge
+// and pure delay slot. Devices remain in the core. Independently written.
 #ifndef FBNEO_SH3_ARM64_NATIVE_H
 #define FBNEO_SH3_ARM64_NATIVE_H
 #include <stdint.h>
@@ -28,6 +28,33 @@ inline bool Candidate(uint16_t op) {
 	return op==0x0009||op==0x0008||op==0x0018||(op&0xf0ff)==0x0029||
 		(op&0xff00)==0x8800||(op&0xff00)==0xc800||(op&0xff00)==0xc900||(op&0xff00)==0xca00;
 }
+inline bool MemoryOp(uint16_t op) {
+	unsigned t=op>>12, f=op&15;
+	return t==1 || t==5 || ((t==2 || t==6) && (f<=2 || (f>=4 && f<=6)));
+}
+// Conservative register footprint for the audited Candidate instruction set.
+inline unsigned Registers(uint16_t op) {
+	unsigned t=op>>12,n=(op>>8)&15,m=(op>>4)&15;
+	if(t>=1 && t<=6 && t!=4)return (1u<<n)|(1u<<m);
+	if(t==4 || t==7 || t==14 || (op&0xf0ff)==0x0029)return 1u<<n;
+	if((op&0xff00)==0x8800 || t==12)return 1;
+	return 0;
+}
+// Only a backwards edge to this exact entry; no indirect targets, calls,
+// nested branches or cross-page regions. The entire region is validated.
+inline bool LoopBranch(uint16_t op, unsigned body, bool &delay) {
+	unsigned hi=op>>8;
+	if(hi==0x89 || hi==0x8b || hi==0x8d || hi==0x8f) {
+		delay=(hi&4)!=0;
+		return int(body)+2+int8_t(op)==0;
+	}
+	if((op>>12)==10) {
+		delay=true;
+		int disp=int(op&0xfff);if(disp&0x800)disp-=0x1000;
+		return int(body)+2+disp==0;
+	}
+	return false;
+}
 // A call-local context keeps all map lookups live. The code interval is
 // a HOST address range, so stores through guest aliases cannot change an
 // opcode that this invocation has already validated. No page epochs.
@@ -35,15 +62,19 @@ struct Memory {
 	uint8_t *const *read, *const *readLong, *const *write;
 	const void *code;
 	uintptr_t codeBytes;
+	uint32_t iterations, pc;
 };
 static_assert(offsetof(Memory,readLong)==8 && offsetof(Memory,write)==16 &&
-	offsetof(Memory,code)==24 && offsetof(Memory,codeBytes)==32,"native memory ABI");
+	offsetof(Memory,code)==24 && offsetof(Memory,codeBytes)==32 &&
+	offsetof(Memory,iterations)==40 && offsetof(Memory,pc)==44,"native memory ABI");
 static inline uint32_t Mov(unsigned d,unsigned s) { return 0x2a0003e0u|(s<<16)|d; }
 class Emitter {
 	uint32_t *p_;
 	struct Slot { unsigned guest, age; bool dirty; } slot_[7];
 	unsigned age_;
 	bool sr_;
+	bool loop_;
+	uint32_t *loopHead_;
 	unsigned Acquire(unsigned g,bool load,unsigned pin=31) {
 		unsigned choice=7;
 		for(unsigned i=0;i<7;i++){
@@ -66,19 +97,55 @@ class Emitter {
 	void Flush(unsigned done) {
 		for(unsigned i=0;i<7;i++)if(slot_[i].dirty)*p_++=0xb9000000u|(slot_[i].guest<<10)|(i+9);
 		if(sr_)*p_++=0xb9000025u;
-		Imm(0,done);*p_++=Ret;
+		if(loop_) {
+			// Return completed taken iterations in bits 8+, exit index in 0..7.
+			*p_++=0x53185e80u; // lsl w0,w20,#8
+			Imm(6,done);*p_++=0x2a060000u; // orr w0,w0,w6
+			*p_++=0xa8c153f3u; // ldp x19,x20,[sp],#16
+		} else Imm(0,done);
+		*p_++=Ret;
 	}
 	void Guard(unsigned cond,unsigned done){
 		uint32_t *branch=p_++;Flush(done);
 		*branch=0x54000000u|(uint32_t(p_-branch)<<5)|cond;
 	}
 public:
-	explicit Emitter(uint32_t *p):p_(p),slot_{},age_(0),sr_(false){
+	explicit Emitter(uint32_t *p):p_(p),slot_{},age_(0),sr_(false),loop_(false),loopHead_(NULL){
 		for(auto &s:slot_)s.guest=16;
 		*p_++=0xd503245fu; // BTI c (NOP on older ARM64)
 	}
 	uint32_t *End()const{return p_;}
 	void Finish(unsigned done){Flush(done);}
+	void BeginLoop(unsigned regs) {
+		loop_=true;
+		*p_++=0xa9bf53f3u; // stp x19,x20,[sp,#-16]!
+		*p_++=0xb9402873u; // ldr w19,[x3,#40] (iteration cap)
+		Imm(20,0);
+		for(unsigned g=0;g<16;g++)if(regs&(1u<<g)){R(g);W(g);}
+		SR();
+		// At most seven registers: the mapping cannot change across an edge.
+		// Mark all slots dirty up front so every early exit publishes state.
+		loopHead_=p_;
+	}
+	void EndLoop(uint16_t branch,uint16_t delayOp,unsigned body,bool delay) {
+		uint32_t *notTaken=NULL;
+		if((branch>>12)!=10)notTaken=p_++;
+		*p_++=0xb9402c66u; // ldr w6,[x3,#44] (original virtual entry PC)
+		*p_++=0xb9000046u; // str w6,[x2] (EA before the delay slot)
+		if(delay)Emit(delayOp,body+1); // preflight requires a pure Candidate
+		*p_++=0x11000694u; // add w20,w20,#1
+		*p_++=0x71000673u; // subs w19,w19,#1
+		uint32_t *back=p_++;
+		*back=0x54000001u|((uint32_t(loopHead_-back)&0x7ffff)<<5); // b.ne
+		Flush(64);
+		if(notTaken) {
+			// BT(/S) falls through for T=0; BF(/S) for T=1.
+			*notTaken=((branch&0x0200)?0x37000005u:0x36000005u)|
+				((uint32_t(p_-notTaken)&0x3fff)<<5);
+			if(delay)Emit(delayOp,body+1);
+			Flush(65);
+		}
+	}
 	bool Emit(uint16_t op,unsigned done){
 		const unsigned top=op>>12,n=(op>>8)&15,m=(op>>4)&15,f=op&15,imm=op&255;
 		unsigned a,b,d;uint32_t base=0;unsigned cond=0;bool test=false;
@@ -289,8 +356,9 @@ public:
 	}
 	unsigned Run(uint32_t offset, uint32_t *r, uint32_t *sr, uint32_t *ea,
 		uint8_t *const *read, uint8_t *const *readLong, uint8_t *const *write,
-		const void *code = NULL, size_t codeBytes = 0) const {
-		const Memory memory={read,readLong,write,code,codeBytes};
+		const void *code = NULL, size_t codeBytes = 0,
+		unsigned iterations = 0, uint32_t pc = 0) const {
+		const Memory memory={read,readLong,write,code,codeBytes,iterations,pc};
 		return reinterpret_cast<unsigned (*)(uint32_t*,uint32_t*,uint32_t*,const Memory*)>(base_+offset)(r,sr,ea,&memory);
 	}
 	bool Denied() const { return denied_; }
