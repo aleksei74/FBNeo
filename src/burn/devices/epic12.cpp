@@ -309,6 +309,7 @@ static void blitter_delay_callback(int)
 static bool blitProfile = false;
 static UINT64 blitSubmitWaitNs, blitShadowNs, blitSyncNs, blitJobs, blitAsyncJobs;
 static std::atomic<UINT64> blitWorkerNs{0}, blitParallelJobs{0}, blitParallelFallback{0};
+static std::atomic<UINT64> blitSplitReject[EPIC12_SPLIT_REASONS];
 #if EPIC12_NEON && THREADY == THREADY_PTHREAD
 static threadystruct blitHelper;
 static bool blitParallelReady, blitParallelAllowed;
@@ -331,6 +332,7 @@ void epic12_set_perf_enabled(bool enabled)
 	blitWorkerNs.store(0,std::memory_order_relaxed);
 	blitParallelJobs.store(0,std::memory_order_relaxed);
 	blitParallelFallback.store(0,std::memory_order_relaxed);
+	for (auto &n:blitSplitReject) n.store(0,std::memory_order_relaxed);
 	blitJobAsync=false;
 }
 
@@ -338,7 +340,8 @@ void epic12_get_perf_stats(Epic12PerfStats *stats)
 {
 	*stats={blitSubmitWaitNs,blitShadowNs,blitSyncNs,
 		blitWorkerNs.load(std::memory_order_relaxed),blitJobs,blitAsyncJobs,
-		blitParallelJobs.load(std::memory_order_relaxed),blitParallelFallback.load(std::memory_order_relaxed)};
+		blitParallelJobs.load(std::memory_order_relaxed),blitParallelFallback.load(std::memory_order_relaxed),{}};
+	for (unsigned i=0;i<EPIC12_SPLIT_REASONS;i++) stats->splitReject[i]=blitSplitReject[i].load(std::memory_order_relaxed);
 }
 
 static void gfx_exec(); // forward
@@ -1143,63 +1146,85 @@ struct Epic12TileMap {
 	}
 };
 
-static bool gfx_split_plan(int &split_y)
+static bool gfx_split_plan(int &split_y, Epic12SplitReject *why=nullptr)
 {
+	auto reject=[&](Epic12SplitReject reason) {if (why) *why=reason; return false;};
 	UINT32 addr=m_gfx_addr_shadowcopy & 0x1fffffff;
 	rectangle clip=gfx_initial_clip();
 	Epic12TileMap reads,writes;
-	// 16-row bins for a cheap load-balanced horizontal partition.
-	UINT32 work[256]={};
-	UINT64 total=0;
-	// Bound planning overhead and preserve original interpreter on unusual lists.
+	// Fine Y bands and relative pixel cost, rather than raw area alone.
+	// Blend/tint is more costly than a plain copy; these weights guide
+	// host scheduling only. They never affect emulated delay accounting.
+	UINT32 work[512]={};
+	UINT64 total=0,pixels=0;
 	for (unsigned cmd=0;cmd<8192;cmd++) {
 		const UINT16 attr=READ_NEXT_WORD(&addr);
 		switch(attr&0xf000) {
 			case 0x0000:
 			case 0xf000: {
-				if (total<180000 || reads.intersects(writes)) return false;
-				UINT64 upper=0;
-				for (int i=0;i<255;i++) {
+				if (pixels<180000) return reject(EPIC12_SPLIT_SMALL);
+				if (reads.intersects(writes)) return reject(EPIC12_SPLIT_DEPENDENCY);
+				UINT64 upper=0,best=~UINT64(0);
+				int best_y=0;
+				for (int i=0;i<511;i++) {
 					upper+=work[i];
-					if (upper>=total/2) {
-						if (upper<total/4 || total-upper<total/4) return false;
-						split_y=(i+1)*16;
-						return true;
-					}
+					// Keep each worker busy and choose the closest cut,
+					// including the boundary before the midpoint.
+					if (upper<total/4 || total-upper<total/4) continue;
+					const UINT64 lower=total-upper;
+					const UINT64 diff=upper>lower?upper-lower:lower-upper;
+					if (diff<best) {best=diff;best_y=(i+1)*8;}
+					if (upper>=lower) break;
 				}
-				return false;
+				if (!best_y) return reject(EPIC12_SPLIT_BALANCE);
+				split_y=best_y;
+				return true;
 			}
 			case 0xc000:
 				if (READ_NEXT_WORD(&addr)) clip=gfx_initial_clip();
 				else clip.set(0,0x1fff,0,0x0fff);
 				break;
 			case 0x1000: {
-				READ_NEXT_WORD(&addr);
+				const UINT16 alpha=READ_NEXT_WORD(&addr);
 				const int sx=READ_NEXT_WORD(&addr)&0x1fff, sy=READ_NEXT_WORD(&addr)&0x0fff;
 				const int dx=(INT16)READ_NEXT_WORD(&addr),dy=(INT16)READ_NEXT_WORD(&addr);
 				const int w=(READ_NEXT_WORD(&addr)&0x1fff)+1,h=(READ_NEXT_WORD(&addr)&0x0fff)+1;
-				READ_NEXT_WORD(&addr); READ_NEXT_WORD(&addr);
+				const UINT16 tr=READ_NEXT_WORD(&addr),tgb=READ_NEXT_WORD(&addr);
 				const int x0=MAX(dx,clip.min_x),x1=MIN(dx+w-1,clip.max_x);
 				const int y0=MAX(dy,clip.min_y),y1=MIN(dy+h-1,clip.max_y);
 				if (x0>x1 || y0>y1) break;
-				// Decline wraparound and any out-of-range geometry. Full
-				// source bounds (not clipped) conservatively cover flips.
-				if (sx+w>0x2000 || sy+h>0x1000 || x0<0 || y0<0 || x1>=0x2000 || y1>=0x1000) return false;
-				reads.add(sx,sx+w-1,sy,sy+h-1);
+				// Keep wrapped or invalid geometry on the original path.
+				if (sx+w>0x2000 || sy+h>0x1000 || x0<0 || y0<0 || x1>=0x2000 || y1>=0x1000)
+					return reject(EPIC12_SPLIT_GEOMETRY);
+				// Only pixels actually read by the clipped draw count.
+				// The original flip origin uses the uncut width/height.
+				const bool fx=attr&0x800,fy=attr&0x400;
+				const int rx0=sx+(fx?w-1-(x1-dx):x0-dx);
+				const int rx1=sx+(fx?w-1-(x0-dx):x1-dx);
+				const int ry0=sy+(fy?h-1-(y1-dy):y0-dy);
+				const int ry1=sy+(fy?h-1-(y0-dy):y1-dy);
+				reads.add(rx0,rx1,ry0,ry1);
 				writes.add(x0,x1,y0,y1);
-				for (int i=y0/16;i<=y1/16;i++) {
-					const UINT32 n=(x1-x0+1)*(MIN(y1,i*16+15)-MAX(y0,i*16)+1);
-					if (work[i]>0xffffffffu-n) return false;
-					work[i]+=n;
-					total+=n;
+				const bool tint=((tr&0xff)>>2)!=32 || ((tgb>>8)>>2)!=32 || ((tgb&0xff)>>2)!=32;
+				const bool blend=(attr&0x200) && !((attr&0x77)==4 && (alpha&0xf8f8)==0xf8f8);
+				const unsigned weight=1+((attr&0x100)!=0)+2*blend+tint;
+				for (int i=y0/8;i<=y1/8;i++) {
+					const UINT32 n=(x1-x0+1)*(MIN(y1,i*8+7)-MAX(y0,i*8)+1);
+					const UINT32 cost=n*weight;
+					if (work[i]>0xffffffffu-cost) return reject(EPIC12_SPLIT_OTHER);
+					work[i]+=cost;
+					total+=cost;
+					pixels+=n;
 				}
 				break;
 			}
+			case 0x2000:
+				return reject(EPIC12_SPLIT_UPLOAD);
 			default:
-				return false; // uploads and unknown opcodes retain exact serial order
+				return reject(EPIC12_SPLIT_OTHER);
 		}
 	}
-	return false;
+	return reject(EPIC12_SPLIT_OTHER);
 }
 
 static void gfx_helper_cb()
@@ -1210,7 +1235,11 @@ static void gfx_helper_cb()
 
 static bool gfx_exec_parallel()
 {
-	if (!gfx_split_plan(blitSplitY)) return false;
+	Epic12SplitReject why=EPIC12_SPLIT_OTHER;
+	if (!gfx_split_plan(blitSplitY,&why)) {
+		if (blitProfile) blitSplitReject[why].fetch_add(1,std::memory_order_relaxed);
+		return false;
+	}
 	blitHelper.notify();
 	gfx_exec_band(0,blitSplitY-1,&epic12_device_blit_delay,true);
 	blitHelper.notify_wait();

@@ -134,9 +134,10 @@ static Snapshot RunCore(unsigned mode, bool patch, bool handler)
 {
 	Sh3MapInit();
 	setenv("FBNEO_CV1K_JIT",mode==2?"1":"0",1);
-	setenv("FBNEO_CV1K_DISPATCH",mode==1?"1":"0",1);
+	setenv("FBNEO_CV1K_DISPATCH",(mode==1||mode==3)?"1":"0",1);
+	setenv("FBNEO_CV1K_COMPACT",mode==3?"1":"0",1);
 	Sh3SetCv1kNative(1);
-	Require(cv1kNativeEnabled==(mode==2) && cv1kFlatEnabled==(mode==1),"wrong CPU execution policy");
+	Require(cv1kNativeEnabled==(mode==2) && cv1kFlatEnabled==(mode==1||mode==3) && cv1kCompactEnabled==(mode==3),"wrong CPU execution policy");
 	static uint16_t code[32768];
 	memset(code,0,sizeof(code));
 	// MOV #3,R0; ADD #5,R0; MOV R0,R1; ADD R1,R0;
@@ -166,6 +167,7 @@ static Snapshot RunCore(unsigned mode, bool patch, bool handler)
 	Snapshot out={};
 	memcpy(out.r,m_r,sizeof(m_r));out.sr=m_sr;out.pc=m_pc;out.ppc=m_ppc;out.ea=m_ea;out.delay=m_delay;
 	out.cycles=cycles;out.total=sh3_total_cycles;out.hits=handlerHits;
+	if(mode==3) Require(cv1kCompactActive,"compact dispatch did not execute");
 	if(mode==2){
 		Require(cv1kNativeOps>0 && cv1kNativeBuilt>0,"native CPU execution path unused");
 		printf("Core native ops %llu, spans %llu, built %llu\n",
@@ -190,17 +192,19 @@ static void TestLongOnlyMap(){
 }
 static void TestCore(){
 	for(unsigned p=0;p<2;p++)for(unsigned h=0;h<2;h++){
-		Snapshot a=RunCore(0,p,h),b=RunCore(1,p,h),c=RunCore(2,p,h);
+		Snapshot a=RunCore(0,p,h),b=RunCore(1,p,h),c=RunCore(2,p,h),d=RunCore(3,p,h);
 		Require(!memcmp(&a,&b,sizeof(a)),"flat CPU run loop/state/cycle mismatch");
 		Require(!memcmp(&a,&c,sizeof(a)),"JIT CPU run loop/state/cycle mismatch");
-		if(h)Require(b.hits>0 && c.hits>0,"read handler not called");
+		Require(!memcmp(&a,&d,sizeof(a)),"compact CPU run loop/state/cycle mismatch");
+		if(h)Require(b.hits>0 && c.hits>0 && d.hits>0,"read handler not called");
 	}
-	puts("SH3 switch/flat/JIT run-loop, code rewrite, handler and cycle comparisons PASS");
+	puts("SH3 switch/flat/compact/JIT run-loop, code rewrite, handler and cycle comparisons PASS");
 }
-static Snapshot RunDispatchProgram(bool flat,unsigned seed)
+static Snapshot RunDispatchProgram(unsigned mode,unsigned seed)
 {
 	setenv("FBNEO_CV1K_JIT","0",1);
-	setenv("FBNEO_CV1K_DISPATCH",flat?"1":"0",1);
+	setenv("FBNEO_CV1K_DISPATCH",mode?"1":"0",1);
+	setenv("FBNEO_CV1K_COMPACT",mode==2?"1":"0",1);
 	Sh3MapInit();Sh3SetCv1kNative(1);
 	static UINT16 code[32768],data[32768];
 	memset(code,0,sizeof(code));memset(data,0,sizeof(data));
@@ -229,10 +233,11 @@ static Snapshot RunDispatchProgram(bool flat,unsigned seed)
 }
 static void TestFlat(){
 	for(unsigned i=0;i<64;i++){
-		Snapshot a=RunDispatchProgram(false,i),b=RunDispatchProgram(true,i);
+		Snapshot a=RunDispatchProgram(0,i),b=RunDispatchProgram(1,i),c=RunDispatchProgram(2,i);
 		Require(!memcmp(&a,&b,sizeof(a)),"flat dispatch branch or store state differs");
+		Require(!memcmp(&a,&c,sizeof(a)),"compact dispatch branch or store state differs");
 	}
-	puts("SH3 flat dispatcher mixed branch/store programs: 64 PASS");
+	puts("SH3 flat and compact dispatcher mixed branch/store programs: 64 each PASS");
 }
 static void TestDtLoop(){
 #if BUSY_LOOP_HACKS
@@ -289,4 +294,42 @@ static void TestCachePressure(){
 	cv1kCode.Configure(Sh3Native::Cache::DefaultCapacity,true);
 	puts("SH3 saturated cache preserves prior spans: PASS");
 }
-int main(){TestEmitter();TestTimers();TestCore();TestFlat();TestLongOnlyMap();TestDtLoop();TestCachePressure();return 0;}
+static INT32 idleBurnTest=117;
+static const UINT32 idleAddrTest=0xc002310,idlePCTest=0xc1d1346;
+static UINT32 __fastcall IdleReadTest(UINT32 a) {
+	if (a==idleAddrTest) {
+		const UINT32 pc=Sh3GetPC(-1);
+		if (pc==idlePCTest || pc==idlePCTest+2) Sh3BurnCycles(idleBurnTest);
+	}
+	UINT32 v=*((UINT32 *)((UINT8*)ram+(a&0xfffc)));
+#ifdef LSB_FIRST
+	v=(v<<16)|(v>>16);
+#endif
+	return v;
+}
+static void TestIdleDirect(){
+	Sh3MapInit();
+	Sh3MapMemory((UINT8*)ram,0xc000000,0xc00ffff,MAP_RAM);
+	Sh3MapReadLongHandler(1,0xc000000,0xc00ffff);
+	Sh3SetReadLongHandler(1,IdleReadTest);
+	for (unsigned c=0;c<20000;c++) {
+		const UINT32 address=(c%5==0?idleAddrTest:0xc000000+(Random()&0xffff)) | (c&1?0x80000000:0);
+		const UINT32 pc=(c%3==0?idlePCTest:c%3==1?idlePCTest+2:0xc000004);
+		const UINT32 delay=c%7==0?idlePCTest:0;
+		UINT32 values[2];INT32 totals[2],left[2];
+		for(unsigned mode=0;mode<2;mode++){
+			setenv("FBNEO_CV1K_IDLE_DIRECT",mode?"1":"0",1);
+			Sh3SetCv1kIdleRead((UINT8*)ram,idleAddrTest,idlePCTest,&idleBurnTest,IdleReadTest);
+			m_pc=pc;m_delay=delay;sh3_total_cycles=19;m_sh4_icount=101;
+			values[mode]=RL(address);totals[mode]=sh3_total_cycles;left[mode]=m_sh4_icount;
+		}
+		Require(values[0]==values[1]&&totals[0]==totals[1]&&left[0]==left[1],"idle read alignment, PC or timing mismatch");
+	}
+	Sh3SetReadLongHandler(1,ReadLongTest);
+	handlerHits=0;
+	Require(RL(idleAddrTest)==(0x12345678u^idleAddrTest)&&handlerHits==1,"idle path bypassed changed handler");
+	Sh3MapInit();
+	Require(!cv1kIdlePage,"idle page survived mapping reset");
+	puts("CV1000 direct idle-page reads: 20000 value/cycle comparisons and handler invalidation PASS");
+}
+int main(){TestEmitter();TestTimers();TestCore();TestFlat();TestLongOnlyMap();TestIdleDirect();TestDtLoop();TestCachePressure();return 0;}

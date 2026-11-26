@@ -577,6 +577,27 @@ static pSh3ReadWordHandler ReadWord[SH3_MAXHANDLER];
 static pSh3WriteWordHandler WriteWord[SH3_MAXHANDLER];
 static pSh3ReadLongHandler ReadLong[SH3_MAXHANDLER];
 static pSh3WriteLongHandler WriteLong[SH3_MAXHANDLER];
+// CV1000's long-only idle handler uses aligned reads from this RAM page.
+// Inline only the explicitly registered handler; all other handler maps
+// retain the generic path, including tests and future drivers.
+static UINT8 *cv1kIdlePage;
+static UINT32 cv1kIdleAddress, cv1kIdlePC;
+static const INT32 *cv1kIdleCycles;
+static pSh3ReadLongHandler cv1kIdleHandler;
+
+void Sh3SetCv1kIdleRead(UINT8 *ram, UINT32 addr, UINT32 pc,
+	const INT32 *burn, pSh3ReadLongHandler handler)
+{
+	const char *option=getenv("FBNEO_CV1K_IDLE_DIRECT");
+	cv1kIdlePage=(ram && burn && handler && (!option || strcmp(option,"0")!=0))?ram:NULL;
+	cv1kIdleAddress=addr;
+	cv1kIdlePC=pc;
+	cv1kIdleCycles=burn;
+	cv1kIdleHandler=handler;
+	if (ram) bprintf(PRINT_UI,_T("CV1000 SH3 direct idle-page reads: %s\n"),
+		cv1kIdlePage?_T("enabled"):_T("disabled"));
+}
+
 
 static pSh3ReadLongHandler ReadPort;
 static pSh3WriteLongHandler WritePort;
@@ -591,6 +612,7 @@ static INT32 Sh3MapInit()
 	memset(MemMapRL, 0, sizeof(MemMapRL));
 	memset(MemMapW, 0, sizeof(MemMapW));
 	memset(MemMapF, 0, sizeof(MemMapF));
+	cv1kIdlePage=NULL;
 
 	return 0;
 }
@@ -1009,6 +1031,22 @@ static inline UINT32 RL(UINT32 A)
 		UINT32 V = *((UINT32 *)(pr + (A & SH3_PAGEM)));
 #ifdef LSB_FIRST
 		V = (V << 16) | (V >> 16);
+#endif
+		return V;
+	}
+	if ((uintptr_t)pr==1 && cv1kIdlePage && (A>>SH3_SHIFT)==0xc00 &&
+		MemMapR[0xc00]==cv1kIdlePage && ReadLong[1]==cv1kIdleHandler) {
+		// Same address and PC test, alignment and word swap as the
+		// driver's speedhack_read_long. Do not bypass another handler.
+		if (A==cv1kIdleAddress) {
+			const UINT32 pc=(m_delay?m_delay:m_pc)&AM;
+			if (pc==cv1kIdlePC || pc==cv1kIdlePC+2) {
+				EAT(*cv1kIdleCycles);
+			}
+		}
+		UINT32 V=*((UINT32 *)(cv1kIdlePage+(A&0xfffc)));
+#ifdef LSB_FIRST
+		V=(V<<16)|(V>>16);
 #endif
 		return V;
 	}
@@ -3996,6 +4034,10 @@ static void InitFlatDecode()
 
 static bool cv1kNativeEnabled = false;
 static bool cv1kFlatEnabled = false;
+static bool cv1kCompactEnabled = false;
+#if SH3_FLAT_DISPATCH
+static bool cv1kCompactActive = false;
+#endif
 static UINT64 cv1kNativeOps, cv1kNativeSpans, cv1kNativeBuilt;
 static UINT64 cv1kNativeMisses, cv1kNativeRejected, cv1kNativeFull;
 #if SH3_NATIVE
@@ -4104,7 +4146,10 @@ static bool Cv1kTryNative(UINT16 opcode)
 
 void Sh3SetCv1kNative(INT32 enable)
 {
-	cv1kNativeEnabled = cv1kFlatEnabled = false;
+	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = false;
+#if SH3_FLAT_DISPATCH
+	cv1kCompactActive=false;
+#endif
 	cv1kNativeOps=cv1kNativeSpans=cv1kNativeBuilt=0;
 	cv1kNativeMisses=cv1kNativeRejected=cv1kNativeFull=0;
 #if SH3_NATIVE
@@ -4121,6 +4166,10 @@ void Sh3SetCv1kNative(INT32 enable)
 	const char *flat=getenv("FBNEO_CV1K_DISPATCH");
 	cv1kFlatEnabled=enable && !cv1kNativeEnabled && (!flat || strcmp(flat,"0")!=0);
 	if(cv1kFlatEnabled)InitFlatDecode();
+	const char *compact=getenv("FBNEO_CV1K_COMPACT");
+	cv1kCompactEnabled=cv1kFlatEnabled && (!compact || strcmp(compact,"0")!=0);
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 compact dispatch: %s\n"),
+		cv1kCompactEnabled?_T("enabled"):_T("disabled"));
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 flat dispatch: %s\n"),
 		cv1kFlatEnabled?_T("enabled"):_T("disabled"));
 #else
@@ -4192,16 +4241,36 @@ template<bool Native> static int Sh3Run_timerhack_switch(int cycles)
 #if SH3_FLAT_DISPATCH
 // Single flat dispatch, retaining the exact original instruction handlers,
 // IRQ check, delay-slot PC, CPU-off behavior and timerhack accounting.
-static int Sh3Run_timerhack_flat(int cycles)
+template<bool Compact> static int Sh3Run_timerhack_flat(int cycles)
 {
 	static const void *const handlers[]={
 #define SH3_OPCODE(name) &&sh3_op_##name,
 #include "sh3_decode_ops.inc"
 #undef SH3_OPCODE
 	};
+	// Only the compact specialization uses this table. The function's
+	// label addresses are local to it; verify the signed displacement
+	// range rather than assuming a particular compiler layout.
+	static INT16 offsets[Compact?65536:1];
+	static bool initialized=false, fits=false;
+	const intptr_t base=(intptr_t)&&dispatch_base;
+	if (Compact && !initialized) {
+		fits=true;
+		for (unsigned i=0;i<SH3_ID_COUNT;i++) {
+			const intptr_t delta=(intptr_t)handlers[i]-base;
+			if (delta<-32768 || delta>32767) {fits=false;break;}
+		}
+		if (fits) for (unsigned i=0;i<65536;i++)
+			offsets[i]=(INT16)((intptr_t)handlers[sh3OpIds[i]]-base);
+		initialized=true;
+		if (!fits) bprintf(PRINT_UI,_T("CV1000 SH3 compact dispatch: range fallback\n"));
+	}
+	if (Compact && !fits) return Sh3Run_timerhack_flat<false>(cycles);
+	if (Compact) cv1kCompactActive=true;
 	m_sh4_icount=cycles;sh3_end_run=0;
 	if(m_cpu_off){m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
 	UINT16 opcode;
+dispatch_base:
 next:
 	if(m_delay){
 		opcode=sh3_cpu_readop16(UINT32(m_delay&AM));
@@ -4210,6 +4279,7 @@ next:
 		opcode=sh3_cpu_readop16(UINT32(m_pc&AM));
 		m_pc+=2;m_ppc=m_pc;
 	}
+	if (Compact) goto *(void *)(base+offsets[opcode]);
 	goto *handlers[sh3OpIds[opcode]];
 #define SH3_OPCODE(name) sh3_op_##name: name(opcode); goto finished;
 #include "sh3_decode_ops.inc"
@@ -4231,7 +4301,7 @@ static int Sh3Run_timerhack(int cycles)
 	if(cv1kNativeEnabled)return Sh3Run_timerhack_switch<true>(cycles);
 #endif
 #if SH3_FLAT_DISPATCH
-	if(cv1kFlatEnabled)return Sh3Run_timerhack_flat(cycles);
+	if(cv1kFlatEnabled)return cv1kCompactEnabled?Sh3Run_timerhack_flat<true>(cycles):Sh3Run_timerhack_flat<false>(cycles);
 #endif
 	return Sh3Run_timerhack_switch<false>(cycles);
 }

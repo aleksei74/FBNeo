@@ -38,6 +38,8 @@ INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType);
 INT32 Sh3MapHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd, INT32 nType);
 INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd);
 void Sh3SetCv1kNative(INT32 enable);
+void Sh3SetCv1kIdleRead(UINT8 *ram, UINT32 addr, UINT32 pc,
+	const INT32 *burn, pSh3ReadLongHandler handler);
 void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built);
 void Sh3Cv1kCacheStats(UINT64 *misses, UINT64 *rejected, UINT64 *full);
 

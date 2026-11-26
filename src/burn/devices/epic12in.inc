@@ -165,7 +165,7 @@ static const void FUNCNAME(BLIT_PARAMS)
 #else
 			const size_t n = Epic12Fast::BlendRow<0,0,TINT,false,FLIPX,TRANSPARENT>(
 #endif
-				bmp,gfx2,dimx-startx,s_alpha,d_alpha,tint_clr->r,tint_clr->g,tint_clr->b);
+				bmp,gfx2,dimx-startx,s_alpha,d_alpha,tint_clr->r,tint_clr->g,tint_clr->b,epic12_device_colrtable);
 			bmp+=n;
 #if FLIPX == 1
 			gfx2-=n;

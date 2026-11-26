@@ -65,8 +65,31 @@ static bool ParallelTest(){
 		if(gfx_split_plan(split))pass=false;
 		commands[2]=attr;
 	}
+	// The unclipped source rectangle overlaps the framebuffer, but its
+	// actual sampled pixels do not. Test both X and Y flip origins and
+	// negative destination clipping against the serial device.
+	for (unsigned c=0;c<12&&pass;c++) {
+		unsigned n=0;
+		auto put=[&](UINT16 value){commands[n++]=value;};
+		put(0xc000);put(1);
+		for(unsigned k=0;k<12;k++){
+			const bool flip=c&1;
+			const UINT16 attr=0x1000|0x100|((k&1)?0x200:0)|((c&2)?0x400:0)|(flip?0x800:0);
+			put(attr);put(0x7880);put(64);put(0);
+			put(flip?64:UINT16(-256));put(16);
+			put(639);put(79);put(0x80);put(0x8080);
+		}
+		put(0);
+		serial=base;parallel=base;
+		m_bitmaps=serial.data();epic12_device_blit_delay=0;gfx_exec();
+		const UINT64 delay=epic12_device_blit_delay;
+		m_bitmaps=parallel.data();epic12_device_blit_delay=0;
+		if(!gfx_exec_parallel()||delay!=epic12_device_blit_delay||serial!=parallel){
+			fprintf(stderr,"EPIC12 clipped read footprint mismatch case=%u\n",c);pass=false;
+		}
+	}
 	blitHelper.exit();
-	if(pass)printf("EPIC12 real dual-worker command lists: 24 cases PASS; dependency/wrap/upload fallback PASS\n");
+	if(pass)printf("EPIC12 real dual-worker command lists: 36 cases PASS; clipped/flipped footprint and dependency/wrap/upload fallback PASS\n");
 	return pass;
 }
 #endif

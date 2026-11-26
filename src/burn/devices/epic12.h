@@ -18,8 +18,10 @@ void epic12_blitter_write(UINT32 offset, UINT32 data);
 
 
 // Monotonic host-time counters, not emulated or serialized device state.
+enum Epic12SplitReject { EPIC12_SPLIT_SMALL, EPIC12_SPLIT_DEPENDENCY, EPIC12_SPLIT_GEOMETRY, EPIC12_SPLIT_UPLOAD, EPIC12_SPLIT_BALANCE, EPIC12_SPLIT_OTHER, EPIC12_SPLIT_REASONS };
 struct Epic12PerfStats {
 	UINT64 submitWaitNs, shadowNs, syncExecNs, workerExecNs, jobs, asyncJobs, parallelJobs, parallelFallback;
+	UINT64 splitReject[EPIC12_SPLIT_REASONS];
 };
 void epic12_set_perf_enabled(bool enabled);
 void epic12_get_perf_stats(Epic12PerfStats *stats);

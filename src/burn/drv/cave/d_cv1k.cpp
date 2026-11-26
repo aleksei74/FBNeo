@@ -9,6 +9,9 @@
 #include "rtc9701.h"
 #include "ymz770.h"
 #include <chrono>
+#if defined(__linux__)
+#include <time.h>
+#endif
 
 #define SH3_CLOCK (12800000 * 8)
 
@@ -50,7 +53,23 @@ static UINT64 cv1kFrameNs, cv1kCpuNs, cv1kAudioNs, cv1kWaitNs, cv1kDrawNs, cv1kP
 static UINT64 cv1kPrevOps, cv1kPrevSpans, cv1kPrevBuilt;
 static UINT64 cv1kPrevMiss, cv1kPrevReject, cv1kPrevFull;
 static Epic12PerfStats cv1kPrevBlit = {};
-static unsigned cv1kFrames, cv1kLate;
+static unsigned cv1kFrames, cv1kLate, cv1kLate25, cv1kLate33;
+static UINT64 cv1kCpuPeakNs, cv1kWaitPeakNs, cv1kThreadNs;
+static unsigned cv1kThreadSamples;
+static UINT64 Cv1kThreadNow() {
+#if defined(__linux__) && defined(CLOCK_THREAD_CPUTIME_ID)
+	if (cv1kProfile) {
+		struct timespec ts;
+		if (clock_gettime(CLOCK_THREAD_CPUTIME_ID,&ts)==0)
+			return UINT64(ts.tv_sec)*1000000000+ts.tv_nsec;
+	}
+#endif
+	return 0;
+}
+static void Cv1kResetLatency() {
+	cv1kLate25=cv1kLate33=cv1kThreadSamples=0;
+	cv1kCpuPeakNs=cv1kWaitPeakNs=cv1kThreadNs=0;
+}
 static UINT64 Cv1kNow() {
 	return cv1kProfile ? (UINT64)std::chrono::duration_cast<std::chrono::nanoseconds>(
 		std::chrono::steady_clock::now().time_since_epoch()).count() : 0;
@@ -67,6 +86,7 @@ static void Cv1kProfileInit() {
 	cv1kPrevMiss = cv1kPrevReject = cv1kPrevFull = 0;
 	cv1kPrevBlit = {};
 	cv1kFrames = cv1kLate = 0;
+	Cv1kResetLatency();
 }
 static void Cv1kProfileFrame(UINT64 start) {
 	if (!cv1kProfile) return;
@@ -74,6 +94,8 @@ static void Cv1kProfileFrame(UINT64 start) {
 	cv1kFrameNs += ns;
 	if (ns > cv1kPeakNs) cv1kPeakNs = ns;
 	if (ns > 16666667) cv1kLate++;
+	if (ns > 25000000) cv1kLate25++;
+	if (ns > 33333333) cv1kLate33++;
 	if (++cv1kFrames < 120) return;
 	const double scale = 1.0 / (120 * 1000000.0);
 	UINT64 ops, spans, built;
@@ -101,11 +123,22 @@ static void Cv1kProfileFrame(UINT64 start) {
 	bprintf(PRINT_UI,_T("CV1K PARALLEL: split %llu fallback %llu\n"),
 		(unsigned long long)(blit.parallelJobs-cv1kPrevBlit.parallelJobs),
 		(unsigned long long)(blit.parallelFallback-cv1kPrevBlit.parallelFallback));
+	bprintf(PRINT_UI,_T("CV1K SPLIT: small %llu dependency %llu geometry %llu upload %llu balance %llu other %llu\n"),
+		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_SMALL]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_SMALL]),
+		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_DEPENDENCY]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_DEPENDENCY]),
+		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_GEOMETRY]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_GEOMETRY]),
+		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_UPLOAD]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_UPLOAD]),
+		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_BALANCE]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_BALANCE]),
+		(unsigned long long)(blit.splitReject[EPIC12_SPLIT_OTHER]-cv1kPrevBlit.splitReject[EPIC12_SPLIT_OTHER]));
+	bprintf(PRINT_UI,_T("CV1K LATENCY: CPU peak %.3f ms wait peak %.3f ms; over25 %u over33 %u; CPU scheduled %.3f ms (%u samples)\n"),
+		cv1kCpuPeakNs/1000000.0,cv1kWaitPeakNs/1000000.0,cv1kLate25,cv1kLate33,
+		cv1kThreadSamples?cv1kThreadNs/(1000000.0*cv1kThreadSamples):0.0,cv1kThreadSamples);
 	cv1kPrevBlit=blit;
 	cv1kPrevMiss=misses;cv1kPrevReject=rejected;cv1kPrevFull=full;
 	cv1kPrevOps = ops; cv1kPrevSpans = spans; cv1kPrevBuilt = built;
 	cv1kFrameNs = cv1kCpuNs = cv1kAudioNs = cv1kWaitNs = cv1kDrawNs = cv1kPeakNs = 0;
 	cv1kFrames = cv1kLate = 0;
+	Cv1kResetLatency();
 }
 
 
@@ -428,6 +461,7 @@ static void speedhack_set(UINT32 ram, UINT32 pc)
 	Sh3SetReadByteHandler (1, speedhack_read_byte);
 	Sh3SetReadWordHandler (1, speedhack_read_word);
 	Sh3SetReadLongHandler (1, speedhack_read_long);
+	Sh3SetCv1kIdleRead(DrvMainRAM, ram, pc, &speedhack_burn, speedhack_read_long);
 }
 
 static INT32 DrvDoReset()
@@ -689,6 +723,7 @@ static INT32 DrvFrame()
 
 	Sh3Open(0);
 	phase = Cv1kNow();
+	const UINT64 threadStart=Cv1kThreadNow();
 
 	for (INT32 i = 0; i < nInterleave; i++)
 	{
@@ -696,7 +731,16 @@ static INT32 DrvFrame()
 	}
 
 	Sh3SetIRQLine(2, CPU_IRQSTATUS_HOLD);
-	if (cv1kProfile) cv1kCpuNs += Cv1kNow() - phase;
+	if (cv1kProfile) {
+		const UINT64 elapsed=Cv1kNow()-phase;
+		cv1kCpuNs+=elapsed;
+		if (elapsed>cv1kCpuPeakNs) cv1kCpuPeakNs=elapsed;
+		const UINT64 threadEnd=Cv1kThreadNow();
+		if (threadStart && threadEnd>=threadStart) {
+			cv1kThreadNs+=threadEnd-threadStart;
+			cv1kThreadSamples++;
+		}
+	}
 	phase = Cv1kNow();
 
 	if (pBurnSoundOut) {
@@ -716,7 +760,11 @@ static INT32 DrvFrame()
 		epic12_wait_blitterthread();
 	}
 
-	if (cv1kProfile) cv1kWaitNs += Cv1kNow() - phase;
+	if (cv1kProfile) {
+		const UINT64 elapsed=Cv1kNow()-phase;
+		cv1kWaitNs+=elapsed;
+		if (elapsed>cv1kWaitPeakNs) cv1kWaitPeakNs=elapsed;
+	}
 	phase = Cv1kNow();
 	if (pBurnDraw) {
 		BurnDrvRedraw();

@@ -4,6 +4,26 @@
 static uint32_t rng=0xe912c711u;
 static uint32_t Random(){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;}
 int main(){
+#if EPIC12_NEON
+	// Every possible 5-bit alpha/channel pair and both square tables.
+	for(unsigned a=0;a<32;a++){
+		uint8_t lut[32];
+		for(unsigned x=0;x<32;x++)lut[x]=a*x/31;
+		for(unsigned x=0;x<32;x+=16){
+			uint8_t index[16],out[16],sq[16],inv[16];
+			for(unsigned i=0;i<16;i++)index[i]=x+i;
+			const uint8x16_t ix=vld1q_u8(index);
+			vst1q_u8(out,Epic12Fast::Lookup5(ix,Epic12Fast::Load5Table(lut)));
+			vst1q_u8(sq,Epic12Fast::Lookup5(ix,Epic12Fast::Load5Table(Epic12Fast::Square5)));
+			vst1q_u8(inv,Epic12Fast::Lookup5(ix,Epic12Fast::Load5Table(Epic12Fast::InvSquare5)));
+			for(unsigned i=0;i<16;i++){
+				const unsigned v=x+i;
+				if(out[i]!=a*v/31 || sq[i]!=v*v/31 || inv[i]!=v*(31-v)/31)return 4;
+			}
+		}
+	}
+	puts("EPIC12 exact NEON lookup: all 1024 alpha/channel pairs and both square tables PASS");
+#endif
 	uint16_t src[65536];
 	uint32_t dst[65536];
 	for(unsigned i=0;i<65536;i++)src[i]=i;

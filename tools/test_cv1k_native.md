@@ -145,3 +145,52 @@ ddf44d019 log was a different game (dsmbl), not a matched baseline.
   ARM64 tests run under QEMU; Cortex-A55 and x86-64 device/driver objects
   compile. Target game frame rates, split coverage and thermal behavior
   must be measured on real RK3566 hardware.
+
+## RK3566 follow-up: frame latency, compact dispatch and exact blend LUTs
+
+The 1260f50 akatana RK3566 log contains 137 profiling intervals.
+Mean core time was 12.726 ms, CPU 11.826 ms, explicit blitter wait
+0.491 ms, worker 7.765 ms, with 2121 late frames of 16440 profiled.
+11040 of 15714 asynchronous lists were split. Playback still exhibited
+audible interruptions, with the frontend reporting 49.59 ms maximum
+audio wait and a minimum queue of 5 frames. Different gameplay and
+duration preclude a controlled A/B performance claim.
+
+- Compact SH3 dispatch uses a 128 KiB opcode-to-signed-label-offset
+  table to remove one dependent table lookup. Label displacement range
+  is verified, with the existing flat dispatcher as fallback. Disable
+  just the compact path with FBNEO_CV1K_COMPACT=0. Existing switch
+  fallback and opt-in native spans are unchanged.
+- The explicitly registered CV1000 long-only idle RAM page is now read
+  directly, with the original aligned value, word swap, PC/delay-slot
+  checks and cycle consumption. Other handlers, remapped pages and
+  handler replacements still use the original generic access. Disable
+  with FBNEO_CV1K_IDLE_DIRECT=0.
+- For exact NEON RGB555 blending, a 32-entry TBL lookup replaces
+  multiplication for constant-alpha and square/inverse-square terms.
+  Variable factors and tint retain the original exact arithmetic.
+- Parallel planning uses the actually sampled clipped source rectangle
+  with original flip origins; still rejects all source/write tile
+  dependencies, uploads and wrapped/invalid geometry. An 8-row,
+  cost-weighted partition chooses the closest balanced split. All
+  timing and serial fallback semantics are retained.
+- CV1K SPLIT identifies why lists fall back: small, dependency,
+  geometry, upload, balance or other. CV1K LATENCY reports CPU/wait
+  peaks, frame counts over 25/33.33 ms and Linux scheduled CPU time
+  (thread CPU clock), distinguishing host execution from time off CPU
+  or blocked. These diagnostics are not emulated time and do not prove
+  which host scheduler or memory subsystem caused a stall.
+
+Regression: ARM64 Cortex-A55-targeted QEMU test passes 19811 native
+instruction encodings, 4096 mixed spans, 100000 prescaler cases,
+switch/flat/compact/JIT loop and code-rewrite/handler comparisons,
+64 branch/store programs per flat variant, 20000 direct idle-page
+value/cycle comparisons, 20000 DT/BF cycle cases and cache-pressure
+tests. The compact-path test confirms it executes rather than falling
+back. EPIC12 passes all 1024 alpha/channel pairs and both square LUTs,
+65536 uploads, 20000 forward/reverse copy cases, 4096 real blend
+variants, and 36 dual-worker lists including clipped/flipped source
+footprints and serial fallback checks. Modified driver/device/CPU
+objects compile with GCC -O3 on Cortex-A55 and x86-64. Full core
+link and real device FPS, audio continuity and thermal behavior
+remain unverified.
