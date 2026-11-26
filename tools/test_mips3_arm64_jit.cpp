@@ -581,10 +581,157 @@ static void TestFlowCases(int type)
 	printf("Flow core type %d: 32 event/likely/delay exception cases identical\n",type);
 }
 
+// Verify data-only direct links using the real decoded cache, multiple
+// virtual pages, both conditional successors, protected RAM, a physical
+// code rewrite, remapping, and a restore-triggered arena invalidation.
+static std::vector<Snapshot> RunLinkedProgram(bool links)
+{
+	setenv("FBNEO_MIPS3_JIT_LINK",links?"1":"0",1);
+	UINT32 *ram=(UINT32*)calloc(0x3000,1);
+	UINT32 *alternate=(UINT32*)calloc(0x1000,1);
+	Require(ram && alternate,"linked program allocation");
+	const uint32_t a[]={Imm(9,1,1,1),Imm(0xc,1,3,1),Imm(5,3,0,29),Imm(9,4,4,1),
+		0x08000400,Imm(9,5,5,1)};
+	const uint32_t b[]={Imm(0x23,2,6,0),Imm(9,6,6,1),Imm(0x2b,2,6,0),0x08000400,Imm(9,7,7,1)};
+	const uint32_t c[]={Imm(0xe,8,8,123),0x08000000,Imm(9,9,9,1)};
+	for(unsigned i=0;i<sizeof(a)/4;i++)ram[i]=BURN_ENDIAN_SWAP_INT32(a[i]);
+	for(unsigned i=0;i<sizeof(b)/4;i++)ram[32+i]=BURN_ENDIAN_SWAP_INT32(b[i]);
+	for(unsigned i=0;i<sizeof(c)/4;i++)ram[1024+i]=alternate[i]=BURN_ENDIAN_SWAP_INT32(c[i]);
+	alternate[0]=BURN_ENDIAN_SWAP_INT32(Imm(0xe,8,8,456));
+	Mips3Init(MIPS3_TYPE_VR5500);Require(Mips3UseRecompiler(true)==0,"link test backend");
+	Mips3MapMemory((UINT8*)ram,0,0x2fff,MAP_RAM);
+	Mips3Reset();M.pc=0x80000000;M.r[2]=0xffffffff80002000ULL;
+	mappedData=ram+2048;mappedReads=mappedWrites=trackedWrites=0;
+	UINT8 track[3]={};Mips3SetWriteTrack(track,0x3000,TestTrackWrite);
+	Mips3SetReadWordHandler(3,TestReadWord);Mips3SetWriteWordHandler(3,TestWriteWord);
+	std::vector<Snapshot> out;
+	for(unsigned i=0;i<240;i++){
+		if(i==40){ram[33]=BURN_ENDIAN_SWAP_INT32(Imm(9,6,6,17));Mips3InvalidateRange(0x84,0x87);}
+		if(i==80)Mips3MapMemory((UINT8*)alternate,0x1000,0x1fff,MAP_RAM);
+		if(i==120){Mips3Scan(ACB_WRITE);M.compare_fire=M.total_cycles+17;FORCE_EVENT();}
+		if(i==160){
+			Mips3BeginMapBatch();Mips3MapHandler(3,0x2000,0x2fff,MAP_READ);
+			Mips3MapHandler(3,0x2000,0x2fff,MAP_WRITE);Mips3EndMapBatch();
+		}
+		if(i==200)Mips3MapMemory((UINT8*)mappedData,0x2000,0x2fff,MAP_RAM);
+		Mips3Run(3+(i*17)%113);
+		Snapshot snap={};snap.state=M;snap.data=ram[2048];snap.cycleDebt=nMips3ICount;
+		snap.mappedReads=mappedReads;snap.mappedWrites=mappedWrites;snap.trackedWrites=trackedWrites;
+		out.push_back(snap);
+	}
+	Require(mappedReads && mappedWrites,"linked RAM guard not exercised");
+	if(links)Require(nJitLinkHits>100 && nJitLinkLearned>0 && nJitLinkBlocks>100,"warm direct links not exercised");
+	else Require(!nJitLinkHits && !nJitLinkBlocks,"links disabled but executed");
+	printf("Linked blocks %s: %llu hits, %llu learned, %llu blocks\n",links?"on":"off",
+		(unsigned long long)nJitLinkHits,(unsigned long long)nJitLinkLearned,(unsigned long long)nJitLinkBlocks);
+	Mips3SetWriteTrack(NULL,0,NULL);Mips3Exit();free(ram);free(alternate);
+	return out;
+}
+
+static void TestLinkedProgram(){
+	auto a=RunLinkedProgram(false),b=RunLinkedProgram(true);
+	Require(a.size()==b.size(),"link snapshot count");
+	for(unsigned i=0;i<a.size();i++){
+		Require(!memcmp(&a[i].state,&b[i].state,sizeof(Mips3State)),"linked CPU state differs");
+		Require(a[i].data==b[i].data && a[i].cycleDebt==b[i].cycleDebt &&
+			a[i].mappedReads==b[i].mappedReads && a[i].mappedWrites==b[i].mappedWrites &&
+			a[i].trackedWrites==b[i].trackedWrites,"linked memory/timing differs");
+	}
+	unsetenv("FBNEO_MIPS3_JIT_LINK");
+	puts("Linked block snapshots: 240 PASS (branches, event, code rewrite, remap, restore, RAM guards)");
+}
+
+static uint32_t Fp(unsigned fmt,unsigned ft,unsigned fs,unsigned fd,unsigned fn){
+	return (0x11u<<26)|(fmt<<21)|(ft<<16)|(fs<<11)|(fd<<6)|fn;
+}
+static void TestFpuEmitter(){
+	using namespace Mips3Arm64Jit;
+	Cache cache;
+	unsigned native=0,fallback=0;
+	Mips3Init(MIPS3_TYPE_VR5500);
+	for(unsigned i=0;i<24000;i++){
+		const unsigned kind=i%20,fs=Random()&31,ft=Random()&31,fd=Random()&31;
+		const bool fr=(i/20)&1;
+		const bool dbl=(kind&1)!=0;
+		uint32_t op;
+		if(kind<4)op=Fp(kind<2?kind:kind+2,ft,fs,0,0);
+		else op=Fp(dbl?17:16,ft,fs,fd,(kind-4)/2);
+		Mips3State initial={};
+		initial.cp0[CP0_Status]=(i%11==0?0:SR_CU1) | ((fr^(i%13==0))?SR_FR:0);
+		initial.pc=0x80000000;initial.compare_fire=~0ULL;
+		for(unsigned j=1;j<32;j++)initial.r[j]=Random();
+		for(unsigned j=0;j<32;j++){
+			// Mostly normal finite, including over/underflow and special
+			// values. Transfer/sign operations retain arbitrary bit patterns.
+			uint64_t bits=Random();
+			if(kind>=4 && (kind-4)/2<=4 && i%4){
+				if(dbl)bits=(bits&0x800fffffffffffffULL)|(uint64_t(1018+(Random()%12))<<52);
+				else {
+					const UINT32 lo=(bits&0x807fffffu)|(UINT32(122+(Random()%12))<<23);
+					const UINT32 hi=((bits>>32)&0x807fffffu)|(UINT32(122+(Random()%12))<<23);
+					bits=(UINT64(hi)<<32)|lo;
+				}
+			}
+			initial.fpr[j]=bits;
+		}
+		if(i%17==0)initial.fpr[fs]=dbl?0x7ff8000000000001ULL:0x7fc00001u;
+		if(i%19==0)initial.fpr[ft]=0;
+		if(i%23==0)initial.fpr[ft]=dbl?0x7ff0000000000000ULL:0x7f800000u;
+		Mips3Insn I={};UINT32 flags=0;I.op=op;I.fn=Mips3Decode(op,&flags);InsnFields(&I);I.cyc=1;
+		M=initial;Mx={};Mx.vpage=0x80000000;Mx.next_pc=1;I.fn(&I);Mips3State expected=M;
+		M=initial;Mx={};Mx.vpage=0x80000000;Mx.next_pc=1;
+		uint32_t words[128];words[0]=Entry;SpanEmitter e(words+1);
+		Require(e.Fpu(op,offsetof(Mips3State,cp0)+CP0_Status*8,offsetof(Mips3State,fpr),0,0,0,0,fr),"FPU encoding rejected");
+		e.Finish(1,0,false,0,0,false,true);
+		uint32_t offset;
+		if(cache.Used()>8*1024*1024)cache.Reset();
+		Require(cache.Publish(words,e.End()-words,offset),"FPU code publish");
+		uint32_t done=cache.RunGuarded(offset,reinterpret_cast<uint64_t*>(M.r),HostRead,HostWrite);
+		if(done==0){fallback++;I.fn(&I);}else{Require(done==1,"bad FPU completion");native++;}
+		Require(!memcmp(&M,&expected,sizeof(Mips3State)),"FPU result/status/exception differs");
+	}
+	Require(native>10000 && fallback>1000,"FPU native/fallback coverage");
+	printf("Guarded FPU: 24000 comparisons, %u native, %u fallback PASS\n",native,fallback);
+	Mips3Exit();
+}
+static Mips3State RunFpuProgram(bool fpu,bool special,bool fr)
+{
+	setenv("FBNEO_MIPS3_JIT_FPU",fpu?"1":"0",1);
+	UINT32 *ram=(UINT32*)calloc(0x1000,1);
+	Require(ram!=NULL,"FPU program RAM");
+	const uint32_t code[]={Imm(9,1,1,1),Fp(16,1,0,2,0),Fp(16,1,2,3,2),
+		Fp(0,5,3,0,0),Fp(4,5,4,0,0),Fp(16,0,4,5,7),
+		Imm(9,2,2,1),0x08000000,Imm(9,3,3,1)};
+	for(unsigned i=0;i<sizeof(code)/4;i++)ram[i]=BURN_ENDIAN_SWAP_INT32(code[i]);
+	Mips3Init(MIPS3_TYPE_VR5500);Mips3UseRecompiler(true);
+	Mips3MapMemory((UINT8*)ram,0,0xfff,MAP_RAM);Mips3Reset();M.pc=0x80000000;
+	SR|=SR_CU1|(fr?SR_FR:0);
+	M.fpr[0]=special?0x7fc00001u:0x3fc00000u;
+	if(fr)M.fpr[1]=0x40000000u;else M.fpr[0]|=UINT64(0x40000000u)<<32;
+	for(unsigned i=0;i<64;i++){
+		// Reuse cached blocks with a changed layout. The status guard
+		// must not access an old FR mode even without explicit invalidation.
+		if(i==32)SR^=SR_FR;
+		Mips3Run(5+i%17);
+	}
+	if(fpu){Require(nJitFpuSpans>0,"FPU not emitted in core");if(special)Require(nJitFpuMisses>0,"FPU guard not exercised in core");}
+	else Require(!nJitFpuSpans,"disabled FPU span ran");
+	Mips3State state=M;Mips3Exit();free(ram);return state;
+}
+static void TestFpuProgram(){
+	for(bool fr:{false,true})for(bool special:{false,true}){
+		Mips3State a=RunFpuProgram(false,special,fr),b=RunFpuProgram(true,special,fr);
+		Require(!memcmp(&a,&b,sizeof(a)),"mixed native FPU program differs");
+	}
+	unsetenv("FBNEO_MIPS3_JIT_FPU");
+	puts("Mixed FPU/ALU/branch core execution PASS");
+}
+
 int main()
 {
 	TestPackedCache();
 	TestFlowGuardAndBudget();
+	TestLinkedProgram();TestFpuEmitter();TestFpuProgram();
 	// Verify default policy and explicit process-environment overrides.
 	for (int type = 0; type < 2; type++) {
 		unsetenv("FBNEO_MIPS3_ARM64_JIT");

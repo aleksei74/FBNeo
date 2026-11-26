@@ -13,6 +13,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stddef.h>
 
 #ifndef MIPS3_CACHED_INTERPRETER
 #define MIPS3_CACHED_INTERPRETER	1
@@ -58,6 +59,7 @@
 #define MIPS3_IDLE_SKIP		1
 #endif
 #define MIPS3_ARENA_SIZE	(8 * 1024 * 1024)
+static UINT32 nArenaSize=MIPS3_ARENA_SIZE;
 
 enum {
 	CP0_Index = 0, CP0_Random, CP0_EntryLo0, CP0_EntryLo1, CP0_Context, CP0_PageMask, CP0_Wired, CP0_Reserved7,
@@ -131,6 +133,12 @@ struct Mips3Block {
 #if MIPS3_PROFILE
 	UINT32 vpc;
 	UINT64 prof;	// instructions executed in this block
+#endif
+#if MIPS3_ARM64_JIT
+	// Decoded-arena offsets (not executable pointers) to warm native
+	// successors. Full virtual target and generation must both match.
+	UINT64 linkGen;
+	UINT32 linkPC[2], linkOff[2];
 #endif
 	Mips3Insn insn[1];
 };
@@ -225,8 +233,8 @@ static UINT8 *Arena = NULL;
 #if MIPS3_CACHED_INTERPRETER
 static Mips3FastEntry FastCache[MIPS3_FAST_ENTRIES];
 #endif
-static UINT32 nFastGen = 1;
-static UINT32 nFastGenSeen = 0;
+static UINT64 nFastGen = 1;
+static UINT64 nFastGenSeen = 0;
 
 // blocks may have been dropped or remapped: the run loop flushes FastCache before the next lookup
 #define FAST_INVALIDATE()	do { nFastGen++; FORCE_EVENT(); } while (0)
@@ -253,6 +261,10 @@ static bool bMips3Jit = false;
 static unsigned nJitMinSpan = 3;
 static bool bMips3FastRam = false;
 static bool bMips3Integrated = false;
+static bool bMips3Link = false;
+static bool bMips3Fpu = false;
+static UINT64 nJitFpuSpans=0,nJitFpuMisses=0;
+static UINT64 nJitLinkHits=0,nJitLinkLearned=0,nJitLinkBlocks=0;
 static UINT64 nJitBranches = 0;
 static UINT64 nJitRamHits = 0, nJitRamMisses = 0;
 static UINT64 nJitCacheRejected = 0;
@@ -2568,7 +2580,7 @@ static void BuildNativeSpans(Mips3Block *b)
 			words[used++] = Mips3Arm64Jit::MoveW(15, 6);
 			words[used++] = Mips3Arm64Jit::MoveW(16, 5);
 			Mips3Arm64Jit::SpanEmitter emitter(words + used);
-			unsigned branches = 0, pseudo = 0;
+			unsigned branches = 0, pseudo = 0, fpu=0;
 			bool terminal = false, limited = false;
 			while (i < b->count) {
 				Mips3Insn &I = b->insn[i];
@@ -2594,14 +2606,21 @@ static void BuildNativeSpans(Mips3Block *b)
 					break;
 				}
 				if (!emitter.Alu(I.op)) {
-					if (!bMips3FastRam || !emitter.Memory(I.op, i - start, memory, branches, pseudo)) break;
-					memory++;
+					// Specialize the register layout at build time; the
+					// emitted CU1/FR check protects every later reuse.
+					if(bMips3Fpu &&
+						emitter.Fpu(I.op,offsetof(Mips3State,cp0)+CP0_Status*8,
+							offsetof(Mips3State,fpr),i-start,memory,branches,pseudo,(SR&SR_FR)!=0))fpu++;
+					else {
+						if (!bMips3FastRam || !emitter.Memory(I.op, i - start, memory, branches, pseudo)) break;
+						memory++;
+					}
 				}
 				i++;
 			}
 			const bool emitted = emitter.End() != words + used;
 			if ((flow || i - start >= nJitMinSpan) && emitted) {
-				emitter.Finish(i - start, memory, flow, branches, pseudo, terminal);
+				emitter.Finish(i - start, memory, flow, branches, pseudo, terminal, fpu!=0);
 				used = unsigned(emitter.End() - words);
 				if (!flow) {
 					memmove(words + entry + 1, words + entry + 3, (used - entry - 3) * sizeof(uint32_t));
@@ -2609,7 +2628,7 @@ static void BuildNativeSpans(Mips3Block *b)
 				}
 				b->insn[start].jit_count = i - start;
 				b->insn[start].jit_memory = memory | (flow ? Mips3Arm64Jit::FlowFlag : 0) |
-					(terminal ? Mips3Arm64Jit::TerminalFlag : 0);
+					(terminal ? Mips3Arm64Jit::TerminalFlag : 0) | (fpu ? Mips3Arm64Jit::FpuFlag : 0);
 				b->insn[start].jit_offset = entry * sizeof(uint32_t);
 			} else used = entry;
 			if (i < b->count && !limited) i++;
@@ -2727,7 +2746,7 @@ static Mips3Block *BuildBlock(Mips3BlockPage *bp, UINT8 *host, UINT32 off)
 	}
 
 	UINT32 size = (sizeof(Mips3Block) - sizeof(Mips3Insn) + n * sizeof(Mips3Insn) + 15) & ~15;
-	if (ArenaUsed + size > MIPS3_ARENA_SIZE) Mips3FlushCache();
+	if (ArenaUsed + size > nArenaSize) Mips3FlushCache();
 
 	Mips3Block *b = (Mips3Block*)(Arena + ArenaUsed);
 	ArenaUsed += size;
@@ -2741,6 +2760,10 @@ static Mips3Block *BuildBlock(Mips3BlockPage *bp, UINT8 *host, UINT32 off)
 	b->nind = 0;
 	b->idlewait = 0;
 	b->idleback = 0;
+#if MIPS3_ARM64_JIT
+	b->linkGen=0;b->linkPC[0]=b->linkPC[1]=~0U;
+	b->linkOff[0]=b->linkOff[1]=0;
+#endif
 #if MIPS3_PROFILE
 	b->vpc = 0;
 	b->prof = 0;
@@ -3018,68 +3041,8 @@ static void ExecIdleCandidate(Mips3Block *b)
 }
 #endif
 
-static MIPS3_INLINE void ExecBlock(Mips3Block *b)
+static MIPS3_INLINE void FinishExecBlock(Mips3Block *b,const Mips3Insn *I)
 {
-#if MIPS3_IDLE_SKIP
-	if (b->idle) {
-		if (b->idlewait == 0) { ExecIdleCandidate(b); return; }
-		b->idlewait--;
-	}
-#endif
-	Mx.next_pc = 1;
-	Mx.brk = 0;
-
-	const Mips3Insn *I = b->insn;
-	Mx.lim = I + b->count;
-
-#if MIPS3_ARM64_JIT
-	if (bMips3Jit && !JitCache.Denied()) {
-		do {
-			if (I->jit_count) {
-				const unsigned count = I->jit_count;
-				unsigned done = count, pseudo = 0;
-				bool early = false;
-				if (I->jit_memory & Mips3Arm64Jit::FlowFlag) {
-					const UINT64 left = nRunLimit > M.total_cycles ? nRunLimit - M.total_cycles : 0;
-					const uint32_t budget = left > UINT32_MAX ? UINT32_MAX : uint32_t(left);
-					const uint64_t result = JitCache.RunFlow(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite, Mx.vpage, budget);
-					done = result & 0x1ff;
-					pseudo = (result >> 9) & 0x3f;
-					nJitRamHits += (result >> 16) & 0x1ff;
-					nJitBranches += (result >> 25) & 0x3f;
-					early = (result & Mips3Arm64Jit::EarlyExit) != 0;
-					if (early || (result & Mips3Arm64Jit::DelayGuard) ||
-						(done == count && (I->jit_memory & Mips3Arm64Jit::TerminalFlag)))
-						Mx.next_pc = uint32_t(result >> 32);
-					if (early) BREAK_BLOCK();
-					else if (done != count) nJitRamMisses++;
-				} else if (I->jit_memory) {
-					const uint32_t result = JitCache.RunGuarded(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite);
-					done = result & 0xffff;
-					nJitRamHits += result >> 16;
-					if (done != count) nJitRamMisses++;
-				} else {
-					JitCache.Run(I->jit_offset, reinterpret_cast<uint64_t *>(M.r));
-				}
-				nJitSpansRun++;
-				nJitInsns += done - pseudo;
-				I += done;
-				// A guard failure leaves the precise state before the failing
-				// instruction, including a completed branch's delay context.
-				if (done != count && !early) { I->fn(I); ++I; }
-			} else {
-				I->fn(I);
-				++I;
-			}
-		} while (I < Mx.lim);
-	} else
-#endif
-	{
-		do {
-			I->fn(I);
-		} while (++I < Mx.lim);
-	}
-
 	INT32 n = I[-1].cyc;
 #if MIPS3_ARM64_JIT
 	if (bMips3CollectPerf) nPerfGuest += n;
@@ -3110,6 +3073,150 @@ static MIPS3_INLINE void ExecBlock(Mips3Block *b)
 		}
 	}
 }
+
+#if MIPS3_ARM64_JIT
+static MIPS3_INLINE const Mips3Insn *ExecNativeSpan(const Mips3Insn *I,bool &guardFailed)
+{
+	const unsigned count = I->jit_count;
+	unsigned done = count, pseudo = 0;
+	bool early = false;
+	const bool hasFpu=(I->jit_memory&Mips3Arm64Jit::FpuFlag)!=0;
+	if(hasFpu)nJitFpuSpans++;
+	if (I->jit_memory & Mips3Arm64Jit::FlowFlag) {
+		const UINT64 left = nRunLimit > M.total_cycles ? nRunLimit - M.total_cycles : 0;
+		const uint32_t budget = left > UINT32_MAX ? UINT32_MAX : uint32_t(left);
+		const uint64_t result = JitCache.RunFlow(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite, Mx.vpage, budget);
+		done = result & 0x1ff;
+		pseudo = (result >> 9) & 0x3f;
+		nJitRamHits += (result >> 16) & 0x1ff;
+		nJitBranches += (result >> 25) & 0x3f;
+		early = (result & Mips3Arm64Jit::EarlyExit) != 0;
+		if (early || (result & Mips3Arm64Jit::DelayGuard) ||
+			(done == count && (I->jit_memory & Mips3Arm64Jit::TerminalFlag)))
+			Mx.next_pc = uint32_t(result >> 32);
+		if (early) BREAK_BLOCK();
+
+	} else if (I->jit_memory) {
+		const uint32_t result = JitCache.RunGuarded(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite);
+		done = result & 0xffff;
+		nJitRamHits += result >> 16;
+
+	} else {
+		JitCache.Run(I->jit_offset, reinterpret_cast<uint64_t *>(M.r));
+	}
+	if(done!=count && !early){
+		if(hasFpu && (I[done].op>>26)==0x11)nJitFpuMisses++;
+		else nJitRamMisses++;
+	}
+	nJitSpansRun++;
+	nJitInsns += done - pseudo;
+	I += done;
+	// A guard failure leaves the precise state before the failing
+	// instruction, including a completed branch's delay context.
+	guardFailed = done != count && !early;
+	return I;
+}
+#endif
+
+static MIPS3_INLINE void ExecBlock(Mips3Block *b)
+{
+#if MIPS3_IDLE_SKIP
+	if (b->idle) {
+		if (b->idlewait == 0) { ExecIdleCandidate(b); return; }
+		b->idlewait--;
+	}
+#endif
+	Mx.next_pc = 1;
+	Mx.brk = 0;
+
+	const Mips3Insn *I = b->insn;
+	Mx.lim = I + b->count;
+
+#if MIPS3_ARM64_JIT
+	if (bMips3Jit && !JitCache.Denied()) {
+		do {
+			if (I->jit_count) {
+				bool guardFailed;
+				I=ExecNativeSpan(I,guardFailed);
+				if(guardFailed){I->fn(I);++I;}
+			} else {
+				I->fn(I);
+				++I;
+			}
+		} while (I < Mx.lim);
+	} else
+#endif
+	{
+		do {
+			I->fn(I);
+		} while (++I < Mx.lim);
+	}
+
+	FinishExecBlock(b,I);
+}
+
+#if MIPS3_ARM64_JIT
+static MIPS3_INLINE bool Linkable(const Mips3Block *b)
+{
+	// Full native spans only. Idle skipping, split delay slots and
+	// partially interpreted blocks stay on the original dispatcher.
+	return !b->idle && !b->split && b->insn[0].jit_count==b->count;
+}
+
+// Data-only direct successor links, using existing emitted host code. No
+// executable page patching; a warm link skips the virtual FastCache lookup,
+// generic instruction loop, and return to the top-level dispatcher. This is
+// a linked native-block runner, not a native-to-native patched tail jump.
+static MIPS3_INLINE void ExecBlockLinked(Mips3Block *b)
+{
+	if(!bMips3Link || !bMips3Jit || JitCache.Denied() || !Linkable(b)){
+		ExecBlock(b);return;
+	}
+	for(;;){
+		Mx.next_pc=1;Mx.brk=0;
+		const Mips3Insn *I=b->insn;
+		Mx.lim=I+b->count;
+		bool guardFailed;
+		I=ExecNativeSpan(I,guardFailed);
+		nJitLinkBlocks++;
+		if(guardFailed){
+			// The first failed instruction must see its original PC,
+			// pending branch context, and exact decoded position.
+			I->fn(I);++I;
+			while(I<Mx.lim){I->fn(I);++I;}
+			FinishExecBlock(b,I);
+			return;
+		}
+		FinishExecBlock(b,I);
+		// Same event boundary as the main run loop, with all mapping and
+		// code invalidations checked before dereferencing a cached link.
+		if(M.total_cycles>=nRunLimit || nFastGen!=nFastGenSeen || M.delay_pending)return;
+		const UINT32 pc=M.pc;
+		Mips3Block *next=NULL;
+		if(b->linkGen==nFastGen){
+			if(b->linkPC[0]==pc)next=(Mips3Block*)(Arena+b->linkOff[0]);
+			else if(b->linkPC[1]==pc)next=(Mips3Block*)(Arena+b->linkOff[1]);
+		}
+		if(next)nJitLinkHits++;
+		else{
+			// Only learn from a current-generation decoded FastCache hit.
+			// No translation, build or arena flush inside this runner.
+			const Mips3FastEntry &fe=FastCache[(pc>>2)&(MIPS3_FAST_ENTRIES-1)];
+			if(fe.pc!=pc || !fe.b || !Linkable(fe.b))return;
+			next=fe.b;
+			if(b->linkGen!=nFastGen){
+				b->linkGen=nFastGen;b->linkPC[0]=b->linkPC[1]=~0U;
+			}
+			b->linkPC[1]=b->linkPC[0];b->linkOff[1]=b->linkOff[0];
+			b->linkPC[0]=pc;b->linkOff[0]=UINT32((UINT8*)next-Arena);
+			nJitLinkLearned++;
+		}
+		b=next;Mx.vpage=pc&~0xfffU;
+	}
+}
+#else
+static MIPS3_INLINE void ExecBlockLinked(Mips3Block *b) { ExecBlock(b); }
+#endif
 
 static void ExecBlockOut(Mips3Block *b)
 {
@@ -3297,7 +3404,7 @@ INT32 mips3_run(INT32 cycles)
 			Mips3FastEntry *fe = &FastCache[(pc >> 2) & (MIPS3_FAST_ENTRIES - 1)];
 			if (fe->pc == pc) {
 				Mx.vpage = pc & ~0xfff;
-				ExecBlock(fe->b);
+				ExecBlockLinked(fe->b);
 				continue;
 			}
 
@@ -3312,7 +3419,7 @@ INT32 mips3_run(INT32 cycles)
 					fe->pc = pc;
 					fe->b = b;
 					Mx.vpage = pc & ~0xfff;
-					ExecBlock(b);
+					ExecBlockLinked(b);
 					continue;
 				}
 			}
@@ -3444,7 +3551,17 @@ INT32 mips3_init(INT32 type)
 	nMips3Type = type;
 	Vtlb = (UINT32*)calloc(VIRT_PAGES, sizeof(UINT32));
 	nDLines = 0;
-	Arena = (UINT8*)malloc(MIPS3_ARENA_SIZE);
+	nArenaSize=MIPS3_ARENA_SIZE;
+#if MIPS3_ARM64_JIT
+	if(IS_VR5500) {
+		nArenaSize=16*1024*1024;
+		const char *arena=getenv("FBNEO_MIPS3_DECODE_MB");
+		if(arena && !strcmp(arena,"8"))nArenaSize=8*1024*1024;
+		if(arena && !strcmp(arena,"32"))nArenaSize=32*1024*1024;
+	}
+#endif
+	Arena = (UINT8*)malloc(nArenaSize);
+	if(!Arena && nArenaSize!=MIPS3_ARENA_SIZE){nArenaSize=MIPS3_ARENA_SIZE;Arena=(UINT8*)malloc(nArenaSize);}
 	ArenaUsed = 0;
 
 	memset(&M, 0, sizeof(M));
@@ -3458,6 +3575,8 @@ INT32 mips3_init(INT32 type)
 	nJitSpansBuilt = nJitSpansRun = nJitInsns = 0;
 	nJitRamHits = nJitRamMisses = nJitBranches = 0;
 	nJitCacheRejected = 0;
+	nJitLinkHits=nJitLinkLearned=nJitLinkBlocks=0;
+	nJitFpuSpans=nJitFpuMisses=0;
 	nPerfGuest = nPerfUncached = nPerfFlushes = 0;
 	const char *perf = getenv("FBNEO_Y2_PROFILE");
 	bMips3CollectPerf = IS_VR5500 && (!perf || strcmp(perf, "0") != 0);
@@ -3483,6 +3602,12 @@ INT32 mips3_init(INT32 type)
 	bMips3Integrated = IS_VR5500;
 	if (integrated && strcmp(integrated, "0") == 0) bMips3Integrated = false;
 	if (integrated && strcmp(integrated, "1") == 0) bMips3Integrated = true;
+	const char *link=getenv("FBNEO_MIPS3_JIT_LINK");
+	bMips3Link=IS_VR5500 && (!link || strcmp(link,"0")!=0);
+	if(link && !strcmp(link,"1"))bMips3Link=true;
+	const char *fpu=getenv("FBNEO_MIPS3_JIT_FPU");
+	bMips3Fpu=IS_VR5500 && (!fpu || strcmp(fpu,"0")!=0);
+	if(fpu && !strcmp(fpu,"1"))bMips3Fpu=true;
 	const char *fastRam = getenv("FBNEO_MIPS3_JIT_FASTRAM");
 	bMips3FastRam = IS_VR5500;
 	if (fastRam && strcmp(fastRam, "0") == 0) bMips3FastRam = false;
@@ -3490,6 +3615,8 @@ INT32 mips3_init(INT32 type)
 	bprintf(PRINT_UI, _T("MIPS3 ARM64 experimental JIT: %s, min span %u, guarded Fast RAM %s\n"),
 		bMips3Jit ? _T("enabled") : _T("disabled"), nJitMinSpan, bMips3FastRam ? _T("enabled") : _T("disabled"));
 	bprintf(PRINT_UI, _T("MIPS3 ARM64 JIT integrated spans: %s\n"), bMips3Integrated ? _T("enabled") : _T("disabled"));
+	bprintf(PRINT_UI,_T("MIPS3 ARM64 linked blocks: %s, decoded arena %u MiB\n"),bMips3Link?_T("enabled"):_T("disabled"),nArenaSize>>20);
+	bprintf(PRINT_UI,_T("MIPS3 ARM64 guarded FPU (FR=0/1): %s\n"),bMips3Fpu?_T("enabled"):_T("disabled"));
 	bprintf(PRINT_UI, _T("MIPS3 ARM64 JIT cache: %u MiB, %s allocation\n"),
 		cacheMB, packed ? _T("packed W^X") : _T("page aligned W^X"));
 #endif
@@ -3505,6 +3632,10 @@ void mips3_get_perf_stats(Mips3PerfStats *stats)
 	stats->nativeInstructions = nJitInsns;
 	stats->nativeRamHits = nJitRamHits;
 	stats->nativeBranches = nJitBranches;
+	stats->nativeLinkHits=nJitLinkHits;stats->nativeLinkLearned=nJitLinkLearned;
+	stats->nativeLinkBlocks=nJitLinkBlocks;stats->decodedArenaBytes=ArenaUsed;
+	stats->nativeFpuSpans=nJitFpuSpans;stats->nativeFpuMisses=nJitFpuMisses;
+	stats->decodedArenaCapacity=nArenaSize;
 	stats->nativeRamMisses = nJitRamMisses;
 	stats->nativeSpans = nJitSpansRun;
 	stats->nativeBuilt = nJitSpansBuilt;

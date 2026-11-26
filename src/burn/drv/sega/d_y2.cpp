@@ -34,6 +34,7 @@ static bool bY2MvcBatch = true;
 static bool bY2MediaSimd = true;
 static bool bY2FootprintMemo = true;
 static bool bY2YuvSimd = true, bY2RasterSimd = true;
+static bool bY2IdctSimd = true;
 static bool bY2ReadAhead = false;
 static BurnHDDReadStats Y2HddPrev[2];
 struct Y2MediaPerf {
@@ -95,14 +96,12 @@ static void Y2PerfBegin()
 	bY2FootprintMemo = !memo || strcmp(memo,"0") != 0;
 	const char *yuvSimd=getenv("FBNEO_Y2_YUV_SIMD");
 	bY2YuvSimd=!yuvSimd || strcmp(yuvSimd,"0")!=0;
+	const char *idct=getenv("FBNEO_Y2_IDCT_SIMD");
+	bY2IdctSimd=!idct || strcmp(idct,"0")!=0;
 	const char *rasterSimd=getenv("FBNEO_Y2_RASTER_SIMD");
 	bY2RasterSimd=!rasterSimd || strcmp(rasterSimd,"0")!=0;
 	const char *ahead=getenv("FBNEO_Y2_CHD_READAHEAD");
-#if defined(__aarch64__) && defined(__linux__)
-	bY2ReadAhead=!ahead || strcmp(ahead,"0")!=0;
-#else
 	bY2ReadAhead=ahead && strcmp(ahead,"1")==0;
-#endif
 	memset(Y2HddPrev,0,sizeof(Y2HddPrev));
 	Y2Perf = {};
 	Y2CpuPrev = {};
@@ -225,6 +224,8 @@ static void NandCacheConfigure()
 }
 
 static double MvcBasis[8][8];
+static double MvcBasisT[8][8];
+static void MvcTransposeBasis(){for(unsigned x=0;x<8;x++)for(unsigned u=0;u<8;u++)MvcBasisT[u][x]=MvcBasis[x][u];}
 
 
 // ---------------------------------------------------------------------------
@@ -2421,6 +2422,82 @@ static void MvcPredictBlock(UINT32 base, UINT32 vector, INT32 chroma, UINT32 bx,
 	}
 }
 
+static void MvcIdctScalar(const INT32 *coef,INT32 *residual)
+{
+	// zero coefficients and rows are skipped: adding zeros leaves the sums unchanged, and the
+	// remaining terms are added in the same order
+	double tmp[8][8];
+	INT32 rows[8], nrows = 0;
+	for (INT32 v = 0; v < 8; v++) {
+		INT32 cols[8], ncols = 0;
+		double values[8];
+		for (INT32 u = 0; u < 8; u++) {
+			if (coef[v * 8 + u]) {
+				cols[ncols] = u;
+				values[ncols++] = coef[v * 8 + u];
+			}
+		}
+		if (!ncols) continue;
+		rows[nrows++] = v;
+		for (INT32 x = 0; x < 8; x++) {
+			const double *basis = MvcBasis[x];
+			double sum = 0;
+			for (INT32 i = 0; i < ncols; i++) sum += values[i] * basis[cols[i]];
+			tmp[v][x] = sum;
+		}
+	}
+	for (INT32 y = 0; y < 8; y++) {
+		double basis[8];
+		for (INT32 r = 0; r < nrows; r++) basis[r] = MvcBasis[y][rows[r]];
+		for (INT32 x = 0; x < 8; x++) {
+			double sum = 0;
+			for (INT32 r = 0; r < nrows; r++) sum += tmp[rows[r]][x] * basis[r];
+			residual[y * 8 + x] = RoundInt(sum);
+		}
+	}
+}
+
+static bool MvcIdctNeon(const INT32 *coef,INT32 *residual)
+{
+#if Y2_PIXEL_NEON
+	// Double precision, ordered nonzero terms. A conservative half-integer
+	// guard preserves the original scalar rounding at possible FMA ties.
+	double tmp[8][8];
+	INT32 rows[8],nrows=0;
+	for(INT32 v=0;v<8;v++){
+		INT32 cols[8],ncols=0;
+		double values[8];
+		for(INT32 u=0;u<8;u++)if(coef[v*8+u]){
+			cols[ncols]=u;values[ncols++]=coef[v*8+u];
+		}
+		if(!ncols)continue;
+		rows[nrows++]=v;
+		for(INT32 x=0;x<8;x+=2){
+			float64x2_t sum=vdupq_n_f64(0);
+			for(INT32 i=0;i<ncols;i++)sum=vfmaq_n_f64(sum,vld1q_f64(MvcBasisT[cols[i]]+x),values[i]);
+			vst1q_f64(tmp[v]+x,sum);
+		}
+	}
+	for(INT32 y=0;y<8;y++){
+		double basis[8];
+		for(INT32 r=0;r<nrows;r++)basis[r]=MvcBasis[y][rows[r]];
+		for(INT32 x=0;x<8;x+=2){
+			float64x2_t sum=vdupq_n_f64(0);
+			for(INT32 r=0;r<nrows;r++)sum=vfmaq_n_f64(sum,vld1q_f64(tmp[rows[r]]+x),basis[r]);
+			float64x2_t absval=vabsq_f64(sum);
+			float64x2_t frac=vsubq_f64(absval,vrndmq_f64(absval));
+			uint64x2_t near=vcleq_f64(vabsq_f64(vsubq_f64(frac,vdupq_n_f64(0.5))),vdupq_n_f64(1e-6));
+			if(vgetq_lane_u64(near,0) || vgetq_lane_u64(near,1))return false;
+			int64x2_t rounded=vcvtaq_s64_f64(sum);
+			vst1_s32(residual+y*8+x,vmovn_s64(rounded));
+		}
+	}
+	return true;
+#else
+	(void)coef;(void)residual;return false;
+#endif
+}
+
 // one macroblock's pixels: residuals, prediction from the reference frames, output
 static void MvcExec(const Y2Job &job)
 {
@@ -2448,37 +2525,8 @@ static void MvcExec(const Y2Job &job)
 				INT32 dc = RoundInt(coef[0] / 8.0);
 				for (INT32 i = 0; i < 64; i++) residual[i] = dc;
 			} else {
-				// zero coefficients and rows are skipped: adding zeros leaves the sums unchanged, and the
-				// remaining terms are added in the same order
-				double tmp[8][8];
-				INT32 rows[8], nrows = 0;
-				for (INT32 v = 0; v < 8; v++) {
-					INT32 cols[8], ncols = 0;
-					double values[8];
-					for (INT32 u = 0; u < 8; u++) {
-						if (coef[v * 8 + u]) {
-							cols[ncols] = u;
-							values[ncols++] = coef[v * 8 + u];
-						}
-					}
-					if (!ncols) continue;
-					rows[nrows++] = v;
-					for (INT32 x = 0; x < 8; x++) {
-						const double *basis = MvcBasis[x];
-						double sum = 0;
-						for (INT32 i = 0; i < ncols; i++) sum += values[i] * basis[cols[i]];
-						tmp[v][x] = sum;
-					}
-				}
-				for (INT32 y = 0; y < 8; y++) {
-					double basis[8];
-					for (INT32 r = 0; r < nrows; r++) basis[r] = MvcBasis[y][rows[r]];
-					for (INT32 x = 0; x < 8; x++) {
-						double sum = 0;
-						for (INT32 r = 0; r < nrows; r++) sum += tmp[rows[r]][x] * basis[r];
-						residual[y * 8 + x] = RoundInt(sum);
-					}
-				}
+				if(!bY2IdctSimd || !bY2MediaSimd || !MvcIdctNeon(coef,residual))
+					MvcIdctScalar(coef,residual);
 			}
 		}
 
@@ -3164,6 +3212,7 @@ static INT32 DrvInit(UINT16 seed, const UINT8 *data_bits, const UINT8 *key_bits,
 	for (INT32 x = 0; x < 8; x++) {
 		for (INT32 u = 0; u < 8; u++) {
 			MvcBasis[x][u] = (u ? 0.5 : sqrt(0.125)) * cos((2 * x + 1) * u * 3.14159265358979323846 / 16);
+	MvcTransposeBasis();
 		}
 	}
 
@@ -3410,6 +3459,14 @@ static void Y2PerfFrameDone(UINT64 start)
 		(unsigned long long)(cur.nativeBranches - Y2CpuPrev.nativeBranches),
 		(unsigned long long)Y2Perf.syncCalls, (unsigned long long)Y2Perf.syncPending,
 		(unsigned long long)Y2Perf.syncSelective, (unsigned long long)Y2Perf.mapUpdates, (unsigned long long)Y2Perf.mapRanges);
+	bprintf(PRINT_UI,_T("Y2 PERF LINK: blocks %llu hits %llu learned %llu; decoded %.2f/%.0f MiB\n"),
+		(unsigned long long)(cur.nativeLinkBlocks-Y2CpuPrev.nativeLinkBlocks),
+		(unsigned long long)(cur.nativeLinkHits-Y2CpuPrev.nativeLinkHits),
+		(unsigned long long)(cur.nativeLinkLearned-Y2CpuPrev.nativeLinkLearned),
+		cur.decodedArenaBytes/1048576.0,cur.decodedArenaCapacity/1048576.0);
+	bprintf(PRINT_UI,_T("Y2 PERF FPU: spans %llu guard exits %llu\n"),
+		(unsigned long long)(cur.nativeFpuSpans-Y2CpuPrev.nativeFpuSpans),
+		(unsigned long long)(cur.nativeFpuMisses-Y2CpuPrev.nativeFpuMisses));
 	bprintf(PRINT_UI,_T("Y2 PERF MEDIA: MVC jobs %llu parallel %llu batches %llu ms/frame %.2f; render %llu %.2f; YUV %llu %.2f\n"),
 		(unsigned long long)Y2Perf.media.mvcJobs,(unsigned long long)Y2Perf.media.mvcParallel,
 		(unsigned long long)Y2Perf.media.mvcBatches,Y2Perf.media.mvcNs*scale,

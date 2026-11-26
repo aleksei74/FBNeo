@@ -117,6 +117,7 @@ static void TestActualMvc(){
 	for(auto &v:initial)v=Random();
 	for(unsigned x=0;x<8;x++)for(unsigned u=0;u<8;u++)
 		MvcBasis[x][u]=(u?0.5:sqrt(0.125))*cos((2*x+1)*u*3.14159265358979323846/16);
+	MvcTransposeBasis();
 	std::vector<Y2Job> jobs;
 	for(unsigned i=0;i<64;i++)jobs.push_back(Job(i%8,i/8,i%4));
 	// Duplicate block, reference alias, and distinct output form serial
@@ -251,4 +252,32 @@ static void TestYuvActual(){
 	nY2Workers=0;DrvRAM=nullptr;EdgeTileRanksExit();
 	printf("Y2 real YUV: %u layouts including edge tiles and all modes identical\n",cases);
 }
-int main(){TestNand();TestPixelMath();TestGroups();TestActualMvc();TestFootprint();TestYuvAndBlend();TestYuvActual();}
+static void TestIdct(){
+	for(unsigned x=0;x<8;x++)for(unsigned u=0;u<8;u++)
+		MvcBasis[x][u]=(u?0.5:sqrt(0.125))*cos((2*x+1)*u*3.14159265358979323846/16);
+	MvcTransposeBasis();
+	unsigned vectorized=0,ties=0;
+	for(unsigned i=0;i<30000;i++){
+		INT32 coef[64]={},a[64],b[64];
+		for(unsigned j=0;j<64;j++)if(i%4==0 || (Random()%(1+(i%16)))==0)coef[j]=INT16(Random());
+		if(i%5==0){memset(coef,0,sizeof(coef));coef[i%64]=INT16(Random());}
+		MvcIdctScalar(coef,a);
+		if(MvcIdctNeon(coef,b))vectorized++;else{ties++;MvcIdctScalar(coef,b);}
+		Require(!memcmp(a,b,sizeof(a)),"IDCT residual differs");
+	}
+#if Y2_PIXEL_NEON
+	Require(vectorized>20000 && ties>0,"IDCT SIMD or tie fallback not exercised");
+#endif
+	printf("Y2 IDCT: 30000 sparse/dense blocks, %u SIMD, %u fallback, residuals identical\n",vectorized,ties);
+}
+static void TestReadAheadPolicy(){
+	unsetenv("FBNEO_Y2_CHD_READAHEAD");Y2PerfBegin();
+	Require(!bY2ReadAhead,"CHD read-ahead default not disabled");
+	setenv("FBNEO_Y2_CHD_READAHEAD","0",1);Y2PerfBegin();
+	Require(!bY2ReadAhead,"CHD read-ahead explicit off");
+	setenv("FBNEO_Y2_CHD_READAHEAD","1",1);Y2PerfBegin();
+	Require(bY2ReadAhead,"CHD read-ahead opt-in");
+	unsetenv("FBNEO_Y2_CHD_READAHEAD");Y2PerfBegin();bY2Profile=false;
+	puts("CHD read-ahead default off and explicit opt-in PASS");
+}
+int main(){TestReadAheadPolicy();TestNand();TestPixelMath();TestIdct();TestGroups();TestActualMvc();TestFootprint();TestYuvAndBlend();TestYuvActual();}

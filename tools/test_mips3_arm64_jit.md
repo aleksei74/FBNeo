@@ -308,3 +308,85 @@ Regression tests:
   performance remain to be validated. Prefetch can compete for I/O
   or CPU on some systems; compare with =0 if necessary. No GPU
   renderer, block linking, or FPU JIT implemented in this follow-up.
+
+
+## Y2 linked native blocks / guarded FPU / IDCT (based on 9b5c5c745)
+
+retroarch10.log and retroarch11.log both used CHD read-ahead. The
+shell-only environment override did not reach the frontend. Because
+log10's read-ahead frequently waited for completion and its worst
+frame peak increased, the default is now **off**. Explicit opt-in
+FBNEO_Y2_CHD_READAHEAD=1 remains available. Direct CHD byte-range reads,
+YUV SIMD, MVC batching, and other previously verified changes remain.
+
+### Linked native-block execution
+
+Two warm successor slots per decoded block store full virtual PCs,
+decoded-arena offsets, and a shared 64-bit invalidation generation.
+Only blocks consisting of a single complete native span, without idle
+skipping or split delay slots, enter the linked runner. A link is learned
+from a current-generation FastCache hit; no block compilation or cache
+allocation occurs inside the linked loop. Every boundary retains the
+original event deadline, cycle accounting, and delayed-slot checks.
+Remap, code-write, restore and decoded-arena invalidation make stale
+links unreachable. Guard failures complete using the original handlers.
+This is data-only linking to native entries from a C++ runner; each
+span still makes a host function call. It is NOT machine-code tail
+jump patching or a cross-block register allocation scheme. Executable
+pages remain W^X and the native emitter cache is unchanged.
+
+FBNEO_MIPS3_JIT_LINK=0 disables linked execution. Default on for
+ARM64 VR5500, off for other CPU types; explicit =1 opts in. Default
+VR5500 ARM64 decoded arena 16 MiB (old 8 MiB), because log10 showed
+a decoded/native cache flush late in the session. Set
+FBNEO_MIPS3_DECODE_MB=8 or 32 to compare. Other hosts/CPU types retain
+the original capacity. Link metadata adds a small amount of decoded
+block storage. Y2 PERF LINK reports linked-runner blocks (including
+guard exits), successor hits, newly learned links, and decoded arena
+usage/capacity. These are coverage counters, not measured speedup.
+
+### Guarded FPU spans
+
+MFC1/DMFC1/MTC1/DMTC1; ADD/SUB/MUL/DIV/SQRT.S and .D; ABS/MOV/NEG.S
+and .D now emit native AArch64 code in integrated spans. FR=0 register
+pairs and FR=1 registers are separately specialized, with a live CU1
+and FR guard. Single register writes preserve the other half in FR=0,
+and clear the upper word in FR=1. Arithmetic requires normal finite
+inputs and result; zero, subnormal, infinity, NaN and invalid result
+fall back to the original handler before architectural writeback.
+Bitwise moves and sign operations preserve all raw bit patterns.
+Conversions, comparisons, FP memory operations, unsupported
+encodings and FPU delay slots remain interpreted. No guest FPU
+rounding/exception policy is changed. FBNEO_MIPS3_JIT_FPU=0 disables
+emission; default on only with the integrated VR5500 backend.
+Y2 PERF FPU reports attempted spans containing FPU and COP1 guard
+exits. It is not an FPU instruction count.
+
+### MVC inverse DCT
+
+Double-precision NEON computes two output samples in parallel with the
+same ordered nonzero terms and a transposed basis. DC-only shortcut
+and scalar residual transform remain unchanged. A 1e-6 distance
+guard around half-integer rounding ties falls back to the original
+scalar block, ensuring no precision loss from fused versus unfused
+operations for bounded int16 coefficients. FBNEO_Y2_IDCT_SIMD=0
+disables the transform; FBNEO_Y2_MEDIA_SIMD=0 also disables it.
+
+### Regression tests
+
+- ARM64 QEMU real MIPS3 core: 240 linked/unlinked snapshots with
+  branches, protected memory, code rewrite, remap, timer deadline and
+  restore, plus 611 warmed successor hits in the synthetic program.
+- 24,000 generated FPU operations compared with real interpreter
+  handlers, both FR layouts, normal and arbitrary bit patterns,
+  CU1 disabled, mismatched layout and guarded exceptional values.
+  Mixed FPU/ALU/branch program with a runtime FR layout switch.
+- Existing R4600 and VR5500 native ALU, RAM, branch/delay, event,
+  cache and CPU snapshot differential tests.
+- 30,000 actual sparse/dense IDCT blocks; 29,948 NEON and 52 scalar
+  fallback in the tested seed, all 64 residuals identical in each.
+  Existing real MVC, YUV and raster differential tests.
+- ARM64 and x86-64 production compilation of mips3.cpp,
+  mips3_intf.cpp and d_y2.cpp. Full core build and real device
+  performance still unverified. Native machine-code tail linking
+  and a Vulkan hardware renderer are not part of this change.

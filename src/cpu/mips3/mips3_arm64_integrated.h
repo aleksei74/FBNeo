@@ -9,12 +9,13 @@ namespace Mips3Arm64Jit {
 
 static const unsigned FlowFlag = 0x8000;
 static const unsigned TerminalFlag = 0x4000;
+static const unsigned FpuFlag = 0x2000;
 // Flow result low 32 bits: 9 decoded entries, 6 pseudo-ops, early-exit
 // flag, 9 RAM hits, 6 completed branches, delay-guard flag. Upper 32
 // bits contain the runtime next PC when applicable.
 static const uint32_t EarlyExit = 0x00008000u;
 static const uint32_t DelayGuard = 0x80000000u;
-static const unsigned IntegratedMaxWords = 48;
+static const unsigned IntegratedMaxWords = 96;
 
 inline uint32_t MoveX(unsigned d, unsigned s) { return 0xaa0003e0u | (s << 16) | d; }
 inline uint32_t MoveW(unsigned d, unsigned s) { return 0x2a0003e0u | (s << 16) | d; }
@@ -27,6 +28,7 @@ class SpanEmitter {
 	struct Slot { unsigned guest, age; bool dirty; } slot_[6];
 	unsigned age_;
 	uint32_t *p_;
+	bool fpuChecked_;
 	unsigned Acquire(unsigned guest, bool load, uint32_t pinned)
 	{
 		if (!guest) return 31; // ZR; never allocate guest r0
@@ -79,7 +81,7 @@ class SpanEmitter {
 		*at = 0x54000000u | (uint32_t(target - at) << 5) | cond;
 	}
 public:
-	explicit SpanEmitter(uint32_t *p) : slot_{}, age_(0), p_(p) {}
+	explicit SpanEmitter(uint32_t *p) : slot_{}, age_(0), p_(p), fpuChecked_(false) {}
 	uint32_t *End() const { return p_; }
 	static bool SupportsAlu(uint32_t op) { uint32_t tmp[MaxWordsPerInsn]; return Emit(op, tmp) >= 0; }
 
@@ -223,6 +225,93 @@ public:
 		return true;
 	}
 
+	// Guarded COP1 operations specialized for the current FR mode.
+	// Never modify FPR/GPR state before all guards pass. A changed
+	// register layout, disabled CU1, or exceptional FP values use the
+	// exact original interpreter handlers.
+	bool Fpu(uint32_t op,unsigned srOff,unsigned fprOff,unsigned completed,unsigned memory,
+		unsigned branches=0,unsigned pseudo=0,bool fr=true)
+	{
+		if((op>>26)!=0x11)return false;
+		const unsigned fmt=(op>>21)&31,rt=(op>>16)&31,fs=(op>>11)&31,fd=(op>>6)&31,fn=op&63;
+		const bool transfer=fmt==0 || fmt==1 || fmt==4 || fmt==5;
+		const bool dbl=fmt==1 || fmt==5 || fmt==17;
+		const bool arith=(fmt==16 || fmt==17) && fn<=4;
+		const bool sign=(fmt==16 || fmt==17) && fn>=5 && fn<=7;
+		if(!transfer && !arith && !sign)return false;
+		const auto offset=[&](unsigned reg,bool wide)->unsigned{
+			return fprOff+(fr?reg*8:(reg&~1u)*8+(!wide?(reg&1)*4:0));
+		};
+		const auto ld=[&](unsigned r,unsigned reg,bool wide){
+			*p_++=(wide?0xf9400000u:0xb9400000u)|((offset(reg,wide)>>(wide?3:2))<<10)|r;
+		};
+		const auto st=[&](unsigned r,unsigned reg,bool wide){
+			// FR=1 single writes clear the upper word; FR=0 singles
+			// write exactly one half of the corresponding even pair.
+			const bool full=wide||fr;
+			*p_++=(full?0xf9000000u:0xb9000000u)|((offset(reg,wide)>>(full?3:2))<<10)|r;
+		};
+		uint32_t *guards[4];unsigned n=0;
+		unsigned conditions[4];
+		if(!fpuChecked_){
+			*p_++=0xb9400000u|((srOff>>2)<<10)|2u; // LDR w2,Status
+			Imm32(6,0x24000000u); // CU1 and FR
+			*p_++=0x0a060042u; // AND w2,w2,w6
+			if(!fr)Imm32(6,0x20000000u);
+			*p_++=0x6b06005fu; // CMP w2,w6
+			guards[n]=p_++;conditions[n++]=1; // B.NE
+			fpuChecked_=true;
+		}
+		auto normal=[&](unsigned r){
+			*p_++=(dbl?0xd3400000u:0x53000000u)|((dbl?52u:23u)<<16)|((dbl?62u:30u)<<10)|(r<<5)|5u;
+			*p_++=0x510004a5u; // SUB w5,w5,#1
+			*p_++=0x7100001fu|((dbl?2045u:253u)<<10)|(5u<<5);
+			guards[n]=p_++;conditions[n++]=8; // B.HI
+		};
+		if(arith){
+			ld(2,fs,dbl);normal(2);
+			*p_++=(dbl?0x9e670000u:0x1e270000u)|(2u<<5); // FMOV d0/x2 or s0/w2
+			if(fn==4){
+				*p_++=(dbl?0x1e61c000u:0x1e21c000u); // FSQRT d0,d0 / s0,s0
+			}else{
+				ld(6,rt,dbl);normal(6);
+				*p_++=(dbl?0x9e670000u:0x1e270000u)|(6u<<5)|1u;
+				static const uint32_t ops[4]={0x1e202800u,0x1e203800u,0x1e200800u,0x1e201800u};
+				*p_++=ops[fn]|(dbl?0x00400000u:0)|(1u<<16);
+			}
+			*p_++=(dbl?0x9e660000u:0x1e260000u)|2u;
+			normal(2);
+		} else if(sign){
+			ld(2,fs,dbl);
+			if(fn!=6){
+				if(dbl)*p_++=0xd2e00000u|(0x8000u<<5)|6u;
+				else Imm32(6,0x80000000u);
+				*p_++=(fn==5?0x8a200000u:0xca000000u)|(6u<<16)|(2u<<5)|2u;
+			}
+		}
+		if(n){
+			uint32_t *skip=p_++;
+			for(unsigned i=0;i<n;i++)PatchCond(guards[i],p_,conditions[i]);
+			FlushTo(p_);
+			Return(completed,memory,branches,pseudo,false);
+			*skip=0x14000000u|uint32_t(p_-skip);
+		}
+		if(transfer){
+			if(fmt<=1){
+				if(rt){
+					const unsigned d=Write(rt);
+					ld(d,fs,dbl);
+					if(!dbl)*p_++=Sxtw(d);
+				}
+			}else{
+				const unsigned r=Read(rt);
+				if(!dbl){*p_++=MoveW(2,r);st(2,fs,false);}
+				else st(r,fs,true);
+			}
+		}else st(2,fd,dbl);
+		return true;
+	}
+
 	// A normal branch + non-trapping ALU delay slot executes in one span.
 	// w15 is the event budget, w16 the runtime page, w17 the decision across the
 	// delay slot; the caller still performs the original event/block checks.
@@ -290,10 +379,10 @@ public:
 		PatchCond(keep, p_, 8); // B.HI: not taken, event budget still available
 	}
 
-	void Finish(unsigned completed, unsigned memory, bool flow, unsigned branches = 0, unsigned pseudo = 0, bool terminal = false)
+	void Finish(unsigned completed, unsigned memory, bool flow, unsigned branches = 0, unsigned pseudo = 0, bool terminal = false, bool guarded = false)
 	{
 		FlushTo(p_);
-		if (flow || memory) Return(completed, memory, branches, pseudo, terminal);
+		if (flow || memory || guarded) Return(completed, memory, branches, pseudo, terminal);
 		else *p_++ = Ret;
 	}
 };
