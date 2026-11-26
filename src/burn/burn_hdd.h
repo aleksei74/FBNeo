@@ -41,6 +41,15 @@ INT32 BurnHDDWrite(BurnHDD* pDisk, UINT32 nLba, UINT32 nCount, const void* pSrc)
 // Writes made with BurnHDDWrite are seen. Returns 0 on success, bytes past the end read as zeroes.
 INT32 BurnHDDReadBytes(BurnHDD* pDisk, UINT64 nOffset, UINT32 nSize, void* pDest);
 
+// Optional sequential read-ahead for immutable CHD consumers. Never
+// changes base image/diff data; unsupported hosts fall back to demand.
+struct BurnHDDReadStats {
+	UINT64 demandHunks, readAheadIssued, readAheadHits, readAheadWaited, readAheadDiscarded, readAheadFailed;
+	UINT64 demandNs, peakNs;
+};
+bool BurnHDDConfigureReadAhead(BurnHDD* pDisk, bool enable);
+void BurnHDDGetReadStats(BurnHDD* pDisk, BurnHDDReadStats* stats);
+
 // Forgets every write (back to the pristine image) and deletes the diff file.
 void BurnHDDDiscardWrites(BurnHDD* pDisk);
 

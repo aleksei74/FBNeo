@@ -5,6 +5,9 @@
 #include "chd.h"
 #include <map>
 #include <vector>
+#include <chrono>
+#include <new>
+#include "burn_hdd_readahead.h"
 
 #ifdef __LIBRETRO__
 #include <streams/file_stream_transforms.h>
@@ -43,6 +46,17 @@ struct BurnHDD {
 	UINT32 nTotalHunks;
 	UINT8* pCache;
 	INT32 nCacheTag[HDD_CACHE_HUNKS];
+	// Statistics and predictor are enabled only by the Y2 driver.
+	bool bReadStats = false;
+	BurnHDDReadStats readStats = {};
+	UINT32 lastHunk = ~0U;
+	unsigned sequentialHunks = 0;
+	TCHAR szImagePath[MAX_PATH];
+#if defined(__linux__)
+	FILE *pAheadFile = NULL;
+	chd_file *pAheadChd = NULL;
+	HddReadAhead::Worker *pAhead = NULL;
+#endif
 
 	std::map<UINT32, std::vector<UINT8> > Diff;
 	bool bDiffDirty;
@@ -191,6 +205,7 @@ BurnHDD* BurnHDDOpen(INT32 nIndex)
 	pDisk->nHunkBytes = pDisk->nTotalHunks = 0;
 	pDisk->pCache = NULL;
 	pDisk->bDiffDirty = false;
+	_tcscpy(pDisk->szImagePath, szPath);
 
 	// a CHD is recognised by its signature, whatever the file extension
 	char sig[8] = { 0 };
@@ -249,11 +264,69 @@ INT32 BurnHDDFlush(BurnHDD* pDisk)
 	return nRet;
 }
 
+#if defined(__linux__)
+static bool ReadAheadHunk(void *ctx,uint32_t hunk,uint8_t *dest)
+{
+	return chd_read(static_cast<chd_file*>(ctx),hunk,dest)==CHDERR_NONE;
+}
+#endif
+
+bool BurnHDDConfigureReadAhead(BurnHDD* pDisk, bool enable)
+{
+	if(!pDisk)return false;
+	pDisk->bReadStats=true;
+	if(!enable)return false;
+#if defined(__linux__)
+	if(!pDisk->pChd || !pDisk->Diff.empty())return false;
+	if(pDisk->pAhead)return true;
+	// Independent handle and libchdr decoder, not a shared seek cursor.
+	pDisk->pAheadFile=_tfopen(pDisk->szImagePath,_T("rb"));
+	if(!pDisk->pAheadFile)return false;
+	const chd_error err=chd_open_file(pDisk->pAheadFile,CHD_OPEN_READ,NULL,&pDisk->pAheadChd);
+	if(err!=CHDERR_NONE)pDisk->pAheadChd=NULL;
+	if(err==CHDERR_NONE) {
+		const chd_header *h=chd_get_header(pDisk->pAheadChd);
+		const chd_header *orig=chd_get_header(pDisk->pChd);
+		if(h && orig && h->hunkbytes==pDisk->nHunkBytes && h->totalhunks==pDisk->nTotalHunks &&
+			h->logicalbytes==orig->logicalbytes && !memcmp(h->sha1,orig->sha1,sizeof(h->sha1))) {
+			pDisk->pAhead=new(std::nothrow) HddReadAhead::Worker;
+			if(pDisk->pAhead && pDisk->pAhead->Start(pDisk->nHunkBytes,ReadAheadHunk,pDisk->pAheadChd))return true;
+			delete pDisk->pAhead;pDisk->pAhead=NULL;
+		}
+	}
+	if(pDisk->pAheadChd)chd_close(pDisk->pAheadChd);
+	pDisk->pAheadChd=NULL;
+	fclose(pDisk->pAheadFile);pDisk->pAheadFile=NULL;
+#endif
+	return false;
+}
+
+void BurnHDDGetReadStats(BurnHDD* pDisk,BurnHDDReadStats *stats)
+{
+	*stats={};
+	if(!pDisk)return;
+	*stats=pDisk->readStats;
+#if defined(__linux__)
+	if(pDisk->pAhead){
+		const auto s=pDisk->pAhead->GetStats();
+		stats->readAheadIssued=s.issued;stats->readAheadHits=s.hits;
+		stats->readAheadWaited=s.waited;stats->readAheadDiscarded=s.discarded;
+		stats->readAheadFailed=s.failed;
+	}
+#endif
+}
+
 void BurnHDDClose(BurnHDD* pDisk)
 {
 	if (pDisk == NULL) return;
 
 	BurnHDDFlush(pDisk);
+#if defined(__linux__)
+	// Join the bounded speculative decoder before releasing either image.
+	delete pDisk->pAhead;
+	if(pDisk->pAheadChd)chd_close(pDisk->pAheadChd);
+	if(pDisk->pAheadFile)fclose(pDisk->pAheadFile);
+#endif
 
 	if (pDisk->pChd) chd_close(pDisk->pChd);
 	if (pDisk->pFile) fclose(pDisk->pFile);		// libchdr does not close a FILE* it was given
@@ -286,29 +359,53 @@ INT32 BurnHDDGetGeometry(BurnHDD* pDisk, INT32* pnCylinders, INT32* pnHeads, INT
 	return 0;
 }
 
+static UINT8 *ReadImageHunk(BurnHDD *pDisk,UINT32 hunk)
+{
+	if(hunk>=pDisk->nTotalHunks)return NULL;
+	const INT32 slot=hunk%HDD_CACHE_HUNKS;
+	UINT8 *data=pDisk->pCache+(size_t)slot*pDisk->nHunkBytes;
+	if(pDisk->nCacheTag[slot]!=(INT32)hunk){
+		const auto start=pDisk->bReadStats?std::chrono::steady_clock::now():std::chrono::steady_clock::time_point{};
+		bool hit=false;
+#if defined(__linux__)
+		if(pDisk->pAhead)hit=pDisk->pAhead->Take(hunk,data);
+#endif
+		bool ok=hit || chd_read(pDisk->pChd,hunk,data)==CHDERR_NONE;
+		if(pDisk->bReadStats){
+			if(!hit)pDisk->readStats.demandHunks++;
+			UINT64 ns=(UINT64)std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::steady_clock::now()-start).count();
+			pDisk->readStats.demandNs+=ns;
+			if(ns>pDisk->readStats.peakNs)pDisk->readStats.peakNs=ns;
+		}
+		if(!ok){pDisk->nCacheTag[slot]=-1;return NULL;}
+		pDisk->nCacheTag[slot]=hunk;
+	}
+#if defined(__linux__)
+	if(pDisk->pAhead && pDisk->lastHunk!=hunk){
+		// Require three distinct sequential hunks before speculation.
+		// Do not treat one short range crossing a hunk as a stream.
+		if(pDisk->lastHunk!=~0U && hunk==pDisk->lastHunk+1){
+			if(pDisk->sequentialHunks<3)pDisk->sequentialHunks++;
+		}else pDisk->sequentialHunks=1;
+		if(pDisk->sequentialHunks>=3 && hunk+1<pDisk->nTotalHunks &&
+			pDisk->nCacheTag[(hunk+1)%HDD_CACHE_HUNKS]!=(INT32)(hunk+1))
+			pDisk->pAhead->Offer(hunk+1);
+		pDisk->lastHunk=hunk;
+	}
+#endif
+	return data;
+}
+
 static INT32 ReadImageSector(BurnHDD* pDisk, UINT32 nLba, UINT8* pDest)
 {
 	if (pDisk->pChd == NULL) {
 		if (hddFseek(pDisk->pFile, (INT64)nLba * pDisk->nSectorSize, SEEK_SET) != 0) return 1;
 		return (fread(pDest, pDisk->nSectorSize, 1, pDisk->pFile) != 1);
 	}
-
-	UINT64 nOffset = (UINT64)nLba * pDisk->nSectorSize;
-	UINT32 nHunk = (UINT32)(nOffset / pDisk->nHunkBytes);
-	if (nHunk >= pDisk->nTotalHunks) return 1;
-
-	INT32 nSlot = nHunk % HDD_CACHE_HUNKS;
-	UINT8* pHunk = pDisk->pCache + (size_t)nSlot * pDisk->nHunkBytes;
-
-	if (pDisk->nCacheTag[nSlot] != (INT32)nHunk) {
-		if (chd_read(pDisk->pChd, nHunk, pHunk) != CHDERR_NONE) {
-			pDisk->nCacheTag[nSlot] = -1;
-			return 1;
-		}
-		pDisk->nCacheTag[nSlot] = nHunk;
-	}
-
-	memcpy(pDest, pHunk + (nOffset % pDisk->nHunkBytes), pDisk->nSectorSize);
+	const UINT64 offset=(UINT64)nLba*pDisk->nSectorSize;
+	UINT8 *hunk=ReadImageHunk(pDisk,(UINT32)(offset/pDisk->nHunkBytes));
+	if(!hunk)return 1;
+	memcpy(pDest,hunk+(offset%pDisk->nHunkBytes),pDisk->nSectorSize);
 	return 0;
 }
 
@@ -359,6 +456,22 @@ INT32 BurnHDDReadBytes(BurnHDD* pDisk, UINT64 nOffset, UINT32 nSize, void* pDest
 		if (hddFseek(pDisk->pFile, (INT64)nOffset, SEEK_SET) == 0 && fread(pDst, nSize, 1, pDisk->pFile) == 1) return nRet;
 		memset(pDst, 0, nSize);
 		return 1;
+	}
+
+	// Read immutable CHD byte ranges directly from the hunk cache, without
+	// allocating a temporary sector or traversing the empty diff map.
+	// A failed hunk falls back to the original sector/error handling.
+	if (pDisk->bReadStats && pDisk->pChd && pDisk->Diff.empty()) {
+		while(nSize) {
+			const UINT32 pos=(UINT32)(nOffset%pDisk->nHunkBytes);
+			UINT32 len=pDisk->nHunkBytes-pos;
+			if(len>nSize)len=nSize;
+			UINT8 *hunk=ReadImageHunk(pDisk,(UINT32)(nOffset/pDisk->nHunkBytes));
+			if(!hunk)break;
+			memcpy(pDst,hunk+pos,len);
+			pDst+=len;nOffset+=len;nSize-=len;
+		}
+		if(!nSize)return nRet;
 	}
 
 	std::vector<UINT8> sector(pDisk->nSectorSize);

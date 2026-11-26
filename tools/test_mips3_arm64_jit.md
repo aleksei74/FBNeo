@@ -244,3 +244,67 @@ addressing/replacement, 20000 exact SIMD arithmetic cases, and 8000
 real driver footprint calls across queue generations. ARM64 runs
 under QEMU, x86-64 directly. This is a functional regression test,
 not a game benchmark or complete frame hash comparison.
+
+
+## Y2 CHD / YUV / raster follow-up (based on e3492aaae)
+
+retroarch9.log vs retroarch8.log matched 103 windows: mean core
+9.65 -> 9.29 ms, high-load sync 3.87 -> 1.93 ms, NAND misses
+25482 -> 25455. The 32 MiB decrypted cache did not materially reduce
+misses in KOF2002UM; the largest frame peak rose from 189 to 206 ms.
+These are individual runs, not a controlled storage benchmark.
+
+- Default decrypted NAND cache returns to 2 MiB; 8/16/32/64 MiB
+  remain selectable using FBNEO_Y2_NAND_CACHE_MB.
+- For Y2's immutable CHDs, BurnHDDReadBytes copies byte ranges directly
+  from cached hunks when the diff is empty. Other drivers keep the
+  original sector loop. On hunk error use the original error/sector path.
+- Linux AArch64 Y2 defaults to bounded asynchronous CHD read-ahead.
+  After three consecutive distinct increasing hunks, request the next
+  hunk. At most one speculative hunk per disk, using a separately opened
+  libchdr/file context. No simultaneous access to the demand decoder.
+  Exact matching in-flight demand may join; unrelated demand never waits
+  for that worker. Pending requests may be discarded, completed ones may
+  be reused. Thread/handle failure falls back to demand. All worker
+  resources are joined and freed before closing the image. If a diff
+  exists at initialization, do not start read-ahead. Diff-sector reads
+  retain precedence even if writes are added later.
+  FBNEO_Y2_CHD_READAHEAD=0 disables speculation (direct byte-range
+  copies and diagnostics still work). On other Linux architectures
+  opt in with =1; non-Linux remains demand-only.
+- Exact NEON YUV 4:2:0 conversion of eight pixels, all four output modes,
+  with packed RGB555/RGB565/ARGB4444/ARGB8888 and Morton pairs. Bounds
+  and nonaliasing input/output checks required; invalid/aliased layouts
+  use the original scalar conversion. No rounding, sampling, virtual
+  device time or output format changes. FBNEO_Y2_YUV_SIMD=0 restores
+  the old YUV pixel loop; FBNEO_Y2_MEDIA_SIMD=0 also disables it.
+- Extend existing NEON blend to all source/destination factor pairs
+  for the generic rasterizer and the channel-dependent fast span.
+  FBNEO_Y2_RASTER_SIMD=0 restores those scalar loops. The already
+  optimized alpha-only fast span is unchanged.
+- Y2 PERF CHD: demand decode count, speculative issued/hit/waited/
+  discarded/failed counts, foreground hunk read time including matching
+  waits and session maximum. These timings are nested in NAND/CPU
+  counters, not additional frame time. An issued job may complete in
+  a later profiling window.
+
+Regression tests:
+- tools/test_y2_media.cpp: prior MVC/cache/map tests plus 240000 YUV
+  pixels, 3840000 blend factor cases and 64 real YUV layouts, including
+  partial tiles, all modes, bounds/alias fallback. Run on ARM64 QEMU
+  as documented above.
+- tools/test_hdd_readahead.cpp: standalone Linux C++11 -O2 -pthread,
+  bounded queue and matching/unrelated demand, failure and clean exit.
+- tools/make_y2_chd_fixture.py / tools/test_y2_chd.cpp: synthetic
+  compressed V3 CHD, real libchdr, native stdio adapters to libretro
+  VFS ABI, 1194 range comparisons with the old sector path, overlay
+  writes and shutdown. Link normal libchdr/codec objects from the
+  target build and zlib/pthreads, with the usual burn_hdd.cpp include
+  paths, -ffunction-sections -fdata-sections -Wl,--gc-sections.
+  Fixture generated locally, contains no game data.
+- ARM64 and x86-64 production module compilation succeeded.
+  Functional checks do not prove timing improvement on the Odin 3.
+  Actual V5 game CHDs, frontend VFS, full-core build and real game
+  performance remain to be validated. Prefetch can compete for I/O
+  or CPU on some systems; compare with =0 if necessary. No GPU
+  renderer, block linking, or FPU JIT implemented in this follow-up.

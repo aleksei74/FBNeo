@@ -33,6 +33,9 @@ static bool bY2SelectiveSync = true;
 static bool bY2MvcBatch = true;
 static bool bY2MediaSimd = true;
 static bool bY2FootprintMemo = true;
+static bool bY2YuvSimd = true, bY2RasterSimd = true;
+static bool bY2ReadAhead = false;
+static BurnHDDReadStats Y2HddPrev[2];
 struct Y2MediaPerf {
 	UINT64 mvcJobs, mvcBatches, mvcParallel, mvcNs, renderJobs, renderNs, yuvJobs, yuvNs;
 	void Add(const Y2MediaPerf &o) {
@@ -90,6 +93,17 @@ static void Y2PerfBegin()
 	bY2MediaSimd = !mediaSimd || strcmp(mediaSimd,"0") != 0;
 	const char *memo = getenv("FBNEO_Y2_FOOTPRINT_MEMO");
 	bY2FootprintMemo = !memo || strcmp(memo,"0") != 0;
+	const char *yuvSimd=getenv("FBNEO_Y2_YUV_SIMD");
+	bY2YuvSimd=!yuvSimd || strcmp(yuvSimd,"0")!=0;
+	const char *rasterSimd=getenv("FBNEO_Y2_RASTER_SIMD");
+	bY2RasterSimd=!rasterSimd || strcmp(rasterSimd,"0")!=0;
+	const char *ahead=getenv("FBNEO_Y2_CHD_READAHEAD");
+#if defined(__aarch64__) && defined(__linux__)
+	bY2ReadAhead=!ahead || strcmp(ahead,"0")!=0;
+#else
+	bY2ReadAhead=ahead && strcmp(ahead,"1")==0;
+#endif
+	memset(Y2HddPrev,0,sizeof(Y2HddPrev));
 	Y2Perf = {};
 	Y2CpuPrev = {};
 	Y2BgBatchNs = 0;
@@ -192,8 +206,8 @@ static const UINT8 *pNandKeyBits;
 
 #define NAND_RECORD		0x1080		// two 0x840-byte pages: data + spare
 #define NAND_RECORDS	0x40000
-// Default 32 MiB of decrypted NAND data, 4-way LRU. A 2 MiB legacy
-// direct-mapped option is retained for low-memory and A/B testing.
+// Default 2 MiB (real log9 showed negligible benefit from 32 MiB).
+// Larger four-way capacities remain available for A/B and other games.
 static unsigned nNandLines, nNandWays;
 using NandCacheLine = Y2Nand::Line;
 static NandCacheLine *NandCache;
@@ -201,13 +215,13 @@ static Y2Nand::Cache NandPages;
 
 static void NandCacheConfigure()
 {
-	unsigned mb=32;
+	unsigned mb=2;
 	const char *env=getenv("FBNEO_Y2_NAND_CACHE_MB");
 	if(env && (!strcmp(env,"2") || !strcmp(env,"8") || !strcmp(env,"16") ||
 		!strcmp(env,"32") || !strcmp(env,"64"))) mb=atoi(env);
 	nNandLines=mb*256;
 	nNandWays=mb==2?1:4;
-	bprintf(PRINT_UI,_T("Y2 NAND cache: %u MiB, %u-way, demand only\n"),mb,nNandWays);
+	bprintf(PRINT_UI,_T("Y2 NAND cache: %u MiB, %u-way\n"),mb,nNandWays);
 }
 
 static double MvcBasis[8][8];
@@ -1245,7 +1259,8 @@ static void RenderSpan(INT32 y, INT32 startx, INT32 stopx, const Y2Poly &poly)
 		// blend factors follow the SDK's SRC_BLEND/DST_BLEND fields
 		const UINT32 dst = pixel_read(address, poly.mode);
 		UINT32 color = 0xff000000;
-		for (INT32 shift = 0; shift < 24; shift += 8) {
+		if(bY2RasterSimd)color=Y2PixelOps::BlendFactors(src,dst,(control>>3)&7,control&7,((control>>6)&3)==3);
+		else for (INT32 shift = 0; shift < 24; shift += 8) {
 			INT32 sv = ((src >> shift) & 255) * BlendFactor((control >> 3) & 7, src, dst, shift);
 			INT32 dv = ((dst >> shift) & 255) * BlendFactor(control & 7, src, dst, shift);
 
@@ -1384,6 +1399,8 @@ static void RenderSpanFast(INT32 y, INT32 startx, INT32 stopx, const Y2Poly &pol
 			// factors that only depend on the alphas are the same for the three channels
 			const INT32 sf = BlendFactor(src_factor, src, dst, 0), df = BlendFactor(dst_factor, src, dst, 0);
 			color = Y2PixelOps::BlendAlpha(src, dst, sf, df, subtract != 0);
+		} else if(bY2RasterSimd) {
+			color=Y2PixelOps::BlendFactors(src,dst,src_factor,dst_factor,subtract!=0);
 		} else {
 			for (INT32 shift = 0; shift < 24; shift += 8) {
 				INT32 sv = ((src >> shift) & 255) * BlendFactor(src_factor, src, dst, shift);
@@ -2615,6 +2632,46 @@ static void mvc_sram_w(INT32 offset, UINT32 data, UINT32 mask)
 }
 
 static const Y2Job *YuvJob = NULL;
+static bool bYuvDirect = false;
+
+static bool YuvCanDirect(const Y2Job &job)
+{
+	const UINT64 bytes=UINT64(job.width)*job.height;
+	const UINT64 outBytes=bytes*(((job.control>>12)&3)==3?4:2);
+	if(!job.width || !job.height || (job.width&15) || (job.height&15) ||
+		UINT64(job.out)+outBytes>RAM_SIZE || (job.out&3))return false;
+	for(unsigned p=0;p<3;p++){
+		const UINT64 size=p?bytes/2:bytes;
+		const UINT64 base=job.planes[p];
+		if(base+size>RAM_SIZE || (base<UINT64(job.out)+outBytes && UINT64(job.out)<base+size))return false;
+	}
+	return true;
+}
+
+#if Y2_PIXEL_NEON
+static void YuvDirectRow(const Y2Job &job,UINT32 y,INT32 mode,bool tiled)
+{
+	const UINT32 width=job.width,height=job.height;
+	const UINT8 *yp=DrvRAM+job.planes[0]+y*width;
+	const UINT8 *up=DrvRAM+job.planes[1]+(y/2)*width;
+	const UINT8 *vp=DrvRAM+job.planes[2]+(y/2)*width;
+	for(UINT32 x=0;x<width;x+=8){
+		UINT32 argb[8];UINT16 packed[8];
+		Y2Media::Yuv8(yp+x,up+x/2,vp+x/2,argb);
+		if(mode!=3)Y2Media::PackYuv8(argb,packed,mode);
+		if(!tiled){
+			memcpy(DrvRAM+job.out+(y*width+x)*2,packed,sizeof(packed));
+		}else{
+			// Even x pairs are adjacent and word-aligned in a Morton tile.
+			for(unsigned i=0;i<8;i+=2){
+				UINT32 index=texture_offset(x+i,y,width,height);
+				if(mode==3)memcpy(DrvRAM+job.out+index*4,argb+i,8);
+				else memcpy(DrvRAM+job.out+index*2,packed+i,4);
+			}
+		}
+	}
+}
+#endif
 
 // CFT_Yge: planar 4:2:0 input with interleaved U/V rows, the format bits select the framebuffer packing
 static void YuvRows(INT32 part)
@@ -2626,6 +2683,9 @@ static void YuvRows(INT32 part)
 	const INT32 tiled = (mode == 3) || (job.control & 0x4000);
 
 	for (UINT32 y = part; y < height; y += nRenderParts) {
+#if Y2_PIXEL_NEON
+		if(bYuvDirect){YuvDirectRow(job,y,mode,tiled!=0);continue;}
+#endif
 		for (UINT32 x = 0; x < width; x++) {
 			INT32 yy = RamRead8(job.planes[0] + y * width + x) - 16;
 			INT32 u = RamRead8(job.planes[1] + (y / 2) * width + x / 2) - 128;
@@ -2651,6 +2711,7 @@ static void YuvExec(const Y2Job &job)
 	if ((mode == 3) || (job.control & 0x4000)) EdgeTileRanksPrepare(job.width, job.height);
 
 	YuvJob = &job;
+	bYuvDirect=bY2MediaSimd && bY2YuvSimd && YuvCanDirect(job);
 	WorkerRows = YuvRows;
 	nRenderParts = nY2Workers + 1;
 	for (INT32 i = 0; i < nY2Workers; i++) Y2Workers[i].notify();
@@ -3081,6 +3142,8 @@ static INT32 DrvInit(UINT16 seed, const UINT8 *data_bits, const UINT8 *key_bits,
 			bprintf(PRINT_ERROR, _T("Y2: NAND %d is not a 0x42000000 byte dump\n"), i);
 			return 1;
 		}
+		const bool enabled=BurnHDDConfigureReadAhead(Nand[i],bY2ReadAhead);
+		bprintf(PRINT_UI,_T("Y2 NAND %d CHD read-ahead: %s\n"),i,enabled?_T("enabled"):_T("disabled/unavailable"));
 	}
 
 	nNandSeed = seed;
@@ -3145,6 +3208,7 @@ static INT32 DrvInit(UINT16 seed, const UINT8 *data_bits, const UINT8 *key_bits,
 
 	DrvDoReset();
 	Y2Perf = {}; // exclude initial NAND and CPU boot setup
+	for(INT32 i=0;i<2;i++)BurnHDDGetReadStats(Nand[i],&Y2HddPrev[i]);
 	Mips3GetPerfStats(&Y2CpuPrev);
 
 	return 0;
@@ -3354,6 +3418,20 @@ static void Y2PerfFrameDone(UINT64 start)
 	bprintf(PRINT_UI,_T("Y2 PERF IO: NAND evictions %llu; footprint calls %llu memo hits %llu\n"),
 		(unsigned long long)Y2Perf.nandEvictions,(unsigned long long)Y2Perf.footprintCalls,
 		(unsigned long long)Y2Perf.footprintMemoHits);
+	BurnHDDReadStats hdd[2];
+	UINT64 demand=0,issued=0,hits=0,waited=0,discard=0,failed=0,chdNs=0,peak=0;
+	for(INT32 i=0;i<2;i++){
+		BurnHDDGetReadStats(Nand[i],&hdd[i]);
+		const auto &p=Y2HddPrev[i];const auto &c=hdd[i];
+		demand+=c.demandHunks-p.demandHunks;issued+=c.readAheadIssued-p.readAheadIssued;
+		hits+=c.readAheadHits-p.readAheadHits;waited+=c.readAheadWaited-p.readAheadWaited;
+		discard+=c.readAheadDiscarded-p.readAheadDiscarded;failed+=c.readAheadFailed-p.readAheadFailed;
+		chdNs+=c.demandNs-p.demandNs;if(c.peakNs>peak)peak=c.peakNs;
+		Y2HddPrev[i]=c;
+	}
+	bprintf(PRINT_UI,_T("Y2 PERF CHD: demand %llu ahead %llu hits %llu waited %llu discarded %llu failed %llu; demand %.2f ms/frame, session peak %.2f ms\n"),
+		(unsigned long long)demand,(unsigned long long)issued,(unsigned long long)hits,(unsigned long long)waited,
+		(unsigned long long)discard,(unsigned long long)failed,chdNs*scale,peak/1000000.0);
 	Y2CpuPrev = cur;
 	Y2Perf = {};
 }

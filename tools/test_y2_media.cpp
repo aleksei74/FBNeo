@@ -187,4 +187,68 @@ static void TestFootprint(){
 	Require(a.pending==b.pending && a.tracked==b.tracked && a.written==b.written && a.lo==b.lo && a.hi==b.hi,"footprint memo changed page protection or write tracking");
 	puts("Y2 footprint memo: 8000 mixed marks, queue generations and tracking PASS");
 }
-int main(){TestNand();TestPixelMath();TestGroups();TestActualMvc();TestFootprint();}
+static void TestYuvAndBlend(){
+	for(unsigned c=0;c<30000;c++){
+		UINT8 y[8],u[4],v[4];UINT32 argb[8];UINT16 packed[8];
+		for(auto &x:y)x=Random();
+		for(auto &x:u)x=Random();
+		for(auto &x:v)x=Random();
+		Y2Media::Yuv8(y,u,v,argb);
+		for(unsigned i=0;i<8;i++){
+			INT32 yy=y[i]-16,uu=u[i/2]-128,vv=v[i/2]-128;
+			UINT32 ref=0xff000000u|(Clamp((298*yy+409*vv+128)>>8,0,255)<<16)|
+				(Clamp((298*yy-100*uu-208*vv+128)>>8,0,255)<<8)|Clamp((298*yy+516*uu+128)>>8,0,255);
+			Require(argb[i]==ref,"YUV exact color mismatch");
+		}
+		for(unsigned mode=0;mode<3;mode++){
+			Y2Media::PackYuv8(argb,packed,mode);
+			for(unsigned i=0;i<8;i++)Require(packed[i]==pack_pixel(argb[i],mode),"YUV pixel pack mismatch");
+		}
+		UINT32 src=Random(),dst=Random();
+		for(unsigned sf=0;sf<8;sf++)for(unsigned df=0;df<8;df++)for(unsigned sub=0;sub<2;sub++){
+			UINT32 ref=0xff000000u;
+			for(unsigned sh=0;sh<24;sh+=8){
+				INT32 sv=((src>>sh)&255)*BlendFactor(sf,src,dst,sh),dv=((dst>>sh)&255)*BlendFactor(df,src,dst,sh);
+				ref|=UINT32(Clamp(((sub?dv-sv:dv+sv)+127)/255,0,255))<<sh;
+			}
+			Require(Y2PixelOps::BlendFactors(src,dst,sf,df,sub)==ref,"raster factor blend differs");
+		}
+	}
+	puts("Y2 YUV 30000 x 8 pixels, packing and 3840000 blend cases PASS");
+}
+static void TestYuvActual(){
+	for(unsigned n=0;n<64;n++){
+		TextureMorton[n]=0;
+		for(unsigned b=0;b<6;b++)TextureMorton[n]|=((n>>b)&1)<<(2*b);
+	}
+	std::vector<UINT8> initial(0x600000),scalar(initial.size()),simd(initial.size());
+	for(auto &v:initial)v=Random();
+	const UINT32 shapes[][2]={{16,16},{48,80},{64,64},{80,112},{112,48},{128,128},{640,480},{720,480}};
+	unsigned cases=0;
+	nY2Workers=2;
+	for(int i=0;i<nY2Workers;i++)Y2Workers[i].init(RenderWorkers[i]);
+	for(const auto &wh:shapes)for(unsigned mode=0;mode<4;mode++)for(unsigned tiled=0;tiled<2;tiled++){
+		Y2Job j={};j.type=JOB_YUV;j.width=wh[0];j.height=wh[1];
+		j.control=0x8100|(mode<<12)|(tiled?0x4000:0);
+		j.out=0x300000;j.planes[0]=0x10000;j.planes[1]=0x100000;j.planes[2]=0x200000;
+		Require(YuvCanDirect(j),"eligible YUV rejected");
+		if(tiled||mode==3){
+			EdgeTileRanksPrepare(j.width,j.height);
+			for(UINT32 y=0;y<j.height;y++)for(UINT32 x=0;x<j.width;x+=2){
+				UINT32 a=texture_offset(x,y,j.width,j.height);
+				Require(!(a&1) && texture_offset(x+1,y,j.width,j.height)==a+1,"Morton pair not contiguous");
+			}
+		}
+		scalar=initial;simd=initial;
+		DrvRAM=scalar.data();bY2YuvSimd=false;YuvExec(j);
+		DrvRAM=simd.data();bY2YuvSimd=true;bY2MediaSimd=true;YuvExec(j);
+		Require(scalar==simd,"actual YUV conversion/packing differs");
+		j.planes[0]=j.out;Require(!YuvCanDirect(j),"aliased YUV accepted");
+		j.planes[0]=RAM_SIZE-8;Require(!YuvCanDirect(j),"out of range YUV accepted");
+		cases++;
+	}
+	for(int i=0;i<nY2Workers;i++)Y2Workers[i].exit();
+	nY2Workers=0;DrvRAM=nullptr;EdgeTileRanksExit();
+	printf("Y2 real YUV: %u layouts including edge tiles and all modes identical\n",cases);
+}
+int main(){TestNand();TestPixelMath();TestGroups();TestActualMvc();TestFootprint();TestYuvAndBlend();TestYuvActual();}
