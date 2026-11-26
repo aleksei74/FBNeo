@@ -84,7 +84,7 @@ static const void FUNCNAME(BLIT_PARAMS)
 // wrong/unsafe slowdown sim
 	if (dimy > starty && dimx > startx)
 	{
-		epic12_device_blit_delay += (dimy - starty)*(dimx - startx);
+		*delay_pixels += (dimy - starty)*(dimx - startx);
 
 		//printf("delay is now %d\n", epic12_device_blit_delay);
 	}
@@ -155,11 +155,11 @@ static const void FUNCNAME(BLIT_PARAMS)
 			bigblocks--;
 		}
 #endif
-#if REALLY_SIMPLE == 1 && FLIPX == 0
-		Epic12Fast::Copy(bmp, gfx2, dimx-startx > 0 ? dimx-startx : 0, TRANSPARENT != 0);
+#if REALLY_SIMPLE == 1
+		Epic12Fast::CopyRow<FLIPX>(bmp, gfx2, dimx-startx > 0 ? dimx-startx : 0, TRANSPARENT != 0);
 #else
 #if EPIC12_NEON && REALLY_SIMPLE == 0
-		if (epic12_blend_neon && dimx-startx >= 8) {
+		if (epic12_blend_neon && dimx-startx >= 4) {
 #if BLENDED == 1
 			const size_t n = Epic12Fast::BlendRow<_SMODE,_DMODE,TINT,true,FLIPX,TRANSPARENT>(
 #else

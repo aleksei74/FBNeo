@@ -56,7 +56,7 @@ template<int SM,int DM,bool Tint,bool Blend,bool Flip,bool Transparent>
 inline size_t BlendRow(uint32_t *dst,const uint32_t *src,size_t n,
 	unsigned sa,unsigned da,unsigned tr,unsigned tg,unsigned tb)
 {
-	if(n<8)return 0;
+	if(n<4)return 0;
 	// Preserve ordered reads/writes for overlapping source/dest ranges.
 	const uintptr_t d=(uintptr_t)dst;
 	const uintptr_t s=(uintptr_t)(Flip?src-(n-1):src);
@@ -73,8 +73,12 @@ inline size_t BlendRow(uint32_t *dst,const uint32_t *src,size_t n,
 			pen=vrev64q_u32(pen);
 			pen=vextq_u32(pen,pen,2);
 		}else pen=vld1q_u32(src+i);
+		// Fully transparent groups need neither destination traffic nor arithmetic.
+		const uint32x4_t mask=vtstq_u32(pen,flag);
+		if(Transparent && vmaxvq_u32(mask)==0)continue;
+		const bool mixed=Transparent && vminvq_u32(mask)==0;
 		uint32x4_t old=vdupq_n_u32(0);
-		if(Blend||Transparent)old=vld1q_u32(dst+i);
+		if(Blend||mixed)old=vld1q_u32(dst+i);
 		uint8x16_t s5=vshrq_n_u8(vreinterpretq_u8_u32(pen),3);
 		if(Tint)s5=Clamp5(Mul5(s5,tint));
 		uint8x16_t out=s5;
@@ -102,29 +106,53 @@ inline size_t BlendRow(uint32_t *dst,const uint32_t *src,size_t n,
 			out=Clamp5(vaddq_u8(base,tail));
 		}
 		uint32x4_t result=vorrq_u32(vandq_u32(vreinterpretq_u32_u8(vshlq_n_u8(out,3)),rgb),vandq_u32(pen,flag));
-		if(Transparent)result=vbslq_u32(vtstq_u32(pen,flag),result,old);
+		if(mixed)result=vbslq_u32(mask,result,old);
 		vst1q_u32(dst+i,result);
 	}
 	return count;
 }
 #endif
 
-inline void Copy(uint32_t *dst,const uint32_t *src,size_t n,bool transparent) {
-	// Compare addresses, not relational pointers into different objects.
-	const uintptr_t d=(uintptr_t)dst,s=(uintptr_t)src,bytes=n*sizeof(uint32_t);
-	if (d==s) return;
+template<bool Flip>
+inline void CopyRow(uint32_t *dst,const uint32_t *src,size_t n,bool transparent) {
+	if (!n) return;
+	// Preserve ordered read/write behavior even for overlapping reversed rows.
+	const uintptr_t d=(uintptr_t)dst,s=(uintptr_t)(Flip?src-(n-1):src);
+	const size_t bytes=n*sizeof(uint32_t);
+	if (!Flip && d==s) return;
 	const bool overlap=d>s ? d-s<bytes : s-d<bytes;
 	if (!overlap) {
-		if (!transparent) { memcpy(dst,src,bytes); return; }
+		if (!Flip && !transparent) { memcpy(dst,src,bytes); return; }
 #if EPIC12_NEON
-		for (;n>=4;n-=4,src+=4,dst+=4) {
-			uint32x4_t p=vld1q_u32(src),q=vld1q_u32(dst);
-			uint32x4_t mask=vtstq_u32(p,vdupq_n_u32(0x20000000));
-			vst1q_u32(dst,vbslq_u32(mask,p,q));
+		const uint32x4_t flag=vdupq_n_u32(0x20000000);
+		const uint32_t *start=src;
+		const size_t count=n&~size_t(3);
+		for (size_t i=0;i<count;i+=4) {
+			uint32x4_t p=vld1q_u32(Flip?start-i-3:start+i);
+			if (Flip) {
+				p=vrev64q_u32(p);
+				p=vextq_u32(p,p,2);
+			}
+			if (transparent) {
+				const uint32x4_t mask=vtstq_u32(p,flag);
+				if (vmaxvq_u32(mask)==0) continue;
+				if (vminvq_u32(mask)==0) p=vbslq_u32(mask,p,vld1q_u32(dst+i));
+			}
+			vst1q_u32(dst+i,p);
 		}
+		if (count==n) return;
+		src=Flip?start-count:start+count;
+		dst+=count;
+		n-=count;
 #endif
 	}
-	for (;n;--n,++src,++dst) if (!transparent || (*src&0x20000000)) *dst=*src;
+	for (size_t i=0;i<n;i++) {
+		const uint32_t p=Flip?src[-(ptrdiff_t)i]:src[i];
+		if (!transparent || (p&0x20000000)) dst[i]=p;
+	}
+}
+inline void Copy(uint32_t *dst,const uint32_t *src,size_t n,bool transparent) {
+	CopyRow<false>(dst,src,n,transparent);
 }
 }
 #endif

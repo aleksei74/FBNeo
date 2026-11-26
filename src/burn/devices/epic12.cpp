@@ -58,6 +58,7 @@ static UINT32 m_gfx_addr_shadowcopy;
 static UINT32 m_gfx_scroll_x, m_gfx_scroll_y;
 static UINT32 m_gfx_clip_x, m_gfx_clip_y;
 static UINT32 m_gfx_clip_x_shadowcopy, m_gfx_clip_y_shadowcopy;
+static int m_clip_margin_shadowcopy;
 
 static int m_gfx_size;
 static UINT32 *m_bitmaps;
@@ -112,9 +113,9 @@ typedef const void (*epic12_device_blitfunction)(
 						const UINT8 , /* s_alpha */
 						const UINT8 , /* d_alpha */
 						//int , /* tint */
-						const clr_t * );
+						const clr_t *, UINT64 * );
 
-#define BLIT_PARAMS const rectangle *clip, UINT32 *gfx, int src_x, int src_y, const int dst_x_start, const int dst_y_start, int dimx, int dimy, const int flipy, const UINT8 s_alpha, const UINT8 d_alpha, const clr_t *tint_clr
+#define BLIT_PARAMS const rectangle *clip, UINT32 *gfx, int src_x, int src_y, const int dst_x_start, const int dst_y_start, int dimx, int dimy, const int flipy, const UINT8 s_alpha, const UINT8 d_alpha, const clr_t *tint_clr, UINT64 *delay_pixels
 
 	static inline void pen_to_clr(UINT32 pen, clr_t *clr)
 	{
@@ -307,7 +308,14 @@ static void blitter_delay_callback(int)
 // with completion of a job attributed to the interval where it finishes.
 static bool blitProfile = false;
 static UINT64 blitSubmitWaitNs, blitShadowNs, blitSyncNs, blitJobs, blitAsyncJobs;
-static std::atomic<UINT64> blitWorkerNs{0};
+static std::atomic<UINT64> blitWorkerNs{0}, blitParallelJobs{0}, blitParallelFallback{0};
+#if EPIC12_NEON && THREADY == THREADY_PTHREAD
+static threadystruct blitHelper;
+static bool blitParallelReady, blitParallelAllowed;
+static int blitSplitY;
+static UINT64 blitHelperDelay;
+static void gfx_helper_cb();
+#endif
 static bool blitJobAsync;
 static UINT64 BlitNow()
 {
@@ -321,22 +329,38 @@ void epic12_set_perf_enabled(bool enabled)
 	blitProfile=enabled;
 	blitSubmitWaitNs=blitShadowNs=blitSyncNs=blitJobs=blitAsyncJobs=0;
 	blitWorkerNs.store(0,std::memory_order_relaxed);
+	blitParallelJobs.store(0,std::memory_order_relaxed);
+	blitParallelFallback.store(0,std::memory_order_relaxed);
 	blitJobAsync=false;
 }
 
 void epic12_get_perf_stats(Epic12PerfStats *stats)
 {
 	*stats={blitSubmitWaitNs,blitShadowNs,blitSyncNs,
-		blitWorkerNs.load(std::memory_order_relaxed),blitJobs,blitAsyncJobs};
+		blitWorkerNs.load(std::memory_order_relaxed),blitJobs,blitAsyncJobs,
+		blitParallelJobs.load(std::memory_order_relaxed),blitParallelFallback.load(std::memory_order_relaxed)};
 }
 
 static void gfx_exec(); // forward
+#if EPIC12_NEON && THREADY == THREADY_PTHREAD
+static bool gfx_exec_parallel();
+#endif
 
 static void run_blitter_cb()
 {
 	epic12_device_blit_delay = 0;
 	const UINT64 start = blitProfile ? BlitNow() : 0;
-	gfx_exec();
+#if EPIC12_NEON && THREADY == THREADY_PTHREAD
+	if (blitParallelReady && blitParallelAllowed) {
+		const bool used=gfx_exec_parallel();
+		if (blitProfile) {
+			if (used) blitParallelJobs.fetch_add(1,std::memory_order_relaxed);
+			else blitParallelFallback.fetch_add(1,std::memory_order_relaxed);
+		}
+		if (!used) gfx_exec();
+	} else
+#endif
+		gfx_exec();
 	if (blitProfile) {
 		const UINT64 elapsed = BlitNow()-start;
 		if (blitJobAsync) blitWorkerNs.fetch_add(elapsed,std::memory_order_relaxed);
@@ -346,7 +370,12 @@ static void run_blitter_cb()
 
 void epic12_exit()
 {
+	thready.notify_wait();
 	thready.exit();
+#if EPIC12_NEON && THREADY == THREADY_PTHREAD
+	if (blitParallelReady) blitHelper.exit();
+	blitParallelReady=false;
+#endif
 
 	BurnFree(m_bitmaps);
 	BurnFree(m_ram16_copy);
@@ -398,6 +427,16 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	epic12_set_blitter_sleep_on_busy(1);
 
 	thready.init(run_blitter_cb);
+#if EPIC12_NEON && THREADY == THREADY_PTHREAD
+	const char *parallel=getenv("FBNEO_CV1K_BLIT_PARALLEL");
+	blitParallelReady=false;
+	blitParallelAllowed=false;
+	if (thready_cpu_count()>=4 && (!parallel || strcmp(parallel,"0")!=0)) {
+		blitHelper.init(gfx_helper_cb);
+		blitParallelReady=blitHelper.is_threaded()!=0;
+	}
+	bprintf(PRINT_UI,_T("CV1000 EPIC12 safe row parallel: %s\n"),blitParallelReady?_T("enabled"):_T("disabled"));
+#endif
 
 	sh4_set_cave_blitter_delay_func(blitter_delay_callback);
 }
@@ -430,6 +469,7 @@ void epic12_set_blitter_sleep_on_busy(INT32 busysleep_on)
 
 void epic12_reset()
 {
+	thready.notify_wait();
 	// cache table to avoid divides in blit code, also pre-clamped
 	int x,y;
 	for (y=0;y<0x40;y++)
@@ -570,7 +610,7 @@ static void gfx_upload(UINT32 *addr)
 	}
 }
 
-#define draw_params &m_clip, m_bitmaps,src_x,src_y, x,y, dimx,dimy, flipy, s_alpha, d_alpha, &tint_clr
+#define draw_params clip, m_bitmaps,src_x,src_y, x,y, dimx,dimy, flipy, s_alpha, d_alpha, &tint_clr, delay_pixels
 
 
 
@@ -772,7 +812,7 @@ static void gfx_draw_shadow_copy(UINT32 *addr)
 	m_blit_delay_ns += num_vram_clk * EP1C_VRAM_CLK_NANOSEC;
 }
 
-static void gfx_draw(UINT32 *addr)
+static void gfx_draw(UINT32 *addr, const rectangle *clip, UINT64 *delay_pixels)
 {
 	int x,y, dimx,dimy, flipx,flipy;//, src_p;
 	int trans,blend, s_mode, d_mode;
@@ -1029,48 +1069,155 @@ static void gfx_create_shadow_copy()
 }
 
 
-static void gfx_exec()
+// Snapshot the same clipping state for each lane. Intersect only Y, so
+// source X wrap checks and all blend/flip calculations remain unchanged.
+static rectangle gfx_initial_clip()
+{
+	return rectangle(m_gfx_clip_x_shadowcopy - m_clip_margin_shadowcopy,
+		m_gfx_clip_x_shadowcopy + 320 - 1 + m_clip_margin_shadowcopy,
+		m_gfx_clip_y_shadowcopy - m_clip_margin_shadowcopy,
+		m_gfx_clip_y_shadowcopy + 240 - 1 + m_clip_margin_shadowcopy);
+}
+
+static void gfx_exec_band(int min_y, int max_y, UINT64 *delay_pixels, bool split)
 {
 	UINT32 addr = m_gfx_addr_shadowcopy & 0x1fffffff;
-	m_clip.set(m_gfx_clip_x_shadowcopy - EP1C_CLIP_MARGIN, m_gfx_clip_x_shadowcopy + 320 - 1 + EP1C_CLIP_MARGIN,
-			   m_gfx_clip_y_shadowcopy - EP1C_CLIP_MARGIN, m_gfx_clip_y_shadowcopy + 240 - 1 + EP1C_CLIP_MARGIN);
-
-//  logerror("GFX EXEC: %08X\n", addr);
-
-	while (1)
-	{
-		UINT16 data = READ_NEXT_WORD(&addr);
-
-		switch( data & 0xf000 )
-		{
+	rectangle clip=gfx_initial_clip();
+	while (1) {
+		UINT16 data=READ_NEXT_WORD(&addr);
+		switch(data & 0xf000) {
 			case 0x0000:
 			case 0xf000:
 				return;
-
 			case 0xc000:
-				if (READ_NEXT_WORD(&addr)) // cliptype
-					m_clip.set(m_gfx_clip_x_shadowcopy - EP1C_CLIP_MARGIN, m_gfx_clip_x_shadowcopy + 320 - 1 + EP1C_CLIP_MARGIN,
-							   m_gfx_clip_y_shadowcopy - EP1C_CLIP_MARGIN, m_gfx_clip_y_shadowcopy + 240 - 1 + EP1C_CLIP_MARGIN);
-				else
-					m_clip.set(0, 0x2000-1, 0, 0x1000-1);
+				if (READ_NEXT_WORD(&addr)) clip=gfx_initial_clip();
+				else clip.set(0,0x2000-1,0,0x1000-1);
 				break;
-
 			case 0x2000:
-				addr -= 2;
+				// Parallel preflight never admits uploads.
+				if (split) return;
+				addr-=2;
 				gfx_upload(&addr);
 				break;
-
-			case 0x1000:
-				addr -= 2;
-				gfx_draw(&addr);
+			case 0x1000: {
+				addr-=2;
+				rectangle band=clip;
+				if (split) {
+					band.min_y=MAX(band.min_y,min_y);
+					band.max_y=MIN(band.max_y,max_y);
+				}
+				if (band.min_y<=band.max_y) gfx_draw(&addr,&band,delay_pixels);
+				else addr+=20;
 				break;
-
+			}
 			default:
-				//popmessage("GFX op = %04X", data);
 				return;
 		}
 	}
 }
+
+static void gfx_exec()
+{
+	gfx_exec_band(0,0x0fff,&epic12_device_blit_delay,false);
+}
+
+#if EPIC12_NEON && THREADY == THREADY_PTHREAD
+// A 32x32 conservative tile map. Reject *any* overlap of a source
+// rectangle with any destination tile in the list. With no VRAM
+// read-after-write dependencies, two disjoint destination Y bands
+// can execute the original draw order independently and bit-exactly.
+struct Epic12TileMap {
+	UINT64 bits[128][4] = {};
+	void add(int x0,int x1,int y0,int y1) {
+		const unsigned lo=x0>>5,hi=x1>>5;
+		for (unsigned i=lo/64;i<=hi/64;i++) {
+			const unsigned a=i==lo/64?lo%64:0, b=i==hi/64?hi%64:63;
+			const UINT64 mask=(~UINT64(0)<<a)&(~UINT64(0)>>(63-b));
+			for (int y=y0>>5;y<=(y1>>5);y++) bits[y][i]|=mask;
+		}
+	}
+	bool intersects(const Epic12TileMap &other) const {
+		for (int y=0;y<128;y++) for (int x=0;x<4;x++)
+			if (bits[y][x]&other.bits[y][x]) return true;
+		return false;
+	}
+};
+
+static bool gfx_split_plan(int &split_y)
+{
+	UINT32 addr=m_gfx_addr_shadowcopy & 0x1fffffff;
+	rectangle clip=gfx_initial_clip();
+	Epic12TileMap reads,writes;
+	// 16-row bins for a cheap load-balanced horizontal partition.
+	UINT32 work[256]={};
+	UINT64 total=0;
+	// Bound planning overhead and preserve original interpreter on unusual lists.
+	for (unsigned cmd=0;cmd<8192;cmd++) {
+		const UINT16 attr=READ_NEXT_WORD(&addr);
+		switch(attr&0xf000) {
+			case 0x0000:
+			case 0xf000: {
+				if (total<180000 || reads.intersects(writes)) return false;
+				UINT64 upper=0;
+				for (int i=0;i<255;i++) {
+					upper+=work[i];
+					if (upper>=total/2) {
+						if (upper<total/4 || total-upper<total/4) return false;
+						split_y=(i+1)*16;
+						return true;
+					}
+				}
+				return false;
+			}
+			case 0xc000:
+				if (READ_NEXT_WORD(&addr)) clip=gfx_initial_clip();
+				else clip.set(0,0x1fff,0,0x0fff);
+				break;
+			case 0x1000: {
+				READ_NEXT_WORD(&addr);
+				const int sx=READ_NEXT_WORD(&addr)&0x1fff, sy=READ_NEXT_WORD(&addr)&0x0fff;
+				const int dx=(INT16)READ_NEXT_WORD(&addr),dy=(INT16)READ_NEXT_WORD(&addr);
+				const int w=(READ_NEXT_WORD(&addr)&0x1fff)+1,h=(READ_NEXT_WORD(&addr)&0x0fff)+1;
+				READ_NEXT_WORD(&addr); READ_NEXT_WORD(&addr);
+				const int x0=MAX(dx,clip.min_x),x1=MIN(dx+w-1,clip.max_x);
+				const int y0=MAX(dy,clip.min_y),y1=MIN(dy+h-1,clip.max_y);
+				if (x0>x1 || y0>y1) break;
+				// Decline wraparound and any out-of-range geometry. Full
+				// source bounds (not clipped) conservatively cover flips.
+				if (sx+w>0x2000 || sy+h>0x1000 || x0<0 || y0<0 || x1>=0x2000 || y1>=0x1000) return false;
+				reads.add(sx,sx+w-1,sy,sy+h-1);
+				writes.add(x0,x1,y0,y1);
+				for (int i=y0/16;i<=y1/16;i++) {
+					const UINT32 n=(x1-x0+1)*(MIN(y1,i*16+15)-MAX(y0,i*16)+1);
+					if (work[i]>0xffffffffu-n) return false;
+					work[i]+=n;
+					total+=n;
+				}
+				break;
+			}
+			default:
+				return false; // uploads and unknown opcodes retain exact serial order
+		}
+	}
+	return false;
+}
+
+static void gfx_helper_cb()
+{
+	blitHelperDelay=0;
+	gfx_exec_band(blitSplitY,0x0fff,&blitHelperDelay,true);
+}
+
+static bool gfx_exec_parallel()
+{
+	if (!gfx_split_plan(blitSplitY)) return false;
+	blitHelper.notify();
+	gfx_exec_band(0,blitSplitY-1,&epic12_device_blit_delay,true);
+	blitHelper.notify_wait();
+	epic12_device_blit_delay+=blitHelperDelay;
+	return true;
+}
+#endif
 
 
 void epic12_wait_blitterthread()
@@ -1090,6 +1237,7 @@ static void gfx_exec_write(UINT32 data)
 
 			m_gfx_clip_x_shadowcopy = m_gfx_clip_x;
 			m_gfx_clip_y_shadowcopy = m_gfx_clip_y;
+			m_clip_margin_shadowcopy = EP1C_CLIP_MARGIN;
 
 			// Create a copy of the blit list so we can safely thread it.
 			// Copying the Blitter operations will also estimate the delay needed for processing.
@@ -1137,10 +1285,12 @@ static void gfx_exec_write(UINT32 data)
 			}
 
 			epic12_device_blit_delay = 0;
+			// Previous list has been joined; notify publishes the snapshot.
+			blitJobAsync=thready.is_threaded()!=0;
+#if EPIC12_NEON && THREADY == THREADY_PTHREAD
+			blitParallelAllowed=blitJobAsync && !m_delay_method && (dips[1]&4);
+#endif
 			if (blitProfile) {
-				// The previous list has been joined before changing this
-				// flag; notify's semaphore publishes it to the worker.
-				blitJobAsync=thready.is_threaded()!=0;
 				blitJobs++;
 				if (blitJobAsync) blitAsyncJobs++;
 			}
@@ -1303,6 +1453,7 @@ void epic12_blitter_write(UINT32 offset, UINT32 data)
 
 void epic12_scan(INT32 nAction, INT32 *pnMin)
 {
+	thready.notify_wait();
 	SCAN_VAR(m_gfx_addr);
 //	SCAN_VAR(m_gfx_addr_shadowcopy); // probably not needed!
 	SCAN_VAR(m_gfx_scroll_x);

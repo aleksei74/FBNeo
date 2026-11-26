@@ -98,6 +98,9 @@ static void Cv1kProfileFrame(UINT64 start) {
 		(blit.workerExecNs-cv1kPrevBlit.workerExecNs)*scale,
 		(unsigned long long)(blit.jobs-cv1kPrevBlit.jobs),
 		(unsigned long long)(blit.asyncJobs-cv1kPrevBlit.asyncJobs));
+	bprintf(PRINT_UI,_T("CV1K PARALLEL: split %llu fallback %llu\n"),
+		(unsigned long long)(blit.parallelJobs-cv1kPrevBlit.parallelJobs),
+		(unsigned long long)(blit.parallelFallback-cv1kPrevBlit.parallelFallback));
 	cv1kPrevBlit=blit;
 	cv1kPrevMiss=misses;cv1kPrevReject=rejected;cv1kPrevFull=full;
 	cv1kPrevOps = ops; cv1kPrevSpans = spans; cv1kPrevBuilt = built;

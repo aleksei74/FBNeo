@@ -19,7 +19,7 @@ void epic12_blitter_write(UINT32 offset, UINT32 data);
 
 // Monotonic host-time counters, not emulated or serialized device state.
 struct Epic12PerfStats {
-	UINT64 submitWaitNs, shadowNs, syncExecNs, workerExecNs, jobs, asyncJobs;
+	UINT64 submitWaitNs, shadowNs, syncExecNs, workerExecNs, jobs, asyncJobs, parallelJobs, parallelFallback;
 };
 void epic12_set_perf_enabled(bool enabled);
 void epic12_get_perf_stats(Epic12PerfStats *stats);

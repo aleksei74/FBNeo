@@ -20,6 +20,13 @@ int main(){
 		for(unsigned i=0;i<n;i++)if(!t||(ref[s+i]&0x20000000))ref[d+i]=ref[s+i];
 		Epic12Fast::Copy(out+d,out+s,n,t);
 		if(memcmp(ref,out,sizeof(ref)))return 2;
+		for(unsigned i=0;i<256;i++)ref[i]=Random();
+		memcpy(out,ref,sizeof(ref));
+		if(n){
+			for(unsigned i=0;i<n;i++)if(!t||(ref[s+n-1-i]&0x20000000))ref[d+i]=ref[s+n-1-i];
+			Epic12Fast::CopyRow<true>(out+d,out+s+n-1,n,t);
+			if(memcmp(ref,out,sizeof(ref)))return 3;
+		}
 	}
-	printf("EPIC12 upload all 65536 words and 20000 copy/overlap cases PASS (NEON %d)\n",EPIC12_NEON);
+	printf("EPIC12 upload all 65536 words and 20000 forward and reversed copy/overlap cases PASS (NEON %d)\n",EPIC12_NEON);
 }

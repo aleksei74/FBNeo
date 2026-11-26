@@ -112,3 +112,36 @@ mixed branches and stores, code edits, memory handlers, busy-loop
 cycle equivalence, saturated-cache preservation and all EPIC12 blend
 variants. Actual RK3566 gameplay and measured performance remain
 unverified; QEMU is used only for functional validation.
+
+## RK3566 follow-up: EPIC12 sparse and safe dual-worker rendering
+
+The c863eadd9 akatana RK3566 trace had 49 120-frame intervals,
+16.796 ms mean core time and 42.321 ms peak. The last 24 intervals
+averaged 16.818 ms of worker execution with up to 26.065 ms in one
+interval. It used flat SH3 dispatch, not native spans. The earlier
+ddf44d019 log was a different game (dsmbl), not a matched baseline.
+
+- Exact NEON blending now handles four-pixel rows and skips all-transparent
+  groups before reading or writing the destination; all-opaque groups
+  need no transparency selection. Plain flipped rows use ordered NEON
+  copies when nonoverlapping; overlapping rows retain scalar order.
+- On little-endian AArch64 pthread builds, at least four online CPUs,
+  existing asynchronous blitter + before-draw synchronization and accurate
+  timing, a persistent second worker can render an independent Y band.
+  The command list is preflighted with conservative 32x32 VRAM tile
+  read/write footprints. Reject uploads, source/destination dependencies,
+  wrapping or invalid geometry, unknown commands and small or unbalanced
+  lists. Draws in each band retain original command order, clipping,
+  flips and blend modes. Per-band pixel-delay totals are combined only
+  after joining the helper. No emulated clock or slowdown changes.
+- FBNEO_CV1K_BLIT_PARALLEL=0 disables the helper for an A/B comparison.
+  CV1K PARALLEL logs split/fallback counts per profiling interval.
+  A fallback is intentional, not a render failure.
+- Differential tests: all 65536 uploads, 20000 forward/reverse overlap
+  cases each (scalar and ARM64), 4096 real blend cases (all 512 variants,
+  including fully transparent and opaque inputs), and 24 actual
+  dual-worker command lists versus serial execution, identical VRAM and
+  pixel delays, plus rejection tests for dependency, wrapping and uploads.
+  ARM64 tests run under QEMU; Cortex-A55 and x86-64 device/driver objects
+  compile. Target game frame rates, split coverage and thermal behavior
+  must be measured on real RK3566 hardware.
