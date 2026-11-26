@@ -124,20 +124,24 @@ struct Snapshot {
 	uint32_t r[16], sr, pc, ppc, ea, delay;
 	int cycles, total;
 	unsigned hits;
+	uint32_t callbackTrace;
 };
 static unsigned handlerHits;
+static uint32_t callbackTrace;
 static UINT32 __fastcall ReadLongTest(UINT32 a) {
 	handlerHits++;
+	callbackTrace=callbackTrace*33+Sh3GetPC(-1)+UINT32(Sh3TotalCycles())*17+UINT32(m_sh4_icount);
 	return 0x12345678u ^ a;
 }
 static Snapshot RunCore(unsigned mode, bool patch, bool handler)
 {
 	Sh3MapInit();
-	setenv("FBNEO_CV1K_JIT",mode==2?"1":"0",1);
-	setenv("FBNEO_CV1K_DISPATCH",(mode==1||mode==3)?"1":"0",1);
-	setenv("FBNEO_CV1K_COMPACT",mode==3?"1":"0",1);
+	setenv("FBNEO_CV1K_JIT",mode==2?"1":mode==5?"2":"0",1);
+	setenv("FBNEO_CV1K_DISPATCH",(mode==1||mode>=3)?"1":"0",1);
+	setenv("FBNEO_CV1K_COMPACT",mode>=3?"1":"0",1);
+	setenv("FBNEO_CV1K_BATCH",mode>=4?"1":"0",1);
 	Sh3SetCv1kNative(1);
-	Require(cv1kNativeEnabled==(mode==2) && cv1kFlatEnabled==(mode==1||mode==3) && cv1kCompactEnabled==(mode==3),"wrong CPU execution policy");
+	Require(cv1kNativeEnabled==(mode==2||mode==5) && cv1kFlatEnabled==(mode==1||mode>=3) && cv1kCompactEnabled==(mode>=3) && cv1kBatchEnabled==(mode>=4) && cv1kHybridEnabled==(mode==5),"wrong CPU execution policy");
 	static uint16_t code[32768];
 	memset(code,0,sizeof(code));
 	// MOV #3,R0; ADD #5,R0; MOV R0,R1; ADD R1,R0;
@@ -154,7 +158,7 @@ static Snapshot RunCore(unsigned mode, bool patch, bool handler)
 	m_pc=0x80000000;m_ppc=0;m_ea=0;m_delay=0;m_sr=0;
 	m_test_irq=0;m_pending_irq=0;m_cpu_off=0;sh3_total_cycles=0;
 	memset(m_r,0,sizeof(m_r));m_r[15]=0x8c000000u;
-	handlerHits=0;
+	handlerHits=0;callbackTrace=0;
 	m_ratio=1.0;
 	for(unsigned i=0;i<3;i++){m_timer[i]={};m_timer[i].timer_prescaler=64;}
 	for(unsigned i=0;i<4;i++)m_dma_timer[i]={};
@@ -166,9 +170,10 @@ static Snapshot RunCore(unsigned mode, bool patch, bool handler)
 	}
 	Snapshot out={};
 	memcpy(out.r,m_r,sizeof(m_r));out.sr=m_sr;out.pc=m_pc;out.ppc=m_ppc;out.ea=m_ea;out.delay=m_delay;
-	out.cycles=cycles;out.total=sh3_total_cycles;out.hits=handlerHits;
+	out.cycles=cycles;out.total=sh3_total_cycles;out.hits=handlerHits;out.callbackTrace=callbackTrace;
 	if(mode==3) Require(cv1kCompactActive,"compact dispatch did not execute");
-	if(mode==2){
+	if(mode>=4) Require(cv1kBatchActive,"batched dispatch did not execute");
+	if(mode==2 || (mode==5 && !handler)){
 		Require(cv1kNativeOps>0 && cv1kNativeBuilt>0,"native CPU execution path unused");
 		printf("Core native ops %llu, spans %llu, built %llu\n",
 			(unsigned long long)cv1kNativeOps,(unsigned long long)cv1kNativeSpans,(unsigned long long)cv1kNativeBuilt);
@@ -192,19 +197,22 @@ static void TestLongOnlyMap(){
 }
 static void TestCore(){
 	for(unsigned p=0;p<2;p++)for(unsigned h=0;h<2;h++){
-		Snapshot a=RunCore(0,p,h),b=RunCore(1,p,h),c=RunCore(2,p,h),d=RunCore(3,p,h);
+		Snapshot a=RunCore(0,p,h),b=RunCore(1,p,h),c=RunCore(2,p,h),d=RunCore(3,p,h),e=RunCore(4,p,h),f=RunCore(5,p,h);
 		Require(!memcmp(&a,&b,sizeof(a)),"flat CPU run loop/state/cycle mismatch");
 		Require(!memcmp(&a,&c,sizeof(a)),"JIT CPU run loop/state/cycle mismatch");
 		Require(!memcmp(&a,&d,sizeof(a)),"compact CPU run loop/state/cycle mismatch");
-		if(h)Require(b.hits>0 && c.hits>0 && d.hits>0,"read handler not called");
+		Require(!memcmp(&a,&e,sizeof(a)),"batched CPU run loop/state/cycle mismatch");
+		Require(!memcmp(&a,&f,sizeof(a)),"hybrid CPU run loop/state/cycle mismatch");
+		if(h)Require(b.hits>0 && c.hits>0 && d.hits>0 && e.hits>0 && f.hits>0,"read handler not called");
 	}
-	puts("SH3 switch/flat/compact/JIT run-loop, code rewrite, handler and cycle comparisons PASS");
+	puts("SH3 switch/flat/compact/batch/JIT/hybrid run-loop, code rewrite, handler and cycle comparisons PASS");
 }
 static Snapshot RunDispatchProgram(unsigned mode,unsigned seed)
 {
 	setenv("FBNEO_CV1K_JIT","0",1);
 	setenv("FBNEO_CV1K_DISPATCH",mode?"1":"0",1);
-	setenv("FBNEO_CV1K_COMPACT",mode==2?"1":"0",1);
+	setenv("FBNEO_CV1K_COMPACT",mode>=2?"1":"0",1);
+	setenv("FBNEO_CV1K_BATCH",mode>=3?"1":"0",1);
 	Sh3MapInit();Sh3SetCv1kNative(1);
 	static UINT16 code[32768],data[32768];
 	memset(code,0,sizeof(code));memset(data,0,sizeof(data));
@@ -233,11 +241,12 @@ static Snapshot RunDispatchProgram(unsigned mode,unsigned seed)
 }
 static void TestFlat(){
 	for(unsigned i=0;i<64;i++){
-		Snapshot a=RunDispatchProgram(0,i),b=RunDispatchProgram(1,i),c=RunDispatchProgram(2,i);
+		Snapshot a=RunDispatchProgram(0,i),b=RunDispatchProgram(1,i),c=RunDispatchProgram(2,i),d=RunDispatchProgram(3,i);
 		Require(!memcmp(&a,&b,sizeof(a)),"flat dispatch branch or store state differs");
 		Require(!memcmp(&a,&c,sizeof(a)),"compact dispatch branch or store state differs");
+		Require(!memcmp(&a,&d,sizeof(a)),"batched dispatch branch or store state differs");
 	}
-	puts("SH3 flat and compact dispatcher mixed branch/store programs: 64 each PASS");
+	puts("SH3 flat, compact and batched dispatcher mixed branch/store programs: 64 each PASS");
 }
 static void TestDtLoop(){
 #if BUSY_LOOP_HACKS
@@ -332,4 +341,108 @@ static void TestIdleDirect(){
 	Require(!cv1kIdlePage,"idle page survived mapping reset");
 	puts("CV1000 direct idle-page reads: 20000 value/cycle comparisons and handler invalidation PASS");
 }
-int main(){TestEmitter();TestTimers();TestCore();TestFlat();TestLongOnlyMap();TestIdleDirect();TestDtLoop();TestCachePressure();return 0;}
+// Verify the audited pure-op list itself: every encoding classified as
+// pure must consume exactly one cycle, not access PC, delay or pending IRQ.
+static void TestPureHandlers(){
+	bool pure[SH3_ID_COUNT]={};
+#define SH3_OPCODE(name)
+#define SH3_PURE_OPCODE(name) pure[SH3_ID_##name]=true;
+#include "../src/cpu/sh4/sh3_decode_ops.inc"
+#undef SH3_PURE_OPCODE
+#undef SH3_OPCODE
+	InitFlatDecode();
+	unsigned tested=0;
+	for(unsigned op=0;op<65536;op++) if(pure[sh3OpIds[op]]){
+		for(unsigned sample=0;sample<4;sample++){
+			InitRegs(m_r);m_sr=Random();m_pc=0x80000004;m_ppc=0x80000004;m_delay=0;
+			m_ea=0x12345678;m_test_irq=0;m_cpu_off=0;m_sh4_icount=25;sh3_total_cycles=100;
+			execute_one(UINT16(op));
+			Require(m_pc==0x80000004 && m_ppc==m_pc && !m_delay && !m_test_irq && !m_cpu_off &&
+				m_ea==0x12345678 && m_sh4_icount==25 && sh3_total_cycles==100,"pure handler modified externally visible state");
+		}
+		tested++;
+	}
+	printf("SH3 audited pure op classification: %u encodings, four states each PASS\n",tested);
+}
+static Snapshot RunPurePages(bool batch,unsigned seed){
+	setenv("FBNEO_CV1K_JIT","0",1);
+	setenv("FBNEO_CV1K_DISPATCH",batch?"1":"0",1);
+	setenv("FBNEO_CV1K_COMPACT","1",1);
+	setenv("FBNEO_CV1K_BATCH",batch?"1":"0",1);
+	Sh3MapInit();Sh3SetCv1kNative(1);
+	static UINT16 pages[65536];
+	for(unsigned i=0;i<65536;i++) pages[i]=0x7000|(i%15)<<8|((i+seed)&255);
+	Sh3MapMemory((UINT8*)pages,0,0x1ffff,MAP_RAM);
+	m_pc=0x8000ffd0;m_ppc=m_ea=m_delay=m_sr=0;
+	m_test_irq=m_pending_irq=m_cpu_off=0;sh3_total_cycles=0;
+	memset(m_r,0,sizeof(m_r));
+	m_ratio=1;
+	for(unsigned i=0;i<3;i++){m_timer[i]={};m_timer[i].timer_prescaler=64;}
+	for(unsigned i=0;i<4;i++)m_dma_timer[i]={};
+	cave_blitter_delay={};
+	int cycles=0;
+	for(unsigned i=0;i<64;i++){
+		// Cross a fetch page boundary and rewrite the next live opcode.
+		if(i==10)pages[(m_pc&AM)>>1]=0xe77f;
+		cycles+=Sh3Run_timerhack(1+(seed+i)%17);
+	}
+	Snapshot out={};memcpy(out.r,m_r,sizeof(m_r));out.sr=m_sr;out.pc=m_pc;out.ppc=m_ppc;out.ea=m_ea;out.delay=m_delay;out.cycles=cycles;out.total=sh3_total_cycles;
+	if(batch)Require(cv1kBatchActive,"batch page test did not exercise new path");
+	Sh3SetCv1kNative(0);return out;
+}
+static void TestPurePages(){
+	for(unsigned i=0;i<64;i++){
+		Snapshot a=RunPurePages(false,i),b=RunPurePages(true,i);
+		Require(!memcmp(&a,&b,sizeof(a)),"batched live page/state mismatch");
+	}
+	puts("SH3 batched fetch-page crossing and live code patch: 64 PASS");
+}
+// A device read requests an IRQ during a branch delay slot. The
+// saved return PC, banked registers and IRQ callback cycle budget must
+// match the original core, not the deferred interpreter's local PC.
+static UINT32 __fastcall IrqReadTest(UINT32 a){
+	Sh3SetIRQLine(2,CPU_IRQSTATUS_HOLD);
+	return ReadLongTest(a);
+}
+static Snapshot RunIrq(bool batch,bool delay){
+	setenv("FBNEO_CV1K_JIT","0",1);
+	setenv("FBNEO_CV1K_DISPATCH",batch?"1":"0",1);
+	setenv("FBNEO_CV1K_COMPACT","1",1);
+	setenv("FBNEO_CV1K_BATCH",batch?"1":"0",1);
+	Sh3MapInit();Sh3SetCv1kNative(1);
+	static UINT16 code[32768];
+	for(auto &op:code)op=0x0009;
+	// Pure operations, then a device load either directly or as a
+	// branch delay instruction; the IRQ handler contains pure ops.
+	code[0]=0xe003;code[1]=0x7005;
+	code[2]=delay?0xa002:0x0009;code[3]=0x62f2;
+	code[0x300]=0xe70a;code[0x301]=0x7701;
+	Sh3MapMemory((UINT8*)code,0,0xffff,MAP_RAM);
+	Sh3MapMemory((UINT8*)ram,0xc000000,0xc00ffff,MAP_RAM);
+	Sh3MapReadLongHandler(1,0xc000000,0xc00ffff);
+	Sh3SetReadLongHandler(1,IrqReadTest);
+	m_cpu_type=CPU_TYPE_SH3;
+	m_pc=0x80000000;m_vbr=0x80000000;m_ppc=m_ea=m_delay=m_sr=m_spc=m_ssr=0;
+	m_test_irq=m_pending_irq=m_cpu_off=0;sh3_total_cycles=0;
+	memset(m_irq_line_state,0,sizeof(m_irq_line_state));
+	memset(m_exception_requesting,0,sizeof(m_exception_requesting));
+	memset(m_exception_priority,0,sizeof(m_exception_priority));
+	m_exception_priority[SH4_INTC_IRL0+2-SH4_IRL0]=15<<8;
+	memset(m_rbnk,0,sizeof(m_rbnk));memset(m_r,0,sizeof(m_r));m_r[15]=0x8c000000;
+	m_ratio=1;handlerHits=0;callbackTrace=0;
+	for(unsigned i=0;i<3;i++){m_timer[i]={};m_timer[i].timer_prescaler=64;}
+	for(unsigned i=0;i<4;i++)m_dma_timer[i]={};
+	cave_blitter_delay={};
+	int cycles=Sh3Run_timerhack(19);
+	Require(handlerHits==1 && (m_sr&BL) && m_spc==(delay?0x8000000c:0x80000008),"IRQ was not delivered at expected PC");
+	Snapshot out={};memcpy(out.r,m_r,sizeof(m_r));out.sr=m_sr;out.pc=m_pc;out.ppc=m_ppc;out.ea=m_spc;out.delay=m_delay;out.cycles=cycles;out.total=sh3_total_cycles;out.hits=handlerHits;out.callbackTrace=callbackTrace;
+	Sh3SetCv1kNative(0);return out;
+}
+static void TestBatchIrq(){
+	for(unsigned d=0;d<2;d++){
+		Snapshot a=RunIrq(false,d),b=RunIrq(true,d);
+		Require(!memcmp(&a,&b,sizeof(a)),"batched IRQ boundary state differs");
+	}
+	puts("SH3 batched callback IRQ and delay slot IRQ: PASS");
+}
+int main(){TestEmitter();TestTimers();TestCore();TestFlat();TestPureHandlers();TestPurePages();TestBatchIrq();TestLongOnlyMap();TestIdleDirect();TestDtLoop();TestCachePressure();return 0;}

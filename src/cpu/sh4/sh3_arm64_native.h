@@ -19,12 +19,12 @@ static const unsigned MaxOps=24, MinOps=4, MaxWords=40*MaxOps+32;
 static const uint32_t Ret=0xd65f03c0u;
 inline bool Candidate(uint16_t op) {
 	const unsigned top=op>>12, f=op&15, imm=op&255;
-	if(top==2)return f>=8 && f<=11;
+	if(top==2)return (f>=8 && f<=11)||f==13;
 	if(top==3)return f==0||f==2||f==3||f==6||f==7||f==8||f==12;
-	if(top==4)return imm==8||imm==9||imm==0x18||imm==0x19||imm==0x28||imm==0x29;
+	if(top==4)return imm==0||imm==1||imm==8||imm==9||imm==0x11||imm==0x15||imm==0x18||imm==0x19||imm==0x20||imm==0x21||imm==0x28||imm==0x29;
 	if(top==5||top==7||top==14)return true;
-	if(top==6)return f!=8 && f!=10;
-	return op==0x0009||op==0x0008||op==0x0018||
+	if(top==6)return f!=10;
+	return op==0x0009||op==0x0008||op==0x0018||(op&0xf0ff)==0x0029||
 		(op&0xff00)==0x8800||(op&0xff00)==0xc800||(op&0xff00)==0xc900||(op&0xff00)==0xca00;
 }
 static inline uint32_t Mov(unsigned d,unsigned s) { return 0x2a0003e0u|(s<<16)|d; }
@@ -75,6 +75,9 @@ public:
 		if(op==0x0008 || op==0x0018){
 			SR();Imm(6,op==0x0018);*p_++=0x330000c5u;return true;
 		}
+		if((op&0xf0ff)==0x0029){
+			SR();d=W(n);*p_++=0x53000000u|(5<<5)|d;return true; // MOVT
+		}
 		if(top==0xe){d=W(n);Imm(d,int8_t(imm));return true;}
 		if(top==7){d=R(n);W(n);int v=int8_t(imm);
 			*p_++=(v<0?0x51000000u:0x11000000u)|(unsigned(v<0?-v:v)<<10)|(d<<5)|d;return true;}
@@ -83,6 +86,10 @@ public:
 			if(f==8){SR();*p_++=0x6a00001fu|(b<<16)|(a<<5);SetT(0);return true;}
 			base=f==9?0x0a000000u:f==10?0x4a000000u:0x2a000000u;
 			d=W(n);*p_++=base|(b<<16)|(a<<5)|d;return true;
+		}
+		if(top==2 && f==13){
+			a=R(n);b=R(m,a);d=W(n);
+			*p_++=0x13804000u|(a<<16)|(b<<5)|d;return true; // XTRCT
 		}
 		if(top==3){
 			switch(f){
@@ -122,15 +129,33 @@ public:
 			if(post && n!=m){W(m);*p_++=0x11000000u|((1u<<size)<<10)|(a<<5)|a;}
 			return true;
 		}
-		if(top==6 && (f==3||f==7||f==9||f==11||f>=12)){
+		if(top==6 && (f==3||f==7||f==8||f==9||f==11||f>=12)){
 			a=R(m);d=W(n,a);
 			switch(f){
 				case 3:*p_++=Mov(d,a);break;
 				case 7:*p_++=0x2a2003e0u|(a<<16)|d;break;
+				case 8: // SWAP.B: preserve the high 16 bits.
+					*p_++=0x5ac00406u|(a<<5); // REV16 w6,wA
+					if(d!=a)*p_++=Mov(d,a);
+					*p_++=0x33003cc0u|d;break; // BFI wD,w6,#0,#16
 				case 9:*p_++=0x13804000u|(a<<16)|(a<<5)|d;break;
 				case 11:*p_++=0x4b0003e0u|(a<<16)|d;break;
 				default:*p_++=(f>=14?0x13000000u:0x53000000u)|((f&1?15u:7u)<<10)|(a<<5)|d;break;
 			}
+			return true;
+		}
+		if(top==4 && (imm==0x11||imm==0x15)){
+			a=R(n);SR();*p_++=0x7100001fu|(a<<5);
+			SetT(imm==0x11?10:12);return true; // CMP/PZ, CMP/PL
+		}
+		if(top==4 && (imm==0||imm==1||imm==0x20||imm==0x21)){
+			d=R(n);W(n);SR();
+			const bool left=(imm&1)==0;
+			const unsigned bit=left?31:0;
+			*p_++=0x53000006u|(bit<<16)|(bit<<10)|(d<<5);
+			*p_++=0x330000c5u; // insert outgoing bit into T
+			*p_++=(imm==0x21?0x13000000u:0x53000000u)|
+				((left?31u:1u)<<16)|((left?30u:31u)<<10)|(d<<5)|d;
 			return true;
 		}
 		if(top==4 && (imm==8||imm==9||imm==0x18||imm==0x19||imm==0x28||imm==0x29)){

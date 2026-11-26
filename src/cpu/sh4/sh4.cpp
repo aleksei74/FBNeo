@@ -4035,8 +4035,11 @@ static void InitFlatDecode()
 static bool cv1kNativeEnabled = false;
 static bool cv1kFlatEnabled = false;
 static bool cv1kCompactEnabled = false;
+static bool cv1kBatchEnabled = false;
+static bool cv1kHybridEnabled = false;
 #if SH3_FLAT_DISPATCH
 static bool cv1kCompactActive = false;
+static bool cv1kBatchActive = false;
 #endif
 static UINT64 cv1kNativeOps, cv1kNativeSpans, cv1kNativeBuilt;
 static UINT64 cv1kNativeMisses, cv1kNativeRejected, cv1kNativeFull;
@@ -4146,9 +4149,9 @@ static bool Cv1kTryNative(UINT16 opcode)
 
 void Sh3SetCv1kNative(INT32 enable)
 {
-	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = false;
+	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = false;
 #if SH3_FLAT_DISPATCH
-	cv1kCompactActive=false;
+	cv1kCompactActive=cv1kBatchActive=false;
 #endif
 	cv1kNativeOps=cv1kNativeSpans=cv1kNativeBuilt=0;
 	cv1kNativeMisses=cv1kNativeRejected=cv1kNativeFull=0;
@@ -4158,13 +4161,14 @@ void Sh3SetCv1kNative(INT32 enable)
 	// Actual RK3566 trace showed significant short-span overhead. Do not
 	// automatically enable experimental JIT on any CPU until measured.
 	const char *option=getenv("FBNEO_CV1K_JIT");
-	cv1kNativeEnabled=enable && option && strcmp(option,"1")==0;
+	cv1kNativeEnabled=enable && option && (!strcmp(option,"1") || !strcmp(option,"2"));
+	cv1kHybridEnabled=cv1kNativeEnabled && !strcmp(option,"2");
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 native spans: %s (opt-in, hot >=8 ops)\n"),
-		cv1kNativeEnabled?_T("enabled"):_T("disabled"));
+		cv1kNativeEnabled?(cv1kHybridEnabled?_T("hybrid"):_T("enabled")):_T("disabled"));
 #endif
 #if SH3_FLAT_DISPATCH
 	const char *flat=getenv("FBNEO_CV1K_DISPATCH");
-	cv1kFlatEnabled=enable && !cv1kNativeEnabled && (!flat || strcmp(flat,"0")!=0);
+	cv1kFlatEnabled=enable && (!cv1kNativeEnabled || cv1kHybridEnabled) && (!flat || strcmp(flat,"0")!=0);
 	if(cv1kFlatEnabled)InitFlatDecode();
 	const char *compact=getenv("FBNEO_CV1K_COMPACT");
 	cv1kCompactEnabled=cv1kFlatEnabled && (!compact || strcmp(compact,"0")!=0);
@@ -4172,6 +4176,13 @@ void Sh3SetCv1kNative(INT32 enable)
 		cv1kCompactEnabled?_T("enabled"):_T("disabled"));
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 flat dispatch: %s\n"),
 		cv1kFlatEnabled?_T("enabled"):_T("disabled"));
+	const char *batch=getenv("FBNEO_CV1K_BATCH");
+	cv1kBatchEnabled=cv1kFlatEnabled && cv1kCompactEnabled && (!batch || strcmp(batch,"0")!=0);
+	// Hybrid mode uses the batched interpreter between native blocks.
+	if (cv1kHybridEnabled && !cv1kBatchEnabled)
+		cv1kHybridEnabled=cv1kNativeEnabled=false;
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 batched dispatch: %s\n"),
+		cv1kBatchEnabled?_T("enabled"):_T("disabled"));
 #else
 	(void)enable;
 #endif
@@ -4293,14 +4304,100 @@ finished:
 	m_sh4_icount=0;
 	return cycles;
 }
+// Keep PC and cycle budget in host registers across consecutive pure
+// operations. Slow handlers see exactly the published state they saw in
+// the original interpreter (including memory callbacks and IRQ tests).
+// Delay slots and pending IRQs use the original single-step path.
+template<bool Hybrid> static int Sh3Run_timerhack_batch(int cycles)
+{
+	static const void *const handlers[]={
+#define SH3_OPCODE(name) &&batch_op_##name,
+#include "sh3_decode_ops.inc"
+#undef SH3_OPCODE
+	};
+	static INT16 offsets[65536];
+	static bool initialized=false,fits=false;
+	const intptr_t base=(intptr_t)&&batch_base;
+	if (!initialized) {
+		fits=true;
+		for (unsigned i=0;i<SH3_ID_COUNT;i++) {
+			const intptr_t d=(intptr_t)handlers[i]-base;
+			if (d<-32768 || d>32767) {fits=false;break;}
+		}
+		if (fits) for (unsigned i=0;i<65536;i++)
+			offsets[i]=(INT16)((intptr_t)handlers[sh3OpIds[i]]-base);
+		initialized=true;
+		if (!fits) bprintf(PRINT_UI,_T("CV1000 SH3 batched dispatch: range fallback\n"));
+	}
+	if (!fits) return Sh3Run_timerhack_flat<true>(cycles);
+	cv1kBatchActive=true;
+	m_sh4_icount=cycles;sh3_end_run=0;
+	if (m_cpu_off) {m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
+	UINT32 pc=m_pc;
+	INT32 remaining=cycles,pure=0;
+	UINT16 opcode;
+start:
+	// Enter native spans only at a run/control-flow boundary, not on
+	// every interpreted instruction. Guest code is still live-checked.
+	if (m_delay || m_test_irq) {
+		if (m_delay) {
+			opcode=sh3_cpu_readop16(UINT32(m_delay&AM));
+			m_delay=0;m_ppc=m_pc;
+		} else {
+			opcode=sh3_cpu_readop16(UINT32(m_pc&AM));
+			m_pc+=2;m_ppc=m_pc;
+		}
+		execute_one(opcode);
+		if (m_test_irq && !m_delay) sh4_check_pending_irq();
+		EAT(1);
+		if (m_sh4_icount<=0) goto done;
+		goto start;
+	}
+	pc=m_pc;remaining=m_sh4_icount;pure=0;
+#if SH3_NATIVE
+	if (Hybrid && Cv1kTryNative(sh3_cpu_readop16(pc&AM))) {
+		if (m_sh4_icount<=0) goto done;
+		pc=m_pc;remaining=m_sh4_icount;
+		// The next instruction is interpreted, avoiding redundant
+		// native lookup in the middle of a linear block.
+	}
+#endif
+batch_base:
+fast_next:
+	opcode=sh3_cpu_readop16(pc&AM);
+	pc+=2;
+	goto *(void *)(base+offsets[opcode]);
+#define SH3_OPCODE(name) batch_op_##name: \
+	m_pc=m_ppc=pc; m_sh4_icount=remaining; sh3_total_cycles+=pure; \
+	name(opcode); goto slow_finished;
+#define SH3_PURE_OPCODE(name) batch_op_##name: \
+	name(opcode); ++pure; if (--remaining>0) goto fast_next; \
+	m_pc=m_ppc=pc; m_sh4_icount=remaining; sh3_total_cycles+=pure; goto done;
+#include "sh3_decode_ops.inc"
+#undef SH3_PURE_OPCODE
+#undef SH3_OPCODE
+slow_finished:
+	if (m_test_irq && !m_delay) sh4_check_pending_irq();
+	EAT(1);
+	if (m_sh4_icount<=0) goto done;
+	if (m_delay || m_test_irq || (Hybrid && m_pc!=pc)) goto start;
+	pc=m_pc;remaining=m_sh4_icount;pure=0;
+	goto fast_next;
+done:
+	cycles-=m_sh4_icount;
+	sh4_run_timers(cycles);
+	m_sh4_icount=0;
+	return cycles;
+}
 #endif
 
 static int Sh3Run_timerhack(int cycles)
 {
 #if SH3_NATIVE
-	if(cv1kNativeEnabled)return Sh3Run_timerhack_switch<true>(cycles);
+	if(cv1kNativeEnabled && !cv1kHybridEnabled)return Sh3Run_timerhack_switch<true>(cycles);
 #endif
 #if SH3_FLAT_DISPATCH
+	if(cv1kBatchEnabled)return cv1kHybridEnabled?Sh3Run_timerhack_batch<true>(cycles):Sh3Run_timerhack_batch<false>(cycles);
 	if(cv1kFlatEnabled)return cv1kCompactEnabled?Sh3Run_timerhack_flat<true>(cycles):Sh3Run_timerhack_flat<false>(cycles);
 #endif
 	return Sh3Run_timerhack_switch<false>(cycles);
