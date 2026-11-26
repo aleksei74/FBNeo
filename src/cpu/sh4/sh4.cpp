@@ -1030,21 +1030,21 @@ SH3_MEMORY_INLINE UINT16 RW(UINT32 A)
 	return ReadWord[(uintptr_t)pr](A);
 }
 
-SH3_MEMORY_INLINE UINT32 RL(UINT32 A)
-{
-	if (A < 0xe0000000) {
-		A &= AM;
-		WaitState(A, 0);
-	}
-
-	UINT8 *pr = MemMapRL[ A >> SH3_SHIFT ];
-	if ( (uintptr_t)pr >= SH3_MAXHANDLER ) {
-		UINT32 V = *((UINT32 *)(pr + (A & SH3_PAGEM)));
-#ifdef LSB_FIRST
-		V = (V << 16) | (V >> 16);
+// Opt-in host code-size experiment; does not change guest cycle accounting.
+// Keep the RAM long-load path inline while sharing its larger idle/MMIO tail.
+#ifndef SH3_SMALL_HANDLERS
+#define SH3_SMALL_HANDLERS 0
 #endif
-		return V;
-	}
+#ifndef SH3_FAST_ARITHMETIC
+#if defined(__aarch64__) || defined(SH3_INTERPRETER_TEST)
+#define SH3_FAST_ARITHMETIC 1
+#else
+#define SH3_FAST_ARITHMETIC 0
+#endif
+#endif
+#if SH3_SMALL_HANDLERS
+static __attribute__((noinline)) UINT32 Sh3ReadLongSlow(UINT32 A, UINT8 *pr)
+{
 	if ((uintptr_t)pr==1 && cv1kIdlePage && (A>>SH3_SHIFT)==0xc00 &&
 		MemMapR[0xc00]==cv1kIdlePage && ReadLong[1]==cv1kIdleHandler) {
 		// Same address and PC test, alignment and word swap as the
@@ -1062,6 +1062,45 @@ SH3_MEMORY_INLINE UINT32 RL(UINT32 A)
 		return V;
 	}
 	return ReadLong[(uintptr_t)pr](A);
+}
+#endif
+
+SH3_MEMORY_INLINE UINT32 RL(UINT32 A)
+{
+	if (A < 0xe0000000) {
+		A &= AM;
+		WaitState(A, 0);
+	}
+
+	UINT8 *pr = MemMapRL[ A >> SH3_SHIFT ];
+	if ( (uintptr_t)pr >= SH3_MAXHANDLER ) {
+		UINT32 V = *((UINT32 *)(pr + (A & SH3_PAGEM)));
+#ifdef LSB_FIRST
+		V = (V << 16) | (V >> 16);
+#endif
+		return V;
+	}
+#if SH3_SMALL_HANDLERS
+	return Sh3ReadLongSlow(A, pr);
+#else
+	if ((uintptr_t)pr==1 && cv1kIdlePage && (A>>SH3_SHIFT)==0xc00 &&
+		MemMapR[0xc00]==cv1kIdlePage && ReadLong[1]==cv1kIdleHandler) {
+		// Same address and PC test, alignment and word swap as the
+		// driver's speedhack_read_long. Do not bypass another handler.
+		if (A==cv1kIdleAddress) {
+			const UINT32 pc=(m_delay?m_delay:m_pc)&AM;
+			if (pc==cv1kIdlePC || pc==cv1kIdlePC+2) {
+				EAT(*cv1kIdleCycles);
+			}
+		}
+		UINT32 V=*((UINT32 *)(cv1kIdlePage+(A&0xfffc)));
+#ifdef LSB_FIRST
+		V=(V<<16)|(V>>16);
+#endif
+		return V;
+	}
+	return ReadLong[(uintptr_t)pr](A);
+#endif
 }
 
 SH3_MEMORY_INLINE void WB(UINT32 A, UINT8 V)
@@ -1147,6 +1186,11 @@ static inline void ADDI(const UINT16 opcode)
  */
 static inline void ADDC(const UINT16 opcode)
 {
+#if SH3_FAST_ARITHMETIC
+	const UINT64 sum=UINT64(m_r[Rn])+m_r[Rm]+(m_sr&T);
+	m_r[Rn]=UINT32(sum);
+	m_sr=(m_sr&~T)|UINT32(sum>>32);
+#else
 	UINT32 m = Rm; UINT32 n = Rn;
 	UINT32 tmp0, tmp1;
 
@@ -1159,6 +1203,7 @@ static inline void ADDC(const UINT16 opcode)
 		m_sr &= ~T;
 	if (tmp1 > m_r[n])
 		m_sr |= T;
+#endif
 }
 
 /*  code                 cycles  t-bit
@@ -1167,6 +1212,12 @@ static inline void ADDC(const UINT16 opcode)
  */
 static inline void ADDV(const UINT16 opcode)
 {
+#if SH3_FAST_ARITHMETIC
+	const UINT32 a = m_r[Rn], b = m_r[Rm];
+	const UINT32 result = a + b;
+	m_r[Rn] = result;
+	m_sr = (m_sr & ~T) | ((~(a ^ b) & (a ^ result)) >> 31);
+#else
 	UINT32 m = Rm; UINT32 n = Rn;
 	INT32 dest, src, ans;
 
@@ -1194,6 +1245,7 @@ static inline void ADDV(const UINT16 opcode)
 	}
 	else
 		m_sr &= ~T;
+#endif
 }
 
 /*  code                 cycles  t-bit
@@ -1468,6 +1520,10 @@ static inline void CMPPZ(const UINT16 opcode)
  */
 static inline void CMPSTR(const UINT16 opcode)
 {
+#if SH3_FAST_ARITHMETIC
+	const UINT32 v=m_r[Rn]^m_r[Rm];
+	m_sr=(m_sr&~T)|UINT32(((v-0x01010101u)&~v&0x80808080u)!=0);
+#else
 	UINT32 temp;
 	INT32 HH, HL, LH, LL;
 	temp = m_r[Rn] ^ m_r[Rm];
@@ -1479,6 +1535,7 @@ static inline void CMPSTR(const UINT16 opcode)
 	m_sr &= ~T;
 	else
 	m_sr |= T;
+#endif
 	}
 
 
@@ -1627,6 +1684,11 @@ static inline void DIV1(const UINT16 opcode)
 /*  DMULS.L Rm,Rn */
 static inline void DMULS(const UINT16 opcode)
 {
+#if SH3_FAST_ARITHMETIC
+	const UINT64 product=UINT64(INT64(INT32(m_r[Rn]))*INT64(INT32(m_r[Rm])));
+	m_mach=UINT32(product>>32);m_macl=UINT32(product);
+	EAT(1);
+#else
 	UINT32 m = Rm; UINT32 n = Rn;
 
 	UINT32 RnL, RnH, RmL, RmH, Res0, Res1, Res2;
@@ -1674,11 +1736,17 @@ static inline void DMULS(const UINT16 opcode)
 	m_macl = Res0;
 	m_sh4_icount--;
 	sh3_total_cycles += 1;
+#endif
 }
 
 /*  DMULU.L Rm,Rn */
 static inline void DMULU(const UINT16 opcode)
 {
+#if SH3_FAST_ARITHMETIC
+	const UINT64 product=UINT64(m_r[Rn])*m_r[Rm];
+	m_mach=UINT32(product>>32);m_macl=UINT32(product);
+	EAT(1);
+#else
 	UINT32 m = Rm; UINT32 n = Rn;
 
 	UINT32 RnL, RnH, RmL, RmH, Res0, Res1, Res2;
@@ -1705,6 +1773,7 @@ static inline void DMULU(const UINT16 opcode)
 	m_macl = Res0;
 	m_sh4_icount--;
 	sh3_total_cycles += 1;
+#endif
 }
 
 /*  DT      Rn */
@@ -2651,6 +2720,11 @@ static inline void SUB(const UINT16 opcode)
 /*  SUBC    Rm,Rn */
 static inline void SUBC(const UINT16 opcode)
 {
+#if SH3_FAST_ARITHMETIC
+	const UINT64 a=m_r[Rn],sub=UINT64(m_r[Rm])+(m_sr&T);
+	m_r[Rn]=UINT32(a-sub);
+	m_sr=(m_sr&~T)|UINT32(a<sub);
+#else
 	UINT32 m = Rm; UINT32 n = Rn;
 
 	UINT32 tmp0, tmp1;
@@ -2664,11 +2738,18 @@ static inline void SUBC(const UINT16 opcode)
 		m_sr &= ~T;
 	if (tmp1 < m_r[n])
 		m_sr |= T;
+#endif
 }
 
 /*  SUBV    Rm,Rn */
 static inline void SUBV(const UINT16 opcode)
 {
+#if SH3_FAST_ARITHMETIC
+	const UINT32 a = m_r[Rn], b = m_r[Rm];
+	const UINT32 result = a - b;
+	m_r[Rn] = result;
+	m_sr = (m_sr & ~T) | (((a ^ b) & (a ^ result)) >> 31);
+#else
 	UINT32 m = Rm; UINT32 n = Rn;
 
 	INT32 dest, src, ans;
@@ -2697,6 +2778,7 @@ static inline void SUBV(const UINT16 opcode)
 	}
 	else
 		m_sr &= ~T;
+#endif
 }
 
 /*  SWAP.B  Rm,Rn */
@@ -4048,6 +4130,7 @@ static bool cv1kFlatEnabled = false;
 static bool cv1kCompactEnabled = false;
 static bool cv1kBatchEnabled = false;
 static bool cv1kFetchPageEnabled = false;
+static bool cv1kInterpLoopsEnabled = false;
 static bool cv1kHybridEnabled = false;
 static bool cv1kLoopEnabled = false;
 #if SH3_FLAT_DISPATCH
@@ -4058,6 +4141,10 @@ static bool cv1kFetchPageActive = false;
 static UINT64 cv1kNativeOps, cv1kNativeSpans, cv1kNativeBuilt;
 static UINT64 cv1kNativeMisses, cv1kNativeRejected, cv1kNativeFull;
 static UINT64 cv1kLoopAttempts, cv1kLoopHits, cv1kLoopOps;
+static UINT64 cv1kInterpLoopBlocks,cv1kInterpLoopLaps,cv1kInterpLoopOps,cv1kInterpLoopKinds[3];
+#if SH3_FLAT_DISPATCH
+#include "sh3_cv1k_interp_loops.inc"
+#endif
 #if SH3_NATIVE
 static_assert(SH3_SHIFT==16 && SH3_MAXHANDLER==8 && AM==0x1fffffff && T==1,
 	"native SH3 guards must match the interpreter");
@@ -4263,7 +4350,9 @@ static bool Cv1kTryNative(UINT16 opcode)
 void Sh3SetCv1kNative(INT32 enable)
 {
 	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = cv1kLoopEnabled = false;
-	cv1kFetchPageEnabled = false;
+	cv1kFetchPageEnabled = cv1kInterpLoopsEnabled = false;
+	cv1kInterpLoopBlocks=cv1kInterpLoopLaps=cv1kInterpLoopOps=0;
+	memset(cv1kInterpLoopKinds,0,sizeof(cv1kInterpLoopKinds));
 #if SH3_FLAT_DISPATCH
 	cv1kCompactActive=cv1kBatchActive=cv1kFetchPageActive=false;
 #endif
@@ -4307,6 +4396,13 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kFetchPageEnabled=cv1kBatchEnabled && !cv1kNativeEnabled && (!fetchPage || strcmp(fetchPage,"0")!=0);
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 pure fetch-page reuse: %s\n"),
 		cv1kFetchPageEnabled?_T("enabled"):_T("disabled"));
+	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
+	cv1kInterpLoopsEnabled=cv1kFetchPageEnabled && (!interpLoops || strcmp(interpLoops,"0")!=0);
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 counted interpreter loops: %s\n"),
+		cv1kInterpLoopsEnabled?_T("enabled"):_T("disabled"));
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 host arithmetic: %s, shared long-read tail: %s\n"),
+		SH3_FAST_ARITHMETIC?_T("enabled"):_T("disabled"),
+		SH3_SMALL_HANDLERS?_T("enabled"):_T("disabled"));
 	// Hybrid mode uses the batched interpreter between native blocks.
 	if (cv1kHybridEnabled && !cv1kBatchEnabled)
 		cv1kLoopEnabled=cv1kHybridEnabled=cv1kNativeEnabled=false;
@@ -4331,6 +4427,12 @@ void Sh3Cv1kLoopStats(UINT64 *attempts, UINT64 *hits, UINT64 *instructions)
 {
 	*attempts=cv1kLoopAttempts;*hits=cv1kLoopHits;*instructions=cv1kLoopOps;
 }
+void Sh3Cv1kInterpLoopStats(UINT64 *blocks,UINT64 *laps,UINT64 *ops,UINT64 *kinds)
+{
+	*blocks=cv1kInterpLoopBlocks;*laps=cv1kInterpLoopLaps;*ops=cv1kInterpLoopOps;
+	memcpy(kinds,cv1kInterpLoopKinds,sizeof(cv1kInterpLoopKinds));
+}
+
 
 template<bool Native> static int Sh3Run_timerhack_switch(int cycles)
 {
@@ -4477,6 +4579,7 @@ start:
 	// Enter native spans only at a run/control-flow boundary, not on
 	// every interpreted instruction. Guest code is still live-checked.
 	if (m_delay || m_test_irq) {
+		const UINT32 slotPC=FetchPage?m_delay:0;
 		if (m_delay) {
 			opcode=sh3_cpu_readop16(UINT32(m_delay&AM));
 			m_delay=0;m_ppc=m_pc;
@@ -4485,8 +4588,17 @@ start:
 			m_pc+=2;m_ppc=m_pc;
 		}
 		execute_one(opcode);
+		const bool pending=m_test_irq!=0;
 		if (m_test_irq && !m_delay) sh4_check_pending_irq();
 		EAT(1);
+		// After a pure delay slot, a short backward edge may enter
+		// a counted loop. Read its *live* branch/body/slot afresh.
+		if(FetchPage && cv1kInterpLoopsEnabled && slotPC && !pending && !m_delay &&
+			m_sh4_icount>=10 && (opcode==0x0009 || (opcode&0xf000)==0x7000)){
+			const UINT32 distance=slotPC-m_pc;
+			if(distance==4 || distance==6 || distance==8)
+				Cv1kTryInterpLoop(UINT16(0x8f00|UINT8(-INT32(distance/2+1))),true);
+		}
 		if (m_sh4_icount<=0) goto done;
 		goto start;
 	}
@@ -4519,7 +4631,9 @@ fast_next:
 #define SH3_OPCODE(name) batch_op_##name: \
 	if (FetchPage) pc+=(pure+1)*2; \
 	m_pc=m_ppc=pc; m_sh4_icount=remaining-(FetchPage?pure:0); sh3_total_cycles+=pure; \
-	name(opcode); goto slow_finished;
+	name(opcode); \
+	if (FetchPage && (&name==&BF) && cv1kInterpLoopsEnabled && !(m_sr&T)) goto interp_bf; \
+	goto slow_finished;
 #define SH3_PURE_OPCODE(name) batch_op_##name: \
 	name(opcode); ++pure; if (FetchPage?--window>0:--remaining>0) goto fast_next; \
 	if (FetchPage) {remaining-=pure; pc+=pure*2;} \
@@ -4528,9 +4642,15 @@ fast_next:
 #include "sh3_decode_ops.inc"
 #undef SH3_PURE_OPCODE
 #undef SH3_OPCODE
+interp_bf:
+	if (m_test_irq || m_delay) goto slow_finished;
+	EAT(1);
+	if(m_sh4_icount>=10 && opcode>=0x8bfa && opcode<=0x8bfc)Cv1kTryInterpLoop(opcode);
+	goto after_slow;
 slow_finished:
 	if (m_test_irq && !m_delay) sh4_check_pending_irq();
 	EAT(1);
+after_slow:
 	if (m_sh4_icount<=0) goto done;
 	if (m_delay || m_test_irq || (Hybrid && m_pc!=pc)) goto start;
 	pc=m_pc;remaining=m_sh4_icount;pure=0;

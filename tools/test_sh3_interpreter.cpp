@@ -191,6 +191,53 @@ static void TestPure() {
     }
     printf("SH3 pure encodings and callback publication: %u x 3 modes PASS\n",count);
 }
+// Independent 64-bit signed oracle, including aliased source/destination.
+static void TestOverflow() {
+    const UINT32 values[]={0,1,0x7fffffff,0x80000000,0xffffffff,0x40000000,0xc0000000};
+    unsigned count=0;
+    for(UINT32 a:values)for(UINT32 b:values)for(unsigned alias=0;alias<2;alias++)
+    for(unsigned sub=0;sub<2;sub++)for(unsigned t=0;t<2;t++) {
+        m_r[1]=a;m_r[2]=b;m_sr=0x700000f0|t;
+        const UINT16 op=UINT16((1<<8)|((alias?1:2)<<4));
+        const INT64 x=INT32(a),y=INT32(alias?a:b), result=sub?x-y:x+y;
+        if(sub)SUBV(op);else ADDV(op);
+        Check(m_r[1]==UINT32(result),"overflow arithmetic result");
+        Check(m_sr==(0x700000f0u|unsigned(result>INT64(0x7fffffff)||result< -INT64(0x80000000))),"overflow arithmetic SR");
+        count++;
+    }
+    printf("SH3 ADDV/SUBV independent signed oracle: %u PASS\n",count);
+}
+static void TestHostArithmetic() {
+    UINT32 rng=0x234f18ad;
+    auto next=[&](){rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;return rng;};
+    const UINT32 edge[]={0,1,0x7fffffff,0x80000000,0xffffffff,0x01010101,0x80808080,0xfefefefe};
+    unsigned checks=0;
+    for(unsigned c=0;c<20000;c++){
+        const UINT32 a=c<64?edge[c/8]:next();
+        const UINT32 b=c<64?edge[c%8]:next();
+        const bool alias=c&1;
+        const UINT32 y=alias?a:b,t=(c>>1)&1,sr=0x700000f0|t;
+        const UINT16 op=UINT16((1<<8)|((alias?1:2)<<4));
+        auto reset=[&](){m_r[1]=a;m_r[2]=b;m_sr=sr;m_sh4_icount=7;sh3_total_cycles=123;};
+        reset();ADDC(op);
+        const UINT64 sum=UINT64(a)+y+t;
+        Check(m_r[1]==UINT32(sum) && m_sr==((sr&~T)|UINT32(sum>>32)) && m_sh4_icount==7 && sh3_total_cycles==123,"ADDC arithmetic/carry");
+        reset();SUBC(op);
+        const UINT64 sub=UINT64(y)+t;
+        Check(m_r[1]==UINT32(UINT64(a)-sub) && m_sr==((sr&~T)|UINT32(UINT64(a)<sub)) && m_sh4_icount==7 && sh3_total_cycles==123,"SUBC arithmetic/borrow");
+        reset();CMPSTR(op);
+        bool equal=false;for(unsigned i=0;i<4;i++)equal|=((a>>(i*8))&255)==((y>>(i*8))&255);
+        Check(m_r[1]==a && m_sr==((sr&~T)|unsigned(equal)) && m_sh4_icount==7 && sh3_total_cycles==123,"CMPSTR byte equality");
+        for(unsigned sign=0;sign<2;sign++){
+            reset();if(sign)DMULS(op);else DMULU(op);
+            const UINT64 product=sign?UINT64(INT64(INT32(a))*INT64(INT32(y))):UINT64(a)*y;
+            Check(UINT32(m_mach)==UINT32(product>>32) && UINT32(m_macl)==UINT32(product) && m_sr==sr &&
+                m_r[1]==a && m_sh4_icount==6 && sh3_total_cycles==124,"DMUL result/cycles");
+        }
+        checks+=5;
+    }
+    printf("SH3 host arithmetic: %u carry, borrow, byte compare and signed/unsigned multiply checks PASS\n",checks);
+}
 static void Benchmark() {
     for(unsigned mode=1;mode<=2;mode++) {
         Setup(mode,0);
@@ -216,5 +263,5 @@ int main(int argc,char **) {
         }
     }
     puts("SH3 remap/SMC/page/wrap/MMIO/IRQ/delay/timer differential: 448 x 3 modes PASS");
-    TestPure();return 0;
+    TestPure();TestOverflow();TestHostArithmetic();return 0;
 }

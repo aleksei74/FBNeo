@@ -43,6 +43,7 @@ void Sh3SetCv1kIdleRead(UINT8 *ram, UINT32 addr, UINT32 pc,
 void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built);
 void Sh3Cv1kCacheStats(UINT64 *misses, UINT64 *rejected, UINT64 *full);
 void Sh3Cv1kLoopStats(UINT64 *attempts, UINT64 *hits, UINT64 *instructions);
+void Sh3Cv1kInterpLoopStats(UINT64 *blocks,UINT64 *laps,UINT64 *ops,UINT64 *kinds);
 
 INT32 Sh3SetReadPortHandler(pSh3ReadLongHandler pHandler);
 INT32 Sh3SetWritePortHandler(pSh3WriteLongHandler pHandler);

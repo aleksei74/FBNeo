@@ -53,6 +53,7 @@ static UINT64 cv1kFrameNs, cv1kCpuNs, cv1kAudioNs, cv1kWaitNs, cv1kDrawNs, cv1kP
 static UINT64 cv1kPrevOps, cv1kPrevSpans, cv1kPrevBuilt;
 static UINT64 cv1kPrevMiss, cv1kPrevReject, cv1kPrevFull;
 static UINT64 cv1kPrevLoopAttempts,cv1kPrevLoopHits,cv1kPrevLoopOps;
+static UINT64 cv1kPrevInterpBlocks,cv1kPrevInterpLaps,cv1kPrevInterpOps,cv1kPrevInterpKinds[3];
 static Epic12PerfStats cv1kPrevBlit = {};
 static unsigned cv1kFrames, cv1kLate, cv1kLate25, cv1kLate33;
 static UINT64 cv1kCpuPeakNs, cv1kWaitPeakNs, cv1kThreadNs;
@@ -86,6 +87,8 @@ static void Cv1kProfileInit() {
 	cv1kPrevOps = cv1kPrevSpans = cv1kPrevBuilt = 0;
 	cv1kPrevMiss = cv1kPrevReject = cv1kPrevFull = 0;
 	cv1kPrevLoopAttempts=cv1kPrevLoopHits=cv1kPrevLoopOps=0;
+	cv1kPrevInterpBlocks=cv1kPrevInterpLaps=cv1kPrevInterpOps=0;
+	memset(cv1kPrevInterpKinds,0,sizeof(cv1kPrevInterpKinds));
 	cv1kPrevBlit = {};
 	cv1kFrames = cv1kLate = 0;
 	Cv1kResetLatency();
@@ -115,6 +118,17 @@ static void Cv1kProfileFrame(UINT64 start) {
 		(unsigned long long)(loopHits-cv1kPrevLoopHits),
 		(unsigned long long)(loopOps-cv1kPrevLoopOps));
 	cv1kPrevLoopAttempts=loopAttempts;cv1kPrevLoopHits=loopHits;cv1kPrevLoopOps=loopOps;
+	UINT64 interpBlocks,interpLaps,interpOps,interpKinds[3];
+	Sh3Cv1kInterpLoopStats(&interpBlocks,&interpLaps,&interpOps,interpKinds);
+	bprintf(PRINT_UI,_T("CV1K INTERP LOOP: blocks %llu laps %llu ops %llu arithmetic %llu copy %llu fill %llu\n"),
+		(unsigned long long)(interpBlocks-cv1kPrevInterpBlocks),
+		(unsigned long long)(interpLaps-cv1kPrevInterpLaps),
+		(unsigned long long)(interpOps-cv1kPrevInterpOps),
+		(unsigned long long)(interpKinds[0]-cv1kPrevInterpKinds[0]),
+		(unsigned long long)(interpKinds[1]-cv1kPrevInterpKinds[1]),
+		(unsigned long long)(interpKinds[2]-cv1kPrevInterpKinds[2]));
+	cv1kPrevInterpBlocks=interpBlocks;cv1kPrevInterpLaps=interpLaps;cv1kPrevInterpOps=interpOps;
+	memcpy(cv1kPrevInterpKinds,interpKinds,sizeof(interpKinds));
 	UINT64 misses, rejected, full;
 	Sh3Cv1kCacheStats(&misses,&rejected,&full);
 	bprintf(PRINT_UI,_T("CV1K CACHE: misses %llu rejected %llu full %llu\n"),
