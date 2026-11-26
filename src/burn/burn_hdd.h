@@ -46,8 +46,17 @@ INT32 BurnHDDReadBytes(BurnHDD* pDisk, UINT64 nOffset, UINT32 nSize, void* pDest
 struct BurnHDDReadStats {
 	UINT64 demandHunks, readAheadIssued, readAheadHits, readAheadWaited, readAheadDiscarded, readAheadFailed;
 	UINT64 demandNs, peakNs;
+	UINT64 residentReads, residentBytes;
 };
 bool BurnHDDConfigureReadAhead(BurnHDD* pDisk, bool enable);
+// Optional complete, immutable decoded CHD image in host RAM. The caller
+// must enforce a memory budget; no file is modified and failure leaves
+// the normal demand-read path intact. Diff sectors retain precedence.
+UINT64 BurnHDDResidentSize(BurnHDD *pDisk);
+bool BurnHDDPreload(BurnHDD *pDisk, UINT64 budget);
+void BurnHDDDropResident(BurnHDD *pDisk);
+bool BurnHDDIsResident(BurnHDD *pDisk);
+
 void BurnHDDGetReadStats(BurnHDD* pDisk, BurnHDDReadStats* stats);
 
 // Forgets every write (back to the pristine image) and deletes the diff file.

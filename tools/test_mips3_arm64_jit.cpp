@@ -584,9 +584,10 @@ static void TestFlowCases(int type)
 // Verify data-only direct links using the real decoded cache, multiple
 // virtual pages, both conditional successors, protected RAM, a physical
 // code rewrite, remapping, and a restore-triggered arena invalidation.
-static std::vector<Snapshot> RunLinkedProgram(bool links)
+static std::vector<Snapshot> RunLinkedProgram(bool links,bool tail=false)
 {
 	setenv("FBNEO_MIPS3_JIT_LINK",links?"1":"0",1);
+	setenv("FBNEO_MIPS3_JIT_TAIL",tail?"1":"0",1);
 	UINT32 *ram=(UINT32*)calloc(0x3000,1);
 	UINT32 *alternate=(UINT32*)calloc(0x1000,1);
 	Require(ram && alternate,"linked program allocation");
@@ -624,20 +625,62 @@ static std::vector<Snapshot> RunLinkedProgram(bool links)
 	else Require(!nJitLinkHits && !nJitLinkBlocks,"links disabled but executed");
 	printf("Linked blocks %s: %llu hits, %llu learned, %llu blocks\n",links?"on":"off",
 		(unsigned long long)nJitLinkHits,(unsigned long long)nJitLinkLearned,(unsigned long long)nJitLinkBlocks);
+	if(tail)Require(nJitTailJumps>0,"native tail jump never used");
+	else Require(!nJitTailJumps && !nJitTailRuns,"native tail disabled");
+	printf("Tail runner %s: %llu runs, %llu machine-code jumps\n",tail?"on":"off",
+		(unsigned long long)nJitTailRuns,(unsigned long long)nJitTailJumps);
 	Mips3SetWriteTrack(NULL,0,NULL);Mips3Exit();free(ram);free(alternate);
 	return out;
 }
 
-static void TestLinkedProgram(){
-	auto a=RunLinkedProgram(false),b=RunLinkedProgram(true);
-	Require(a.size()==b.size(),"link snapshot count");
-	for(unsigned i=0;i<a.size();i++){
-		Require(!memcmp(&a[i].state,&b[i].state,sizeof(Mips3State)),"linked CPU state differs");
-		Require(a[i].data==b[i].data && a[i].cycleDebt==b[i].cycleDebt &&
-			a[i].mappedReads==b[i].mappedReads && a[i].mappedWrites==b[i].mappedWrites &&
-			a[i].trackedWrites==b[i].trackedWrites,"linked memory/timing differs");
+struct TailRingResult {
+	Mips3State state;
+	INT32 debt;
+	UINT64 native,spans,branches,guest,jumps,runs;
+};
+static TailRingResult RunTailRing(bool tail){
+	setenv("FBNEO_MIPS3_JIT_LINK","1",1);
+	setenv("FBNEO_MIPS3_JIT_TAIL",tail?"1":"0",1);
+	UINT32 *ram=(UINT32*)calloc(0x1000,1);
+	Require(ram!=NULL,"tail ring RAM");
+	for(unsigned i=0;i<16;i++){
+		const UINT32 pc=i*0x20,next=((i+1)&15)*0x20;
+		const UINT32 code[]={Imm(9,1,1,1),Imm(0xe,2,2,i+1),
+			0x08000000|(next>>2),Imm(9,3,3,1)};
+		for(unsigned j=0;j<4;j++)ram[(pc>>2)+j]=BURN_ENDIAN_SWAP_INT32(code[j]);
 	}
-	unsetenv("FBNEO_MIPS3_JIT_LINK");
+	Mips3Init(MIPS3_TYPE_VR5500);Require(Mips3UseRecompiler(true)==0,"tail ring backend");
+	Mips3MapMemory((UINT8*)ram,0,0xfff,MAP_RAM);Mips3Reset();M.pc=0x80000000;
+	for(unsigned i=0;i<256;i++){
+		if(i==128){
+			ram[0]=BURN_ENDIAN_SWAP_INT32(Imm(9,1,1,7));
+			Mips3InvalidateRange(0,3);
+		}
+		Mips3Run(1+(i*107)%1301);
+	}
+	TailRingResult r={M,nMips3ICount,nJitInsns,nJitSpansRun,nJitBranches,nPerfGuest,nJitTailJumps,nJitTailRuns};
+	Mips3Exit();free(ram);return r;
+}
+static void TestTailRing(){
+	const TailRingResult a=RunTailRing(false),b=RunTailRing(true);
+	Require(!memcmp(&a.state,&b.state,sizeof(a.state)) && a.debt==b.debt,"multi-hop tail state/timing");
+	Require(a.native==b.native && a.spans==b.spans && a.branches==b.branches && a.guest==b.guest,"multi-hop tail accounting");
+	Require(b.jumps>1000 && b.jumps>b.runs*2 && !a.jumps,"multi-hop tail coverage");
+	printf("Tail ring: %llu machine-code jumps across %llu runner entries; state/cycles/counters identical\n",
+		(unsigned long long)b.jumps,(unsigned long long)b.runs);
+	unsetenv("FBNEO_MIPS3_JIT_LINK");unsetenv("FBNEO_MIPS3_JIT_TAIL");
+}
+static void TestLinkedProgram(){
+	auto a=RunLinkedProgram(false),b=RunLinkedProgram(true),c=RunLinkedProgram(true,true);
+	Require(a.size()==b.size() && a.size()==c.size(),"link snapshot count");
+	for(unsigned i=0;i<a.size();i++)for(auto *v:{&b,&c}){
+		const auto &ref=(*v)[i];
+		Require(!memcmp(&a[i].state,&ref.state,sizeof(Mips3State)),"linked CPU state differs");
+		Require(a[i].data==ref.data && a[i].cycleDebt==ref.cycleDebt &&
+			a[i].mappedReads==ref.mappedReads && a[i].mappedWrites==ref.mappedWrites &&
+			a[i].trackedWrites==ref.trackedWrites,"linked memory/timing differs");
+	}
+	unsetenv("FBNEO_MIPS3_JIT_LINK");unsetenv("FBNEO_MIPS3_JIT_TAIL");
 	puts("Linked block snapshots: 240 PASS (branches, event, code rewrite, remap, restore, RAM guards)");
 }
 
@@ -731,7 +774,7 @@ int main()
 {
 	TestPackedCache();
 	TestFlowGuardAndBudget();
-	TestLinkedProgram();TestFpuEmitter();TestFpuProgram();
+	TestLinkedProgram();TestTailRing();TestFpuEmitter();TestFpuProgram();
 	// Verify default policy and explicit process-environment overrides.
 	for (int type = 0; type < 2; type++) {
 		unsetenv("FBNEO_MIPS3_ARM64_JIT");

@@ -45,6 +45,7 @@ struct BurnHDD {
 	UINT32 nHunkBytes;
 	UINT32 nTotalHunks;
 	UINT8* pCache;
+	UINT8* pResident = NULL;
 	INT32 nCacheTag[HDD_CACHE_HUNKS];
 	// Statistics and predictor are enabled only by the Y2 driver.
 	bool bReadStats = false;
@@ -277,7 +278,7 @@ bool BurnHDDConfigureReadAhead(BurnHDD* pDisk, bool enable)
 	pDisk->bReadStats=true;
 	if(!enable)return false;
 #if defined(__linux__)
-	if(!pDisk->pChd || !pDisk->Diff.empty())return false;
+	if(!pDisk->pChd || pDisk->pResident || !pDisk->Diff.empty())return false;
 	if(pDisk->pAhead)return true;
 	// Independent handle and libchdr decoder, not a shared seek cursor.
 	pDisk->pAheadFile=_tfopen(pDisk->szImagePath,_T("rb"));
@@ -299,6 +300,43 @@ bool BurnHDDConfigureReadAhead(BurnHDD* pDisk, bool enable)
 	fclose(pDisk->pAheadFile);pDisk->pAheadFile=NULL;
 #endif
 	return false;
+}
+
+UINT64 BurnHDDResidentSize(BurnHDD *pDisk)
+{
+	return pDisk && pDisk->pChd ? UINT64(pDisk->nHunkBytes)*pDisk->nTotalHunks : 0;
+}
+
+bool BurnHDDPreload(BurnHDD *pDisk,UINT64 budget)
+{
+	const UINT64 bytes=BurnHDDResidentSize(pDisk);
+	if(!bytes || bytes>budget || bytes>SIZE_MAX)return false;
+	if(pDisk->pResident)return true;
+#if defined(__linux__)
+	// Do not populate while a second decoder is actively speculating.
+	if(pDisk->pAhead)return false;
+#endif
+	UINT8 *data=(UINT8*)malloc(size_t(bytes));
+	if(!data)return false;
+	for(UINT32 h=0;h<pDisk->nTotalHunks;h++){
+		if(chd_read(pDisk->pChd,h,data+size_t(h)*pDisk->nHunkBytes)!=CHDERR_NONE){
+			free(data);return false;
+		}
+	}
+	// Publish only after every hunk was decoded successfully.
+	pDisk->pResident=data;
+	return true;
+}
+
+void BurnHDDDropResident(BurnHDD *pDisk)
+{
+	if(!pDisk)return;
+	free(pDisk->pResident);pDisk->pResident=NULL;
+}
+
+bool BurnHDDIsResident(BurnHDD *pDisk)
+{
+	return pDisk && pDisk->pResident;
 }
 
 void BurnHDDGetReadStats(BurnHDD* pDisk,BurnHDDReadStats *stats)
@@ -331,6 +369,7 @@ void BurnHDDClose(BurnHDD* pDisk)
 	if (pDisk->pChd) chd_close(pDisk->pChd);
 	if (pDisk->pFile) fclose(pDisk->pFile);		// libchdr does not close a FILE* it was given
 	free(pDisk->pCache);
+	BurnHDDDropResident(pDisk);
 	delete pDisk;
 }
 
@@ -362,6 +401,10 @@ INT32 BurnHDDGetGeometry(BurnHDD* pDisk, INT32* pnCylinders, INT32* pnHeads, INT
 static UINT8 *ReadImageHunk(BurnHDD *pDisk,UINT32 hunk)
 {
 	if(hunk>=pDisk->nTotalHunks)return NULL;
+	if(pDisk->pResident){
+		if(pDisk->bReadStats){pDisk->readStats.residentReads++;pDisk->readStats.residentBytes+=pDisk->nHunkBytes;}
+		return pDisk->pResident+size_t(hunk)*pDisk->nHunkBytes;
+	}
 	const INT32 slot=hunk%HDD_CACHE_HUNKS;
 	UINT8 *data=pDisk->pCache+(size_t)slot*pDisk->nHunkBytes;
 	if(pDisk->nCacheTag[slot]!=(INT32)hunk){
@@ -456,6 +499,12 @@ INT32 BurnHDDReadBytes(BurnHDD* pDisk, UINT64 nOffset, UINT32 nSize, void* pDest
 		if (hddFseek(pDisk->pFile, (INT64)nOffset, SEEK_SET) == 0 && fread(pDst, nSize, 1, pDisk->pFile) == 1) return nRet;
 		memset(pDst, 0, nSize);
 		return 1;
+	}
+
+	if(pDisk->pResident && pDisk->Diff.empty()){
+		memcpy(pDst,pDisk->pResident+size_t(nOffset),nSize);
+		if(pDisk->bReadStats){pDisk->readStats.residentReads++;pDisk->readStats.residentBytes+=nSize;}
+		return nRet;
 	}
 
 	// Read immutable CHD byte ranges directly from the hunk cache, without

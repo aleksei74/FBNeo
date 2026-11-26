@@ -270,6 +270,16 @@ static void TestIdct(){
 #endif
 	printf("Y2 IDCT: 30000 sparse/dense blocks, %u SIMD, %u fallback, residuals identical\n",vectorized,ties);
 }
+static void TestResidentPolicy(){
+	const UINT64 MiB=1024*1024;
+	const UINT64 bytes=2112*MiB;
+	Require(!Y2ResidentAllowed(bytes,0,false),"unknown memory allowed");
+	Require(!Y2ResidentAllowed(bytes,bytes+2048*MiB-1,false),"auto budget too loose");
+	Require(Y2ResidentAllowed(bytes,bytes+2048*MiB,false),"auto budget rejected");
+	Require(!Y2ResidentAllowed(bytes,bytes+1024*MiB-1,true),"forced safety budget too loose");
+	Require(Y2ResidentAllowed(bytes,bytes+1024*MiB,true),"forced budget rejected");
+	puts("Y2 resident memory policy PASS");
+}
 static void TestReadAheadPolicy(){
 	unsetenv("FBNEO_Y2_CHD_READAHEAD");Y2PerfBegin();
 	Require(!bY2ReadAhead,"CHD read-ahead default not disabled");
@@ -280,4 +290,4 @@ static void TestReadAheadPolicy(){
 	unsetenv("FBNEO_Y2_CHD_READAHEAD");Y2PerfBegin();bY2Profile=false;
 	puts("CHD read-ahead default off and explicit opt-in PASS");
 }
-int main(){TestReadAheadPolicy();TestNand();TestPixelMath();TestIdct();TestGroups();TestActualMvc();TestFootprint();TestYuvAndBlend();TestYuvActual();}
+int main(){TestResidentPolicy();TestReadAheadPolicy();TestNand();TestPixelMath();TestIdct();TestGroups();TestActualMvc();TestFootprint();TestYuvAndBlend();TestYuvActual();}

@@ -33,6 +33,7 @@ struct Mips3PerfStats {
 	uint64_t nativeRamHits, nativeRamMisses, nativeBranches;
 	uint64_t nativeLinkHits,nativeLinkLearned,nativeLinkBlocks,decodedArenaBytes,decodedArenaCapacity;
 	uint64_t nativeFpuSpans,nativeFpuMisses;
+	uint64_t nativeTailRuns,nativeTailJumps;
 	uint64_t cachePayloadBytes, cacheMappedBytes, cacheCapacityBytes, cacheRejected;
 	bool jitEnabled, mappingDenied;
 };

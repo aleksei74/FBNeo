@@ -71,6 +71,29 @@ int main(int argc,char**argv){
 	UINT8 x[10000],y[10000];
 	Require(!BurnHDDReadBytes(a,3*4224-7,sizeof(x),x) && !BurnHDDReadBytes(b,3*4224-7,sizeof(y),y) && !memcmp(x,y,sizeof(x)),"diff overlay mismatch");
 	for(unsigned i=7;i<7+4224;i++)Require(y[i]==0xc3,"diff bytes");
+	// Actual full decoded resident image and original demand path.
+	BurnHDD *resident=Open(argv[1],false);
+	const UINT64 bytes=BurnHDDResidentSize(resident);
+	Require(bytes==96*16896 && !BurnHDDPreload(resident,bytes-1),"resident budget guard");
+	Require(!BurnHDDIsResident(resident) && BurnHDDPreload(resident,bytes),"resident preload");
+	Require(BurnHDDIsResident(resident) && !BurnHDDConfigureReadAhead(resident,true),"resident must not start worker");
+	BurnHDD *ref=Open(argv[1],false);ref->bReadStats=false;
+	for(unsigned i=0;i<1000;i++){
+		rng^=rng<<13;rng^=rng>>17;rng^=rng<<5;
+		Compare(ref,resident,rng%(96*16896),1+(rng%40000));
+	}
+	Compare(ref,resident,96*16896-13,64);
+	Compare(ref,resident,96*16896+7,64);
+	BurnHDDReadStats rs;BurnHDDGetReadStats(resident,&rs);
+	Require(!rs.demandHunks && !rs.readAheadIssued && rs.residentReads>900,"resident read escaped to CHD");
+	Require(!BurnHDDWrite(ref,3,1,write) && !BurnHDDWrite(resident,3,1,write),"resident diff write");
+	Require(!BurnHDDReadBytes(ref,3*4224-7,sizeof(x),x) && !BurnHDDReadBytes(resident,3*4224-7,sizeof(y),y) && !memcmp(x,y,sizeof(x)),"resident diff overlay");
+	BurnHDDDropResident(resident);Require(!BurnHDDIsResident(resident),"resident release");
+	Require(!BurnHDDReadBytes(resident,3*4224-7,sizeof(y),y) && !memcmp(x,y,sizeof(x)),"resident drop fallback");
+	resident->bDiffDirty=ref->bDiffDirty=false;
+	BurnHDDClose(resident);BurnHDDClose(ref);
+	printf("Resident decoded CHD: 1002 range comparisons, %llu RAM reads, zero demand decode, budget/overlay/release PASS\n",
+		(unsigned long long)rs.residentReads);
 	a->bDiffDirty=b->bDiffDirty=false;
 	BurnHDDClose(a);BurnHDDClose(b);
 	puts("CHD diff overlay and clean worker shutdown PASS");

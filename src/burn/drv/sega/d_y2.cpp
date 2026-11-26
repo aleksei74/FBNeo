@@ -22,6 +22,11 @@
 #include "thready.h"
 #include <math.h>
 #include <chrono>
+#if defined(__linux__)
+#include <fcntl.h>
+#include <unistd.h>
+#endif
+
 #include <stdlib.h>
 #include <string.h>
 
@@ -196,6 +201,76 @@ static UINT64 nLineStart;
 
 // NAND: decryption and decrypted page cache
 static BurnHDD *Nand[2];
+// The two raw NAND images total approximately 2.06 GiB. Eager
+// decompression eliminates all in-game CHD demand I/O, but only when
+// enough host memory is available. Unknown memory => safe fallback.
+static UINT64 Y2HostAvailable()
+{
+#if defined(__linux__)
+	char data[4096]={};
+	int fd=open("/proc/meminfo",O_RDONLY);
+	if(fd<0)return 0;
+	ssize_t n=read(fd,data,sizeof(data)-1);
+	close(fd);
+	if(n<=0)return 0;
+	const char *line=strstr(data,"MemAvailable:");
+	if(!line)return 0;
+	UINT64 available=strtoull(line+13,NULL,10)*1024ULL;
+	// Respect a finite cgroup-v2 limit if present (e.g. a container).
+	char limit[64]={},used[64]={};
+	fd=open("/sys/fs/cgroup/memory.max",O_RDONLY);
+	if(fd>=0){
+		ssize_t len=read(fd,limit,sizeof(limit)-1);close(fd);
+		if(len>0 && limit[0]>='0' && limit[0]<='9'){
+			fd=open("/sys/fs/cgroup/memory.current",O_RDONLY);
+			if(fd<0)return 0;
+			len=read(fd,used,sizeof(used)-1);close(fd);
+			if(len<=0)return 0;
+			UINT64 cap=strtoull(limit,NULL,10),usage=strtoull(used,NULL,10);
+			UINT64 left=cap>usage?cap-usage:0;
+			if(left<available)available=left;
+		}
+	}
+	return available;
+#else
+	return 0;
+#endif
+}
+
+static bool Y2ResidentAllowed(UINT64 bytes,UINT64 available,bool explicitOn)
+{
+	const UINT64 reserve=(explicitOn?1ULL:2ULL)*1024*1024*1024;
+	return bytes && available>=reserve && bytes<=available-reserve &&
+		bytes<=SIZE_MAX;
+}
+
+static void Y2PreloadNand()
+{
+	const char *option=getenv("FBNEO_Y2_NAND_RESIDENT");
+	const bool force=option && !strcmp(option,"1");
+#if defined(__linux__) && defined(__aarch64__)
+	const bool enable=force || !option || !strcmp(option,"auto");
+#else
+	const bool enable=force;
+#endif
+	const UINT64 a=BurnHDDResidentSize(Nand[0]),b=BurnHDDResidentSize(Nand[1]);
+	const UINT64 available=enable?Y2HostAvailable():0;
+	const UINT64 bytes=a+b;
+	if(!enable || !a || !b || bytes<a || !Y2ResidentAllowed(bytes,available,force)){
+		bprintf(PRINT_UI,_T("Y2 NAND resident: disabled (image %.0f MiB, available %.0f MiB)\n"),bytes/1048576.0,available/1048576.0);
+		return;
+	}
+	bprintf(PRINT_UI,_T("Y2 NAND resident: decoding %.0f MiB at startup (available %.0f MiB)\n"),bytes/1048576.0,available/1048576.0);
+	const auto start=std::chrono::steady_clock::now();
+	// Recheck the second allocation after the first image was committed.
+	const bool ok=BurnHDDPreload(Nand[0],a) &&
+		Y2ResidentAllowed(b,Y2HostAvailable(),force) && BurnHDDPreload(Nand[1],b);
+	if(!ok){BurnHDDDropResident(Nand[0]);BurnHDDDropResident(Nand[1]);}
+	const double seconds=std::chrono::duration<double>(std::chrono::steady_clock::now()-start).count();
+	bprintf(PRINT_UI,_T("Y2 NAND resident: %s, %.0f MiB, startup %.2f seconds\n"),
+		ok?_T("enabled"):_T("fallback to demand"),ok?bytes/1048576.0:0.0,seconds);
+}
+
 static UINT16 *NandDataLut;
 static UINT16 *NandKeyLut;
 static UINT16 NandMasks[4][0x800];
@@ -3190,6 +3265,9 @@ static INT32 DrvInit(UINT16 seed, const UINT8 *data_bits, const UINT8 *key_bits,
 			bprintf(PRINT_ERROR, _T("Y2: NAND %d is not a 0x42000000 byte dump\n"), i);
 			return 1;
 		}
+	}
+	Y2PreloadNand();
+	for(INT32 i=0;i<2;i++){
 		const bool enabled=BurnHDDConfigureReadAhead(Nand[i],bY2ReadAhead);
 		bprintf(PRINT_UI,_T("Y2 NAND %d CHD read-ahead: %s\n"),i,enabled?_T("enabled"):_T("disabled/unavailable"));
 	}
@@ -3212,9 +3290,9 @@ static INT32 DrvInit(UINT16 seed, const UINT8 *data_bits, const UINT8 *key_bits,
 	for (INT32 x = 0; x < 8; x++) {
 		for (INT32 u = 0; u < 8; u++) {
 			MvcBasis[x][u] = (u ? 0.5 : sqrt(0.125)) * cos((2 * x + 1) * u * 3.14159265358979323846 / 16);
-	MvcTransposeBasis();
 		}
 	}
+	MvcTransposeBasis();
 
 	// reset vector: jump to the loader (lui t0, 0x8010; jr t0; nop)
 	DrvBoot[0] = 0x10; DrvBoot[1] = 0x80; DrvBoot[2] = 0x08; DrvBoot[3] = 0x3c;
@@ -3464,6 +3542,9 @@ static void Y2PerfFrameDone(UINT64 start)
 		(unsigned long long)(cur.nativeLinkHits-Y2CpuPrev.nativeLinkHits),
 		(unsigned long long)(cur.nativeLinkLearned-Y2CpuPrev.nativeLinkLearned),
 		cur.decodedArenaBytes/1048576.0,cur.decodedArenaCapacity/1048576.0);
+	bprintf(PRINT_UI,_T("Y2 PERF TAIL: runs %llu jumps %llu\n"),
+		(unsigned long long)(cur.nativeTailRuns-Y2CpuPrev.nativeTailRuns),
+		(unsigned long long)(cur.nativeTailJumps-Y2CpuPrev.nativeTailJumps));
 	bprintf(PRINT_UI,_T("Y2 PERF FPU: spans %llu guard exits %llu\n"),
 		(unsigned long long)(cur.nativeFpuSpans-Y2CpuPrev.nativeFpuSpans),
 		(unsigned long long)(cur.nativeFpuMisses-Y2CpuPrev.nativeFpuMisses));
@@ -3477,6 +3558,7 @@ static void Y2PerfFrameDone(UINT64 start)
 		(unsigned long long)Y2Perf.footprintMemoHits);
 	BurnHDDReadStats hdd[2];
 	UINT64 demand=0,issued=0,hits=0,waited=0,discard=0,failed=0,chdNs=0,peak=0;
+	UINT64 residentReads=0,residentBytes=0;
 	for(INT32 i=0;i<2;i++){
 		BurnHDDGetReadStats(Nand[i],&hdd[i]);
 		const auto &p=Y2HddPrev[i];const auto &c=hdd[i];
@@ -3484,11 +3566,15 @@ static void Y2PerfFrameDone(UINT64 start)
 		hits+=c.readAheadHits-p.readAheadHits;waited+=c.readAheadWaited-p.readAheadWaited;
 		discard+=c.readAheadDiscarded-p.readAheadDiscarded;failed+=c.readAheadFailed-p.readAheadFailed;
 		chdNs+=c.demandNs-p.demandNs;if(c.peakNs>peak)peak=c.peakNs;
+		residentReads+=c.residentReads-p.residentReads;residentBytes+=c.residentBytes-p.residentBytes;
 		Y2HddPrev[i]=c;
 	}
 	bprintf(PRINT_UI,_T("Y2 PERF CHD: demand %llu ahead %llu hits %llu waited %llu discarded %llu failed %llu; demand %.2f ms/frame, session peak %.2f ms\n"),
 		(unsigned long long)demand,(unsigned long long)issued,(unsigned long long)hits,(unsigned long long)waited,
 		(unsigned long long)discard,(unsigned long long)failed,chdNs*scale,peak/1000000.0);
+	bprintf(PRINT_UI,_T("Y2 PERF RESIDENT: reads %llu bytes %llu; disks %d/%d\n"),
+		(unsigned long long)residentReads,(unsigned long long)residentBytes,
+		BurnHDDIsResident(Nand[0])?1:0,BurnHDDIsResident(Nand[1])?1:0);
 	Y2CpuPrev = cur;
 	Y2Perf = {};
 }

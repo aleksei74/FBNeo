@@ -40,6 +40,7 @@
 #if MIPS3_ARM64_JIT
 #include "mips3_arm64_jit.h"
 #include "mips3_arm64_integrated.h"
+#include "mips3_arm64_tail.h"
 #endif
 
 #define PHYS_MASK			MIPS3_PHYS_MASK
@@ -137,8 +138,7 @@ struct Mips3Block {
 #if MIPS3_ARM64_JIT
 	// Decoded-arena offsets (not executable pointers) to warm native
 	// successors. Full virtual target and generation must both match.
-	UINT64 linkGen;
-	UINT32 linkPC[2], linkOff[2];
+	Mips3TailNode tail;
 #endif
 	Mips3Insn insn[1];
 };
@@ -262,6 +262,8 @@ static unsigned nJitMinSpan = 3;
 static bool bMips3FastRam = false;
 static bool bMips3Integrated = false;
 static bool bMips3Link = false;
+static bool bMips3Tail = false;
+static UINT64 nJitTailRuns=0,nJitTailJumps=0;
 static bool bMips3Fpu = false;
 static UINT64 nJitFpuSpans=0,nJitFpuMisses=0;
 static UINT64 nJitLinkHits=0,nJitLinkLearned=0,nJitLinkBlocks=0;
@@ -2761,8 +2763,7 @@ static Mips3Block *BuildBlock(Mips3BlockPage *bp, UINT8 *host, UINT32 off)
 	b->idlewait = 0;
 	b->idleback = 0;
 #if MIPS3_ARM64_JIT
-	b->linkGen=0;b->linkPC[0]=b->linkPC[1]=~0U;
-	b->linkOff[0]=b->linkOff[1]=0;
+	b->tail={};b->tail.pc[0]=b->tail.pc[1]=~0U;
 #endif
 #if MIPS3_PROFILE
 	b->vpc = 0;
@@ -2794,6 +2795,15 @@ static Mips3Block *BuildBlock(Mips3BlockPage *bp, UINT8 *host, UINT32 off)
 	memcpy(b->insn, tmp, n * sizeof(Mips3Insn));
 #if MIPS3_ARM64_JIT
 	BuildNativeSpans(b);
+	// Only whole terminal-flow spans, no FPU or idle/split blocks.
+	// The assembly runner can account for complete spans exactly.
+	const unsigned jf=b->insn[0].jit_memory;
+	if(!b->idle && !b->split && b->insn[0].jit_count==b->count &&
+		(jf & (Mips3Arm64Jit::FlowFlag|Mips3Arm64Jit::TerminalFlag|Mips3Arm64Jit::FpuFlag)) ==
+			(Mips3Arm64Jit::FlowFlag|Mips3Arm64Jit::TerminalFlag)){
+		b->tail.cycles=b->insn[b->count-1].cyc;
+		b->tail.fall=b->fall;b->tail.count=b->count;b->tail.code=b->insn[0].jit_offset;
+	}
 #endif
 
 	if (bp->blk == NULL) bp->blk = (Mips3Block**)calloc(1024, sizeof(Mips3Block*));
@@ -3075,7 +3085,7 @@ static MIPS3_INLINE void FinishExecBlock(Mips3Block *b,const Mips3Insn *I)
 }
 
 #if MIPS3_ARM64_JIT
-static MIPS3_INLINE const Mips3Insn *ExecNativeSpan(const Mips3Insn *I,bool &guardFailed)
+static MIPS3_INLINE const Mips3Insn *ExecNativeSpan(const Mips3Insn *I,bool &guardFailed,bool preexecuted=false,UINT64 preResult=0)
 {
 	const unsigned count = I->jit_count;
 	unsigned done = count, pseudo = 0;
@@ -3085,7 +3095,7 @@ static MIPS3_INLINE const Mips3Insn *ExecNativeSpan(const Mips3Insn *I,bool &gua
 	if (I->jit_memory & Mips3Arm64Jit::FlowFlag) {
 		const UINT64 left = nRunLimit > M.total_cycles ? nRunLimit - M.total_cycles : 0;
 		const uint32_t budget = left > UINT32_MAX ? UINT32_MAX : uint32_t(left);
-		const uint64_t result = JitCache.RunFlow(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite, Mx.vpage, budget);
+		const uint64_t result = preexecuted ? preResult : JitCache.RunFlow(I->jit_offset, reinterpret_cast<uint64_t *>(M.r), HostRead, HostWrite, Mx.vpage, budget);
 		done = result & 0x1ff;
 		pseudo = (result >> 9) & 0x3f;
 		nJitRamHits += (result >> 16) & 0x1ff;
@@ -3173,11 +3183,39 @@ static MIPS3_INLINE void ExecBlockLinked(Mips3Block *b)
 		ExecBlock(b);return;
 	}
 	for(;;){
+		bool ranTail=false;
+		UINT64 tailResult=0;
+#if !MIPS3_PROFILE
+		// At least one warm successor must itself be eligible. Only
+		// CPU-owned metadata is consulted, under the same invalidation
+		// generation as the original C++ linked dispatcher.
+		if(bMips3Tail && b->tail.count && b->tail.gen==nFastGen &&
+			((b->tail.pc[0]!=~0U && ((Mips3Block*)(Arena+b->tail.off[0]))->tail.count) ||
+			 (b->tail.pc[1]!=~0U && ((Mips3Block*)(Arena+b->tail.off[1]))->tail.count))) {
+			Mips3TailContext ctx={};
+			ctx.regs=reinterpret_cast<uint64_t*>(M.r);ctx.read=HostRead;ctx.write=HostWrite;
+			ctx.arena=Arena;ctx.codeBase=JitCache.Base();ctx.gen=nFastGen;
+			ctx.budget=nRunLimit>M.total_cycles?nRunLimit-M.total_cycles:0;
+			ctx.node=&b->tail;ctx.pc=Mx.vpage+b->start;ctx.nodeOffset=offsetof(Mips3Block,tail);
+			Mips3TailRun(&ctx);
+			// Only completed blocks that actually jumped were committed.
+			// The final block, including early exit or guard failure, is
+			// completed through the unmodified architectural path below.
+			nJitTailRuns++;nJitTailJumps+=ctx.jumps;
+			nJitLinkHits+=ctx.jumps;nJitLinkBlocks+=ctx.jumps;
+			nJitSpansRun+=ctx.jumps;nJitInsns+=ctx.cycles;
+			nJitRamHits+=ctx.ram;nJitBranches+=ctx.branches;
+			if(bMips3CollectPerf)nPerfGuest+=ctx.cycles;
+			M.total_cycles+=ctx.cycles;M.pc=ctx.pc;Mx.vpage=ctx.pc&~0xfffU;
+			b=(Mips3Block*)((UINT8*)ctx.node-ctx.nodeOffset);
+			ranTail=true;tailResult=ctx.result;
+		}
+#endif
 		Mx.next_pc=1;Mx.brk=0;
 		const Mips3Insn *I=b->insn;
 		Mx.lim=I+b->count;
 		bool guardFailed;
-		I=ExecNativeSpan(I,guardFailed);
+		I=ExecNativeSpan(I,guardFailed,ranTail,tailResult);
 		nJitLinkBlocks++;
 		if(guardFailed){
 			// The first failed instruction must see its original PC,
@@ -3193,9 +3231,9 @@ static MIPS3_INLINE void ExecBlockLinked(Mips3Block *b)
 		if(M.total_cycles>=nRunLimit || nFastGen!=nFastGenSeen || M.delay_pending)return;
 		const UINT32 pc=M.pc;
 		Mips3Block *next=NULL;
-		if(b->linkGen==nFastGen){
-			if(b->linkPC[0]==pc)next=(Mips3Block*)(Arena+b->linkOff[0]);
-			else if(b->linkPC[1]==pc)next=(Mips3Block*)(Arena+b->linkOff[1]);
+		if(b->tail.gen==nFastGen){
+			if(b->tail.pc[0]==pc)next=(Mips3Block*)(Arena+b->tail.off[0]);
+			else if(b->tail.pc[1]==pc)next=(Mips3Block*)(Arena+b->tail.off[1]);
 		}
 		if(next)nJitLinkHits++;
 		else{
@@ -3204,11 +3242,11 @@ static MIPS3_INLINE void ExecBlockLinked(Mips3Block *b)
 			const Mips3FastEntry &fe=FastCache[(pc>>2)&(MIPS3_FAST_ENTRIES-1)];
 			if(fe.pc!=pc || !fe.b || !Linkable(fe.b))return;
 			next=fe.b;
-			if(b->linkGen!=nFastGen){
-				b->linkGen=nFastGen;b->linkPC[0]=b->linkPC[1]=~0U;
+			if(b->tail.gen!=nFastGen){
+				b->tail.gen=nFastGen;b->tail.pc[0]=b->tail.pc[1]=~0U;
 			}
-			b->linkPC[1]=b->linkPC[0];b->linkOff[1]=b->linkOff[0];
-			b->linkPC[0]=pc;b->linkOff[0]=UINT32((UINT8*)next-Arena);
+			b->tail.pc[1]=b->tail.pc[0];b->tail.off[1]=b->tail.off[0];
+			b->tail.pc[0]=pc;b->tail.off[0]=UINT32((UINT8*)next-Arena);
 			nJitLinkLearned++;
 		}
 		b=next;Mx.vpage=pc&~0xfffU;
@@ -3576,6 +3614,7 @@ INT32 mips3_init(INT32 type)
 	nJitRamHits = nJitRamMisses = nJitBranches = 0;
 	nJitCacheRejected = 0;
 	nJitLinkHits=nJitLinkLearned=nJitLinkBlocks=0;
+	nJitTailRuns=nJitTailJumps=0;
 	nJitFpuSpans=nJitFpuMisses=0;
 	nPerfGuest = nPerfUncached = nPerfFlushes = 0;
 	const char *perf = getenv("FBNEO_Y2_PROFILE");
@@ -3605,6 +3644,10 @@ INT32 mips3_init(INT32 type)
 	const char *link=getenv("FBNEO_MIPS3_JIT_LINK");
 	bMips3Link=IS_VR5500 && (!link || strcmp(link,"0")!=0);
 	if(link && !strcmp(link,"1"))bMips3Link=true;
+	const char *tail=getenv("FBNEO_MIPS3_JIT_TAIL");
+	bMips3Tail=IS_VR5500 && (!tail || strcmp(tail,"0")!=0);
+	if(tail && !strcmp(tail,"1"))bMips3Tail=true;
+	bMips3Tail=bMips3Tail && bMips3Link;
 	const char *fpu=getenv("FBNEO_MIPS3_JIT_FPU");
 	bMips3Fpu=IS_VR5500 && (!fpu || strcmp(fpu,"0")!=0);
 	if(fpu && !strcmp(fpu,"1"))bMips3Fpu=true;
@@ -3617,6 +3660,7 @@ INT32 mips3_init(INT32 type)
 	bprintf(PRINT_UI, _T("MIPS3 ARM64 JIT integrated spans: %s\n"), bMips3Integrated ? _T("enabled") : _T("disabled"));
 	bprintf(PRINT_UI,_T("MIPS3 ARM64 linked blocks: %s, decoded arena %u MiB\n"),bMips3Link?_T("enabled"):_T("disabled"),nArenaSize>>20);
 	bprintf(PRINT_UI,_T("MIPS3 ARM64 guarded FPU (FR=0/1): %s\n"),bMips3Fpu?_T("enabled"):_T("disabled"));
+	bprintf(PRINT_UI,_T("MIPS3 ARM64 native tail runner: %s\n"),bMips3Tail?_T("enabled"):_T("disabled"));
 	bprintf(PRINT_UI, _T("MIPS3 ARM64 JIT cache: %u MiB, %s allocation\n"),
 		cacheMB, packed ? _T("packed W^X") : _T("page aligned W^X"));
 #endif
@@ -3634,6 +3678,7 @@ void mips3_get_perf_stats(Mips3PerfStats *stats)
 	stats->nativeBranches = nJitBranches;
 	stats->nativeLinkHits=nJitLinkHits;stats->nativeLinkLearned=nJitLinkLearned;
 	stats->nativeLinkBlocks=nJitLinkBlocks;stats->decodedArenaBytes=ArenaUsed;
+	stats->nativeTailRuns=nJitTailRuns;stats->nativeTailJumps=nJitTailJumps;
 	stats->nativeFpuSpans=nJitFpuSpans;stats->nativeFpuMisses=nJitFpuMisses;
 	stats->decodedArenaCapacity=nArenaSize;
 	stats->nativeRamMisses = nJitRamMisses;

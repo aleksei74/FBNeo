@@ -390,3 +390,99 @@ disables the transform; FBNEO_Y2_MEDIA_SIMD=0 also disables it.
   mips3_intf.cpp and d_y2.cpp. Full core build and real device
   performance still unverified. Native machine-code tail linking
   and a Vulkan hardware renderer are not part of this change.
+
+
+## Y2 resident NAND and native tail runner (based on 96936085a)
+
+retroarch12.log matched the first 128 windows of log11. Mean core
+8.796 -> 8.803 ms, NAND I/O 0.198 -> 0.149 ms, peak 284.76 ->
+188.75 ms, decoded/native cache flush 1 -> 0. The longer 179-window
+run nevertheless had a new 400.15 ms peak in window 162 alongside
+380 CHD hunk decodes. These are observed associations, not isolated
+storage or CPU benchmarks.
+
+### Complete decoded CHD residency
+
+For Linux ARM64 Y2, FBNEO_Y2_NAND_RESIDENT defaults to auto. Both
+immutable base CHDs are fully decompressed at initialization into
+host RAM, only when their combined padded image size plus 2 GiB
+fits the current MemAvailable (and finite root cgroup-v2 headroom,
+where exposed). Y2's two 0x42000000-byte images require 2112 MiB;
+auto thus requires at least 4160 MiB available after the initial
+driver allocation. FBNEO_Y2_NAND_RESIDENT=0 disables this mode;
+=1 explicitly opts in with a smaller but still mandatory 1 GiB
+reserve (also available on other Linux architectures). Non-Linux,
+raw/missing CHDs, unknown memory budget, allocation or decode
+failure fall back to demand reads. The second allocation rechecks
+available memory. If either image fails, release both. This is
+a conservative admission check, not a guarantee against external
+memory pressure or every possible nested cgroup configuration.
+
+All hunks must decode successfully before a resident pointer is
+published. Original CHD byte ranges then use direct memcpy from
+the immutable RAM image. The existing diff overlay takes precedence
+for written sectors. No disk modifications, persistent raw files,
+or speculative threads are needed. Both complete RAM images are
+released on close. Existing NAND decryption and virtual timing
+remain unchanged. The 2 MiB decrypted-page cache remains in place.
+CHD read-ahead remains off by default; a resident image never
+starts the read-ahead worker even when explicitly requested.
+The tradeoff is a longer game startup and about 2.06 GiB extra
+resident data; a real Odin 3 memory budget and game startup time
+have not yet been measured. Full residence removes repeated CHD
+I/O/decompression during gameplay, not every possible frame stall.
+Y2 NAND resident startup messages report enabled/disabled/fallback,
+image size, memory and elapsed initialization time.
+Y2 PERF RESIDENT reports RAM reads and bytes (hunk bytes for sector
+fallback) and resident status of each disk. Y2 PERF CHD demand
+counts should be zero after successful complete residency.
+
+### Native machine-code chain runner
+
+ARM64 VR5500 uses a shared AArch64 assembly continuation for
+current-generation warm successor links. Eligible blocks contain
+one complete integrated terminal-flow span, no split/idle skipping
+or FPU span. The entry uses the existing W^X code image. Emitted
+blocks preserve x19..x28 and return to the common continuation;
+it accounts for completed block cycles, RAM hits and branches,
+checks the event deadline and full-PC/generation link, and branches
+straight into the next eligible native entry without calling
+C++ between warmed blocks. Taken superblock exits and annulled
+delay slots use their exact returned entry/pseudo counts. A
+guard failure, event deadline or missing/ineligible link exits
+the runner, returning the final block result to the original
+C++ completion path exactly once. No JIT executable pages are
+patched; no registers remain cached across generated blocks.
+Code writes, remapping, restore and cache flush retain the existing
+generation invalidation. The native spans themselves cannot call
+device callbacks: those go through the existing guarded side exit.
+The assembly path is excluded from per-block debug profiling.
+This implements native-to-native dispatch through a common
+machine-code continuation, not a patched direct jump at each
+generated block's own epilogue. FBNEO_MIPS3_JIT_TAIL=0 restores
+the prior C++ linked path, and FBNEO_MIPS3_JIT_LINK=0 disables
+both. Y2 PERF TAIL reports runner entries and successful inter-block
+jumps. Some entries may have no jump, so coverage alone does not
+prove speedup; test on real hardware.
+
+### Validation
+
+- ARM64 QEMU: real MIPS3 linked/unlinked/tail 240 snapshots,
+  remapping, code rewrite, restored arena, deadlines and RAM guards:
+  611 assembly successor jumps; state and memory identical.
+- 16-block ring, 256 varying deadlines and a mid-run code rewrite:
+  41,528 native jumps across 255 runner entries, architectural state,
+  cycle debt, native instruction/span/branch and guest counts identical.
+- Existing R4600/VR5500 ALU, guarded RAM, flow/delay, FPU regression
+  tests all pass (including 24,000 FPU operations).
+- Actual libchdr synthetic compressed V3 CHD test: 1,194 previous
+  range comparisons plus 1,002 resident comparisons; zero demand
+  decodes during resident reads; budget, diff precedence, freeing and
+  demand fallback validated. Real V5 NAND data was not used.
+- Existing MVC, IDCT, YUV, blend, footprint, NAND and read-ahead
+  regression tests pass; memory-policy budget boundaries checked.
+- ARM64 and x86-64 production compile of burn_hdd.cpp, d_y2.cpp,
+  mips3.cpp and mips3_intf.cpp succeeded. Full linked libretro build,
+  startup on the physical device, memory pressure and performance
+  remain unverified. No Vulkan renderer or texture-cache redesign
+  in this follow-up.
