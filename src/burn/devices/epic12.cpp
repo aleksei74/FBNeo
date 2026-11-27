@@ -1941,6 +1941,17 @@ void epic12_draw_screen(UINT8 &recalc_palette)
 
 // 0x18000000 - 0x18000057
 
+// Only busy status is stable during a CPU timer slice. The busy flag
+// is written on the CPU thread by submit/reset/the blitter timer, not
+// by the asynchronous raster workers. Match the existing read's burn.
+bool epic12_poll_peek(UINT32 offset,UINT32 *value,INT32 *extraCycles)
+{
+	if(offset!=0x10)return false;
+	*value=m_blitter_busy?0:0x10;
+	*extraCycles=(m_blitter_busy && sleep_on_busy)?m_burn_cycles:0;
+	return true;
+}
+
 UINT32 epic12_blitter_read(UINT32 offset)
 {
 	switch (offset)

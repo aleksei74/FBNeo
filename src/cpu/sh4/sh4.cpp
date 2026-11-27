@@ -229,6 +229,7 @@ static TCHAR *tag() { static TCHAR id[10] = _T("sh-3\0"); return &id[0]; }
 
 // timer granularity speedhack
 static INT32 timer_granularity = 0;
+static bool cv1kTimerFastEnabled=false;
 
 void Sh3SetTimerGranularity(INT32 timergransh)
 {
@@ -328,6 +329,23 @@ struct sh4_dtimer
 		}
 	}
 
+	// O(1) advance when the next prescaled timer event cannot fire.
+	// Fall back BEFORE mutating anything if an expiry could invoke a
+	// callback (which may restart or change this or another timer).
+	void run_prescale_fast(INT32 cyc) {
+		if(timer_prescaler<=0){run_prescale(cyc);return;}
+		const UINT32 p=UINT32(timer_prescaler);
+		const UINT32 next=prescale_counter+UINT32(cyc)*UINT32(m_ratio);
+		if(next<p){prescale_counter=next;return;}
+		UINT32 ticks=1,rem=next-p;
+		if(rem>=p){ticks=next/p;rem=next%p;}
+		if(running && (time_current>=time_trig || ticks>=time_trig-time_current)){
+			run_prescale(cyc);return;
+		}
+		if(running)time_current+=ticks;
+		prescale_counter=rem;
+	}
+
 	void run(INT32 cyc) {
 		if (running) {
 			time_current += cyc;
@@ -371,9 +389,15 @@ static sh4_dtimer m_dma_timer[4];
 static sh4_dtimer cave_blitter_delay;
 
 static void sh4_run_timers(INT32 cycles) {
-	m_timer[0].run_prescale(cycles);
-	m_timer[1].run_prescale(cycles);
-	m_timer[2].run_prescale(cycles);
+	if(cv1kTimerFastEnabled && timer_granularity){
+		m_timer[0].run_prescale_fast(cycles);
+		m_timer[1].run_prescale_fast(cycles);
+		m_timer[2].run_prescale_fast(cycles);
+	}else{
+		m_timer[0].run_prescale(cycles);
+		m_timer[1].run_prescale(cycles);
+		m_timer[2].run_prescale(cycles);
+	}
 
 	m_dma_timer[0].run(cycles);
 	m_dma_timer[1].run(cycles);
@@ -585,6 +609,26 @@ static UINT8 *cv1kIdlePage;
 static UINT32 cv1kIdleAddress, cv1kIdlePC;
 static const INT32 *cv1kIdleCycles;
 static pSh3ReadLongHandler cv1kIdleHandler;
+static pSh3ReadLongHandler cv1kPollReadHandler;
+static pSh3Cv1kPollPeek cv1kPollPeek;
+void Sh3SetCv1kPollRead(pSh3ReadLongHandler handler,pSh3Cv1kPollPeek peek)
+{
+	cv1kPollReadHandler=handler;cv1kPollPeek=peek;
+}
+unsigned Sh3Cv1kPeekCode(UINT32 pc,UINT16 *ops,unsigned count)
+{
+	unsigned n=0;
+	if(pc&1)return 0;
+	for(;n<count;n++,pc+=2){
+		if(pc>=0xe0000000)break;
+		const UINT32 a=pc&AM;
+		UINT8 *page=MemMapF[a>>SH3_SHIFT];
+		if((uintptr_t)page<SH3_MAXHANDLER)break;
+		memcpy(ops+n,page+(a&SH3_PAGEM),2);
+	}
+	return n;
+}
+
 
 void Sh3SetCv1kIdleRead(UINT8 *ram, UINT32 addr, UINT32 pc,
 	const INT32 *burn, pSh3ReadLongHandler handler)
@@ -614,6 +658,7 @@ static INT32 Sh3MapInit()
 	memset(MemMapW, 0, sizeof(MemMapW));
 	memset(MemMapF, 0, sizeof(MemMapF));
 	cv1kIdlePage=NULL;
+	Sh3SetCv1kPollRead(NULL,NULL);
 
 	return 0;
 }
@@ -958,6 +1003,7 @@ void Sh3Init(INT32 num, INT32 hz, char md0, char md1, char md2, char md3, char m
 void Sh3Exit()
 {
 	Sh3Cv1kDmaPerfEnable(false);
+	Sh3SetCv1kPollRead(NULL,NULL);
 	Sh3SetCv1kNative(0);
 }
 
@@ -4132,6 +4178,10 @@ static bool cv1kFlatEnabled = false;
 static bool cv1kCompactEnabled = false;
 static bool cv1kBatchEnabled = false;
 static bool cv1kFetchPageEnabled = false;
+static bool cv1kPollEnabled=false;
+static Sh3Cv1kPollStats cv1kPollStats;
+struct Cv1kPollReject {UINT32 pc;unsigned cooldown;};
+static Cv1kPollReject cv1kPollReject[1024];
 static bool cv1kInterpLoopsEnabled = false;
 static bool cv1kHybridEnabled = false;
 static bool cv1kLoopEnabled = false;
@@ -4146,6 +4196,7 @@ static UINT64 cv1kLoopAttempts, cv1kLoopHits, cv1kLoopOps;
 static UINT64 cv1kInterpLoopBlocks,cv1kInterpLoopLaps,cv1kInterpLoopOps,cv1kInterpLoopKinds[3];
 #if SH3_FLAT_DISPATCH
 #include "sh3_cv1k_interp_loops.inc"
+#include "sh3_cv1k_poll.inc"
 #endif
 #if SH3_NATIVE
 static_assert(SH3_SHIFT==16 && SH3_MAXHANDLER==8 && AM==0x1fffffff && T==1,
@@ -4353,6 +4404,8 @@ void Sh3SetCv1kNative(INT32 enable)
 {
 	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = cv1kLoopEnabled = false;
 	cv1kFetchPageEnabled = cv1kInterpLoopsEnabled = false;
+	cv1kPollEnabled=cv1kTimerFastEnabled=false;
+	cv1kPollStats={};memset(cv1kPollReject,0,sizeof(cv1kPollReject));
 	cv1kInterpLoopBlocks=cv1kInterpLoopLaps=cv1kInterpLoopOps=0;
 	memset(cv1kInterpLoopKinds,0,sizeof(cv1kInterpLoopKinds));
 #if SH3_FLAT_DISPATCH
@@ -4404,6 +4457,13 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kInterpLoopsEnabled=cv1kFetchPageEnabled && interpLoops && !strcmp(interpLoops,"1");
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 counted interpreter loops: %s\n"),
 		cv1kInterpLoopsEnabled?_T("enabled"):_T("disabled"));
+	const char *poll=getenv("FBNEO_CV1K_POLL");
+	const char *timerFast=getenv("FBNEO_CV1K_TIMER_FAST");
+	cv1kPollEnabled=cv1kFetchPageEnabled && poll && !strcmp(poll,"1");
+	cv1kTimerFastEnabled=enable && timerFast && !strcmp(timerFast,"1");
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 fixed-point polling: %s, no-event timer advance: %s\n"),
+		cv1kPollEnabled?_T("enabled (opt-in)"):_T("disabled"),
+		cv1kTimerFastEnabled?_T("enabled (opt-in)"):_T("disabled"));
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 host arithmetic: %s, shared long-read tail: %s\n"),
 		SH3_FAST_ARITHMETIC?_T("enabled"):_T("disabled"),
 		SH3_SMALL_HANDLERS?_T("enabled"):_T("disabled"));
@@ -4416,6 +4476,8 @@ void Sh3SetCv1kNative(INT32 enable)
 	(void)enable;
 #endif
 }
+
+void Sh3Cv1kGetPollStats(Sh3Cv1kPollStats *stats){*stats=cv1kPollStats;}
 
 void Sh3Cv1kCacheStats(UINT64 *misses, UINT64 *rejected, UINT64 *full)
 {
@@ -4574,8 +4636,13 @@ template<bool Hybrid, bool FetchPage=false> static int Sh3Run_timerhack_batch(in
 	if(FetchPage)cv1kFetchPageActive=true;
 	m_sh4_icount=cycles;sh3_end_run=0;
 	if (m_cpu_off) {m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
+	if(FetchPage && cv1kPollEnabled && Cv1kTryPoll() && m_sh4_icount==0){
+		sh4_run_timers(cycles);
+		m_sh4_icount=0;
+		return cycles;
+	}
 	UINT32 pc=m_pc;
-	INT32 remaining=cycles,pure=0;
+	INT32 remaining=m_sh4_icount,pure=0;
 	const UINT16 *fetch=NULL;
 	INT32 window=0;
 	UINT16 opcode;

@@ -51,6 +51,15 @@ struct Sh3Cv1kDmaPerfStats {
 void Sh3Cv1kDmaPerfEnable(bool enabled);
 void Sh3Cv1kDmaPerfReset();
 void Sh3Cv1kDmaPerfGet(Sh3Cv1kDmaPerfStats *stats);
+typedef bool (*pSh3Cv1kPollPeek)(UINT32 address,UINT32 *value,INT32 *extraCycles);
+void Sh3SetCv1kPollRead(pSh3ReadLongHandler handler,pSh3Cv1kPollPeek peek);
+struct Sh3Cv1kPollStats {
+	UINT64 attempts,hits,rounds,cycles,ops,ramHits,idleHits,deviceHits;
+	UINT32 lastPC;
+};
+void Sh3Cv1kGetPollStats(Sh3Cv1kPollStats *stats);
+unsigned Sh3Cv1kPeekCode(UINT32 pc,UINT16 *ops,unsigned count);
+
 
 
 INT32 Sh3SetReadPortHandler(pSh3ReadLongHandler pHandler);

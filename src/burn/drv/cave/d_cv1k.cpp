@@ -54,6 +54,7 @@ static UINT64 cv1kPrevOps, cv1kPrevSpans, cv1kPrevBuilt;
 static UINT64 cv1kPrevMiss, cv1kPrevReject, cv1kPrevFull;
 static UINT64 cv1kPrevLoopAttempts,cv1kPrevLoopHits,cv1kPrevLoopOps;
 static UINT64 cv1kPrevInterpBlocks,cv1kPrevInterpLaps,cv1kPrevInterpOps,cv1kPrevInterpKinds[3];
+static Sh3Cv1kPollStats cv1kPrevPoll={};
 static Epic12PerfStats cv1kPrevBlit = {};
 static unsigned cv1kFrames, cv1kLate, cv1kLate25, cv1kLate33;
 static UINT64 cv1kCpuPeakNs, cv1kWaitPeakNs, cv1kThreadNs;
@@ -65,7 +66,8 @@ static unsigned cv1kThreadSamples;
 static bool cv1kDiag;
 struct Cv1kDiagFrame {
 	UINT64 frame,core,cpu,sliceNs;
-	UINT32 slicePC,sliceEndPC,sliceIndex;
+	UINT32 slicePC,sliceEndPC,sliceIndex,sliceCodePC,sliceCodeCount;
+	UINT16 sliceCode[12];
 	Ymz770PerfStats cpuSound,sound;
 	Sh3Cv1kDmaPerfStats dma;
 	UINT64 blitWait,blitShadow,blitSync;
@@ -133,6 +135,13 @@ static void Cv1kDiagReportSlow(const TCHAR *kind,const Cv1kDiagFrame &f)
 		DiagMs(f.dma.ns),DiagMs(f.dma.nandNs),DiagMs(f.blitSync),DiagMs(f.blitWait),DiagMs(f.blitShadow),
 		(unsigned long long)f.sound.keyOns,(unsigned long long)f.sound.decodes,
 		f.sliceIndex,DiagMs(f.sliceNs),f.slicePC,f.sliceEndPC);
+	// Live memory after that slice, not a trace of instructions
+	// executed during it. Helps identify the next unsupported loop.
+	if(f.sliceCodeCount)bprintf(PRINT_UI,_T("CV1K DIAG CODE: frame %llu post_slice %08x words %u: %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x %04x\n"),
+		(unsigned long long)f.frame,f.sliceCodePC,f.sliceCodeCount,
+		f.sliceCode[0],f.sliceCode[1],f.sliceCode[2],f.sliceCode[3],
+		f.sliceCode[4],f.sliceCode[5],f.sliceCode[6],f.sliceCode[7],
+		f.sliceCode[8],f.sliceCode[9],f.sliceCode[10],f.sliceCode[11]);
 }
 static void Cv1kDiagReport(double scale)
 {
@@ -196,6 +205,7 @@ static void Cv1kProfileInit() {
 	cv1kPrevMiss = cv1kPrevReject = cv1kPrevFull = 0;
 	cv1kPrevLoopAttempts=cv1kPrevLoopHits=cv1kPrevLoopOps=0;
 	cv1kPrevInterpBlocks=cv1kPrevInterpLaps=cv1kPrevInterpOps=0;
+	cv1kPrevPoll={};
 	memset(cv1kPrevInterpKinds,0,sizeof(cv1kPrevInterpKinds));
 	cv1kPrevBlit = {};
 	cv1kFrames = cv1kLate = 0;
@@ -238,6 +248,17 @@ static void Cv1kProfileFrame(UINT64 start) {
 		(unsigned long long)(interpKinds[2]-cv1kPrevInterpKinds[2]));
 	cv1kPrevInterpBlocks=interpBlocks;cv1kPrevInterpLaps=interpLaps;cv1kPrevInterpOps=interpOps;
 	memcpy(cv1kPrevInterpKinds,interpKinds,sizeof(interpKinds));
+	Sh3Cv1kPollStats poll;Sh3Cv1kGetPollStats(&poll);
+	bprintf(PRINT_UI,_T("CV1K POLL: attempts %llu hits %llu rounds %llu cycles %llu ops %llu RAM %llu idle %llu device %llu last_pc %08x\n"),
+		(unsigned long long)(poll.attempts-cv1kPrevPoll.attempts),
+		(unsigned long long)(poll.hits-cv1kPrevPoll.hits),
+		(unsigned long long)(poll.rounds-cv1kPrevPoll.rounds),
+		(unsigned long long)(poll.cycles-cv1kPrevPoll.cycles),
+		(unsigned long long)(poll.ops-cv1kPrevPoll.ops),
+		(unsigned long long)(poll.ramHits-cv1kPrevPoll.ramHits),
+		(unsigned long long)(poll.idleHits-cv1kPrevPoll.idleHits),
+		(unsigned long long)(poll.deviceHits-cv1kPrevPoll.deviceHits),poll.lastPC);
+	cv1kPrevPoll=poll;
 	UINT64 misses, rejected, full;
 	Sh3Cv1kCacheStats(&misses,&rejected,&full);
 	bprintf(PRINT_UI,_T("CV1K CACHE: misses %llu rejected %llu full %llu\n"),
@@ -494,6 +515,11 @@ static UINT32 __fastcall main_read_long(UINT32 offset)
 	//bprintf(0, _T("mrl %x\n"), offset);
 
 	return 0;
+}
+static bool cv1k_poll_peek(UINT32 address,UINT32 *value,INT32 *extraCycles)
+{
+	if(address!=0x18000010)return false;
+	return epic12_poll_peek(0x10,value,extraCycles);
 }
 static UINT16 __fastcall main_read_word(UINT32 offset)
 {
@@ -755,6 +781,7 @@ static INT32 DrvInit()
 	Sh3SetReadByteHandler (0, main_read_byte);
 	Sh3SetReadWordHandler (0, main_read_word);
 	Sh3SetReadLongHandler (0, main_read_long);
+	Sh3SetCv1kPollRead(main_read_long,cv1k_poll_peek);
 	Sh3SetWriteByteHandler(0, main_write_byte);
 	Sh3SetWriteWordHandler(0, main_write_word);
 	Sh3SetWriteLongHandler(0, main_write_long);
@@ -882,6 +909,9 @@ static INT32 DrvFrame()
 			if(elapsed>diagFrame.sliceNs){
 				diagFrame.sliceNs=elapsed;diagFrame.slicePC=pc;
 				diagFrame.sliceEndPC=Sh3GetPC(-1);diagFrame.sliceIndex=i;
+				diagFrame.sliceCodePC=pc>=8?pc-8:pc;
+				memset(diagFrame.sliceCode,0,sizeof(diagFrame.sliceCode));
+				diagFrame.sliceCodeCount=Sh3Cv1kPeekCode(diagFrame.sliceCodePC,diagFrame.sliceCode,12);
 			}
 		}
 	}else{

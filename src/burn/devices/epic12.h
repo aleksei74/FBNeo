@@ -13,6 +13,7 @@ void epic12_set_blitter_sleep_on_busy(INT32 busysleep_on); // for testing
 
 void epic12_wait_blitterthread();
 void epic12_draw_screen(UINT8 &recalc_palette);
+bool epic12_poll_peek(UINT32 offset,UINT32 *value,INT32 *extraCycles);
 UINT32 epic12_blitter_read(UINT32 offset); // 0x18000000 - 0x18000057
 void epic12_blitter_write(UINT32 offset, UINT32 data);
 

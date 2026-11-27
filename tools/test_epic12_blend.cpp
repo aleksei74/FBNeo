@@ -503,7 +503,26 @@ static bool PackedStateTest(){
 	puts("EPIC12 packed state: all RGB555 words, byte-identical legacy stream and chunked restore PASS");
 	return true;
 }
+// Compare the actual board's read to the side-effect-free poll query.
+// The ordinary read burns cycles only while busy and sleep is enabled.
+static INT32 peekBurned;
+void Sh3BurnCycles(INT32 cycles){peekBurned+=cycles;}
+static bool TestPollPeek(){
+	for(unsigned busy=0;busy<2;busy++)for(unsigned sleep=0;sleep<2;sleep++)
+	for(INT32 burn: {0,41,1024}){
+		m_blitter_busy=busy;sleep_on_busy=sleep;m_burn_cycles=burn;
+		UINT32 value=0xffffffff;INT32 extra=-1;
+		peekBurned=0;
+		if(!epic12_poll_peek(0x10,&value,&extra) || peekBurned ||
+			value!=epic12_blitter_read(0x10) || peekBurned!=extra)return false;
+		if(epic12_poll_peek(0x24,&value,&extra))return false;
+	}
+	m_blitter_busy=0;sleep_on_busy=1;m_burn_cycles=0;
+	puts("EPIC12 busy peek: 12 real read/burn comparisons PASS");
+	return true;
+}
 int main(){
+	if(!TestPollPeek())return 1;
 	Tables();
 	epic12_device_blitfunction *funcs[]={
 		epic12_device_f0_ti0_tr0_blit_funcs,epic12_device_f0_ti0_tr1_blit_funcs,
