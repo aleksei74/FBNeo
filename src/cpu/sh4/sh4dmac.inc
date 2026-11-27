@@ -10,6 +10,18 @@
 */
 #include "serflash.h"
 
+// Profile whole synchronous automatic transfers, never individual bytes.
+static bool cv1kDmaPerfEnabled;
+static Sh3Cv1kDmaPerfStats cv1kDmaPerf;
+static UINT64 Cv1kDmaNow()
+{
+	return (UINT64)std::chrono::duration_cast<std::chrono::nanoseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+void Sh3Cv1kDmaPerfReset(){cv1kDmaPerf={};}
+void Sh3Cv1kDmaPerfEnable(bool enabled){cv1kDmaPerfEnabled=enabled;Sh3Cv1kDmaPerfReset();}
+void Sh3Cv1kDmaPerfGet(Sh3Cv1kDmaPerfStats *stats){*stats=cv1kDmaPerf;}
+
 static const int dmasize[8] = { 8, 1, 2, 4, 32, 0, 0, 0 };
 
 static const int sh3_dmasize[4] = { 1, 2, 4, 16 };
@@ -120,8 +132,13 @@ static int sh4_dma_transfer(int channel, int timermode, UINT32 chcr, UINT32 *sar
 
 	src &= AM;
 	dst &= AM;
+	const bool profile=cv1kDmaPerfEnabled;
+	const UINT64 begin=profile?Cv1kDmaNow():0;
+	const UINT32 startSrc=src,startDst=dst;
+	const UINT64 transferBytes=UINT64(count)*size;
+	const bool nand=size==1 && src==0x10000000;
 
-	if (size == 1 && (src & AM) == 0x10000000) { // CV1000 serial-flash DMA
+	if (nand) { // CV1000 serial-flash DMA
 		while (count) {
 			// Common incrementing transfer: process complete guest
 			// words in the current direct-mapped page, leaving odd
@@ -255,6 +272,15 @@ static int sh4_dma_transfer(int channel, int timermode, UINT32 chcr, UINT32 *sar
 	*sar    = (*sar & !AM) | src;
 	*dar    = (*dar & !AM) | dst;
 	*dmatcr = count;
+	if(profile){
+		const UINT64 ns=Cv1kDmaNow()-begin;
+		cv1kDmaPerf.ns+=ns;cv1kDmaPerf.calls++;cv1kDmaPerf.bytes+=transferBytes;
+		if(nand){cv1kDmaPerf.nandNs+=ns;cv1kDmaPerf.nandCalls++;cv1kDmaPerf.nandBytes+=transferBytes;}
+		if(ns>cv1kDmaPerf.peakNs){
+			cv1kDmaPerf.peakNs=ns;cv1kDmaPerf.peakBytes=transferBytes;
+			cv1kDmaPerf.peakSrc=startSrc;cv1kDmaPerf.peakDst=startDst;cv1kDmaPerf.peakWidth=size;
+		}
+	}
 	return 1;
 }
 

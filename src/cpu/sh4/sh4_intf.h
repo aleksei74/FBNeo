@@ -44,6 +44,14 @@ void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built);
 void Sh3Cv1kCacheStats(UINT64 *misses, UINT64 *rejected, UINT64 *full);
 void Sh3Cv1kLoopStats(UINT64 *attempts, UINT64 *hits, UINT64 *instructions);
 void Sh3Cv1kInterpLoopStats(UINT64 *blocks,UINT64 *laps,UINT64 *ops,UINT64 *kinds);
+struct Sh3Cv1kDmaPerfStats {
+	UINT64 ns,nandNs,peakNs,calls,bytes,nandCalls,nandBytes,peakBytes;
+	UINT32 peakSrc,peakDst,peakWidth;
+};
+void Sh3Cv1kDmaPerfEnable(bool enabled);
+void Sh3Cv1kDmaPerfReset();
+void Sh3Cv1kDmaPerfGet(Sh3Cv1kDmaPerfStats *stats);
+
 
 INT32 Sh3SetReadPortHandler(pSh3ReadLongHandler pHandler);
 INT32 Sh3SetWritePortHandler(pSh3WriteLongHandler pHandler);

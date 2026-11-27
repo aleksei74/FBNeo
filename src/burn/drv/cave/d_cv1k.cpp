@@ -58,6 +58,108 @@ static Epic12PerfStats cv1kPrevBlit = {};
 static unsigned cv1kFrames, cv1kLate, cv1kLate25, cv1kLate33;
 static UINT64 cv1kCpuPeakNs, cv1kWaitPeakNs, cv1kThreadNs;
 static unsigned cv1kThreadSamples;
+// Diagnostic capture of the actual host work hidden in the CPU phase.
+// Timings are inclusive (DMA can call a device handler, sound writes
+// include stream generation, and stream generation includes decoding).
+// Do not add them to core/CPU time or subtract overlapping categories.
+static bool cv1kDiag;
+struct Cv1kDiagFrame {
+	UINT64 frame,core,cpu,sliceNs;
+	UINT32 slicePC,sliceEndPC,sliceIndex;
+	Ymz770PerfStats cpuSound,sound;
+	Sh3Cv1kDmaPerfStats dma;
+	UINT64 blitWait,blitShadow,blitSync;
+};
+static Cv1kDiagFrame diagFrame,diagWorst,diagCpuWorst,diagDecodeWorst,diagDmaWorst;
+static Epic12PerfStats diagBlitStart;
+static UINT64 diagFrameNo,diagWriteNs,diagStreamNs,diagCpuDecodeNs,diagEndDecodeNs;
+static UINT64 diagWrites,diagDecodes,diagCpuDecodes,diagEmpty,diagKeyOns,diagSamples,diagSyncBits,diagSyncMax;
+static UINT64 diagDmaNs,diagNandNs,diagDmaBytes,diagNandBytes,diagDmaCalls,diagNandCalls;
+static UINT64 diagBlitWait,diagBlitShadow,diagBlitSync;
+static double DiagMs(UINT64 ns){return ns/1000000.0;}
+static void Cv1kDiagResetWindow()
+{
+	diagWorst={};diagCpuWorst={};diagDecodeWorst={};diagDmaWorst={};
+	diagWriteNs=diagStreamNs=diagCpuDecodeNs=diagEndDecodeNs=0;
+	diagWrites=diagDecodes=diagCpuDecodes=diagEmpty=diagKeyOns=diagSamples=diagSyncBits=diagSyncMax=0;
+	diagDmaNs=diagNandNs=diagDmaBytes=diagNandBytes=diagDmaCalls=diagNandCalls=0;
+	diagBlitWait=diagBlitShadow=diagBlitSync=0;
+}
+static void Cv1kDiagBegin()
+{
+	diagFrame={};
+	diagFrame.frame=++diagFrameNo;
+	ymz770_perf_reset();
+	Sh3Cv1kDmaPerfReset();
+	epic12_get_perf_stats(&diagBlitStart);
+}
+static void Cv1kDiagCpuEnd(UINT64 elapsed)
+{
+	diagFrame.cpu=elapsed;
+	ymz770_perf_get(&diagFrame.cpuSound);
+	Sh3Cv1kDmaPerfGet(&diagFrame.dma);
+	Epic12PerfStats blit;
+	epic12_get_perf_stats(&blit);
+	diagFrame.blitWait=blit.submitWaitNs-diagBlitStart.submitWaitNs;
+	diagFrame.blitShadow=blit.shadowNs-diagBlitStart.shadowNs;
+	diagFrame.blitSync=blit.syncExecNs-diagBlitStart.syncExecNs;
+}
+static void Cv1kDiagFinish(UINT64 elapsed)
+{
+	diagFrame.core=elapsed;
+	ymz770_perf_get(&diagFrame.sound);
+	const auto &s=diagFrame.sound;
+	const auto &c=diagFrame.cpuSound;
+	const auto &d=diagFrame.dma;
+	diagWriteNs+=c.writeNs;diagStreamNs+=c.streamNs;
+	diagCpuDecodeNs+=c.decodeNs;diagEndDecodeNs+=s.decodeNs-c.decodeNs;
+	diagWrites+=c.writes;diagDecodes+=s.decodes;diagCpuDecodes+=c.decodes;
+	diagEmpty+=s.emptyDecodes;diagKeyOns+=s.keyOns;diagSamples+=s.streamSamples;
+	diagSyncBits+=s.syncBits;
+	if(s.syncMaxBits>diagSyncMax)diagSyncMax=s.syncMaxBits;
+	diagDmaNs+=d.ns;diagNandNs+=d.nandNs;diagDmaBytes+=d.bytes;diagNandBytes+=d.nandBytes;
+	diagDmaCalls+=d.calls;diagNandCalls+=d.nandCalls;
+	diagBlitWait+=diagFrame.blitWait;diagBlitShadow+=diagFrame.blitShadow;diagBlitSync+=diagFrame.blitSync;
+	if(diagFrame.core>diagWorst.core)diagWorst=diagFrame;
+	if(diagFrame.cpu>diagCpuWorst.cpu)diagCpuWorst=diagFrame;
+	if(s.decodePeakNs>diagDecodeWorst.sound.decodePeakNs)diagDecodeWorst=diagFrame;
+	if(d.peakNs>diagDmaWorst.dma.peakNs)diagDmaWorst=diagFrame;
+}
+static void Cv1kDiagReportSlow(const TCHAR *kind,const Cv1kDiagFrame &f)
+{
+	bprintf(PRINT_UI,_T("CV1K DIAG SLOW %s frame %llu core %.3f CPU %.3f ymz_write %.3f cpu_decode %.3f end_decode %.3f DMA %.3f NAND %.3f blit_sync %.3f submit_wait %.3f shadow %.3f keyon %llu decodes %llu slice %u %.3f ms PC %08x -> %08x\n"),
+		kind,(unsigned long long)f.frame,DiagMs(f.core),DiagMs(f.cpu),
+		DiagMs(f.cpuSound.writeNs),DiagMs(f.cpuSound.decodeNs),DiagMs(f.sound.decodeNs-f.cpuSound.decodeNs),
+		DiagMs(f.dma.ns),DiagMs(f.dma.nandNs),DiagMs(f.blitSync),DiagMs(f.blitWait),DiagMs(f.blitShadow),
+		(unsigned long long)f.sound.keyOns,(unsigned long long)f.sound.decodes,
+		f.sliceIndex,DiagMs(f.sliceNs),f.slicePC,f.sliceEndPC);
+}
+static void Cv1kDiagReport(double scale)
+{
+	bprintf(PRINT_UI,_T("CV1K DIAG YMZ: write %.3f ms stream %.3f ms decode_cpu %.3f ms decode_end %.3f ms writes %llu decodes %llu cpu_decodes %llu empty %llu keyon %llu samples %llu sync_bits %llu max_scan %llu\n"),
+		diagWriteNs*scale,diagStreamNs*scale,diagCpuDecodeNs*scale,diagEndDecodeNs*scale,
+		(unsigned long long)diagWrites,(unsigned long long)diagDecodes,(unsigned long long)diagCpuDecodes,
+		(unsigned long long)diagEmpty,(unsigned long long)diagKeyOns,(unsigned long long)diagSamples,
+		(unsigned long long)diagSyncBits,(unsigned long long)diagSyncMax);
+	bprintf(PRINT_UI,_T("CV1K DIAG DMA: total %.3f ms NAND %.3f ms calls %llu NAND_calls %llu bytes %llu NAND_bytes %llu blit_sync %.3f ms submit_wait %.3f ms shadow %.3f ms\n"),
+		diagDmaNs*scale,diagNandNs*scale,(unsigned long long)diagDmaCalls,(unsigned long long)diagNandCalls,
+		(unsigned long long)diagDmaBytes,(unsigned long long)diagNandBytes,diagBlitSync*scale,diagBlitWait*scale,diagBlitShadow*scale);
+	if(diagDecodeWorst.frame){
+		const auto &f=diagDecodeWorst;const auto &s=f.sound;
+		bprintf(PRINT_UI,_T("CV1K DIAG DECODE_PEAK: frame %llu %.3f ms phrase %u channel %u sync_bits %llu frame_cpu %.3f ms frame_core %.3f ms\n"),
+			(unsigned long long)f.frame,DiagMs(s.decodePeakNs),s.peakPhrase,s.peakChannel,
+			(unsigned long long)s.peakSyncBits,DiagMs(f.cpu),DiagMs(f.core));
+	}
+	if(diagDmaWorst.frame){
+		const auto &f=diagDmaWorst;const auto &d=f.dma;
+		bprintf(PRINT_UI,_T("CV1K DIAG DMA_PEAK: frame %llu %.3f ms bytes %llu width %u src %08x dst %08x\n"),
+			(unsigned long long)f.frame,DiagMs(d.peakNs),(unsigned long long)d.peakBytes,d.peakWidth,d.peakSrc,d.peakDst);
+	}
+	Cv1kDiagReportSlow(_T("core"),diagWorst);
+	if(diagCpuWorst.frame!=diagWorst.frame)Cv1kDiagReportSlow(_T("cpu"),diagCpuWorst);
+	Cv1kDiagResetWindow();
+}
+
 static UINT64 Cv1kThreadNow() {
 #if defined(__linux__) && defined(CLOCK_THREAD_CPUTIME_ID)
 	if (cv1kProfile) {
@@ -83,6 +185,12 @@ static void Cv1kProfileInit() {
 #else
 	cv1kProfile = e && strcmp(e, "1") == 0;
 #endif
+	const char *diag=getenv("FBNEO_CV1K_DIAG");
+	cv1kDiag=diag && !strcmp(diag,"1");
+	if(cv1kDiag)cv1kProfile=true;
+	diagFrameNo=0;diagFrame={};Cv1kDiagResetWindow();
+	Sh3Cv1kDmaPerfEnable(cv1kDiag);
+	if(cv1kDiag)bprintf(PRINT_UI,_T("CV1000 detailed host diagnostics: enabled (YMZ, DMA, worst CPU slice; timing overhead)\n"));
 	cv1kFrameNs = cv1kCpuNs = cv1kAudioNs = cv1kWaitNs = cv1kDrawNs = cv1kPeakNs = 0;
 	cv1kPrevOps = cv1kPrevSpans = cv1kPrevBuilt = 0;
 	cv1kPrevMiss = cv1kPrevReject = cv1kPrevFull = 0;
@@ -96,6 +204,7 @@ static void Cv1kProfileInit() {
 static void Cv1kProfileFrame(UINT64 start) {
 	if (!cv1kProfile) return;
 	UINT64 ns = Cv1kNow() - start;
+	if(cv1kDiag)Cv1kDiagFinish(ns);
 	cv1kFrameNs += ns;
 	if (ns > cv1kPeakNs) cv1kPeakNs = ns;
 	if (ns > 16666667) cv1kLate++;
@@ -169,6 +278,7 @@ static void Cv1kProfileFrame(UINT64 start) {
 	bprintf(PRINT_UI,_T("CV1K LATENCY: CPU peak %.3f ms wait peak %.3f ms; over25 %u over33 %u; CPU scheduled %.3f ms (%u samples)\n"),
 		cv1kCpuPeakNs/1000000.0,cv1kWaitPeakNs/1000000.0,cv1kLate25,cv1kLate33,
 		cv1kThreadSamples?cv1kThreadNs/(1000000.0*cv1kThreadSamples):0.0,cv1kThreadSamples);
+	if(cv1kDiag)Cv1kDiagReport(scale);
 	cv1kPrevBlit=blit;
 	cv1kPrevMiss=misses;cv1kPrevReject=rejected;cv1kPrevFull=full;
 	cv1kPrevOps = ops; cv1kPrevSpans = spans; cv1kPrevBuilt = built;
@@ -664,6 +774,7 @@ static INT32 DrvInit()
 	rtc9701_init();
 
 	ymz770_init(DrvSoundROM, 0x800000);
+	ymz770_perf_enable(cv1kDiag);
 	ymz770_set_volume(2.0);
 	ymz770_set_buffered(Sh3TotalCycles, SH3_CLOCK);
 	DrvDoReset();
@@ -758,12 +869,26 @@ static INT32 DrvFrame()
 	INT32 nCyclesDone[1] = { nExtraCycles[0] };
 
 	Sh3Open(0);
+	if(cv1kDiag)Cv1kDiagBegin();
 	phase = Cv1kNow();
 	const UINT64 threadStart=Cv1kThreadNow();
 
-	for (INT32 i = 0; i < nInterleave; i++)
-	{
-		CPU_RUN(0, Sh3);
+	if(cv1kDiag){
+		for(INT32 i=0;i<nInterleave;i++){
+			const UINT32 pc=Sh3GetPC(-1);
+			const UINT64 begin=Cv1kNow();
+			CPU_RUN(0, Sh3);
+			const UINT64 elapsed=Cv1kNow()-begin;
+			if(elapsed>diagFrame.sliceNs){
+				diagFrame.sliceNs=elapsed;diagFrame.slicePC=pc;
+				diagFrame.sliceEndPC=Sh3GetPC(-1);diagFrame.sliceIndex=i;
+			}
+		}
+	}else{
+		for (INT32 i = 0; i < nInterleave; i++)
+		{
+			CPU_RUN(0, Sh3);
+		}
 	}
 
 	Sh3SetIRQLine(2, CPU_IRQSTATUS_HOLD);
@@ -776,6 +901,7 @@ static INT32 DrvFrame()
 			cv1kThreadNs+=threadEnd-threadStart;
 			cv1kThreadSamples++;
 		}
+		if(cv1kDiag)Cv1kDiagCpuEnd(elapsed);
 	}
 	phase = Cv1kNow();
 

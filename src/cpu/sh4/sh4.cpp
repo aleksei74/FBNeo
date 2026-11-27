@@ -38,6 +38,7 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "sh4tmu.h"
 #include "math.h"
 #include "sh3_arm64_native.h"
+#include <chrono>
 
 #define COMBINE_DATA(varptr)		(*(varptr) = (*(varptr) & ~mem_mask) | (data & mem_mask))
 
@@ -956,6 +957,7 @@ void Sh3Init(INT32 num, INT32 hz, char md0, char md1, char md2, char md3, char m
 
 void Sh3Exit()
 {
+	Sh3Cv1kDmaPerfEnable(false);
 	Sh3SetCv1kNative(0);
 }
 
@@ -4397,7 +4399,9 @@ void Sh3SetCv1kNative(INT32 enable)
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 pure fetch-page reuse: %s\n"),
 		cv1kFetchPageEnabled?_T("enabled"):_T("disabled"));
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
-	cv1kInterpLoopsEnabled=cv1kFetchPageEnabled && (!interpLoops || strcmp(interpLoops,"0")!=0);
+	// Real mmpork A/B: substantially slower startup with fusion on.
+	// Retain the experiment but require explicit opt-in.
+	cv1kInterpLoopsEnabled=cv1kFetchPageEnabled && interpLoops && !strcmp(interpLoops,"1");
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 counted interpreter loops: %s\n"),
 		cv1kInterpLoopsEnabled?_T("enabled"):_T("disabled"));
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 host arithmetic: %s, shared long-read tail: %s\n"),

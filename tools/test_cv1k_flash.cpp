@@ -64,6 +64,8 @@ static bool TestDMA(){
 			handlerRam=b.data()+0x10000;
 			Sh3MapHandler(1,base+0x10000,base+0x1ffff,MAP_WRITE);
 		}
+		const bool profile=(c&1)!=0;
+		Sh3Cv1kDmaPerfEnable(profile);
 		UINT32 sar=0x10000000,dar=start,count=n;
 		if(!sh4_dma_transfer(0,0,(incd<<14)|(incs<<12),&sar,&dar,&count) ||
 			sar!=expectedSrc || dar!=expectedDst || count ||
@@ -71,7 +73,15 @@ static bool TestDMA(){
 			fprintf(stderr,"serial-flash actual DMA mismatch case=%u modes=%u/%u handler=%d\\n",c,incs,incd,handler);
 			return false;
 		}
+		Sh3Cv1kDmaPerfStats stats={};Sh3Cv1kDmaPerfGet(&stats);
+		if(stats.calls!=unsigned(profile) || stats.nandCalls!=unsigned(profile) ||
+			stats.bytes!=(profile?n:0) || stats.nandBytes!=(profile?n:0) ||
+			stats.ns!=stats.nandNs || (!profile && stats.ns)){
+			fprintf(stderr,"DMA diagnostics mismatch %u\n",c);return false;
+		}
 	}
+	Sh3Cv1kDmaPerfEnable(false);
+	puts("CV1000 DMA diagnostics: 240 transfers alternating enabled/disabled, byte and call counters PASS");
 	puts("CV1000 actual SH3 flash DMA: 240 cross-page, handler and address-mode comparisons PASS");
 	return true;
 }

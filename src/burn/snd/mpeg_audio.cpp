@@ -64,8 +64,10 @@ void mpeg_audio::scan()
 }
 
 bool mpeg_audio::decode_buffer(int &pos, int limit, short *output,
-								int &output_samples, int &sample_rate, int &channels)
+								int &output_samples, int &sample_rate, int &channels,
+								int *sync_search_bits)
 {
+	if(sync_search_bits) *sync_search_bits=0;
 	if(limit - pos < 16)
 		return false;
 
@@ -82,8 +84,10 @@ bool mpeg_audio::decode_buffer(int &pos, int limit, short *output,
 	while(sync != 0xfff && current_pos < limit)
 		sync = ((sync << 1) | do_gb(base, current_pos, 1)) & 0xfff;
 
-	if(limit - current_pos < 4)
+	if(limit - current_pos < 4) {
+		if(sync_search_bits) *sync_search_bits=current_pos-pos;
 		return false;
+	}
 
 	int layer = 0;
 	int variant = do_gb(base, current_pos, 3);
@@ -119,6 +123,9 @@ bool mpeg_audio::decode_buffer(int &pos, int limit, short *output,
 		goto retry_sync;
 	}
 
+	// Optional host diagnostic: bits consumed before the accepted
+	// header, including rejected sync candidates. No per-bit counter.
+	if(sync_search_bits) *sync_search_bits=current_pos-pos;
 	switch(layer) {
 	case 1:
 		abort();

@@ -50,7 +50,8 @@ public:
 	// 1152 in the amm case, <1152 indicating end of stream).
 
 	bool decode_buffer(int &pos, int limit, short *output,
-						int &output_samples, int &sample_rate, int &channels);
+						int &output_samples, int &sample_rate, int &channels,
+						int *sync_search_bits = nullptr);
 
 
 	// Clear audio buffer

@@ -40,10 +40,22 @@ TODO:
 #include "ymz770.h"
 #include "stream.h"
 #include "mpeg_audio.h"
+#include <chrono>
 
 #define logerror
 
 static Stream stream;
+static bool ymzPerfEnabled;
+static Ymz770PerfStats ymzPerf;
+static UINT64 YmzPerfNow()
+{
+	return (UINT64)std::chrono::duration_cast<std::chrono::nanoseconds>(
+		std::chrono::steady_clock::now().time_since_epoch()).count();
+}
+void ymz770_perf_reset(){ymzPerf={};}
+void ymz770_perf_enable(bool enabled){ymzPerfEnabled=enabled;ymz770_perf_reset();}
+void ymz770_perf_get(Ymz770PerfStats *stats){*stats=ymzPerf;}
+
 
 static UINT8 *m_rom;
 static INT32 m_rom_size;
@@ -153,6 +165,7 @@ static void init_common()
 
 void ymz770_exit()
 {
+	ymz770_perf_enable(false);
 	if (ymz_initted) {
 		ymz_initted = 0;
 		stream.exit();
@@ -305,6 +318,8 @@ void ymz770_scan(INT32 nAction, INT32 *pnMin)
 
 static void ymz770_stream_update(INT16 **streams, INT32 samples)
 {
+	const bool profile=ymzPerfEnabled;
+	const UINT64 begin=profile?YmzPerfNow():0;
 	INT16 *outL = streams[0];
 	INT16 *outR = streams[1];
 
@@ -359,7 +374,22 @@ retry:
 				{
 					// next block
 					int sample_rate, channel_count;
-					if (!mpeg_decoder[ch]->decode_buffer(channel.pptr, m_rom_size*8, channel.output_data, channel.output_remaining, sample_rate, channel_count) || channel.output_remaining == 0)
+					int syncBits=0;
+					const UINT64 decodeStart=profile?YmzPerfNow():0;
+					const bool decoded=mpeg_decoder[ch]->decode_buffer(channel.pptr, m_rom_size*8, channel.output_data, channel.output_remaining, sample_rate, channel_count,profile?&syncBits:nullptr);
+					if(profile){
+						const UINT64 ns=YmzPerfNow()-decodeStart;
+						ymzPerf.decodeNs+=ns;ymzPerf.decodes++;
+						ymzPerf.syncBits+=syncBits;
+						if(UINT64(syncBits)>ymzPerf.syncMaxBits)ymzPerf.syncMaxBits=syncBits;
+						if(ns>ymzPerf.decodePeakNs){
+							ymzPerf.decodePeakNs=ns;ymzPerf.peakPhrase=channel.phrase;
+							ymzPerf.peakChannel=ch;ymzPerf.peakSyncBits=syncBits;
+						}
+						if(!decoded || channel.output_remaining<=0)ymzPerf.emptyDecodes++;
+						else ymzPerf.decodedSamples+=channel.output_remaining;
+					}
+					if (!decoded || channel.output_remaining == 0)
 					{
 						channel.is_playing = !channel.last_block; // detect infinite retry loop
 						channel.last_block = true;
@@ -401,6 +431,7 @@ retry:
 		outL[i] = mixl;
 		outR[i] = mixr;
 	}
+	if(profile){ymzPerf.streamSamples+=samples;ymzPerf.streamNs+=YmzPerfNow()-begin;}
 }
 
 static void ymz770_sequencer()
@@ -451,8 +482,11 @@ void ymz770_write(INT32 offset, UINT8 data)
 {
 	if (offset & 1)
 	{
+		const bool profile=ymzPerfEnabled;
+		const UINT64 begin=profile?YmzPerfNow():0;
 		stream.update();
 		internal_reg_write(m_cur_reg, data);
+		if(profile){ymzPerf.writes++;ymzPerf.writeNs+=YmzPerfNow()-begin;}
 	}
 	else
 		m_cur_reg = data;
@@ -510,6 +544,7 @@ static void ymz770_internal_reg_write(UINT8 reg, UINT8 data)
 			case 3:
 				if ((data & 6) == 2 || ((data & 6) == 6 && !m_channels[ch].is_playing)) // both KON bits is 1 = "Keep Playing", do not restart channel in this case
 				{
+					if(ymzPerfEnabled)ymzPerf.keyOns++;
 					UINT8 phrase = m_channels[ch].phrase;
 					m_channels[ch].atbl = m_rom[(4*phrase)+0] >> 4 & 7;
 					m_channels[ch].pptr = 8 * get_phrase_offs(phrase);
