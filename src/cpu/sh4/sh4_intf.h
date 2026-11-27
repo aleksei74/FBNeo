@@ -58,6 +58,12 @@ struct Sh3Cv1kPollStats {
 	UINT32 lastPC;
 };
 void Sh3Cv1kGetPollStats(Sh3Cv1kPollStats *stats);
+struct Sh3Cv1kDataStats {
+	UINT64 probes,cached,hits,literalRounds,copyRounds,bytes,ops;
+	UINT32 lastPC;
+};
+void Sh3Cv1kGetDataStats(Sh3Cv1kDataStats *stats);
+
 unsigned Sh3Cv1kPeekCode(UINT32 pc,UINT16 *ops,unsigned count);
 
 

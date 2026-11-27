@@ -4183,6 +4183,8 @@ static Sh3Cv1kPollStats cv1kPollStats;
 struct Cv1kPollReject {UINT32 pc;unsigned cooldown;};
 static Cv1kPollReject cv1kPollReject[1024];
 static bool cv1kInterpLoopsEnabled = false;
+static bool cv1kDataLoopsEnabled=false;
+static Sh3Cv1kDataStats cv1kDataStats;
 static bool cv1kHybridEnabled = false;
 static bool cv1kLoopEnabled = false;
 #if SH3_FLAT_DISPATCH
@@ -4196,6 +4198,7 @@ static UINT64 cv1kLoopAttempts, cv1kLoopHits, cv1kLoopOps;
 static UINT64 cv1kInterpLoopBlocks,cv1kInterpLoopLaps,cv1kInterpLoopOps,cv1kInterpLoopKinds[3];
 #if SH3_FLAT_DISPATCH
 #include "sh3_cv1k_interp_loops.inc"
+#include "sh3_cv1k_data_loops.inc"
 #include "sh3_cv1k_poll.inc"
 #endif
 #if SH3_NATIVE
@@ -4405,6 +4408,10 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = cv1kLoopEnabled = false;
 	cv1kFetchPageEnabled = cv1kInterpLoopsEnabled = false;
 	cv1kPollEnabled=cv1kTimerFastEnabled=false;
+	cv1kDataLoopsEnabled=false;cv1kDataStats={};
+#if SH3_FLAT_DISPATCH
+	memset(cv1kDataPlans,0,sizeof(cv1kDataPlans));
+#endif
 	cv1kPollStats={};memset(cv1kPollReject,0,sizeof(cv1kPollReject));
 	cv1kInterpLoopBlocks=cv1kInterpLoopLaps=cv1kInterpLoopOps=0;
 	memset(cv1kInterpLoopKinds,0,sizeof(cv1kInterpLoopKinds));
@@ -4457,6 +4464,11 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kInterpLoopsEnabled=cv1kFetchPageEnabled && interpLoops && !strcmp(interpLoops,"1");
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 counted interpreter loops: %s\n"),
 		cv1kInterpLoopsEnabled?_T("enabled"):_T("disabled"));
+	const char *dataLoops=getenv("FBNEO_CV1K_DATA_LOOPS");
+	cv1kDataLoopsEnabled=cv1kFetchPageEnabled && !cv1kInterpLoopsEnabled &&
+		dataLoops && !strcmp(dataLoops,"1");
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 specialized data-copy loops: %s\n"),
+		cv1kDataLoopsEnabled?_T("enabled (opt-in)"):_T("disabled"));
 	const char *poll=getenv("FBNEO_CV1K_POLL");
 	const char *timerFast=getenv("FBNEO_CV1K_TIMER_FAST");
 	cv1kPollEnabled=cv1kFetchPageEnabled && poll && !strcmp(poll,"1");
@@ -4478,6 +4490,7 @@ void Sh3SetCv1kNative(INT32 enable)
 }
 
 void Sh3Cv1kGetPollStats(Sh3Cv1kPollStats *stats){*stats=cv1kPollStats;}
+void Sh3Cv1kGetDataStats(Sh3Cv1kDataStats *stats){*stats=cv1kDataStats;}
 
 void Sh3Cv1kCacheStats(UINT64 *misses, UINT64 *rejected, UINT64 *full)
 {
@@ -4636,7 +4649,9 @@ template<bool Hybrid, bool FetchPage=false> static int Sh3Run_timerhack_batch(in
 	if(FetchPage)cv1kFetchPageActive=true;
 	m_sh4_icount=cycles;sh3_end_run=0;
 	if (m_cpu_off) {m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
-	if(FetchPage && cv1kPollEnabled && Cv1kTryPoll() && m_sh4_icount==0){
+	if(FetchPage && cv1kPollEnabled)Cv1kTryPoll();
+	if(FetchPage && cv1kDataLoopsEnabled && m_sh4_icount>0)Cv1kTryDataLoop();
+	if(FetchPage && m_sh4_icount==0 && cycles>0){
 		sh4_run_timers(cycles);
 		m_sh4_icount=0;
 		return cycles;
@@ -4662,6 +4677,15 @@ start:
 		const bool pending=m_test_irq!=0;
 		if (m_test_irq && !m_delay) sh4_check_pending_irq();
 		EAT(1);
+		// Data kernels are tested only at the slice boundary or
+		// after their narrowly matching backward branch/slot.
+		if(FetchPage && cv1kDataLoopsEnabled && slotPC && !pending && !m_delay &&
+			m_sh4_icount>=13){
+			const UINT32 distance=slotPC-m_pc;
+			if(distance==22 && (opcode&0xf00f)==0x600e)Cv1kTryDataLoop(1);
+			else if(distance==8 && (opcode&0xf000)==0x7000 &&
+				((opcode&255)==1 || (opcode&255)==2 || (opcode&255)==4))Cv1kTryDataLoop(3);
+		}
 		// After a pure delay slot, a short backward edge may enter
 		// a counted loop. Read its *live* branch/body/slot afresh.
 		if(FetchPage && cv1kInterpLoopsEnabled && slotPC && !pending && !m_delay &&
@@ -4703,7 +4727,8 @@ fast_next:
 	if (FetchPage) pc+=(pure+1)*2; \
 	m_pc=m_ppc=pc; m_sh4_icount=remaining-(FetchPage?pure:0); sh3_total_cycles+=pure; \
 	name(opcode); \
-	if (FetchPage && (&name==&BF) && cv1kInterpLoopsEnabled && !(m_sr&T)) goto interp_bf; \
+	if (FetchPage && (&name==&BF) && !(m_sr&T) && \
+		(cv1kInterpLoopsEnabled || (opcode==0x8bfa && cv1kDataLoopsEnabled))) goto interp_bf; \
 	goto slow_finished;
 #define SH3_PURE_OPCODE(name) batch_op_##name: \
 	name(opcode); ++pure; if (FetchPage?--window>0:--remaining>0) goto fast_next; \
@@ -4716,7 +4741,9 @@ fast_next:
 interp_bf:
 	if (m_test_irq || m_delay) goto slow_finished;
 	EAT(1);
-	if(m_sh4_icount>=10 && opcode>=0x8bfa && opcode<=0x8bfc)Cv1kTryInterpLoop(opcode);
+	if(cv1kDataLoopsEnabled && opcode==0x8bfa)Cv1kTryDataLoop(2);
+	else if(cv1kInterpLoopsEnabled && m_sh4_icount>=10 && opcode>=0x8bfa && opcode<=0x8bfc)
+		Cv1kTryInterpLoop(opcode);
 	goto after_slow;
 slow_finished:
 	if (m_test_irq && !m_delay) sh4_check_pending_irq();

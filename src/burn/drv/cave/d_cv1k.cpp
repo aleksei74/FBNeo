@@ -55,6 +55,7 @@ static UINT64 cv1kPrevMiss, cv1kPrevReject, cv1kPrevFull;
 static UINT64 cv1kPrevLoopAttempts,cv1kPrevLoopHits,cv1kPrevLoopOps;
 static UINT64 cv1kPrevInterpBlocks,cv1kPrevInterpLaps,cv1kPrevInterpOps,cv1kPrevInterpKinds[3];
 static Sh3Cv1kPollStats cv1kPrevPoll={};
+static Sh3Cv1kDataStats cv1kPrevData={};
 static Epic12PerfStats cv1kPrevBlit = {};
 static unsigned cv1kFrames, cv1kLate, cv1kLate25, cv1kLate33;
 static UINT64 cv1kCpuPeakNs, cv1kWaitPeakNs, cv1kThreadNs;
@@ -206,6 +207,7 @@ static void Cv1kProfileInit() {
 	cv1kPrevLoopAttempts=cv1kPrevLoopHits=cv1kPrevLoopOps=0;
 	cv1kPrevInterpBlocks=cv1kPrevInterpLaps=cv1kPrevInterpOps=0;
 	cv1kPrevPoll={};
+	cv1kPrevData={};
 	memset(cv1kPrevInterpKinds,0,sizeof(cv1kPrevInterpKinds));
 	cv1kPrevBlit = {};
 	cv1kFrames = cv1kLate = 0;
@@ -259,6 +261,16 @@ static void Cv1kProfileFrame(UINT64 start) {
 		(unsigned long long)(poll.idleHits-cv1kPrevPoll.idleHits),
 		(unsigned long long)(poll.deviceHits-cv1kPrevPoll.deviceHits),poll.lastPC);
 	cv1kPrevPoll=poll;
+	Sh3Cv1kDataStats data;Sh3Cv1kGetDataStats(&data);
+	bprintf(PRINT_UI,_T("CV1K DATA: probes %llu cached %llu hits %llu literal %llu copy %llu bytes %llu ops %llu last_pc %08x\n"),
+		(unsigned long long)(data.probes-cv1kPrevData.probes),
+		(unsigned long long)(data.cached-cv1kPrevData.cached),
+		(unsigned long long)(data.hits-cv1kPrevData.hits),
+		(unsigned long long)(data.literalRounds-cv1kPrevData.literalRounds),
+		(unsigned long long)(data.copyRounds-cv1kPrevData.copyRounds),
+		(unsigned long long)(data.bytes-cv1kPrevData.bytes),
+		(unsigned long long)(data.ops-cv1kPrevData.ops),data.lastPC);
+	cv1kPrevData=data;
 	UINT64 misses, rejected, full;
 	Sh3Cv1kCacheStats(&misses,&rejected,&full);
 	bprintf(PRINT_UI,_T("CV1K CACHE: misses %llu rejected %llu full %llu\n"),
