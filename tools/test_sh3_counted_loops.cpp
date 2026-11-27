@@ -109,6 +109,10 @@ static void RejectCases(){
 	puts("SH3 counted loops: 10 MMIO, alias, alignment, page, IRQ, delay and counter guards PASS");
 }
 int main(){
+	setenv("FBNEO_CV1K_DATA_LOOPS","0",1);
+	setenv("FBNEO_CV1K_DATA_FULL","0",1);
+	setenv("FBNEO_CV1K_POLL","0",1);
+	setenv("FBNEO_CV1K_TIMER_FAST","0",1);
 	UINT64 laps=0,blocks=0,delayLaps=0,delayBlocks=0;
 	unsigned cases=0;
 	const unsigned budgets[]={0,1,2,3,4,5,7,8,9,10,12,13,17,64,256,1024};

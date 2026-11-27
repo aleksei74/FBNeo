@@ -287,7 +287,62 @@ static void Benchmark() {
             (unsigned long long)cv1kSlowFetchReuseHits);
     }
 }
+static void TestDefaultPolicy() {
+    const char *options[]={
+        "JIT","DISPATCH","COMPACT","BATCH","FETCH_PAGE","DISPATCH8",
+        "FETCH_REUSE","INTERP_LOOPS","DATA_LOOPS","DATA_FULL","POLL","TIMER_FAST",
+        "VRAM16","BLIT_TILES"
+    };
+    for(const char *key:options) {
+        char name[64];snprintf(name,sizeof(name),"FBNEO_CV1K_%s",key);
+        unsetenv(name);
+    }
+#if defined(__aarch64__) && !defined(__AARCH64EB__) && defined(__linux__) && !defined(__ANDROID__) && defined(__LIBRETRO__)
+    const bool expected=true;
+#else
+    const bool expected=false;
+#endif
+    Sh3MapInit();Sh3SetCv1kNative(1);
+    Check(cv1kFetchPageEnabled && !cv1kNativeEnabled && !cv1kDispatch8Enabled &&
+        !cv1kInterpLoopsEnabled,"default interpreter selection");
+    Check(cv1kSlowFetchReuseEnabled==expected && cv1kDataLoopsEnabled==expected &&
+        cv1kDataFullEnabled==expected && cv1kPollEnabled==expected &&
+        cv1kTimerFastEnabled==expected,"default CV1000 CPU preset");
+    Check(Cv1kPerformanceOption(getenv("FBNEO_CV1K_VRAM16"))==expected &&
+        Cv1kPerformanceOption(getenv("FBNEO_CV1K_BLIT_TILES"))==expected,
+        "default CV1000 graphics policy");
+    Check(!Cv1kPerformanceOption("0") && Cv1kPerformanceOption("1"),"explicit option overrides");
+    const char *fast[]={"FETCH_REUSE","DATA_LOOPS","DATA_FULL","POLL","TIMER_FAST"};
+    for(const char *key:fast) {
+        char name[64];snprintf(name,sizeof(name),"FBNEO_CV1K_%s",key);
+        setenv(name,"1",1);
+    }
+    Sh3SetCv1kNative(1);
+    Check(cv1kSlowFetchReuseEnabled && cv1kDataLoopsEnabled && cv1kDataFullEnabled &&
+        cv1kPollEnabled && cv1kTimerFastEnabled,"explicit enabled preset");
+    setenv("FBNEO_CV1K_DATA_LOOPS","0",1);
+    Sh3SetCv1kNative(1);
+    Check(!cv1kDataLoopsEnabled && !cv1kDataFullEnabled,"full literal requires data loops");
+    setenv("FBNEO_CV1K_DATA_LOOPS","1",1);
+    setenv("FBNEO_CV1K_FETCH_PAGE","0",1);
+    Sh3SetCv1kNative(1);
+    Check(!cv1kFetchPageEnabled && !cv1kSlowFetchReuseEnabled && !cv1kDataLoopsEnabled &&
+        !cv1kDataFullEnabled && !cv1kPollEnabled,"fetch-page dependency");
+    unsetenv("FBNEO_CV1K_FETCH_PAGE");
+    Sh3SetCv1kNative(0);
+    Check(!cv1kSlowFetchReuseEnabled && !cv1kDataLoopsEnabled && !cv1kDataFullEnabled &&
+        !cv1kPollEnabled && !cv1kTimerFastEnabled,"non-CV1000 isolation");
+    for(const char *key:fast) {
+        char name[64];snprintf(name,sizeof(name),"FBNEO_CV1K_%s",key);
+        setenv(name,"0",1);
+    }
+    Sh3SetCv1kNative(1);
+    Check(!cv1kSlowFetchReuseEnabled && !cv1kDataLoopsEnabled && !cv1kDataFullEnabled &&
+        !cv1kPollEnabled && !cv1kTimerFastEnabled,"explicit disabled preset");
+    puts(expected?"CV1000 Linux ARM64 preset/defaults/overrides PASS":"CV1000 non-ARM64 defaults/overrides PASS");
+}
 int main(int argc,char **) {
+    TestDefaultPolicy();
     if(argc>1){Benchmark();return 0;}
     for(unsigned test=0;test<14;test++)for(unsigned seed=0;seed<32;seed++) {
         const State ref=Run(0,test,seed);

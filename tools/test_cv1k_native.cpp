@@ -598,4 +598,11 @@ static void TestHotPC(){
 	Sh3SetCv1kNative(0);unsetenv("FBNEO_CV1K_HOTPCS");
 	puts("SH3 bounded opt-in hot PC sampling: PASS");
 }
-int main(){TestEmitter();TestStoreGuards();TestTimers();TestCore();TestStorePrograms();TestFlat();TestPureHandlers();TestPurePages();TestBatchIrq();TestLongOnlyMap();TestIdleDirect();TestDtLoop();TestCachePressure();TestHotPC();return 0;}
+int main(){
+	// Keep the historical interpreter/JIT comparison independent of the preset.
+	setenv("FBNEO_CV1K_FETCH_REUSE","0",1);
+	setenv("FBNEO_CV1K_DATA_LOOPS","0",1);
+	setenv("FBNEO_CV1K_DATA_FULL","0",1);
+	setenv("FBNEO_CV1K_POLL","0",1);
+	setenv("FBNEO_CV1K_TIMER_FAST","0",1);
+	TestEmitter();TestStoreGuards();TestTimers();TestCore();TestStorePrograms();TestFlat();TestPureHandlers();TestPurePages();TestBatchIrq();TestLongOnlyMap();TestIdleDirect();TestDtLoop();TestCachePressure();TestHotPC();return 0;}

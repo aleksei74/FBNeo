@@ -29,6 +29,7 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 
 #include "burnint.h"
 #include "sh4_intf.h"
+#include "cv1k_runtime_policy.h"
 #include <stddef.h>
 #include "sh4.h"
 #include "sh4regs.h"
@@ -4502,7 +4503,7 @@ void Sh3SetCv1kNative(INT32 enable)
 		Sh3DispatchKeysValid();
 	const char *reuseSlow=getenv("FBNEO_CV1K_FETCH_REUSE");
 	cv1kSlowFetchReuseEnabled=cv1kFetchPageEnabled &&
-		(reuseSlow ? !strcmp(reuseSlow,"1") : cv1kDispatch8Enabled);
+		Cv1kPerformanceOption(reuseSlow,cv1kPerformanceDefault || cv1kDispatch8Enabled);
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 8 KiB dispatch: %s, sequential slow fetch reuse: %s\n"),
 		cv1kDispatch8Enabled?_T("enabled (opt-in)"):_T("disabled"),
 		cv1kSlowFetchReuseEnabled?_T("enabled"):_T("disabled"));
@@ -4514,20 +4515,20 @@ void Sh3SetCv1kNative(INT32 enable)
 		cv1kInterpLoopsEnabled?_T("enabled"):_T("disabled"));
 	const char *dataLoops=getenv("FBNEO_CV1K_DATA_LOOPS");
 	cv1kDataLoopsEnabled=cv1kFetchPageEnabled && !cv1kInterpLoopsEnabled &&
-		dataLoops && !strcmp(dataLoops,"1");
+		Cv1kPerformanceOption(dataLoops);
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 specialized data-copy loops: %s\n"),
-		cv1kDataLoopsEnabled?_T("enabled (opt-in)"):_T("disabled"));
+		cv1kDataLoopsEnabled?_T("enabled"):_T("disabled"));
 	const char *dataFull=getenv("FBNEO_CV1K_DATA_FULL");
-	cv1kDataFullEnabled=cv1kDataLoopsEnabled && dataFull && !strcmp(dataFull,"1");
+	cv1kDataFullEnabled=cv1kDataLoopsEnabled && Cv1kPerformanceOption(dataFull);
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 full literal kernel: %s\n"),
-		cv1kDataFullEnabled?_T("enabled (opt-in)"):_T("disabled"));
+		cv1kDataFullEnabled?_T("enabled"):_T("disabled"));
 	const char *poll=getenv("FBNEO_CV1K_POLL");
 	const char *timerFast=getenv("FBNEO_CV1K_TIMER_FAST");
-	cv1kPollEnabled=cv1kFetchPageEnabled && poll && !strcmp(poll,"1");
-	cv1kTimerFastEnabled=enable && timerFast && !strcmp(timerFast,"1");
+	cv1kPollEnabled=cv1kFetchPageEnabled && Cv1kPerformanceOption(poll);
+	cv1kTimerFastEnabled=enable && Cv1kPerformanceOption(timerFast);
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 fixed-point polling: %s, no-event timer advance: %s\n"),
-		cv1kPollEnabled?_T("enabled (opt-in)"):_T("disabled"),
-		cv1kTimerFastEnabled?_T("enabled (opt-in)"):_T("disabled"));
+		cv1kPollEnabled?_T("enabled"):_T("disabled"),
+		cv1kTimerFastEnabled?_T("enabled"):_T("disabled"));
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 host arithmetic: %s, shared long-read tail: %s\n"),
 		SH3_FAST_ARITHMETIC?_T("enabled"):_T("disabled"),
 		SH3_SMALL_HANDLERS?_T("enabled"):_T("disabled"));

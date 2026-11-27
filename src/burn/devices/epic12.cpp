@@ -9,6 +9,7 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "burnint.h"
 #include "tiles_generic.h"
 #include "sh4_intf.h"
+#include "cv1k_runtime_policy.h"
 #include "thready.h"
 #include "rectangle.h"
 #include "epic12_fast.h"
@@ -425,14 +426,13 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	dips = dippy;
 
 	m_gfx_size = 0x2000 * 0x1000;
-	// Compact VRAM is opt-in until an RK3566 A/B test establishes
-	// speed and real-game correctness. Limit to libretro: its state
+	// Limit packed VRAM to supported libretro builds: its state
 	// callback consumes a byte stream, not named standalone areas.
 #if defined(__LIBRETRO__) && EPIC12_NEON
 	const char *packed=getenv("FBNEO_CV1K_VRAM16");
 	const char *special=getenv("FBNEO_CV1K_PACKED_FAST");
 	Epic12Packed::specialized=!special || strcmp(special,"0")!=0;
-	if (packed && !strcmp(packed,"1"))
+	if (Cv1kPerformanceOption(packed))
 		m_bitmaps16=(UINT16*)BurnMalloc(m_gfx_size*2);
 #endif
 	if (!m_bitmaps16) m_bitmaps=(UINT32*)BurnMalloc(m_gfx_size*4);
@@ -466,7 +466,7 @@ void epic12_init(INT32 ram_size, UINT16 *ram, UINT8 *dippy)
 	const char *segments=getenv("FBNEO_CV1K_BLIT_SEGMENTS");
 	const char *precise=getenv("FBNEO_CV1K_BLIT_PRECISE");
 	const char *tiles=getenv("FBNEO_CV1K_BLIT_TILES");
-	blitTilesEnabled=tiles && !strcmp(tiles,"1");
+	blitTilesEnabled=Cv1kPerformanceOption(tiles);
 	const char *first=getenv("FBNEO_CV1K_TILE_FIRST");
 	blitTileFirstEnabled=!first || strcmp(first,"0")!=0;
 	blitTilePreferred=false;

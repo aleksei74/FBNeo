@@ -157,6 +157,8 @@ static void TimerDifferential(){
 	printf("SH3 timer fast advance: 24000 differential cases, %u expiry/restart cases PASS\n",callbackCases);
 }
 int main(){
+	setenv("FBNEO_CV1K_DATA_LOOPS","0",1);
+	setenv("FBNEO_CV1K_DATA_FULL","0",1);
 	UINT64 hits=0,rounds=0,ram=0,idle=0,device=0;
 	unsigned cases=0;
 	const unsigned budgets[]={1,2,3,7,8,11,23,24,25,31,63,64,79,127,512,7100};

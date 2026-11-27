@@ -23,10 +23,15 @@ Options (CV1000 batch fetch-page path, Speed Hacks On, JIT=0):
 | 1 | 0 | 8 KiB table, single opcode load |
 | 1 | 1 | 8 KiB table and guarded sequential fetch reuse |
 
-Both new features are off without explicit settings. DISPATCH8=1 also
-enables fetch reuse unless FETCH_REUSE=0 is specified. Environment
-variables have the FBNEO_CV1K_ prefix. Keep POLL, TIMER_FAST, DATA_LOOPS,
-DATA_FULL, VRAM16, BLIT_TILES, and the game settings identical for A/B.
+Native Linux ARM64 libretro defaults to DISPATCH8=0 and FETCH_REUSE=1.
+POLL, TIMER_FAST, DATA_LOOPS, DATA_FULL, VRAM16 and BLIT_TILES also
+default to 1 on that platform, subject to their existing prerequisites.
+JIT and INTERP_LOOPS remain opt-in. Other builds retain the previous
+opt-in policy. DISPATCH8=1 also enables fetch reuse unless FETCH_REUSE=0
+is specified. Environment variables have the FBNEO_CV1K_ prefix; explicit
+0 or 1 overrides the preset. Keep other options and game settings identical
+for A/B. The baseline fetch-page mode can be selected with FETCH_REUSE=0.
+The Speed Hacks, Thread Blitter and Thread Sync DIP settings are unchanged.
 Do not infer real RK3566 performance from QEMU or synthetic loops.
 
 ## Verification
