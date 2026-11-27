@@ -61,3 +61,61 @@ No whole-core link or real RK3566 benchmark performed.
 - Existing ARM64 interpreter regression passes: 448 remap/SMC/page/
   wrap/MMIO/IRQ/delay/timer scenarios x 3 modes, 23136 pure encodings
   x 3 modes, 392 signed overflow and 100000 arithmetic comparisons.
+
+## v13: full literal kernel (opt-in)
+
+With FBNEO_CV1K_DATA_LOOPS=1 and FBNEO_CV1K_DATA_FULL=1 the validated
+literal kernel also handles its original flag, output-count and
+bit-count exits. The existing taken-lap mode remains available with
+DATA_FULL=0. Count and bit-counter wraparound, noncanonical positive
+flags, arbitrary handlers, code modification, or insufficient budget
+retain normal interpretation. A 9-cycle output-count exit includes
+the original MOV delay slot; the 12-cycle bit-count exit preserves the
+ordinary fallthrough EXTS.B. A negative flag takes the 4-cycle BF
+path without data accesses. Complete taken rounds still cost 13
+guest cycles; an eligible subsequent negative exit can be fused as
+well. PC/PPC/EA, T, count, bits and scratch registers are committed
+to the exact branch result, with original cycle-budget boundaries.
+
+A single learned hot-head PC allows entry before the first CMP/PZ
+rather than after the first completed lap. This is a runtime hint,
+never a hardcoded game address. Every entry validates live instruction
+words and applicable data maps; stale hints only affect performance.
+The delayed-branch and slice probes no longer duplicate checks for
+that learned literal head. Other matching sites can still be learned
+from the ordinary probes. Cache comparisons have fixed lengths.
+Short (1..8 byte) copies use a small direct sequential path instead of
+general memmove, preserving forward overlap and guest byte layout.
+For a shared fetch/data page, the full live-code guard also covers the
+DT reads. Separate data mappings are checked independently.
+
+CV1K DATA FULL reports learned-head probes and the three types of
+exit. In full mode CV1K DATA hits includes flag-only successful
+batches (zero bytes), while literal/copy/bytes/ops retain their
+individual meanings. Old and new hit counts are therefore not
+directly comparable. No timing or raster/audio changes.
+
+Run the same two-player attract sequence with DATA_FULL=1 and 0;
+keep DATA_LOOPS, POLL, TIMER_FAST, VRAM16 and BLIT_TILES enabled,
+JIT=0, and DIAG/HOTPCS off for the A/B performance measurement.
+
+Validation: the 1008 data-loop fixtures compare all three modes
+(original interpreter, taken-lap kernel, full kernel). Nine unsafe
+full-mode patterns and live cache mutation are checked (three old
+rejections become intentional terminal/flag paths). Another 2268
+exact dispatcher comparisons cover flag/count/bit exits, overlapping
+copies, short budgets and learned-head entry after pure operations.
+Both architectures pass, with 1049 learned-head probes and 746
+flag, 420 output-count, 1371 bit-count exits across the exact-path
+fixtures. The production SH3 and CV1000 driver objects compile for
+ARM64 Cortex-A55 and x86 at -O3.
+
+Mixed short/terminal synthetic benchmark, 100000 slices (only a
+microbenchmark; no RK3566 device timing):
+- ARM64 under QEMU: original 987.30 ms, old kernel 961.80 ms,
+  full kernel 818.26 ms.
+- x86: original 93.91 ms, old kernel 92.52 ms, full kernel 66.04 ms.
+- Existing ARM64 interpreter regression passes: 448 remap/SMC/page/
+  wrap/MMIO/IRQ/delay/timer scenarios x 3 modes, 23136 pure encodings
+  x 3 modes, 392 signed overflow and 100000 arithmetic comparisons.
+- No full core link or hardware FPS measurement in this iteration.

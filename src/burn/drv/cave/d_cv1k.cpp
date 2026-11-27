@@ -56,6 +56,7 @@ static UINT64 cv1kPrevLoopAttempts,cv1kPrevLoopHits,cv1kPrevLoopOps;
 static UINT64 cv1kPrevInterpBlocks,cv1kPrevInterpLaps,cv1kPrevInterpOps,cv1kPrevInterpKinds[3];
 static Sh3Cv1kPollStats cv1kPrevPoll={};
 static Sh3Cv1kDataStats cv1kPrevData={};
+static Sh3Cv1kDataFullStats cv1kPrevDataFull={};
 static Epic12PerfStats cv1kPrevBlit = {};
 static unsigned cv1kFrames, cv1kLate, cv1kLate25, cv1kLate33;
 static UINT64 cv1kCpuPeakNs, cv1kWaitPeakNs, cv1kThreadNs;
@@ -208,6 +209,7 @@ static void Cv1kProfileInit() {
 	cv1kPrevInterpBlocks=cv1kPrevInterpLaps=cv1kPrevInterpOps=0;
 	cv1kPrevPoll={};
 	cv1kPrevData={};
+	cv1kPrevDataFull={};
 	memset(cv1kPrevInterpKinds,0,sizeof(cv1kPrevInterpKinds));
 	cv1kPrevBlit = {};
 	cv1kFrames = cv1kLate = 0;
@@ -271,6 +273,13 @@ static void Cv1kProfileFrame(UINT64 start) {
 		(unsigned long long)(data.bytes-cv1kPrevData.bytes),
 		(unsigned long long)(data.ops-cv1kPrevData.ops),data.lastPC);
 	cv1kPrevData=data;
+	Sh3Cv1kDataFullStats fullData;Sh3Cv1kGetDataFullStats(&fullData);
+	bprintf(PRINT_UI,_T("CV1K DATA FULL: head %llu flag_exit %llu count_exit %llu bit_exit %llu\n"),
+		(unsigned long long)(fullData.headProbes-cv1kPrevDataFull.headProbes),
+		(unsigned long long)(fullData.flagExits-cv1kPrevDataFull.flagExits),
+		(unsigned long long)(fullData.countExits-cv1kPrevDataFull.countExits),
+		(unsigned long long)(fullData.bitExits-cv1kPrevDataFull.bitExits));
+	cv1kPrevDataFull=fullData;
 	UINT64 misses, rejected, full;
 	Sh3Cv1kCacheStats(&misses,&rejected,&full);
 	bprintf(PRINT_UI,_T("CV1K CACHE: misses %llu rejected %llu full %llu\n"),

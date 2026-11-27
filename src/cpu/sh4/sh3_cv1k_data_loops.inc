@@ -72,9 +72,127 @@ static bool Cv1kDataRam(UINT32 a,bool write)
 	const UINT32 pa=a&AM;
 	return (pa>=0x0c000000 && pa<0x0d000000) || (!write && pa<0x00400000);
 }
+// A short literal run normally has only 1..8 bytes. Avoid a
+// general memmove call and preserve the forward overlap semantics.
+static inline UINT32 Cv1kLiteralCopy(const Cv1kInterpRange &in,const Cv1kInterpRange &out)
+{
+	if(in.bytes>8)return Cv1kInterpCopy<1>(in,out);
+	UINT8 v=0;
+	for(UINT32 i=0;i<in.bytes;i++){
+#ifdef LSB_FIRST
+		v=in.page[(in.offset+i)^1];
+		out.page[(out.offset+i)^1]=v;
+#else
+		v=in.page[in.offset+i];
+		out.page[out.offset+i]=v;
+#endif
+	}
+	return UINT32(INT32(INT8(v)));
+}
+
+static inline bool Cv1kLiteralFinish(UINT32 pc,UINT32 cycles,
+	UINT32 rounds,UINT32 instructions,unsigned exitKind)
+{
+	EAT(INT32(cycles));
+	++cv1kDataStats.hits;
+	cv1kDataStats.literalRounds+=rounds;
+	cv1kDataStats.bytes+=rounds;
+	cv1kDataStats.ops+=instructions;
+	cv1kDataStats.lastPC=pc;
+	if(exitKind==1)++cv1kDataFullStats.flagExits;
+	else if(exitKind==2)++cv1kDataFullStats.countExits;
+	else if(exitKind==3)++cv1kDataFullStats.bitExits;
+	return true;
+}
+
+// Full literal kernel, including exactly the original forward exits.
+// Runs only from the first CMP/PZ; never from inside a delay slot.
+// No speculative memory accesses or changes to timer-slice boundaries.
+static bool Cv1kTryLiteralFull(const Cv1kDataPlan &p,const UINT16 *w,UINT32 pc,
+	UINT32 pa,UINT8 *fetchPage)
+{
+	const UINT32 flags=m_r[p.flag];
+	const UINT32 budget=UINT32(m_sh4_icount);
+	// Signed negative flags take the first BF without touching data.
+	if(INT32(flags)<0){
+		if(budget<4)return false;
+		m_sr&=~T;m_pc=m_ea=pc+6+INT32(INT8(p.words[1]))*2;
+		m_ppc=pc+4;
+		return Cv1kLiteralFinish(pc,4,0,2,1);
+	}
+	// Only canonical positive flag bytes, and nonwrapping counters.
+	const UINT32 count=m_r[p.counter],bits=m_r[p.bits];
+	if(flags>127 || !count || !bits || budget<9)return false;
+	const UINT32 src=m_r[p.src],dst=m_r[p.dst];
+	if(!Cv1kDataRam(src,false) || !Cv1kDataRam(dst,true))return false;
+	UINT32 limit=count<bits?count:bits;
+	if(limit>4096)limit=4096;
+	if(flags){
+		const UINT32 leading=unsigned(__builtin_clz(flags))-24;
+		if(limit>leading)limit=leading;
+	}
+	const UINT32 so=src&SH3_PAGEM,doff=dst&SH3_PAGEM;
+	if(limit>SH3_PAGE_SIZE-so)limit=SH3_PAGE_SIZE-so;
+	if(limit>SH3_PAGE_SIZE-doff)limit=SH3_PAGE_SIZE-doff;
+	// Each taken lap costs 13. A count exit costs 9 (BT/S +
+	// its MOV slot), a bit-count exit costs 12 (BF/S not taken).
+	// Account for the shorter final lap before applying the budget.
+	UINT32 laps=budget/13;
+	if(laps>limit)laps=limit;
+	if(laps<limit){
+		const UINT32 next=laps+1;
+		const unsigned tail=next==count?9:next==bits?12:13;
+		if(budget-laps*13>=tail)++laps;
+	}
+	if(!laps)return false;
+	const bool countExit=laps==count;
+	const bool bitExit=!countExit && laps==bits;
+	UINT32 spent=laps*13-(countExit?4:bitExit?1:0);
+	UINT32 ops=laps*12-(countExit?4:0);
+	UINT8 *inPage=MemMapR[(src&AM)>>SH3_SHIFT];
+	UINT8 *outPage=MemMapW[(dst&AM)>>SH3_SHIFT];
+	if((uintptr_t)inPage<SH3_MAXHANDLER || (uintptr_t)outPage<SH3_MAXHANDLER)return false;
+	Cv1kInterpRange in={inPage,so,laps},out={outPage,doff,laps};
+	if(Cv1kInterpCodeOverlap(out,w,24,1))return false;
+	// DT's legacy data-map read of the following branch must not
+	// call MMIO or see different bytes. The normal same-page case
+	// is already protected by the full live code overlap guard.
+	UINT8 *readPage=MemMapR[pa>>SH3_SHIFT];
+	if((uintptr_t)readPage<SH3_MAXHANDLER)return false;
+	if(readPage!=fetchPage){
+		const UINT16 *r=(const UINT16*)(readPage+(pa&SH3_PAGEM));
+		if(r[6]!=p.words[6] || r[10]!=p.words[10] ||
+			Cv1kInterpCodeOverlap(out,r+6,2,1) ||
+			Cv1kInterpCodeOverlap(out,r+10,2,1))return false;
+	}
+	m_r[p.value]=Cv1kLiteralCopy(in,out);
+	m_r[p.src]+=laps;m_r[p.dst]+=laps;m_r[p.counter]-=laps;
+	const UINT32 shifted=flags?flags<<(laps-unsigned(countExit)):0;
+	m_r[p.temp]=shifted;
+	m_r[p.flag]=UINT32(INT32(INT8(shifted)));
+	m_r[p.bits]-=laps-unsigned(countExit);
+	unsigned exitKind=0;
+	if(countExit){
+		m_sr|=T;m_pc=m_ppc=m_ea=pc+16+INT32(INT8(p.words[6]))*2;
+		exitKind=2;
+	}else if(bitExit){
+		m_sr|=T;m_pc=m_ppc=pc+24;m_ea=dst+laps-1;
+		exitKind=3;
+	}else{
+		m_sr&=~T;m_ppc=m_ea=pc;
+		// After the last taken loop, also absorb the next two
+		// read-only instructions when they take the negative exit.
+		if(INT32(m_r[p.flag])<0 && budget-spent>=4){
+			m_pc=m_ea=pc+6+INT32(INT8(p.words[1]))*2;
+			m_ppc=pc+4;spent+=4;ops+=2;exitKind=1;
+		}
+	}
+	return Cv1kLiteralFinish(pc,spent,laps,ops,exitKind);
+}
+
 static bool Cv1kTryDataLoop(unsigned expected=0)
 {
-	if(m_delay || m_test_irq || m_cpu_off || m_sh4_icount<13 ||
+	if(m_delay || m_test_irq || m_cpu_off || m_sh4_icount<(cv1kDataFullEnabled && expected==1?4:13) ||
 		(m_pc&1) || !Cv1kDataRam(m_pc,false))return false;
 	const UINT32 pc=m_pc,pa=pc&AM,off=pa&SH3_PAGEM;
 	UINT8 *page=MemMapF[pa>>SH3_SHIFT];
@@ -90,7 +208,7 @@ static bool Cv1kTryDataLoop(unsigned expected=0)
 	auto &p=cv1kDataPlans[((pc>>1)^(pc>>13))&1023];
 	if(p.pc==pc && p.kind==255 && p.cooldown){--p.cooldown;return false;}
 	if(p.pc==pc && p.kind && p.kind<4 && (!expected || p.kind==expected) &&
-		avail>=p.length && !memcmp(w,p.words,p.length*2)){
+		avail>=p.length && (p.kind==1?!memcmp(w,p.words,24):!memcmp(w,p.words,10))){
 		++cv1kDataStats.cached;
 	}else{
 		Cv1kDataPlan next={};next.pc=pc;
@@ -98,6 +216,10 @@ static bool Cv1kTryDataLoop(unsigned expected=0)
 			next.kind=255;next.cooldown=63;p=next;return false;
 		}
 		p=next;
+	}
+	if(p.kind==1 && cv1kDataFullEnabled){
+		cv1kDataHeadPC=pc;
+		return Cv1kTryLiteralFull(p,w,pc,pa,page);
 	}
 	const bool literal=p.kind==1,delayed=p.kind!=2;
 	const unsigned width=p.width,cost=literal?13:delayed?6:7;

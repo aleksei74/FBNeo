@@ -63,6 +63,11 @@ struct Sh3Cv1kDataStats {
 	UINT32 lastPC;
 };
 void Sh3Cv1kGetDataStats(Sh3Cv1kDataStats *stats);
+struct Sh3Cv1kDataFullStats {
+	UINT64 headProbes,flagExits,countExits,bitExits;
+};
+void Sh3Cv1kGetDataFullStats(Sh3Cv1kDataFullStats *stats);
+
 
 unsigned Sh3Cv1kPeekCode(UINT32 pc,UINT16 *ops,unsigned count);
 

@@ -32,17 +32,19 @@ static unsigned Program(UINT16 *p,unsigned kind,unsigned width,const Regs &r){
 	p[kind==3?3:4]=kind==3?0x8ffb:0x8bfa;
 	return 5;
 }
-static void Configure(bool fast){
+static void Configure(unsigned mode){
+	const bool fast=mode!=0;
+	setenv("FBNEO_CV1K_DATA_FULL",mode==2?"1":"0",1);
 	setenv("FBNEO_CV1K_DATA_LOOPS",fast?"1":"0",1);
 	setenv("FBNEO_CV1K_INTERP_LOOPS","0",1);
 	setenv("FBNEO_CV1K_POLL","0",1);
 	setenv("FBNEO_CV1K_TIMER_FAST","0",1);
 	Setup(2,0);Sh3SetTimerGranularity(2);
-	Check(cv1kDataLoopsEnabled==fast,"data-loop policy");
+	Check(cv1kDataLoopsEnabled==fast && cv1kDataFullEnabled==(mode==2),"data-loop policy");
 }
 struct Result{State state;UINT64 extra,codeHash;Sh3Cv1kDataStats stats;};
-static Result Run(bool fast,unsigned kind,unsigned width,unsigned scenario,unsigned seed,unsigned budget){
-	Configure(fast);
+static Result Run(unsigned mode,unsigned kind,unsigned width,unsigned scenario,unsigned seed,unsigned budget){
+	Configure(mode);
 	Sh3MapMemory((UINT8*)extraPage,0xc010000,0xc01ffff,MAP_RAM);
 	rng=seed+0x9e3779b9u;
 	for(auto &v:data)v=Next();
@@ -87,10 +89,11 @@ static Result Run(bool fast,unsigned kind,unsigned width,unsigned scenario,unsig
 	out.extra=Hash(extraPage,32770);out.codeHash=Hash(code,65536);out.stats=cv1kDataStats;
 	return out;
 }
-static void Rejections(){
+static void Rejections(unsigned mode){
 	const Regs r={7,5,2,3,6,4,0};
 	for(unsigned c=0;c<12;c++){
-		Configure(true);
+		Configure(mode);
+		if(mode==2 && (c==3 || c==4 || c==5))continue;
 		Program(code,1,1,r);m_pc=0x80000000;
 		m_r[7]=0;m_r[4]=8;m_r[6]=100;m_r[5]=0x8c000100;m_r[3]=0x8c001000;
 		m_sh4_icount=1000;
@@ -118,19 +121,64 @@ static void Rejections(){
 		Check(!memcmp(&a,&b,sizeof(a)) && ch==Hash(code,65536) &&
 			rh==Hash(replacement,65536),"rejection changed guest state");
 	}
-	Configure(true);
+	Configure(mode);
 	Program(code,1,1,r);m_pc=0x80000000;
 	m_r[7]=0;m_r[4]=8;m_r[6]=100;m_r[5]=0x8c000100;m_r[3]=0x8c001000;m_sh4_icount=1000;
 	Check(Cv1kTryDataLoop(1),"positive cache fixture");
-	m_r[4]=8;m_r[6]=100;m_sh4_icount=1000;
+	m_pc=0x80000000;m_r[7]=0;m_r[4]=8;m_r[6]=100;m_sh4_icount=1000;
 	Check(Cv1kTryDataLoop(1) && cv1kDataStats.cached==1,"cache hit");
+	m_pc=0x80000000;m_r[7]=0;m_r[4]=8;m_r[6]=100;m_sh4_icount=1000;
 	code[8]=0x0009;
 	const State a=Save(0);Check(!Cv1kTryDataLoop(1),"stale decoded pattern accepted");
 	const State b=Save(0);Check(!memcmp(&a,&b,sizeof(a)),"stale pattern changed state");
-	puts("SH3 data loops: 12 unsafe patterns + positive cache/live code invalidation PASS");
+	printf("SH3 data mode %u: %u unsafe patterns + positive cache/live code invalidation PASS\n",mode,mode==2?9:12);
 }
-static double Bench(bool fast,unsigned kind){
-	Configure(fast);
+struct FullResult {State state;Sh3Cv1kDataFullStats full;};
+static FullResult FullPath(unsigned mode,UINT32 flag,UINT32 count,UINT32 bits,unsigned budget,bool warm){
+	Configure(mode);
+	const Regs r={7,5,2,3,6,4,0};
+	const unsigned head=0x100;
+	Program(code+head/2,1,1,r);
+	code[head/2-2]=0x7e01;code[head/2-1]=0x7d01;
+	for(unsigned i=0;i<32770;i++)data[i]=UINT16(i*257u);
+	auto reset=[&](){
+		m_pc=0x80000000+head;m_delay=0;m_test_irq=0;m_sr=0x301;
+		m_ea=0x12345678;m_ppc=0;m_sh4_icount=0;
+		m_r[7]=flag;m_r[4]=bits;m_r[6]=count;
+		m_r[5]=0x8c000401;m_r[3]=0xac000403; // forward overlap, odd bytes
+		m_r[2]=0x12345678;m_r[0]=0xdeadbeef;m_r[13]=0x31415926;m_r[14]=0x27182818;
+	};
+	reset();
+	if(warm){
+		m_r[7]=0;m_r[4]=8;m_r[6]=20;
+		Sh3Run_timerhack(104);
+		reset();m_pc-=4; // learned head entered after two pure ops
+	}
+	const int spent=Sh3Run_timerhack(budget);
+	FullResult out={};out.state=Save(spent);out.full=cv1kDataFullStats;return out;
+}
+static void FullPaths(){
+	UINT64 heads=0,flagExits=0,countExits=0,bitExits=0;unsigned cases=0;
+	const UINT32 flags[]={0,1,0x40,0x7f,0xffffff80,0xffffffff};
+	const unsigned budgets[]={1,3,4,8,9,11,12,13,14,16,17,20,21,22,24,25,26,27,39,40,104};
+	for(auto flag:flags)for(unsigned count:{1u,2u,20u})for(unsigned bits:{1u,2u,8u})
+	for(unsigned budget:budgets)for(bool warm:{false,true}){
+		const auto a=FullPath(0,flag,count,bits,budget,warm);
+		const auto b=FullPath(2,flag,count,bits,budget,warm);
+		if(memcmp(&a.state,&b.state,sizeof(a.state))){
+			fprintf(stderr,"full path mismatch flag=%08x count=%u bits=%u budget=%u warm=%u pc=%08x/%08x ppc=%08x/%08x EA=%08x/%08x cycles=%d/%d\n",
+				flag,count,bits,budget,warm,a.state.pc,b.state.pc,a.state.ppc,b.state.ppc,a.state.ea,b.state.ea,a.state.spent,b.state.spent);
+			exit(1);
+		}
+		heads+=b.full.headProbes;flagExits+=b.full.flagExits;
+		countExits+=b.full.countExits;bitExits+=b.full.bitExits;cases++;
+	}
+	Check(heads && flagExits && countExits && bitExits,"full path coverage");
+	printf("SH3 full literal: %u exact slice/exit/overlap comparisons, %llu head probes, %llu flag, %llu count, %llu bit exits PASS\n",
+		cases,(unsigned long long)heads,(unsigned long long)flagExits,(unsigned long long)countExits,(unsigned long long)bitExits);
+}
+static double Bench(unsigned mode,unsigned kind){
+	Configure(mode);
 	const Regs r={7,5,2,3,6,4,0};
 	Program(code,kind,1,r);
 	for(unsigned i=0;i<sizeof(data)/2;i++)data[i]=i;
@@ -143,7 +191,23 @@ static double Bench(bool fast,unsigned kind){
 		Sh3Run_timerhack(budget);
 	}
 	auto end=std::chrono::steady_clock::now();
-	if(fast)Check(cv1kDataStats.hits==n,"benchmark fast-path coverage");
+	if(mode)Check(cv1kDataStats.hits==n,"benchmark fast-path coverage");
+	return std::chrono::duration<double,std::milli>(end-begin).count();
+}
+static double BenchMixed(unsigned mode){
+	Configure(mode);const Regs r={7,5,2,3,6,4,0};
+	const unsigned head=0x100,n=100000;
+	Program(code+head/2,1,1,r);
+	code[head/2-2]=0x7e01;code[head/2-1]=0x7d01;
+	const UINT32 flags[]={0,0,1,8,0x40,0x7f,0xffffff80,0xffffffff};
+	auto begin=std::chrono::steady_clock::now();
+	for(unsigned i=0;i<n;i++){
+		m_pc=0x80000100-(i&1)*4;m_delay=0;m_test_irq=0;m_sr=0;
+		m_r[7]=flags[i&7];m_r[4]=1+(i%8);m_r[6]=1+(i%11);
+		m_r[5]=0x8c000400+(i&1);m_r[3]=0x8c001000;
+		Sh3Run_timerhack(104);
+	}
+	auto end=std::chrono::steady_clock::now();
 	return std::chrono::duration<double,std::milli>(end-begin).count();
 }
 int main(){
@@ -153,8 +217,10 @@ int main(){
 		if(kind==1 && width!=1)continue;
 		for(unsigned scenario=0;scenario<9;scenario++)for(unsigned seed=0;seed<16;seed++){
 			const auto a=Run(false,kind,width,scenario,seed,budgets[seed]);
-			const auto b=Run(true,kind,width,scenario,seed,budgets[seed]);
-			if(memcmp(&a.state,&b.state,sizeof(a.state)) || a.extra!=b.extra || a.codeHash!=b.codeHash){
+			const auto b=Run(1,kind,width,scenario,seed,budgets[seed]);
+			const auto c=Run(2,kind,width,scenario,seed,budgets[seed]);
+			if(memcmp(&a.state,&b.state,sizeof(a.state)) || a.extra!=b.extra || a.codeHash!=b.codeHash ||
+				memcmp(&a.state,&c.state,sizeof(a.state)) || a.extra!=c.extra || a.codeHash!=c.codeHash){
 				fprintf(stderr,"data mismatch kind=%u width=%u scenario=%u seed=%u budget=%u pc=%08x/%08x cycles=%d/%d hits=%llu\n",
 					kind,width,scenario,seed,budgets[seed],a.state.pc,b.state.pc,a.state.spent,b.state.spent,(unsigned long long)b.stats.hits);return 1;
 			}
@@ -164,11 +230,13 @@ int main(){
 	Check(literal && copy && hits && cached,"data-loop path coverage");
 	printf("SH3 data loops: %u actual dispatcher comparisons, %llu literal rounds, %llu copy rounds, %llu hits, %llu cached PASS\n",
 		cases,(unsigned long long)literal,(unsigned long long)copy,(unsigned long long)hits,(unsigned long long)cached);
-	Rejections();
+	Rejections(1);Rejections(2);FullPaths();
 	for(unsigned kind:{1u,2u}){
-		const double off=Bench(false,kind),on=Bench(true,kind);
+		const double off=Bench(0,kind),on=Bench(1,kind);
 		printf("Synthetic %s loop benchmark (100000 slices): off %.2f ms on %.2f ms (host/QEMU only)\n",
 			kind==1?"literal":"copy",off,on);
 	}
+	const double off=BenchMixed(0),old=BenchMixed(1),full=BenchMixed(2);
+	printf("Synthetic mixed short/terminal literal slices (100000): off %.2f ms old %.2f ms full %.2f ms (host/QEMU only)\n",off,old,full);
 	return 0;
 }

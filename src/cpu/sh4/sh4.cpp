@@ -4185,6 +4185,10 @@ static Cv1kPollReject cv1kPollReject[1024];
 static bool cv1kInterpLoopsEnabled = false;
 static bool cv1kDataLoopsEnabled=false;
 static Sh3Cv1kDataStats cv1kDataStats;
+static bool cv1kDataFullEnabled=false;
+static UINT32 cv1kDataHeadPC=~UINT32(0);
+static Sh3Cv1kDataFullStats cv1kDataFullStats;
+
 static bool cv1kHybridEnabled = false;
 static bool cv1kLoopEnabled = false;
 #if SH3_FLAT_DISPATCH
@@ -4409,6 +4413,7 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kFetchPageEnabled = cv1kInterpLoopsEnabled = false;
 	cv1kPollEnabled=cv1kTimerFastEnabled=false;
 	cv1kDataLoopsEnabled=false;cv1kDataStats={};
+	cv1kDataFullEnabled=false;cv1kDataHeadPC=~UINT32(0);cv1kDataFullStats={};
 #if SH3_FLAT_DISPATCH
 	memset(cv1kDataPlans,0,sizeof(cv1kDataPlans));
 #endif
@@ -4469,6 +4474,10 @@ void Sh3SetCv1kNative(INT32 enable)
 		dataLoops && !strcmp(dataLoops,"1");
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 specialized data-copy loops: %s\n"),
 		cv1kDataLoopsEnabled?_T("enabled (opt-in)"):_T("disabled"));
+	const char *dataFull=getenv("FBNEO_CV1K_DATA_FULL");
+	cv1kDataFullEnabled=cv1kDataLoopsEnabled && dataFull && !strcmp(dataFull,"1");
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 full literal kernel: %s\n"),
+		cv1kDataFullEnabled?_T("enabled (opt-in)"):_T("disabled"));
 	const char *poll=getenv("FBNEO_CV1K_POLL");
 	const char *timerFast=getenv("FBNEO_CV1K_TIMER_FAST");
 	cv1kPollEnabled=cv1kFetchPageEnabled && poll && !strcmp(poll,"1");
@@ -4491,6 +4500,7 @@ void Sh3SetCv1kNative(INT32 enable)
 
 void Sh3Cv1kGetPollStats(Sh3Cv1kPollStats *stats){*stats=cv1kPollStats;}
 void Sh3Cv1kGetDataStats(Sh3Cv1kDataStats *stats){*stats=cv1kDataStats;}
+void Sh3Cv1kGetDataFullStats(Sh3Cv1kDataFullStats *stats){*stats=cv1kDataFullStats;}
 
 void Sh3Cv1kCacheStats(UINT64 *misses, UINT64 *rejected, UINT64 *full)
 {
@@ -4650,7 +4660,8 @@ template<bool Hybrid, bool FetchPage=false> static int Sh3Run_timerhack_batch(in
 	m_sh4_icount=cycles;sh3_end_run=0;
 	if (m_cpu_off) {m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
 	if(FetchPage && cv1kPollEnabled)Cv1kTryPoll();
-	if(FetchPage && cv1kDataLoopsEnabled && m_sh4_icount>0)Cv1kTryDataLoop();
+	if(FetchPage && cv1kDataLoopsEnabled && m_sh4_icount>0 &&
+		(!cv1kDataFullEnabled || m_pc!=cv1kDataHeadPC))Cv1kTryDataLoop();
 	if(FetchPage && m_sh4_icount==0 && cycles>0){
 		sh4_run_timers(cycles);
 		m_sh4_icount=0;
@@ -4682,7 +4693,8 @@ start:
 		if(FetchPage && cv1kDataLoopsEnabled && slotPC && !pending && !m_delay &&
 			m_sh4_icount>=13){
 			const UINT32 distance=slotPC-m_pc;
-			if(distance==22 && (opcode&0xf00f)==0x600e)Cv1kTryDataLoop(1);
+			if(distance==22 && (opcode&0xf00f)==0x600e &&
+				(!cv1kDataFullEnabled || m_pc!=cv1kDataHeadPC))Cv1kTryDataLoop(1);
 			else if(distance==8 && (opcode&0xf000)==0x7000 &&
 				((opcode&255)==1 || (opcode&255)==2 || (opcode&255)==4))Cv1kTryDataLoop(3);
 		}
@@ -4731,6 +4743,8 @@ fast_next:
 		(cv1kInterpLoopsEnabled || (opcode==0x8bfa && cv1kDataLoopsEnabled))) goto interp_bf; \
 	goto slow_finished;
 #define SH3_PURE_OPCODE(name) batch_op_##name: \
+	if(FetchPage && (&name==&CMPPZ) && cv1kDataFullEnabled && \
+		pc+pure*2==cv1kDataHeadPC && remaining-pure>=4)goto data_head; \
 	name(opcode); ++pure; if (FetchPage?--window>0:--remaining>0) goto fast_next; \
 	if (FetchPage) {remaining-=pure; pc+=pure*2;} \
 	m_pc=m_ppc=pc; m_sh4_icount=remaining; sh3_total_cycles+=pure; \
@@ -4738,6 +4752,18 @@ fast_next:
 #include "sh3_decode_ops.inc"
 #undef SH3_PURE_OPCODE
 #undef SH3_OPCODE
+data_head:
+	// Commit preceding pure operations, not CMP/PZ itself. The
+	// full kernel either executes a complete verified path or
+	// leaves the guest state alone. On rejection execute the
+	// original CMP/PZ and continue via the standard dispatcher.
+	m_pc=pc+pure*2;m_ppc=m_pc;
+	m_sh4_icount=remaining-pure;sh3_total_cycles+=pure;
+	++cv1kDataFullStats.headProbes;
+	if(!Cv1kTryDataLoop(1)){
+		m_pc+=2;m_ppc=m_pc;CMPPZ(opcode);EAT(1);
+	}
+	goto after_slow;
 interp_bf:
 	if (m_test_irq || m_delay) goto slow_finished;
 	EAT(1);
