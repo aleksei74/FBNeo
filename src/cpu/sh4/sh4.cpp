@@ -199,7 +199,8 @@ static UINT32  area_write = 0;
 static INT32  AreaWS1[7];
 static INT32  AreaWS2[7];
 //extern int counter;
-#if 0
+#define SH3_WAIT_STATE_ACTIVE 0
+#if SH3_WAIT_STATE_ACTIVE
 static inline void WaitState(UINT32 a, UINT32 is_write) {
 	// causes too much game-lag, perhaps I messed up the impl?
 	extern int counter; // enabled via-debug counter (m/n keys in fbneo)
@@ -4205,6 +4206,8 @@ static bool cv1kBatchEnabled = false;
 static bool cv1kFetchPageEnabled = false;
 static bool cv1kDispatch8Enabled = false;
 static bool cv1kSlowFetchReuseEnabled = false;
+static bool cv1kDirectMemEnabled = false;
+static bool cv1kSlotDispatchEnabled = false;
 static bool cv1kPollEnabled=false;
 static Sh3Cv1kPollStats cv1kPollStats;
 struct Cv1kPollReject {UINT32 pc;unsigned cooldown;};
@@ -4225,6 +4228,8 @@ static bool cv1kFetchPageActive = false;
 #if defined(SH3_INTERPRETER_TEST)
 static bool cv1kDispatch8Active = false;
 static UINT64 cv1kSlowFetchReuseHits;
+static bool cv1kDirectMemActive;
+static UINT64 cv1kDirectMoveHits,cv1kSlotDispatchHits;
 #endif
 #endif
 static UINT64 cv1kNativeOps, cv1kNativeSpans, cv1kNativeBuilt;
@@ -4232,6 +4237,7 @@ static UINT64 cv1kNativeMisses, cv1kNativeRejected, cv1kNativeFull;
 static UINT64 cv1kLoopAttempts, cv1kLoopHits, cv1kLoopOps;
 static UINT64 cv1kInterpLoopBlocks,cv1kInterpLoopLaps,cv1kInterpLoopOps,cv1kInterpLoopKinds[3];
 #if SH3_FLAT_DISPATCH
+#include "sh3_cv1k_direct.inc"
 #include "sh3_cv1k_interp_loops.inc"
 #include "sh3_cv1k_data_loops.inc"
 #include "sh3_cv1k_poll.inc"
@@ -4443,6 +4449,7 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = cv1kLoopEnabled = false;
 	cv1kFetchPageEnabled = cv1kInterpLoopsEnabled = false;
 	cv1kDispatch8Enabled=cv1kSlowFetchReuseEnabled=false;
+	cv1kDirectMemEnabled=cv1kSlotDispatchEnabled=false;
 	cv1kPollEnabled=cv1kTimerFastEnabled=false;
 	cv1kDataLoopsEnabled=false;cv1kDataStats={};
 	cv1kDataFullEnabled=false;cv1kDataHeadPC=~UINT32(0);cv1kDataFullStats={};
@@ -4456,6 +4463,7 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kCompactActive=cv1kBatchActive=cv1kFetchPageActive=false;
 #if defined(SH3_INTERPRETER_TEST)
 	cv1kDispatch8Active=false;cv1kSlowFetchReuseHits=0;
+	cv1kDirectMemActive=false;cv1kDirectMoveHits=cv1kSlotDispatchHits=0;
 #endif
 #endif
 	cv1kNativeOps=cv1kNativeSpans=cv1kNativeBuilt=0;
@@ -4507,6 +4515,14 @@ void Sh3SetCv1kNative(INT32 enable)
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 8 KiB dispatch: %s, sequential slow fetch reuse: %s\n"),
 		cv1kDispatch8Enabled?_T("enabled (opt-in)"):_T("disabled"),
 		cv1kSlowFetchReuseEnabled?_T("enabled"):_T("disabled"));
+	const char *directMem=getenv("FBNEO_CV1K_DIRECT_MEM");
+	const char *slotDispatch=getenv("FBNEO_CV1K_SLOT_DISPATCH");
+	cv1kDirectMemEnabled=cv1kFetchPageEnabled && !cv1kDispatch8Enabled &&
+		!SH3_WAIT_STATE_ACTIVE && Cv1kPerformanceOption(directMem);
+	cv1kSlotDispatchEnabled=cv1kFetchPageEnabled && Cv1kPerformanceOption(slotDispatch);
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 batched direct memory: %s, decoded delay slots: %s\n"),
+		cv1kDirectMemEnabled?_T("enabled"):_T("disabled"),
+		cv1kSlotDispatchEnabled?_T("enabled"):_T("disabled"));
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.
 	// Retain the experiment but require explicit opt-in.
@@ -4677,7 +4693,7 @@ finished:
 // operations. Slow handlers see exactly the published state they saw in
 // the original interpreter (including memory callbacks and IRQ tests).
 // Delay slots and pending IRQs use the original single-step path.
-template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=Dense> static int Sh3Run_timerhack_batch(int cycles)
+template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=Dense, bool DirectMem=false> static int Sh3Run_timerhack_batch(int cycles)
 {
 	static const void *const handlers[]={
 #define SH3_OPCODE(name) &&batch_op_##name,
@@ -4703,6 +4719,7 @@ template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=
 	if(FetchPage)cv1kFetchPageActive=true;
 #if defined(SH3_INTERPRETER_TEST)
 	if(Dense)cv1kDispatch8Active=true;
+	if(DirectMem)cv1kDirectMemActive=true;
 #endif
 	m_sh4_icount=cycles;sh3_end_run=0;
 	if (m_cpu_off) {m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
@@ -4732,7 +4749,12 @@ start:
 			opcode=sh3_cpu_readop16(UINT32(m_pc&AM));
 			m_pc+=2;m_ppc=m_pc;
 		}
-		execute_one(opcode);
+		if(FetchPage && cv1kSlotDispatchEnabled && slotPC){
+#if defined(SH3_INTERPRETER_TEST)
+			++cv1kSlotDispatchHits;
+#endif
+			Cv1kDispatchSlot(opcode);
+		}else execute_one(opcode);
 		const bool pending=m_test_irq!=0;
 		if (m_test_irq && !m_delay) sh4_check_pending_irq();
 		EAT(1);
@@ -4790,13 +4812,17 @@ fast_next:
 	}
 	if (!FetchPage) pc+=2;
 	goto *(void *)(base+offsets[Dense?Sh3DispatchKey(opcode):opcode]);
-#define SH3_OPCODE(name) batch_op_##name: \
+#define SH3_SLOW_BODY(name) \
 	if (FetchPage) pc+=(pure+1)*2; \
 	m_pc=m_ppc=pc; m_sh4_icount=remaining-(FetchPage?pure:0); sh3_total_cycles+=pure; \
 	name(opcode); \
 	if (FetchPage && (&name==&BF) && !(m_sr&T) && \
 		(cv1kInterpLoopsEnabled || (opcode==0x8bfa && cv1kDataLoopsEnabled))) goto interp_bf; \
 	goto slow_finished;
+#define SH3_OPCODE(name) batch_op_##name: SH3_SLOW_BODY(name)
+#define SH3_MEMORY_OPCODE(name,width,store,form) batch_op_##name: \
+	if(DirectMem && Cv1kTryDirectMove<width,store,form>(opcode,pc+(pure+1)*2))goto direct_finished; \
+	SH3_SLOW_BODY(name)
 #define SH3_PURE_OPCODE(name) batch_op_##name: \
 	if(FetchPage && (&name==&CMPPZ) && cv1kDataFullEnabled && \
 		pc+pure*2==cv1kDataHeadPC && remaining-pure>=4)goto data_head; \
@@ -4806,7 +4832,19 @@ fast_next:
 	if (FetchPage && remaining>0) {pure=0; goto reload_fetch;} goto done;
 #include "sh3_decode_ops.inc"
 #undef SH3_PURE_OPCODE
+#undef SH3_MEMORY_OPCODE
 #undef SH3_OPCODE
+#undef SH3_SLOW_BODY
+direct_finished:
+#if defined(SH3_INTERPRETER_TEST)
+	++cv1kDirectMoveHits;
+#endif
+	++pure;
+	if(--window>0)goto fast_next;
+	remaining-=pure;pc+=pure*2;
+	m_pc=m_ppc=pc;m_sh4_icount=remaining;sh3_total_cycles+=pure;
+	if(remaining>0){pure=0;goto reload_fetch;}
+	goto done;
 data_head:
 	// Commit preceding pure operations, not CMP/PZ itself. The
 	// full kernel either executes a complete verified path or
@@ -4832,7 +4870,7 @@ slow_finished:
 	// The ordinary slow path advanced pc and fetch by the same
 	// amount. Retain the live pointer only for a sequential exit
 	// within its page. Special fused-loop exits below always reload.
-	if (ReuseCapable && (!Dense || cv1kSlowFetchReuseEnabled) && m_sh4_icount>0 &&
+	if (ReuseCapable && ((!Dense && !DirectMem) || cv1kSlowFetchReuseEnabled) && m_sh4_icount>0 &&
 		!m_delay && !m_test_irq && m_pc==pc && (pc&SH3_PAGEM) &&
 		fetchEpoch==sh3FetchMapEpoch) {
 		remaining=m_sh4_icount;pure=0;
@@ -4865,6 +4903,7 @@ static int Sh3Run_timerhack(int cycles)
 #if SH3_FLAT_DISPATCH
 	if(cv1kFetchPageEnabled) {
 		if(cv1kDispatch8Enabled)return Sh3Run_timerhack_batch<false,true,true>(cycles);
+		if(cv1kDirectMemEnabled)return Sh3Run_timerhack_batch<false,true,false,true,true>(cycles);
 		if(cv1kSlowFetchReuseEnabled)return Sh3Run_timerhack_batch<false,true,false,true>(cycles);
 		return Sh3Run_timerhack_batch<false,true>(cycles);
 	}

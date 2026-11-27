@@ -32,6 +32,8 @@ is specified. Environment variables have the FBNEO_CV1K_ prefix; explicit
 0 or 1 overrides the preset. Keep other options and game settings identical
 for A/B. The baseline fetch-page mode can be selected with FETCH_REUSE=0.
 The Speed Hacks, Thread Blitter and Thread Sync DIP settings are unchanged.
+Stage 2 also enables DIRECT_MEM and SLOT_DISPATCH by default on that
+platform; see test_sh3_direct.md. Disable both to compare stage 1 alone.
 Do not infer real RK3566 performance from QEMU or synthetic loops.
 
 ## Verification
