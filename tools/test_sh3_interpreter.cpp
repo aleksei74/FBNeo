@@ -56,9 +56,12 @@ static void Setup(unsigned mode,unsigned test) {
     setenv("FBNEO_CV1K_DISPATCH",mode?"1":"0",1);
     setenv("FBNEO_CV1K_COMPACT","1",1);
     setenv("FBNEO_CV1K_BATCH","1",1);
-    setenv("FBNEO_CV1K_FETCH_PAGE",mode==2?"1":"0",1);
+    setenv("FBNEO_CV1K_FETCH_PAGE",mode>=2?"1":"0",1);
+    setenv("FBNEO_CV1K_DISPATCH8",mode==3 || mode==4?"1":"0",1);
+    setenv("FBNEO_CV1K_FETCH_REUSE",mode>=4?"1":"0",1);
     Sh3MapInit();Sh3SetCv1kNative(1);
-    Check(!cv1kNativeEnabled && cv1kFetchPageEnabled==(mode==2),"policy");
+    Check(!cv1kNativeEnabled && cv1kFetchPageEnabled==(mode>=2) &&
+        cv1kDispatch8Enabled==(mode==3 || mode==4) && cv1kSlowFetchReuseEnabled==(mode>=4),"policy");
     for(unsigned i=0;i<65536;i++){code[i]=0x7001;replacement[i]=0x7203;}
     memset(data,0,sizeof(data));
     Sh3MapMemory((UINT8*)code,0,0x1ffff,MAP_RAM);
@@ -84,6 +87,12 @@ static void Setup(unsigned mode,unsigned test) {
     for(auto &t:m_timer){t={};t.timer_prescaler=64;}
     for(auto &t:m_dma_timer)t={};
     cave_blitter_delay={};
+}
+// Other standalone harnesses can opt into the same dispatcher without
+// changing the meaning of their loop/poll A/B modes.
+static unsigned TestFetchMode() {
+    const char *s=getenv("FBNEO_CV1K_TEST_FETCH_MODE");
+    return s && s[0]>='2' && s[0]<='5' && !s[1] ? unsigned(s[0]-'0') : 2;
 }
 static State Save(int spent) {
     State s={};memcpy(s.r,m_r,sizeof(m_r));memcpy(s.bank,m_rbnk,sizeof(m_rbnk));
@@ -145,7 +154,8 @@ static State Run(unsigned mode,unsigned test,unsigned seed) {
         spent+=test==9?Sh3Run_normal(budget):Sh3Run_timerhack(budget);
     }
     if(mode && test!=9 && test!=12)Check(cv1kBatchActive,"batch did not execute");
-    if(mode==2 && test!=9 && test!=12)Check(cv1kFetchPageActive,"fetch-page path did not execute");
+    if(mode>=2 && test!=9 && test!=12)Check(cv1kFetchPageActive,"fetch-page path did not execute");
+    if((mode==3 || mode==4) && test!=9 && test!=12)Check(cv1kDispatch8Active,"dense path did not execute");
     return Save(spent);
 }
 static void TestPure() {
@@ -159,13 +169,15 @@ static void TestPure() {
     Setup(2,0);
     for(unsigned op=0;op<65536;op++)if(pure[sh3OpIds[op]]) {
         State expected={};
-        for(unsigned mode=0;mode<3;mode++) {
+        for(unsigned mode=0;mode<6;mode++) {
             // A varied register state plus a trailing MMIO callback checks
             // both pure-op results and publication before the next handler.
             cv1kFlatEnabled=cv1kBatchEnabled=mode!=0;
-            cv1kFetchPageEnabled=mode==2;
+            cv1kFetchPageEnabled=mode>=2;
+            cv1kDispatch8Enabled=mode==3 || mode==4;
+            cv1kSlowFetchReuseEnabled=mode>=4;
             m_pc=0x80000000;m_ppc=m_ea=m_delay=0;
-            cv1kFetchPageActive=false;
+            cv1kFetchPageActive=false;cv1kDispatch8Active=false;
             m_test_irq=m_pending_irq=m_cpu_off=0;
             sh3_total_cycles=m_sh4_icount=0;trace=0;hits=0;
             m_spc=m_ssr=0;
@@ -179,7 +191,8 @@ static void TestPure() {
             m_gbr=0x8d000000;
             code[0]=code[1]=UINT16(op);code[2]=0xc600;
             State got=Save(Sh3Run_timerhack(3));
-            if(mode==2)Check(cv1kFetchPageActive,"pure fetch-page path did not execute");
+            if(mode>=2)Check(cv1kFetchPageActive,"pure fetch-page path did not execute");
+            if(mode==3 || mode==4)Check(cv1kDispatch8Active,"pure dense path did not execute");
             if(!mode)expected=got;else if(memcmp(&got,&expected,sizeof(got))){
                 fprintf(stderr,"pure opcode=%04x mode=%u pc=%08x/%08x ppc=%08x/%08x ea=%08x/%08x sr=%08x/%08x trace=%llx/%llx hits=%u/%u\n",op,mode,got.pc,expected.pc,got.ppc,expected.ppc,got.ea,expected.ea,got.sr,expected.sr,(unsigned long long)got.trace,(unsigned long long)expected.trace,got.hits,expected.hits);
                 const unsigned char *a=(const unsigned char*)&got,*b=(const unsigned char*)&expected;
@@ -189,7 +202,7 @@ static void TestPure() {
         }
         count++;
     }
-    printf("SH3 pure encodings and callback publication: %u x 3 modes PASS\n",count);
+    printf("SH3 pure encodings and callback publication: %u x 6 modes PASS\n",count);
 }
 // Independent 64-bit signed oracle, including aliased source/destination.
 static void TestOverflow() {
@@ -238,23 +251,47 @@ static void TestHostArithmetic() {
     }
     printf("SH3 host arithmetic: %u carry, borrow, byte compare and signed/unsigned multiply checks PASS\n",checks);
 }
-static void Benchmark() {
-    for(unsigned mode=1;mode<=2;mode++) {
+static void TestDense() {
+    for(unsigned mode=4;mode<=5;mode++) {
         Setup(mode,0);
-        // Same guest work, each slice begins at code start. Host timings are
-        // synthetic; QEMU timings are deliberately not target speed claims.
+        Check(Sh3DispatchKeysValid(),"all 65536 dispatch keys");
+        // Read/write guest RAM, including a live instruction modified by
+        // an ordinary store without changing the fetch-map epoch.
+        code[0]=0x2121; // MOV.W R2,@R1
+        code[1]=0x7001;
+        code[2]=0x6342; // MOV.L @R4,R3
+        m_r[1]=0x80000002;m_r[2]=0x7007;m_r[4]=0x8c000000;
+        Sh3Run_timerhack(3);
+        Check(m_r[0]==7 && code[1]==0x7007,"dense live code after direct store");
+        Check(cv1kSlowFetchReuseHits>0,"sequential fetch reuse");
+    }
+    printf("Dense opcode keys (65536), live self-modification and sequential reuse (both tables) PASS\n");
+}
+static void Benchmark() {
+    for(unsigned mixed=0;mixed<2;mixed++)for(unsigned mode=2;mode<6;mode++) {
+        Setup(mode,0);
+        if(mixed) {
+            const UINT16 ops[]={0x6212,0x7201,0x2122,0x7001};
+            for(unsigned i=0;i<65536;i++)code[i]=ops[i&3];
+            m_r[1]=0x8c000000;
+        }
+        // Same guest work, synthetic host timings only. Warm up the
+        // computed-goto table outside the measured region.
+        m_pc=0x80000000;Sh3Run_timerhack(4);
+        m_r[0]=m_r[2]=0;memset(data,0,sizeof(data));
         const auto start=std::chrono::steady_clock::now();
-        for(unsigned i=0;i<3000;i++){m_pc=0x80000000;Sh3Run_timerhack(30000);}
+        for(unsigned i=0;i<1500;i++){m_pc=0x80000000;Sh3Run_timerhack(20000);}
         const auto end=std::chrono::steady_clock::now();
-        printf("pure fetch=%u: %.3f ms, checksum=%u\n",mode==2,
-            std::chrono::duration<double,std::milli>(end-start).count(),m_r[0]);
+        printf("%s mode=%u: %.3f ms, checksum=%u/%u, reused=%llu\n",mixed?"mixed":"pure",mode,
+            std::chrono::duration<double,std::milli>(end-start).count(),m_r[0],m_r[2],
+            (unsigned long long)cv1kSlowFetchReuseHits);
     }
 }
 int main(int argc,char **) {
     if(argc>1){Benchmark();return 0;}
     for(unsigned test=0;test<14;test++)for(unsigned seed=0;seed<32;seed++) {
         const State ref=Run(0,test,seed);
-        for(unsigned mode=1;mode<3;mode++) {
+        for(unsigned mode=1;mode<6;mode++) {
             const State got=Run(mode,test,seed);
             if(memcmp(&ref,&got,sizeof(got))) {
                 fprintf(stderr,"scenario=%u seed=%u mode=%u\n",test,seed,mode);
@@ -262,6 +299,6 @@ int main(int argc,char **) {
             }
         }
     }
-    puts("SH3 remap/SMC/page/wrap/MMIO/IRQ/delay/timer differential: 448 x 3 modes PASS");
-    TestPure();TestOverflow();TestHostArithmetic();return 0;
+    puts("SH3 remap/SMC/page/wrap/MMIO/IRQ/delay/timer differential: 448 x 6 modes PASS");
+    TestDense();TestPure();TestOverflow();TestHostArithmetic();return 0;
 }

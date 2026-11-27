@@ -47,7 +47,7 @@ static PollResult Run(bool fast,bool timerFast,unsigned kind,unsigned rotate,uns
 	setenv("FBNEO_CV1K_POLL",fast?"1":"0",1);
 	setenv("FBNEO_CV1K_TIMER_FAST",timerFast?"1":"0",1);
 	setenv("FBNEO_CV1K_INTERP_LOOPS","0",1);
-	Setup(2,0);
+	Setup(TestFetchMode(),0);
 	Check(cv1kPollEnabled==fast && cv1kTimerFastEnabled==timerFast,"poll/timer policy");
 	Sh3SetTimerGranularity(2);
 	changed=0;busyValue=0;burnCycles=kind==5?41:0;
@@ -105,7 +105,7 @@ static PollResult Run(bool fast,bool timerFast,unsigned kind,unsigned rotate,uns
 }
 static void Rejections(){
 	for(unsigned c=0;c<8;c++){
-		setenv("FBNEO_CV1K_POLL","1",1);Setup(2,0);
+		setenv("FBNEO_CV1K_POLL","1",1);Setup(TestFetchMode(),0);
 		code[0]=0x6012;code[1]=0xc810;code[2]=0x89fc;code[3]=0x0009;
 		m_sr=T;m_r[0]=0;m_r[1]=0x8c000010;m_sh4_icount=1000;
 		switch(c){

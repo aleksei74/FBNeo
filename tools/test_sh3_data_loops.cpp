@@ -39,7 +39,7 @@ static void Configure(unsigned mode){
 	setenv("FBNEO_CV1K_INTERP_LOOPS","0",1);
 	setenv("FBNEO_CV1K_POLL","0",1);
 	setenv("FBNEO_CV1K_TIMER_FAST","0",1);
-	Setup(2,0);Sh3SetTimerGranularity(2);
+	Setup(TestFetchMode(),0);Sh3SetTimerGranularity(2);
 	Check(cv1kDataLoopsEnabled==fast && cv1kDataFullEnabled==(mode==2),"data-loop policy");
 }
 struct Result{State state;UINT64 extra,codeHash;Sh3Cv1kDataStats stats;};
