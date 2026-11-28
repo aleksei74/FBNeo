@@ -71,8 +71,8 @@ static State MoveRun(unsigned mode,DirectFixture f,unsigned kind,unsigned alias,
 	}
 	int spent=Sh3Run_timerhack(budget);
 	spent+=Sh3Run_timerhack(7);
-	if(mode==8 && !slot && kind==0)Check(cv1kDirectMoveHits>0,"direct fixture did not accelerate");
-	if(mode==8 && slot)Check(cv1kSlotDispatchHits>0,"slot fixture did not accelerate");
+	if(mode>=8 && !slot && kind==0)Check(cv1kDirectMoveHits>0,"direct fixture did not accelerate");
+	if(mode>=8 && slot)Check(cv1kSlotDispatchHits+cv1kFlowSlotHits>0,"slot fixture did not accelerate");
 	return Save(spent);
 }
 
@@ -88,9 +88,14 @@ static void Moves(){
 				f.op,kind,alias,slot,budget,a.pc,b.pc,a.ea,b.ea,(unsigned long long)a.trace,(unsigned long long)b.trace);
 			exit(1);
 		}
+		auto c=MoveRun(9,f,kind,alias,slot,budget);
+		if(memcmp(&a,&c,sizeof(a))){
+			fprintf(stderr,"FLOW MOV mismatch opcode=%04x kind=%u alias=%u slot=%u budget=%u\n",f.op,kind,alias,slot,budget);
+			exit(1);
+		}
 		cases++;
 	}
-	printf("SH3 direct MOV: %u actual slice comparisons (32 forms, alias, MMIO, unaligned, P4, page, slots) PASS\n",cases);
+	printf("SH3 direct MOV: %u scenarios x 2 optimized paths (32 forms, alias, MMIO, unaligned, P4, page, slots) PASS\n",cases);
 }
 static void Branches(){
 	// All pure slots plus common stateful slots, branch target, IRQ and

@@ -603,6 +603,7 @@ int main(){
 	setenv("FBNEO_CV1K_FETCH_REUSE","0",1);
 	setenv("FBNEO_CV1K_DIRECT_MEM","0",1);
 	setenv("FBNEO_CV1K_SLOT_DISPATCH","0",1);
+	setenv("FBNEO_CV1K_FLOW","0",1);
 	setenv("FBNEO_CV1K_DATA_LOOPS","0",1);
 	setenv("FBNEO_CV1K_DATA_FULL","0",1);
 	setenv("FBNEO_CV1K_POLL","0",1);
