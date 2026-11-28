@@ -1,4 +1,4 @@
-// V2 stage B-1: stable per-block register bindings and compact guard exits.
+// V2 stage B-2: compact blocks, live literals, DT and terminal branches.
 // Guest arithmetic encodings follow the existing audited SH3 emitter.
 // No generated code calls C, executes devices, or links to another block.
 // Leaf blocks use the normal C ABI; wide blocks use a shared trampoline.
@@ -85,6 +85,33 @@ inline bool MemoryOp(uint16_t op) {
 	return t==1 || t==5 || ((t==2 || t==6) && (f<=2 || (f>=4 && f<=6)));
 }
 
+// Keep Candidate/MemoryOp unchanged for the B-1 and legacy control.
+inline bool PcRelative(uint16_t op){return (op>>12)==9 || (op>>12)==13 || (op>>8)==0xc7;}
+inline bool IsDT(uint16_t op){return (op&0xf0ff)==0x4010;}
+inline bool ExtendedCandidate(uint16_t op){return Candidate(op)||PcRelative(op)||IsDT(op);}
+inline bool Conditional(uint16_t op){
+	const unsigned hi=op>>8;return hi==0x89||hi==0x8b||hi==0x8d||hi==0x8f;
+}
+inline bool Dynamic(uint16_t op){
+	return (op&0xf0ff)==0x402b || (op&0xf0ff)==0x400b || op==0x000b;
+}
+inline bool Terminal(uint16_t op){
+	return Conditional(op)||(op>>12)==10||(op>>12)==11||Dynamic(op);
+}
+inline bool Delayed(uint16_t op){return !Conditional(op)||bool(op&0x0400);}
+inline bool SafeSlot(uint16_t op){
+	return Candidate(op)&&!MemoryOp(op)&&(op&0xf0ff)!=0x4011;
+}
+inline uint32_t StaticTarget(uint16_t op,uint32_t pc){
+	const int disp=Conditional(op)?int(int8_t(op)):int(op&0xfff)-((op&0x800)?4096:0);
+	return pc+4+disp*2;
+}
+inline bool Call(uint16_t op){return (op>>12)==11||(op&0xf0ff)==0x400b;}
+inline unsigned ExtraCycles(uint16_t op){
+	return !Delayed(op)?2:(op&0xf0ff)==0x402b?0:1;
+}
+static constexpr unsigned ExitTaken=0x100,ExitNotTaken=0x200;
+
 // Fixed bindings allow a single union-of-writes epilogue, even when a
 // guard exits before an instruction that would otherwise overwrite a
 // register: every used register is initialized at entry.
@@ -92,7 +119,8 @@ class CompactEmitter {
 	uint32_t *p_;
 	uint8_t reg_[16];
 	uint16_t used_,dirty_;
-	bool sr_,writeSR_;
+	bool sr_,writeSR_,extended_;
+	uint32_t pc_;
 	unsigned maps_;
 	uint8_t mapReg_[3],codeReg_,sizeReg_;
 	unsigned RegBase()const{return Wide()?19:0;}
@@ -103,8 +131,10 @@ class CompactEmitter {
 		*p_++=0xf9400000u|((off/8)<<10)|(base<<5)|d;
 	}
 	struct Fixup {uint32_t *at;uint8_t cond,done;};
-	Fixup fix_[CompactMaxOps*4];
-	unsigned fixCount_;
+	Fixup fix_[CompactMaxOps*7];
+	struct IdleFixup {uint32_t *at,*resume;uint8_t done;};
+	IdleFixup idle_[CompactMaxOps];
+	unsigned fixCount_,idleCount_;
 	uint32_t *entrySR_;
 	bool failed_;
 	static uint32_t Mov(unsigned d,unsigned s){return 0x2a0003e0u|(s<<16)|d;}
@@ -112,6 +142,13 @@ class CompactEmitter {
 	unsigned W(unsigned g){dirty_|=1u<<g;return reg_[g];}
 	void Imm(unsigned d,int v){
 		*p_++=(v<0?0x12800000u:0x52800000u)|(uint32_t(v<0?~v:v)<<5)|d;
+	}
+	void Imm32(unsigned d,uint32_t v){
+		*p_++=0x52800000u|((v&65535u)<<5)|d;
+		if(v>>16)*p_++=0x72a00000u|((v>>16)<<5)|d;
+	}
+	void LdrW(unsigned d,unsigned base,unsigned off){
+		*p_++=0xb9400000u|((off/4)<<10)|(base<<5)|d;
 	}
 	void SR(){sr_=true;writeSR_=true;}
 	void SetT(unsigned cond){*p_++=0x1a9f07e6u|((cond^1u)<<12);*p_++=0x330000c5u;}
@@ -128,20 +165,13 @@ class CompactEmitter {
 	}
 	static unsigned Footprint(uint16_t op){
 		const unsigned top=op>>12,n=(op>>8)&15,m=(op>>4)&15;
+		if(top==9||top==13)return 1u<<n;
 		if(top>=1 && top<=6 && top!=4)return (1u<<n)|(1u<<m);
 		if(top==4||top==7||top==14||(op&0xf0ff)==0x0029)return 1u<<n;
 		if((op&0xff00)==0x8800||top==12)return 1;
 		return 0;
 	}
-	bool EmitMemory(uint16_t op,unsigned done){
-		const unsigned top=op>>12,n=(op>>8)&15,m=(op>>4)&15,f=op&15;
-		const bool store=top==1||top==2,pre=store&&top==2&&f>=4,
-			post=!store&&top==6&&f>=4;
-		const unsigned size=(top==1||top==5)?2:f&3,bytes=1u<<size;
-		const unsigned a=R(store?n:m),b=store?R(m):0;
-		if(top==1||top==5)*p_++=0x11000010u|(f*4<<10)|(a<<5);
-		else if(pre)*p_++=0x51000010u|(bytes<<10)|(a<<5);
-		else *p_++=Mov(16,a);
+	void ResolveAddress(unsigned size,bool store,unsigned done){
 		// P4 is deliberately interpreted, not masked to ordinary RAM.
 		*p_++=0x531d7e08u; // lsr w8,w16,#29
 		*p_++=0x71001d1fu;Guard(0,done);
@@ -152,9 +182,77 @@ class CompactEmitter {
 		unsigned mapBase=mapReg_[map];
 		if(mapBase==31){LdrX(17,MemBase(),8*map);mapBase=17;}
 		*p_++=0xf8687800u|(mapBase<<5)|17; // ldr x17,[xMap,x8,lsl #3]
-		*p_++=0xf100223fu;Guard(3,done); // handler < 8
+		*p_++=0xf100223fu; // handler < 8
+		if(extended_ && !store && size==2){
+			// Direct mapped long reads fall through. The unusual
+			// handler page enters an out-of-line rescue after RET.
+			if(idleCount_>=CompactMaxOps){failed_=true;return;}
+			uint32_t *at=p_++;*at=0;
+			idle_[idleCount_++]={at,p_,uint8_t(done)};
+		}else Guard(3,done);
 		*p_++=0x12003ce7u; // page offset
 		if(!size)*p_++=0x520000e7u; // byte lane swap
+	}
+	bool EmitExtended(uint16_t op,unsigned done){
+		const unsigned top=op>>12,n=(op>>8)&15;
+		const uint32_t opPC=pc_+2*done;
+		if(PcRelative(op)){
+			const bool word=top==9;
+			const uint32_t ea=(word?opPC+4:(opPC+4)&~3u)+(op&255)*(word?2:4);
+			Imm32(16,ea);
+			if(top==12){
+				*p_++=0xb9000010u|(EABase()<<5);
+				*p_++=Mov(W(0),16);return true;
+			}
+			ResolveAddress(word?1:2,false,done);
+			*p_++=0xb9000010u|(EABase()<<5);
+			const unsigned d=W(n);
+			*p_++=(word?0x78e76a20u:0xb8676a20u)|d;
+			if(!word)*p_++=0x13804000u|(d<<16)|(d<<5)|d;
+			return true;
+		}
+		if(IsDT(op)){
+			// Check the live DATA word before decrementing. This preserves
+			// both MMIO lookahead and the original DT/BF busy-loop burn.
+			Imm32(16,(opPC+2)&0x1fffffffu);
+			ResolveAddress(1,false,done);
+			*p_++=0x78676a28u; // ldrh w8,[x17,x7]
+			Imm(6,0x8bfd);
+			*p_++=0x6b06011fu;Guard(0,done);
+			const unsigned d=R(n);W(n);SR();
+			*p_++=0x71000400u|(d<<5)|d;SetT(0);return true;
+		}
+		return false;
+	}
+	uint32_t *EmitTerminal(uint16_t op,const uint16_t *ops,unsigned body,unsigned count){
+		uint32_t *notTaken=NULL;
+		if(Conditional(op)){
+			sr_=true;
+			*p_++=0x720000bfu; // tst w5,#1
+			notTaken=p_++;
+		}
+		if(Dynamic(op)){
+			if(op==0x000b)LdrW(16,MemBase(),60);
+			else *p_++=Mov(16,R((op>>8)&15));
+			*p_++=0x7200021fu;Guard(1,body); // odd target: original handler
+		}else Imm32(16,StaticTarget(op,pc_+body*2));
+		// Capture the target BEFORE the delay slot changes its source.
+		// All accepted slots are register-only and do not access EA/PR.
+		*p_++=0xb9000010u|(EABase()<<5);
+		if(Delayed(op) && !Emit(ops[body+1],body+1))failed_=true;
+		Imm(Wide()?0:6,ExitTaken|count);
+		return notTaken;
+	}
+	bool EmitMemory(uint16_t op,unsigned done){
+		const unsigned top=op>>12,n=(op>>8)&15,m=(op>>4)&15,f=op&15;
+		const bool store=top==1||top==2,pre=store&&top==2&&f>=4,
+			post=!store&&top==6&&f>=4;
+		const unsigned size=(top==1||top==5)?2:f&3,bytes=1u<<size;
+		const unsigned a=R(store?n:m),b=store?R(m):0;
+		if(top==1||top==5)*p_++=0x11000010u|(f*4<<10)|(a<<5);
+		else if(pre)*p_++=0x51000010u|(bytes<<10)|(a<<5);
+		else *p_++=Mov(16,a);
+		ResolveAddress(size,store,done);
 		if(store){
 			*p_++=0x8b070231u; // add x17,x17,x7
 			unsigned code=codeReg_;
@@ -181,20 +279,33 @@ class CompactEmitter {
 	}
 public:
 	explicit CompactEmitter(uint32_t *p):p_(p),reg_{},used_(0),dirty_(0),
-		sr_(false),writeSR_(false),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
-		fix_{},fixCount_(0),entrySR_(NULL),failed_(false){}
+		sr_(false),writeSR_(false),extended_(false),pc_(0),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
+		fix_{},idle_{},fixCount_(0),idleCount_(0),entrySR_(NULL),failed_(false){}
 	uint32_t *End()const{return p_;}
 	bool Wide()const{return __builtin_popcount(unsigned(used_))>7;}
-	bool Build(const uint16_t *ops,unsigned count){
+	bool Build(const uint16_t *ops,unsigned count,uint32_t pc=0,unsigned terminal=~0u,bool extended=false){
 		if(!count||count>CompactMaxOps)return false;
+		extended_=extended;pc_=pc;
+		const bool branch=terminal<count;
+		const unsigned body=branch?terminal:count;
+		if(branch){
+			if(!extended || !Terminal(ops[body]) ||
+				count!=body+1+unsigned(Delayed(ops[body])))return false;
+			if(Delayed(ops[body]) && (!SafeSlot(ops[body+1]) || !(pc+body*2+2)))return false;
+			if((ops[body]>>12)==10 && (ops[body]&0xfff)==0xffe)return false;
+			if(Dynamic(ops[body])&&ops[body]!=0x000b)used_|=1u<<((ops[body]>>8)&15);
+		}
 		for(unsigned i=0;i<count;i++){
+			if(branch && i==body)continue;
 			const uint16_t op=ops[i];
-			if(!Candidate(op))return false;
+			if(!(extended?ExtendedCandidate(op):Candidate(op)))return false;
 			used_|=Footprint(op);
 			if(MemoryOp(op)){
 				unsigned t=op>>12,f=op&15;
 				maps_|=(t==1||t==2)?4:(t==5||(f&3)==2)?2:1;
 			}
+			if((op>>12)==9 || IsDT(op))maps_|=1;
+			if((op>>12)==13)maps_|=2;
 		}
 		static const unsigned host[]={9,10,11,12,13,14,15,23,24,25,26,27,28};
 		if(__builtin_popcount(unsigned(used_))>sizeof(host)/sizeof(host[0]))return false;
@@ -219,32 +330,50 @@ public:
 		}
 		// Reserved prologue instruction patched iff SR is used.
 		entrySR_=p_++;*entrySR_=0xd503201fu;
-		for(unsigned i=0;i<count;i++)if(!Emit(ops[i],i))return false;
+		for(unsigned i=0;i<body;i++)if(!Emit(ops[i],i))return false;
+		uint32_t *notTaken=branch?EmitTerminal(ops[body],ops,body,count):NULL;
 		if(failed_)return false;
 		if(sr_)*entrySR_=0xb9400005u|(SRBase()<<5);
-		// Normal exit and each guard stub converge on the same epilogue.
-		// Leaf x0 remains the GPR base until writeback is finished.
+		// The normal exit falls through to the common epilogue.
+		// Failure and not-taken stubs are after RET, off the hot path.
 		const unsigned result=Wide()?0:6;
-		Imm(result,count);uint32_t *normal=p_++;
-		uint32_t *stub[CompactMaxOps]={},*jumps[CompactMaxOps]={};
-		for(unsigned i=0;i<fixCount_;i++){
-			const unsigned d=fix_[i].done;
-			if(!stub[d]){stub[d]=p_;Imm(result,d);jumps[d]=p_++;}
-			BC(fix_[i].at,stub[d],fix_[i].cond);
-		}
-		B(normal,p_);
-		for(unsigned i=0;i<count;i++)if(jumps[i])B(jumps[i],p_);
+		if(!branch)Imm(result,count);
+		uint32_t *epilogue=p_;
 		for(unsigned g=0;g<16;g++)if(dirty_&(1u<<g))
 			*p_++=0xb9000000u|(RegBase()<<5)|(g<<10)|reg_[g];
 		if(writeSR_)*p_++=0xb9000005u|(SRBase()<<5);
 		if(!Wide())*p_++=Mov(0,result);
 		*p_++=0xd65f03c0u;
+		if(notTaken){
+			BC(notTaken,p_,(ops[body]&0x0200)?1:0);
+			Imm(result,ExitNotTaken|(body+1));uint32_t *jump=p_++;B(jump,epilogue);
+		}
+		// Resume ordinary reads with the live validated idle page
+		// pointer in x17. Do not rescue the exact idle address.
+		for(unsigned i=0;i<idleCount_;i++){
+			const auto &r=idle_[i];
+			BC(r.at,p_,3); // b.lo handler
+			*p_++=0x7130011fu;Guard(1,r.done); // cmp w8,#0xc00
+			LdrX(17,MemBase(),48);
+			*p_++=0xf100023fu;Guard(0,r.done);
+			LdrW(8,MemBase(),56);
+			*p_++=0x6b0800ffu;Guard(0,r.done);
+			uint32_t *jump=p_++;B(jump,r.resume);
+		}
+		if(failed_)return false;
+		uint32_t *stub[CompactMaxOps]={};
+		for(unsigned i=0;i<fixCount_;i++){
+			const unsigned d=fix_[i].done;
+			if(!stub[d]){stub[d]=p_;Imm(result,d);uint32_t *jump=p_++;B(jump,epilogue);}
+			BC(fix_[i].at,stub[d],fix_[i].cond);
+		}
 		return true;
 	}
 private:
 	bool Emit(uint16_t op,unsigned done){
 		const unsigned top=op>>12,n=(op>>8)&15,m=(op>>4)&15,f=op&15,imm=op&255;
 		unsigned a,b,d;uint32_t base=0;unsigned cond=0;bool test=false;
+		if(extended_ && (PcRelative(op)||IsDT(op)))return EmitExtended(op,done);
 		if(op==0x0009)return true;
 		if(op==0x0008 || op==0x0018){
 			SR();Imm(6,op==0x0018);*p_++=0x330000c5u;return true;

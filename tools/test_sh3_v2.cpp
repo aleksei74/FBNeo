@@ -71,6 +71,13 @@ static void Compare(const Snapshot &a,const Snapshot &b,unsigned test,unsigned s
 		fprintf(stderr,"V2 mismatch test=%u step=%u pc=%08x/%08x total=%d/%d trace=%llx/%llx\n",
 			test,step,a.state.pc,b.state.pc,a.state.total,b.state.total,
 			(unsigned long long)a.state.trace,(unsigned long long)b.state.trace);
+		for(unsigned i=0;i<16;i++)if(a.state.r[i]!=b.state.r[i])
+			fprintf(stderr," r%u=%08x/%08x\n",i,a.state.r[i],b.state.r[i]);
+		fprintf(stderr," ppc=%08x/%08x EA=%08x/%08x SR=%08x/%08x PR=%08x/%08x delay=%08x/%08x spent=%d/%d left=%d/%d\n",
+			a.state.ppc,b.state.ppc,a.state.ea,b.state.ea,a.state.sr,b.state.sr,a.extra[0],b.extra[0],
+			a.state.delay,b.state.delay,a.state.spent,b.state.spent,a.state.left,b.state.left);
+		const auto *ap=reinterpret_cast<const UINT8*>(&a),*bp=reinterpret_cast<const UINT8*>(&b);
+		for(unsigned i=0;i<sizeof(a);i++)if(ap[i]!=bp[i]){fprintf(stderr," first differing byte %u: %02x/%02x\n",i,ap[i],bp[i]);break;}
 		exit(1);
 	}
 }
@@ -207,6 +214,10 @@ static void TestFrontend(){
 	code[7]=0xe77f;m_pc=base;m_sh4_icount=1000;
 	Check(!Cv1kV2Try(m_pc) && !Cv1kV2Find(base) &&
 		cv1kV2Stats.retired==1,"full cache still validates live code");
+	for(unsigned i=1;i<4;i++){
+		m_pc=base+positions[i]*2;m_sh4_icount=1000;
+		Check(Cv1kV2Try(m_pc)==20,"packed set preserves surviving ids");
+	}
 
 	Init(true);Loop(2,0);
 	m_sh4_icount=1000;m_pc=base;sh3_end_run=0;
@@ -289,8 +300,12 @@ static double Bench(unsigned mode,unsigned kind,Snapshot &result){
 		(unsigned long long)cv1kV2Stats.ops,(unsigned long long)cv1kV2Stats.hits);
 	result=Snap(0);return ms;
 }
+#ifndef SH3_V2_B2_TEST
 int main(int argc,char **){
 	setvbuf(stdout,NULL,_IOLBF,0);
+	// Preserve the B-1 fixtures and benchmark as the narrow-scope
+	// regression control. The B-2 suite exercises expanded blocks.
+	setenv("FBNEO_CV1K_V2_BLOCKS","0",1);
 	if(argc>1){
 		for(unsigned kind=0;kind<3;kind++){
 			double ms[3][3]={};
@@ -315,3 +330,4 @@ int main(int argc,char **){
 	puts("V2 live interpreter differential: 7 x 24 slices PASS");
 	TestBudgetAndEdges();TestFrontend();TestCompactPolicy();return 0;
 }
+#endif

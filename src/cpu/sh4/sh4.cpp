@@ -4552,6 +4552,10 @@ void Sh3Cv1kV2Report()
 		(unsigned long long)s.compactBuilt,(unsigned long long)s.compactCalls,
 		(unsigned long long)s.compactOps,(unsigned long long)s.compactBytes,
 		(unsigned long long)s.legacyBuilt,(unsigned long long)s.resets);
+	bprintf(PRINT_UI,_T("CV1K V2 blocks: extended %llu terminal %llu exits %llu taken %llu nottaken %llu cycles %llu\n"),
+		(unsigned long long)s.extendedBuilt,(unsigned long long)s.terminalBuilt,
+		(unsigned long long)s.terminalCalls,(unsigned long long)s.taken,
+		(unsigned long long)s.notTaken,(unsigned long long)s.cycles);
 #endif
 }
 
@@ -4668,12 +4672,14 @@ void Sh3SetCv1kNative(INT32 enable)
 		Cv1kPerformanceOption(getenv("FBNEO_CV1K_JIT_V2")) && Cv1kV2Enable();
 #endif
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 Dynarec V2: %s\n"),
-		cv1kV2Enabled?_T("enabled (stage B-1, compact blocks)"):_T("disabled"));
+		cv1kV2Enabled?_T("enabled (stage B-2, guarded basic blocks)"):_T("disabled"));
 #if SH3_NATIVE_V2
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 lookup-only: %s; 64 KiB pinned directory\n"),
 		cv1kV2LookupOnly?_T("enabled (learn/compile/validate, no native execution)"):_T("disabled"));
-	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 compact emitter: %s; page tag filter, bounded slice samples\n"),
+	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 compact emitter: %s; exact entry bitmap, bounded slice samples\n"),
 		cv1kV2Compact?_T("enabled"):_T("disabled (legacy emitter)"));
+	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 basic blocks: %s\n"),
+		cv1kV2Blocks?_T("enabled (literal/DT/terminal)"):_T("disabled (B-1 candidate scope)"));
 #endif
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.
