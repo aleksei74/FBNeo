@@ -4541,6 +4541,9 @@ void Sh3Cv1kV2Report()
 		(unsigned long long)s.built,(unsigned long long)s.rejected,(unsigned long long)s.changed,
 		(unsigned long long)s.guards,(unsigned long long)s.full,(unsigned long long)s.negative,
 		(unsigned)cv1kV2Code.Used());
+	bprintf(PRINT_UI,_T("CV1K V2 frontend: samples %llu ready %llu setfull %llu retired %llu disabled %llu skipped %llu\n"),
+		(unsigned long long)s.samples,(unsigned long long)s.ready,(unsigned long long)s.setFull,
+		(unsigned long long)s.retired,(unsigned long long)s.disabled,(unsigned long long)s.skipped);
 #endif
 }
 
@@ -4657,7 +4660,11 @@ void Sh3SetCv1kNative(INT32 enable)
 		Cv1kPerformanceOption(getenv("FBNEO_CV1K_JIT_V2")) && Cv1kV2Enable();
 #endif
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 Dynarec V2: %s\n"),
-		cv1kV2Enabled?_T("enabled (stage A, guarded blocks)"):_T("disabled"));
+		cv1kV2Enabled?_T("enabled (stage A-fix, sparse promotion)"):_T("disabled"));
+#if SH3_NATIVE_V2
+	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 lookup-only: %s; 64 KiB pinned directory\n"),
+		cv1kV2LookupOnly?_T("enabled (learn/compile/validate, no native execution)"):_T("disabled"));
+#endif
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.
 	// Retain the experiment but require explicit opt-in.
@@ -4878,6 +4885,7 @@ template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=
 	UINT32 fetchEpoch=0;
 	UINT32 opcode;
 	Cv1kBranchKind branchKind=CV1K_BRANCH_BF;
+	if(NativeV2)Cv1kV2SliceSample();
 start:
 	// Enter native spans only at a run/control-flow boundary, not on
 	// every interpreted instruction. Guest code is still live-checked.
@@ -4933,7 +4941,7 @@ start:
 	}
 #endif
 reload_fetch:
-	if(NativeV2 && Cv1kV2Try()){
+	if(NativeV2 && Cv1kV2Try(pc)){
 		if(m_sh4_icount<=0)goto done;
 		pc=m_pc;remaining=m_sh4_icount;pure=0;
 	}
@@ -5042,7 +5050,7 @@ flow_branch:
 			if(remaining<=0)goto done;
 			// A committed control-flow boundary is a safe native
 			// entry. A cache miss keeps the same-page fetch reuse.
-			if(NativeV2 && Cv1kV2Try()){
+			if(NativeV2 && Cv1kV2Try(pc,pc<nextPC)){
 				if(m_sh4_icount<=0)goto done;
 				pc=m_pc;remaining=m_sh4_icount;
 				goto reload_fetch_no_v2;

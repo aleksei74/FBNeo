@@ -32,6 +32,7 @@ static void CacheTest(){
 }
 static void Init(bool v2,unsigned test=0){
 	setenv("FBNEO_CV1K_JIT_V2",v2?"1":"0",1);
+	setenv("FBNEO_CV1K_V2_LOOKUP_ONLY","0",1);
 	setenv("FBNEO_CV1K_FAST_RAM","0",1);
 	setenv("FBNEO_CV1K_DATA_LOOPS","0",1);
 	setenv("FBNEO_CV1K_DATA_FULL","0",1);
@@ -82,11 +83,12 @@ static std::vector<Snapshot> Scenarios(bool on,unsigned test){
 	// Timer expiry and IRQ/remap remain in original slice machinery.
 	if(test==5){
 		m_timer[0].timer_prescaler=1;m_timer[0].timer_exec=TimerTest;
-		m_timer[0].start(900,0,1,0);
+		m_timer[0].start(11000,0,1,0);
 	}
 	std::vector<Snapshot> states;
 	for(unsigned step=0;step<24;step++){
 		if(step==8){
+			if(on)Check(cv1kV2Stats.ops>0,"warm native execution before mutation");
 			m_pc=0x80000000+start*2;m_delay=0;
 			switch(test){
 			case 0: code[7]=0xe77f;break; // interior opcode changes
@@ -99,7 +101,7 @@ static std::vector<Snapshot> Scenarios(bool on,unsigned test){
 			case 6: break;
 			}
 		}
-		const int budget=step<8?321:(step%7==0?1:30+int(step*7%127));
+		const int budget=step<8?2049:(step%7==0?1:30+int(step*7%127));
 		states.push_back(Snap(Sh3Run_timerhack(budget)));
 	}
 	if(on){
@@ -140,26 +142,103 @@ static void TestPolicy(){
 }
 static void TestBudgetAndEdges(){
 	Init(true);Loop(20,0);
-	Sh3Run_timerhack(1000);
+	Sh3Run_timerhack(15000);
 	Check(cv1kV2Stats.ops>0,"warm block");
 	UINT64 before=cv1kV2Stats.hits;
 	m_pc=0x80000000;m_delay=0;m_test_irq=0;m_sh4_icount=11;
-	Check(!Cv1kV2Try() && cv1kV2Stats.hits==before,"short budget");
+	Check(!Cv1kV2Try(m_pc) && cv1kV2Stats.hits==before,"short budget");
 	m_sh4_icount=100;m_delay=2;
-	Check(!Cv1kV2Try(),"pending delay");
+	Check(!Cv1kV2Try(m_pc),"pending delay");
 	m_delay=0;m_test_irq=1;
-	Check(!Cv1kV2Try(),"pending IRQ");
+	Check(!Cv1kV2Try(m_pc),"pending IRQ");
 	m_test_irq=0;m_pc=0x8000fff0;
-	Check(!Cv1kV2Try(),"page tail");
+	Check(!Cv1kV2Try(m_pc),"page tail");
 	m_pc=0x80000001;
-	Check(!Cv1kV2Try(),"odd PC");
+	Check(!Cv1kV2Try(m_pc),"odd PC");
 	Check(!Cv1kV2Candidate(0x4011),"full literal hook retained");
 	Sh3Exit();
 	Check(!cv1kV2Table && !cv1kV2Code.Used(),"exit releases V2 cache");
 	puts("V2 budget, IRQ, delay, page edge, literal hook and exit PASS");
 }
+// Exercise the formerly catastrophic workload: no eligible blocks and
+// a mixture of short blocks with a small number of compilable loops.
+static void TestFrontend(){
+	Init(true);
+	m_sh4_icount=1000;sh3_end_run=0;
+	const UINT32 base=0x80000000;
+	unsigned positions[5]={};
+	unsigned found=1;
+	for(unsigned pos=64;pos<32768-64 && found<5;pos++)
+		if(Cv1kV2Hash(base+pos*2)==Cv1kV2Hash(base))positions[found++]=pos;
+	Check(found==5,"collision fixture");
+	for(unsigned i=0;i<5;i++){
+		const unsigned pos=positions[i];
+		for(unsigned j=0;j<20;j++)code[pos+j]=0x7001;
+		code[pos+20]=0xa000;code[pos+21]=0x0009;
+	}
+	for(unsigned i=0;i<4;i++){
+		m_pc=base+positions[i]*2;
+		for(unsigned j=0;j<3;j++)Cv1kV2Observe(m_pc);
+		Check(Cv1kV2Find(m_pc)!=NULL,"four-way promotion");
+	}
+	const auto bytes=cv1kV2Code.Used();
+	Check(cv1kV2Stats.built==4,"four distinct blocks");
+	m_pc=base+positions[4]*2;
+	for(unsigned j=0;j<10000;j++)Cv1kV2Observe(m_pc);
+	Check(cv1kV2Stats.setFull==1 && cv1kV2Stats.rejected==1 &&
+		cv1kV2Stats.negative>=9997,"saturated set rejected once");
+	Check(cv1kV2Code.Used()==bytes && cv1kV2Stats.built==4,"collision no code leak");
+	for(unsigned i=0;i<4;i++){
+		m_pc=base+positions[i]*2;m_sh4_icount=1000;
+		Check(Cv1kV2Try(m_pc)==20,"all four compiled blocks preserved");
+	}
+	// A full cache must not sample/allocate/evict on a miss.
+	cv1kV2Full=true;
+	const auto clock=cv1kV2SampleClock;
+	const auto probes=cv1kV2Stats.probes;
+	m_pc=base+positions[4]*2;
+	for(unsigned j=0;j<10000;j++){
+		Check(!Cv1kV2Try(m_pc,true),"full cache miss");
+		Cv1kV2SliceSample();
+	}
+	Check(cv1kV2Stats.probes==probes && cv1kV2SampleClock==clock,"full cache no miss writes");
+	m_pc=base;m_sh4_icount=1000;
+	Check(Cv1kV2Try(m_pc)==20,"full cache preserves hit");
+	code[7]=0xe77f;m_pc=base;m_sh4_icount=1000;
+	Check(!Cv1kV2Try(m_pc) && !Cv1kV2Find(base) &&
+		cv1kV2Stats.retired==1,"full cache still validates live code");
+
+	Init(true);Loop(2,0);
+	m_sh4_icount=1000;m_pc=base;sh3_end_run=0;
+	for(unsigned j=0;j<10000;j++)Cv1kV2Observe(m_pc);
+	Check(cv1kV2Stats.built==0 && cv1kV2Stats.rejected==1 &&
+		cv1kV2Stats.negative==9997,"negative site no repeated scan");
+	const UINT32 key=m_pc>>1;
+	auto &learn=cv1kV2Learn[(key^(key>>10)^(key>>20))&(Cv1kV2LearnEntries-1)];
+	const Cv1kV2Learn saved=learn;
+	Cv1kV2Observe(m_pc);
+	Check(!memcmp(&learn,&saved,sizeof(saved)),"negative lookup read-only");
+	// Remap epoch change permits a previously rejected site to be learned.
+	for(unsigned j=0;j<20;j++)replacement[j]=0x7001;
+	replacement[20]=0xa000;replacement[21]=0x0009;
+	Remap();
+	for(unsigned j=0;j<3;j++)Cv1kV2Observe(m_pc);
+	Check(Cv1kV2Find(m_pc)!=NULL,"negative remap re-learn");
+
+	Init(true);Loop(20,0);
+	m_sh4_icount=1000;sh3_end_run=0;
+	for(unsigned j=0;j<3;j++)Cv1kV2Observe(m_pc);
+	Check(Cv1kV2Find(m_pc)!=NULL,"lookup-only fixture");
+	cv1kV2LookupOnly=true;
+	const auto a=Snap(0);
+	Check(!Cv1kV2Try(m_pc) && cv1kV2Stats.skipped==1 &&
+		!cv1kV2Stats.hits && !cv1kV2Stats.ops,"lookup-only suppresses execution");
+	const auto b=Snap(0);Compare(a,b,99,0);
+	puts("V2 frontend: four-way pinning, collision/full, negative, remap and lookup-only PASS");
+}
 static double Bench(bool on,unsigned kind){
-	Init(on);Loop(kind==0?40:32,kind==0?0:1);
+	Init(on);
+	Loop(kind==0?40:kind==1?32:2,kind==1?1:0);
 	Sh3Run_timerhack(25000);
 	auto t=std::chrono::steady_clock::now();
 	for(unsigned i=0;i<200;i++)Sh3Run_timerhack(25000);
@@ -172,7 +251,7 @@ static double Bench(bool on,unsigned kind){
 int main(int argc,char **){
 	setvbuf(stdout,NULL,_IOLBF,0);
 	if(argc>1){
-		for(unsigned kind=0;kind<2;kind++){
+		for(unsigned kind=0;kind<3;kind++){
 			double a[3],b[3];
 			for(unsigned i=0;i<3;i++)if(i&1){b[i]=Bench(true,kind);a[i]=Bench(false,kind);}
 			else{a[i]=Bench(false,kind);b[i]=Bench(true,kind);}
@@ -187,5 +266,5 @@ int main(int argc,char **){
 		for(unsigned j=0;j<a.size();j++)Compare(a[j],b[j],i,j);
 	}
 	puts("V2 live interpreter differential: 7 x 24 slices PASS");
-	TestBudgetAndEdges();return 0;
+	TestBudgetAndEdges();TestFrontend();return 0;
 }
