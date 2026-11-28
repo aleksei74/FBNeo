@@ -186,6 +186,9 @@ typedef struct ADSP2100STATE
     UINT8    	irq_state[9];
     UINT8    	irq_latch[9];
 
+    UINT16 (*io_read)(UINT32);
+    void (*io_write)(UINT32, UINT16);
+
 	cpu_irq_callback irq_callback;
     //const device_config *device;
 

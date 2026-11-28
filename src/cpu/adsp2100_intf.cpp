@@ -91,6 +91,8 @@ static int Adsp21xxInit(int is2181)
     adsp21xx_data_map = pMemMap->DataMap;
     ResetMemoryMap();
     pADSP = (adsp2100_state*) BurnMalloc(sizeof(adsp2100_state));
+    pADSP->io_read = NULL;
+    pADSP->io_write = NULL;
     if (is2181) {
         adsp2181_init(pADSP, NULL);
         pADSP->pmovlay = pADSP->dmovlay = 0;
