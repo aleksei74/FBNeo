@@ -1,15 +1,15 @@
 // Stage 2.5: callback-free one-cycle stack transfers and control flow.
 // The baseline instruction handlers remain authoritative on guard failure.
-template<bool Store, UINT32 *Reg>
+template<bool Store, UINT32 Sh3HotState::*Reg, bool Regions=false>
 static inline __attribute__((always_inline)) bool Cv1kTryStack(UINT16 opcode)
 {
 	const unsigned n=Rn;
 	const UINT32 ea=m_r[n]-(Store?4:0);
-	UINT8 *p=Cv1kDirectPointer<4,Store>(ea);
+	UINT8 *p=Cv1kDirectPointer<4,Store,Regions>(ea);
 	if(!p)return false;
 	m_ea=ea;
 	if(Store){
-		UINT32 v=*Reg;
+		UINT32 v=sh3Hot.*Reg;
 #ifdef LSB_FIRST
 		v=(v<<16)|(v>>16);
 #endif
@@ -19,17 +19,18 @@ static inline __attribute__((always_inline)) bool Cv1kTryStack(UINT16 opcode)
 #ifdef LSB_FIRST
 		v=(v<<16)|(v>>16);
 #endif
-		*Reg=v;m_r[n]+=4;
+		sh3Hot.*Reg=v;m_r[n]+=4;
 	}
 	return true;
 }
 
+template<bool Regions=false>
 static inline bool Cv1kTryFlowDT(UINT16 opcode,UINT32 nextPC)
 {
 #if BUSY_LOOP_HACKS
 	// DT's original lookahead uses the DATA read map, not fetch.
 	// Preserve MMIO callbacks and the exact existing busy-loop burn.
-	const UINT8 *p=Cv1kDirectPointer<2,false>(nextPC&AM);
+	const UINT8 *p=Cv1kDirectPointer<2,false,Regions>(nextPC&AM);
 	if(!p){CV1K_STAT(dtHandler);return false;}
 	UINT16 next;memcpy(&next,p,2);
 	if(next==0x8bfd){CV1K_STAT(dtBusy);return false;}
@@ -45,18 +46,21 @@ static bool Cv1kPureSlot(UINT16 opcode,UINT32)
 {
 	Op(opcode);return true;
 }
-template<bool Store,UINT32 *Reg>
+template<bool Store,UINT32 Sh3HotState::*Reg,bool Regions>
 static bool Cv1kStackSlot(UINT16 opcode,UINT32)
 {
-	return Cv1kTryStack<Store,Reg>(opcode);
+	return Cv1kTryStack<Store,Reg,Regions>(opcode);
 }
 typedef bool (*Cv1kSlotFn)(UINT16,UINT32);
-static const Cv1kSlotFn cv1kFlowSlots[]={
+template<bool Regions>
+static const Cv1kSlotFn *Cv1kFlowSlots()
+{
+static const Cv1kSlotFn slots[]={
 #define SH3_OPCODE(name) nullptr,
 #define SH3_PURE_OPCODE(name) &Cv1kPureSlot<&name>,
 #define SH3_FLOW_OPCODE(name) &Cv1kPureSlot<&name>,
-#define SH3_MEMORY_OPCODE(name,width,store,form) &Cv1kTryDirectMove<width,store,form>,
-#define SH3_STACK_OPCODE(name,store,reg) &Cv1kStackSlot<store,&reg>,
+#define SH3_MEMORY_OPCODE(name,width,store,form) &Cv1kTryDirectMove<width,store,form,Regions>,
+#define SH3_STACK_OPCODE(name,store,reg) &Cv1kStackSlot<store,&Sh3HotState::reg,Regions>,
 #include "sh3_decode_ops.inc"
 #undef SH3_STACK_OPCODE
 #undef SH3_MEMORY_OPCODE
@@ -64,7 +68,9 @@ static const Cv1kSlotFn cv1kFlowSlots[]={
 #undef SH3_PURE_OPCODE
 #undef SH3_OPCODE
 };
-static_assert(sizeof(cv1kFlowSlots)/sizeof(cv1kFlowSlots[0])==SH3_ID_COUNT,"slot decoder order");
+static_assert(sizeof(slots)/sizeof(slots[0])==SH3_ID_COUNT,"slot decoder order");
+return slots;
+}
 
 enum Cv1kBranchKind {
 	CV1K_BRANCH_BF,CV1K_BRANCH_BFS,CV1K_BRANCH_BRA,CV1K_BRANCH_BRAF,
@@ -73,6 +79,7 @@ enum Cv1kBranchKind {
 };
 struct Cv1kFlowResult {UINT32 target,ppc;INT32 cost;bool slot;};
 
+template<bool Regions=false>
 static inline bool Cv1kTryFlowBranch(Cv1kBranchKind kind,UINT16 opcode,UINT32 nextPC,
 	INT32 available,const UINT16 *sequential,Cv1kFlowResult &out)
 {
@@ -141,7 +148,7 @@ static inline bool Cv1kTryFlowBranch(Cv1kBranchKind kind,UINT16 opcode,UINT32 ne
 		else if((op&0xf00f)==0x6003)MOV(op);
 		else if((op&0xf00f)==0x600e)EXTSB(op);
 		else {
-			Cv1kSlotFn fn=cv1kFlowSlots[sh3OpIds[op]];
+			Cv1kSlotFn fn=Cv1kFlowSlots<Regions>()[sh3OpIds[op]];
 			if(!fn){CV1K_STAT(branchReject[5]);return false;}
 			const UINT32 oldEA=m_ea,oldPR=m_pr;
 			if(setEA)m_ea=target;

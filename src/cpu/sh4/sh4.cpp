@@ -54,26 +54,39 @@ static int c_md7;
 static int c_md8;
 static int c_clock;
 
-static UINT32  m_ppc;
-static UINT32  m_pc;
-static UINT32  m_spc;
-static UINT32  m_pr;
-static UINT32  m_sr;
-static UINT32  m_ssr;
-static UINT32  m_gbr;
-static UINT32  m_vbr;
-static UINT32  m_mach;
-static UINT32  m_macl;
-static UINT32  m_r[16];
+// Keep the frequently accessed integer state under one base address.
+// Reference aliases preserve all existing handler and SCAN_VAR names;
+// only host placement changes. Never serialize the whole structure.
+struct alignas(64) Sh3HotState {
+	UINT32 r[16];
+	UINT32 sr,pc,ppc,pr,gbr,mach,macl,ea;
+	int icount;
+	INT32 total_cycles;
+	UINT32 delay,test_irq,cpu_off,pending_irq,spc,ssr,vbr;
+};
+static Sh3HotState sh3Hot;
+static UINT32 (&m_r)[16]=sh3Hot.r;
+static int &m_sh4_icount=sh3Hot.icount;
+static INT32 &sh3_total_cycles=sh3Hot.total_cycles;
+static UINT32 &m_ppc=sh3Hot.ppc;
+static UINT32 &m_pc=sh3Hot.pc;
+static UINT32 &m_spc=sh3Hot.spc;
+static UINT32 &m_pr=sh3Hot.pr;
+static UINT32 &m_sr=sh3Hot.sr;
+static UINT32 &m_ssr=sh3Hot.ssr;
+static UINT32 &m_gbr=sh3Hot.gbr;
+static UINT32 &m_vbr=sh3Hot.vbr;
+static UINT32 &m_mach=sh3Hot.mach;
+static UINT32 &m_macl=sh3Hot.macl;
 static UINT32  m_rbnk[2][8];
 static UINT32  m_sgr;
 static UINT32  m_fr[16];
 static UINT32  m_xf[16];
-static UINT32  m_ea;
-static UINT32  m_delay;
-static UINT32  m_cpu_off;
-static UINT32  m_pending_irq;
-static UINT32  m_test_irq;
+static UINT32 &m_ea=sh3Hot.ea;
+static UINT32 &m_delay=sh3Hot.delay;
+static UINT32 &m_cpu_off=sh3Hot.cpu_off;
+static UINT32 &m_pending_irq=sh3Hot.pending_irq;
+static UINT32 &m_test_irq=sh3Hot.test_irq;
 static UINT32  m_fpscr;
 static UINT32  m_fpul;
 static UINT32  m_dbr;
@@ -152,7 +165,6 @@ static int     m_dma_source_increment[4];
 static int     m_dma_destination_increment[4];
 static int     m_dma_mode[4];
 
-static int     m_sh4_icount;
 static int     m_is_slave;
 static int     m_cpu_clock;
 static int     m_bus_clock;
@@ -186,7 +198,6 @@ static int     m_cpu_type;
 static UINT32  m_sh3internal_upper[0x3000/4];
 static UINT32  m_sh3internal_lower[0x1000];
 
-static INT32   sh3_total_cycles; // used externally (drivers/etc)
 
 static INT32   sh3_end_run;
 
@@ -618,6 +629,7 @@ static pSh3ReadLongHandler cv1kIdleHandler;
 // Mapping or handler changes revoke this authorization before mutation.
 static UINT8 *cv1kFastRamBase,*cv1kFastRomBase;
 static UINT32 cv1kFastRamMask,cv1kFastIdleAddress;
+static bool cv1kIdleBatchEnabled;
 static void Cv1kInvalidateFastMemory()
 {
 	cv1kFastRamBase=cv1kFastRomBase=NULL;
@@ -633,7 +645,11 @@ static bool Cv1kIsIdlePage(UINT8 *page)
 void Sh3SetCv1kFastMemory(UINT8 *ram,UINT32 ramSize,UINT8 *rom)
 {
 	Cv1kInvalidateFastMemory();
-	const bool requested=Cv1kPerformanceOption(getenv("FBNEO_CV1K_FAST_RAM"));
+	// Full region shortcuts regressed on the RK3566. Keep them opt-in,
+	// independently of the first-page aligned long-load rescue.
+	const bool requested=Cv1kPerformanceOption(getenv("FBNEO_CV1K_FAST_RAM"),false);
+	cv1kIdleBatchEnabled=!SH3_WAIT_STATE_ACTIVE &&
+		Cv1kPerformanceOption(getenv("FBNEO_CV1K_IDLE_BATCH"));
 	bool ramOK=requested && !SH3_WAIT_STATE_ACTIVE && ram &&
 		(ramSize==0x800000 || ramSize==0x1000000);
 	UINT32 idle=~UINT32(0);
@@ -657,6 +673,8 @@ void Sh3SetCv1kFastMemory(UINT8 *ram,UINT32 ramSize,UINT8 *rom)
 	if(romOK)cv1kFastRomBase=rom;
 	bprintf(PRINT_UI,_T("CV1000 SH3 validated direct RAM: %s, ROM: %s, idle exception: %08x\n"),
 		ramOK?_T("enabled"):_T("disabled"),romOK?_T("enabled"):_T("disabled"),cv1kFastIdleAddress);
+	bprintf(PRINT_UI,_T("CV1000 SH3 batched idle-page rescue: %s\n"),
+		(cv1kIdleBatchEnabled && Cv1kIsIdlePage(MemMapRL[0xc00]))?_T("enabled"):_T("disabled"));
 }
 static pSh3ReadLongHandler cv1kPollReadHandler;
 static pSh3Cv1kPollPeek cv1kPollPeek;
@@ -709,7 +727,7 @@ static INT32 Sh3MapInit()
 	memset(MemMapF, 0, sizeof(MemMapF));
 	++sh3FetchMapEpoch;
 	Cv1kInvalidateFastMemory();
-	cv1kIdlePage=NULL;
+	cv1kIdlePage=NULL;cv1kIdleBatchEnabled=false;
 	Sh3SetCv1kPollRead(NULL,NULL);
 
 	return 0;
@@ -1061,7 +1079,7 @@ void Sh3Init(INT32 num, INT32 hz, char md0, char md1, char md2, char md3, char m
 void Sh3Exit()
 {
 	Cv1kInvalidateFastMemory();
-	cv1kIdlePage=NULL;
+	cv1kIdlePage=NULL;cv1kIdleBatchEnabled=false;
 	Sh3Cv1kDmaPerfEnable(false);
 	Sh3SetCv1kPollRead(NULL,NULL);
 	Sh3SetCv1kNative(0);
@@ -4767,7 +4785,7 @@ finished:
 // operations. Slow handlers see exactly the published state they saw in
 // the original interpreter (including memory callbacks and IRQ tests).
 // Delay slots and pending IRQs use the original single-step path.
-template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=Dense, bool DirectMem=false, bool Flow=false> static int Sh3Run_timerhack_batch(int cycles)
+template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=Dense, bool DirectMem=false, bool Flow=false, bool Regions=false> static int Sh3Run_timerhack_batch(int cycles)
 {
 	static const void *const handlers[]={
 #define SH3_OPCODE(name) &&batch_op_##name,
@@ -4811,7 +4829,7 @@ template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=
 	const UINT16 *fetch=NULL;
 	INT32 window=0;
 	UINT32 fetchEpoch=0;
-	UINT16 opcode;
+	UINT32 opcode;
 	Cv1kBranchKind branchKind=CV1K_BRANCH_BF;
 start:
 	// Enter native spans only at a run/control-flow boundary, not on
@@ -4891,6 +4909,7 @@ fast_next:
 	if (!FetchPage) pc+=2;
 	goto *(void *)(base+offsets[Dense?Sh3DispatchKey(opcode):opcode]);
 #define SH3_SLOW_BODY(name) \
+	if(Flow)goto shared_slow; \
 	if (FetchPage) pc+=(pure+1)*2; \
 	m_pc=m_ppc=pc; m_sh4_icount=remaining-(FetchPage?pure:0); sh3_total_cycles+=pure; \
 	name(opcode); \
@@ -4899,7 +4918,7 @@ fast_next:
 	goto slow_finished;
 #define SH3_OPCODE(name) batch_op_##name: SH3_SLOW_BODY(name)
 #define SH3_MEMORY_OPCODE(name,width,store,form) batch_op_##name: \
-	if(DirectMem && Cv1kTryDirectMove<width,store,form>(opcode,pc+(pure+1)*2))goto direct_finished; \
+	if(DirectMem && Cv1kTryDirectMove<width,store,form,Regions>(opcode,pc+(pure+1)*2))goto direct_finished; \
 	SH3_SLOW_BODY(name)
 #define SH3_FLOW_OPCODE(name) batch_op_##name: \
 	if(Flow){name(opcode);goto flow_seq;} \
@@ -4910,10 +4929,10 @@ fast_next:
 #define SH3_FLOW_TEST(counter)
 #endif
 #define SH3_STACK_OPCODE(name,store,reg) batch_op_##name: \
-	if(Flow && Cv1kTryStack<store,&reg>(opcode)){SH3_FLOW_TEST(cv1kFlowStackHits) goto flow_seq;} \
+	if(Flow && Cv1kTryStack<store,&Sh3HotState::reg,Regions>(opcode)){SH3_FLOW_TEST(cv1kFlowStackHits) goto flow_seq;} \
 	SH3_SLOW_BODY(name)
 #define SH3_DT_OPCODE(name) batch_op_##name: \
-	if(Flow && Cv1kTryFlowDT(opcode,pc+(pure+1)*2)){SH3_FLOW_TEST(cv1kFlowDTHits) goto flow_seq;} \
+	if(Flow && Cv1kTryFlowDT<Regions>(opcode,pc+(pure+1)*2)){SH3_FLOW_TEST(cv1kFlowDTHits) goto flow_seq;} \
 	SH3_SLOW_BODY(name)
 #define SH3_BRANCH_OPCODE(name,kind) batch_op_##name: \
 	if(Flow){ \
@@ -4925,7 +4944,8 @@ fast_next:
 #define SH3_PURE_OPCODE(name) batch_op_##name: \
 	if(FetchPage && (&name==&CMPPZ) && cv1kDataFullEnabled && \
 		pc+pure*2==cv1kDataHeadPC && remaining-pure>=4)goto data_head; \
-	name(opcode); ++pure; if (FetchPage?--window>0:--remaining>0) goto fast_next; \
+	name(opcode); if(Flow)goto batched_finished; \
+	++pure; if (FetchPage?--window>0:--remaining>0) goto fast_next; \
 	if (FetchPage) {remaining-=pure; pc+=pure*2;} \
 	m_pc=m_ppc=pc; m_sh4_icount=remaining; sh3_total_cycles+=pure; \
 	if (FetchPage && remaining>0) {pure=0; goto reload_fetch;} goto done;
@@ -4943,7 +4963,7 @@ flow_branch:
 	{
 		const UINT32 nextPC=pc+(pure+1)*2;
 		Cv1kFlowResult r;
-		if(Cv1kTryFlowBranch(branchKind,opcode,nextPC,remaining-pure,
+		if(Cv1kTryFlowBranch<Regions>(branchKind,opcode,nextPC,remaining-pure,
 			fetchEpoch==sh3FetchMapEpoch?fetch:nullptr,r)){
 #if defined(SH3_INTERPRETER_TEST)
 			++cv1kFlowBranchHits;
@@ -4966,13 +4986,18 @@ flow_branch:
 		}
 		// Unsupported slots, short slices and speedhack edges take
 		// the exact original branch handler and post-branch probes.
-		pc=nextPC;m_pc=m_ppc=pc;
-		m_sh4_icount=remaining-pure;sh3_total_cycles+=pure;
-		Cv1kDispatchSlot(opcode);
-		if(branchKind==CV1K_BRANCH_BF && !(m_sr&T) &&
-			(cv1kInterpLoopsEnabled || (opcode==0x8bfa && cv1kDataLoopsEnabled)))goto interp_bf;
-		goto slow_finished;
+		goto shared_slow;
 	}
+shared_slow:
+	// The Flow dispatcher publishes state in one common cold tail.
+	// The same decoder table as ordinary delay slots selects the
+	// authoritative instruction handler, including every callback.
+	if(FetchPage)pc+=(pure+1)*2;
+	m_pc=m_ppc=pc;m_sh4_icount=remaining-(FetchPage?pure:0);sh3_total_cycles+=pure;
+	Cv1kDispatchSlot(opcode);
+	if(FetchPage && sh3OpIds[opcode]==SH3_ID_BF && !(m_sr&T) &&
+		(cv1kInterpLoopsEnabled || (opcode==0x8bfa && cv1kDataLoopsEnabled)))goto interp_bf;
+	goto slow_finished;
 flow_seq:
 #if defined(SH3_INTERPRETER_TEST)
 	++cv1kFlowSeqHits;
@@ -5047,8 +5072,16 @@ static int Sh3Run_timerhack(int cycles)
 #if SH3_FLAT_DISPATCH
 	if(cv1kFetchPageEnabled) {
 		if(cv1kDispatch8Enabled)return Sh3Run_timerhack_batch<false,true,true>(cycles);
-		if(cv1kFlowEnabled)return Sh3Run_timerhack_batch<false,true,false,true,true,true>(cycles);
-		if(cv1kDirectMemEnabled)return Sh3Run_timerhack_batch<false,true,false,true,true>(cycles);
+		if(cv1kFlowEnabled){
+			if(cv1kFastRamBase || cv1kFastRomBase)
+				return Sh3Run_timerhack_batch<false,true,false,true,true,true,true>(cycles);
+			return Sh3Run_timerhack_batch<false,true,false,true,true,true>(cycles);
+		}
+		if(cv1kDirectMemEnabled){
+			if(cv1kFastRamBase || cv1kFastRomBase)
+				return Sh3Run_timerhack_batch<false,true,false,true,true,false,true>(cycles);
+			return Sh3Run_timerhack_batch<false,true,false,true,true>(cycles);
+		}
 		if(cv1kSlowFetchReuseEnabled)return Sh3Run_timerhack_batch<false,true,false,true>(cycles);
 		return Sh3Run_timerhack_batch<false,true>(cycles);
 	}

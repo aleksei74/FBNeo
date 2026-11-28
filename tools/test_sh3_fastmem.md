@@ -17,11 +17,13 @@ callbacks. DT lookahead continues using the *data* read mapping, not
 the instruction fetch mapping. No clock, timer schedule, DIP, state
 serialization, data-loop default or display changes.
 
-Native Linux ARM64 libretro enables FBNEO_CV1K_FAST_RAM by default.
-Explicit FBNEO_CV1K_FAST_RAM=0 disables registered region shortcuts
-and the idle-page exception for batched loads. The normal map fallback
-remains; this is not a byte-identical build of the previous commit.
-The startup log prints validated direct RAM/ROM and exact idle address.
+Stage 2.7 changes the default following the RK3566 stage 2.6 regression.
+FBNEO_CV1K_FAST_RAM=0 is now the default; full region shortcuts remain
+opt-in with 1. FBNEO_CV1K_IDLE_BATCH=1 is the independent native Linux
+ARM64 libretro default, rescuing only aligned non-idle long reads in
+the registered idle page after live mapping/handler checks. Explicit
+IDLE_BATCH=0 disables that rescue. The normal map fallback remains.
+The startup log prints both policies. See test_sh3_hotstate.md.
 
 ## Diagnostic build (2.6B)
 
@@ -44,7 +46,7 @@ Use the ordinary CV1K POLL/DATA statistics with these counts. Do not
 compare diagnostic build timing against normal build timing.
 
 For game A/B, use the same normal build/launcher/display/clock settings:
-FBNEO_CV1K_FAST_RAM=1 vs 0; independently compare
+FBNEO_CV1K_FAST_RAM=1 vs 0 (hold IDLE_BATCH fixed); independently compare
 FBNEO_CV1K_DATA_LOOPS=1 vs 0 (DATA_FULL automatically follows its
 prerequisite). No data-loop policy change until real-device evidence.
 Recommended log window: mmpork frames 6000-6840, plus startup.

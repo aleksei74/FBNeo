@@ -18,8 +18,9 @@ static UINT32 __fastcall IdleCallback(UINT32 a){
 	return v;
 }
 static UINT32 __fastcall NewHandler(UINT32 a){Observe(11,a);return 0x76543210;}
-static void InitMem(bool fast,unsigned size,bool idle=true){
+static void InitMem(bool fast,unsigned size,bool idle=true,int idleBatch=-1){
 	setenv("FBNEO_CV1K_FAST_RAM",fast?"1":"0",1);
+	setenv("FBNEO_CV1K_IDLE_BATCH",(idleBatch<0?fast:idleBatch!=0)?"1":"0",1);
 	setenv("FBNEO_CV1K_IDLE_DIRECT","1",1);
 	Setup(9,0);
 	// The generic fixture mapped code writable; MAP_ROM does not clear
@@ -47,8 +48,8 @@ static void StoreLong(UINT16 *p,UINT32 val){
 	memcpy(p,&val,4);
 }
 struct Result {State s;UINT32 pr,mem[8];};
-static Result Run(bool fast,unsigned size,unsigned kind,unsigned budget){
-	InitMem(fast,size);
+static Result Run(bool fast,unsigned size,unsigned kind,unsigned budget,int idleBatch=-1){
+	InitMem(fast,size,true,idleBatch);
 	const UINT32 addr[]={0x8c000100,0xac00230c,0x8c002310,0xac002314,
 		0x8c800100,0x8cfffffc,0x8c000101,0x8d000100,0x80000300,0x8c010000};
 	UINT32 a=addr[kind];
@@ -93,38 +94,38 @@ static void Pointers(){
 #else
 				UINT8 *byte=p;
 #endif
-				Check(Cv1kDirectPointer<1,false>(a)==byte && Cv1kDirectPointer<1,true>(a)==byte,"byte mapping");
-				Check(Cv1kDirectPointer<2,false>(a)==((o&1)?nullptr:p),"word mapping");
-				Check(Cv1kDirectPointer<4,false>(a)==((o&3)?nullptr:p),"long mapping");
-				Check(Cv1kDirectPointer<4,true>(a)==((o&3)?nullptr:p),"store mapping");
+				Check(Cv1kDirectPointer<1,false,true>(a)==byte && Cv1kDirectPointer<1,true,true>(a)==byte,"byte mapping");
+				Check(Cv1kDirectPointer<2,false,true>(a)==((o&1)?nullptr:p),"word mapping");
+				Check(Cv1kDirectPointer<4,false,true>(a)==((o&3)?nullptr:p),"long mapping");
+				Check(Cv1kDirectPointer<4,true,true>(a)==((o&3)?nullptr:p),"store mapping");
 			}
 		}
-		Check(!Cv1kDirectPointer<4,false>(0x8c002310),"idle exception");
-		Check(Cv1kDirectPointer<4,true>(0x8c002310)==(UINT8*)ram+0x2310,"idle write allowed");
-		Check(Cv1kDirectPointer<4,false>(0x8c00230c)==(UINT8*)ram+0x230c,"idle page neighbor");
-		Check(Cv1kDirectPointer<4,false>(0x8c002314)==(UINT8*)ram+0x2314,"idle page neighbor 2");
-		Check(!Cv1kDirectPointer<4,false>(0xec000100),"P4 not masked");
-		Check(!Cv1kDirectPointer<4,true>(0x80000004),"ROM write not allowed");
-		Check(Cv1kDirectPointer<4,false>(0xa03ffffc)==(UINT8*)rom+0x3ffffc,"ROM end");
+		Check(!Cv1kDirectPointer<4,false,true>(0x8c002310),"idle exception");
+		Check(Cv1kDirectPointer<4,true,true>(0x8c002310)==(UINT8*)ram+0x2310,"idle write allowed");
+		Check(Cv1kDirectPointer<4,false,true>(0x8c00230c)==(UINT8*)ram+0x230c,"idle page neighbor");
+		Check(Cv1kDirectPointer<4,false,true>(0x8c002314)==(UINT8*)ram+0x2314,"idle page neighbor 2");
+		Check(!Cv1kDirectPointer<4,false,true>(0xec000100),"P4 not masked");
+		Check(!Cv1kDirectPointer<4,true,true>(0x80000004),"ROM write not allowed");
+		Check(Cv1kDirectPointer<4,false,true>(0xa03ffffc)==(UINT8*)rom+0x3ffffc,"ROM end");
 		Sh3MapMemory((UINT8*)other,0xc000000,0xc00ffff,MAP_READ);
 		Check(!cv1kFastRamBase && !cv1kFastRomBase,"read remap revokes direct regions");
-		Check(Cv1kDirectPointer<4,false>(0x8c002310)==(UINT8*)other+0x2310,"remap uses live map");
+		Check(Cv1kDirectPointer<4,false,true>(0x8c002310)==(UINT8*)other+0x2310,"remap uses live map");
 		Sh3SetCv1kFastMemory((UINT8*)ram,size,(UINT8*)rom);
 		Check(!cv1kFastRamBase && cv1kFastRomBase,"bad RAM region rejected independently");
 		InitMem(true,size);
 		Sh3MapHandler(1,0xc010000,0xc01ffff,MAP_WRITE);
-		Check(!cv1kFastRamBase && !Cv1kDirectPointer<4,true>(0x8c010004),"write handler revokes");
+		Check(!cv1kFastRamBase && !Cv1kDirectPointer<4,true,true>(0x8c010004),"write handler revokes");
 		InitMem(true,size);
 		Sh3SetReadLongHandler(1,NewHandler);
-		Check(!cv1kFastRamBase && !Cv1kDirectPointer<4,false>(0x8c002314),"idle handler replacement revokes");
+		Check(!cv1kFastRamBase && !Cv1kDirectPointer<4,false,true>(0x8c002314),"idle handler replacement revokes");
 		InitMem(true,size);
 		Sh3MapReadLongHandler(1,0xc010000,0xc01ffff);
-		Check(!cv1kFastRamBase && !Cv1kDirectPointer<4,false>(0x8c010004),"long map revokes");
+		Check(!cv1kFastRamBase && !Cv1kDirectPointer<4,false,true>(0x8c010004),"long map revokes");
 		InitMem(true,size);
 		Sh3MapMemory((UINT8*)other,0,0xffff,MAP_FETCHOP);
 		Check(!cv1kFastRomBase && !cv1kFastRamBase,"fetch remap revokes");
 		InitMem(true,size,false);
-		Check(Cv1kDirectPointer<4,false>(0x8c002310)==(UINT8*)ram+0x2310,"no idle handler");
+		Check(Cv1kDirectPointer<4,false,true>(0x8c002310)==(UINT8*)ram+0x2310,"no idle handler");
 		Sh3Exit();Check(!cv1kFastRamBase && !cv1kFastRomBase,"exit revokes");
 	}
 	puts("CV1000 direct region validation: Type B/C mirrors, Type D, all 256 RAM pages, ROM, handlers and remaps PASS");
@@ -138,10 +139,21 @@ static void Execution(){
 			fprintf(stderr,"fast memory mismatch size=%x kind=%u budget=%u pc=%x/%x cycles=%d/%d\n",
 				size,kind,budget,a.s.pc,b.s.pc,a.s.spent,b.s.spent);exit(1);
 		}
+		const auto c=Run(false,size,kind,budget,1);
+		if(memcmp(&a,&c,sizeof(a))){
+			fprintf(stderr,"idle-only mismatch size=%x kind=%u budget=%u\n",size,kind,budget);exit(1);
+		}
 		cases++;
 	}
 	ExactIdle();
-	printf("CV1000 fast RAM/ROM MOV, stack, fused-slot, idle burn: %u differential slices PASS\n",cases);
+	printf("CV1000 full-region and idle-only MOV/stack/slot: %u scenarios x 2 paths PASS\n",cases);
+	InitMem(false,0x800000,true,1);
+	Check(!cv1kFastRamBase && !cv1kFastRomBase && cv1kIdleBatchEnabled,"independent idle-only policy");
+	Check(Cv1kDirectPointer<4,false>(0x8c002314)==(UINT8*)ram+0x2314,"idle-only neighbor");
+	Check(!Cv1kDirectPointer<4,false>(0x8c002310),"idle-only exact address stays slow");
+	Sh3SetReadLongHandler(1,NewHandler);
+	Check(!Cv1kDirectPointer<4,false>(0x8c002314),"idle-only replacement not bypassed");
+	puts("CV1000 independent idle-only policy and live-handler guard PASS");
 }
 static double Bench(bool fast,unsigned kind){
 	InitMem(fast,0x800000);
