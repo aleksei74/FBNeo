@@ -61,11 +61,13 @@ static void Setup(unsigned mode,unsigned test) {
     setenv("FBNEO_CV1K_FETCH_REUSE",mode>=4?"1":"0",1);
     setenv("FBNEO_CV1K_DIRECT_MEM",mode==6 || mode>=8?"1":"0",1);
     setenv("FBNEO_CV1K_SLOT_DISPATCH",mode>=7?"1":"0",1);
-    setenv("FBNEO_CV1K_FLOW",mode==9?"1":"0",1);
+    setenv("FBNEO_CV1K_FLOW",mode>=9?"1":"0",1);
+    setenv("FBNEO_CV1K_PCREL_DISPATCH",mode==9?"1":"0",1);
     Sh3MapInit();Sh3SetCv1kNative(1);
     Check(!cv1kNativeEnabled && cv1kFetchPageEnabled==(mode>=2) &&
         cv1kDispatch8Enabled==(mode==3 || mode==4) && cv1kSlowFetchReuseEnabled==(mode>=4) &&
-        cv1kDirectMemEnabled==(mode==6 || mode>=8) && cv1kSlotDispatchEnabled==(mode>=7) && cv1kFlowEnabled==(mode==9),"policy");
+        cv1kDirectMemEnabled==(mode==6 || mode>=8) && cv1kSlotDispatchEnabled==(mode>=7) && cv1kFlowEnabled==(mode>=9) &&
+        cv1kPCRelEnabled==(SH3_CV1K_PCREL && mode==9),"policy");
     for(unsigned i=0;i<65536;i++){code[i]=0x7001;replacement[i]=0x7203;}
     memset(data,0,sizeof(data));
     Sh3MapMemory((UINT8*)code,0,0x1ffff,MAP_RAM);
@@ -162,7 +164,8 @@ static State Run(unsigned mode,unsigned test,unsigned seed) {
     if(mode>=2 && test!=9 && test!=12)Check(cv1kFetchPageActive,"fetch-page path did not execute");
     if((mode==3 || mode==4) && test!=9 && test!=12)Check(cv1kDispatch8Active,"dense path did not execute");
     if((mode==6 || mode>=8) && test!=9 && test!=12)Check(cv1kDirectMemActive,"direct path did not execute");
-    if(mode==9 && test!=9 && test!=12)Check(cv1kFlowActive,"flow path did not execute");
+    if(mode>=9 && test!=9 && test!=12)Check(cv1kFlowActive,"flow path did not execute");
+    if(SH3_CV1K_PCREL && mode==9 && test!=9 && test!=12)Check(cv1kPCRelActive,"PC-relative path did not execute");
     return Save(spent);
 }
 static void TestPure() {
@@ -176,7 +179,7 @@ static void TestPure() {
     Setup(2,0);
     for(unsigned op=0;op<65536;op++)if(pure[sh3OpIds[op]]) {
         State expected={};
-        for(unsigned mode=0;mode<8;mode++) {
+        for(unsigned mode=0;mode<(SH3_CV1K_PCREL?9u:8u);mode++) {
             // A varied register state plus a trailing MMIO callback checks
             // both pure-op results and publication before the next handler.
             cv1kFlatEnabled=cv1kBatchEnabled=mode!=0;
@@ -184,8 +187,10 @@ static void TestPure() {
             cv1kDispatch8Enabled=mode==3 || mode==4;
             cv1kSlowFetchReuseEnabled=mode>=4;
             cv1kDirectMemEnabled=mode>=6;
-            cv1kSlotDispatchEnabled=mode==7;
-            cv1kFlowEnabled=mode==7;
+            cv1kSlotDispatchEnabled=mode>=7;
+            cv1kFlowEnabled=mode>=7;
+            cv1kPCRelEnabled=mode==8;
+            cv1kPCRelActive=false;
             m_pc=0x80000000;m_ppc=m_ea=m_delay=0;
             cv1kFetchPageActive=false;cv1kDispatch8Active=false;
             m_test_irq=m_pending_irq=m_cpu_off=0;
@@ -202,6 +207,7 @@ static void TestPure() {
             code[0]=code[1]=UINT16(op);code[2]=0xc600;
             State got=Save(Sh3Run_timerhack(3));
             if(mode>=2)Check(cv1kFetchPageActive,"pure fetch-page path did not execute");
+            if(mode==8)Check(cv1kPCRelActive,"pure PC-relative path did not execute");
             if(mode==3 || mode==4)Check(cv1kDispatch8Active,"pure dense path did not execute");
             if(!mode)expected=got;else if(memcmp(&got,&expected,sizeof(got))){
                 fprintf(stderr,"pure opcode=%04x mode=%u pc=%08x/%08x ppc=%08x/%08x ea=%08x/%08x sr=%08x/%08x trace=%llx/%llx hits=%u/%u\n",op,mode,got.pc,expected.pc,got.ppc,expected.ppc,got.ea,expected.ea,got.sr,expected.sr,(unsigned long long)got.trace,(unsigned long long)expected.trace,got.hits,expected.hits);
@@ -212,7 +218,7 @@ static void TestPure() {
         }
         count++;
     }
-    printf("SH3 pure encodings and callback publication: %u x 8 modes PASS\n",count);
+    printf("SH3 pure encodings and callback publication: %u x %u modes PASS\n",count,SH3_CV1K_PCREL?9:8);
 }
 // Independent 64-bit signed oracle, including aliased source/destination.
 static void TestOverflow() {
@@ -301,7 +307,7 @@ static void TestDefaultPolicy() {
     const char *options[]={
         "JIT","DISPATCH","COMPACT","BATCH","FETCH_PAGE","DISPATCH8",
         "FETCH_REUSE","INTERP_LOOPS","DATA_LOOPS","DATA_FULL","POLL","TIMER_FAST",
-        "VRAM16","BLIT_TILES","DIRECT_MEM","SLOT_DISPATCH","FLOW"
+        "VRAM16","BLIT_TILES","DIRECT_MEM","SLOT_DISPATCH","FLOW","PCREL_DISPATCH"
     };
     for(const char *key:options) {
         char name[64];snprintf(name,sizeof(name),"FBNEO_CV1K_%s",key);
@@ -318,19 +324,20 @@ static void TestDefaultPolicy() {
     Check(cv1kSlowFetchReuseEnabled==expected && cv1kDataLoopsEnabled==expected &&
         cv1kDataFullEnabled==expected && cv1kPollEnabled==expected &&
         cv1kTimerFastEnabled==expected && cv1kDirectMemEnabled==expected &&
-        cv1kSlotDispatchEnabled==expected && cv1kFlowEnabled==expected,"default CV1000 CPU preset");
+        cv1kSlotDispatchEnabled==expected && cv1kFlowEnabled==expected &&
+        cv1kPCRelEnabled==(expected && SH3_CV1K_PCREL),"default CV1000 CPU preset");
     Check(Cv1kPerformanceOption(getenv("FBNEO_CV1K_VRAM16"))==expected &&
         Cv1kPerformanceOption(getenv("FBNEO_CV1K_BLIT_TILES"))==expected,
         "default CV1000 graphics policy");
     Check(!Cv1kPerformanceOption("0") && Cv1kPerformanceOption("1"),"explicit option overrides");
-    const char *fast[]={"FETCH_REUSE","DATA_LOOPS","DATA_FULL","POLL","TIMER_FAST","DIRECT_MEM","SLOT_DISPATCH","FLOW"};
+    const char *fast[]={"FETCH_REUSE","DATA_LOOPS","DATA_FULL","POLL","TIMER_FAST","DIRECT_MEM","SLOT_DISPATCH","FLOW","PCREL_DISPATCH"};
     for(const char *key:fast) {
         char name[64];snprintf(name,sizeof(name),"FBNEO_CV1K_%s",key);
         setenv(name,"1",1);
     }
     Sh3SetCv1kNative(1);
     Check(cv1kSlowFetchReuseEnabled && cv1kDataLoopsEnabled && cv1kDataFullEnabled &&
-        cv1kPollEnabled && cv1kTimerFastEnabled && cv1kDirectMemEnabled && cv1kSlotDispatchEnabled && cv1kFlowEnabled,"explicit enabled preset");
+        cv1kPollEnabled && cv1kTimerFastEnabled && cv1kDirectMemEnabled && cv1kSlotDispatchEnabled && cv1kFlowEnabled && cv1kPCRelEnabled==bool(SH3_CV1K_PCREL),"explicit enabled preset");
     setenv("FBNEO_CV1K_DATA_LOOPS","0",1);
     Sh3SetCv1kNative(1);
     Check(!cv1kDataLoopsEnabled && !cv1kDataFullEnabled,"full literal requires data loops");
@@ -338,18 +345,18 @@ static void TestDefaultPolicy() {
     setenv("FBNEO_CV1K_FETCH_PAGE","0",1);
     Sh3SetCv1kNative(1);
     Check(!cv1kFetchPageEnabled && !cv1kSlowFetchReuseEnabled && !cv1kDataLoopsEnabled &&
-        !cv1kDataFullEnabled && !cv1kPollEnabled && !cv1kDirectMemEnabled && !cv1kSlotDispatchEnabled && !cv1kFlowEnabled,"fetch-page dependency");
+        !cv1kDataFullEnabled && !cv1kPollEnabled && !cv1kDirectMemEnabled && !cv1kSlotDispatchEnabled && !cv1kFlowEnabled && !cv1kPCRelEnabled,"fetch-page dependency");
     unsetenv("FBNEO_CV1K_FETCH_PAGE");
     Sh3SetCv1kNative(0);
     Check(!cv1kSlowFetchReuseEnabled && !cv1kDataLoopsEnabled && !cv1kDataFullEnabled &&
-        !cv1kPollEnabled && !cv1kTimerFastEnabled && !cv1kDirectMemEnabled && !cv1kSlotDispatchEnabled && !cv1kFlowEnabled,"non-CV1000 isolation");
+        !cv1kPollEnabled && !cv1kTimerFastEnabled && !cv1kDirectMemEnabled && !cv1kSlotDispatchEnabled && !cv1kFlowEnabled && !cv1kPCRelEnabled,"non-CV1000 isolation");
     for(const char *key:fast) {
         char name[64];snprintf(name,sizeof(name),"FBNEO_CV1K_%s",key);
         setenv(name,"0",1);
     }
     Sh3SetCv1kNative(1);
     Check(!cv1kSlowFetchReuseEnabled && !cv1kDataLoopsEnabled && !cv1kDataFullEnabled &&
-        !cv1kPollEnabled && !cv1kTimerFastEnabled && !cv1kDirectMemEnabled && !cv1kSlotDispatchEnabled && !cv1kFlowEnabled,"explicit disabled preset");
+        !cv1kPollEnabled && !cv1kTimerFastEnabled && !cv1kDirectMemEnabled && !cv1kSlotDispatchEnabled && !cv1kFlowEnabled && !cv1kPCRelEnabled,"explicit disabled preset");
     puts(expected?"CV1000 Linux ARM64 preset/defaults/overrides PASS":"CV1000 non-ARM64 defaults/overrides PASS");
 }
 int main(int argc,char **) {
@@ -357,7 +364,7 @@ int main(int argc,char **) {
     if(argc>1){Benchmark();return 0;}
     for(unsigned test=0;test<14;test++)for(unsigned seed=0;seed<32;seed++) {
         const State ref=Run(0,test,seed);
-        for(unsigned mode=1;mode<10;mode++) {
+        for(unsigned mode=1;mode<(SH3_CV1K_PCREL?11u:10u);mode++) {
             const State got=Run(mode,test,seed);
             if(memcmp(&ref,&got,sizeof(got))) {
                 fprintf(stderr,"scenario=%u seed=%u mode=%u\n",test,seed,mode);
@@ -365,6 +372,6 @@ int main(int argc,char **) {
             }
         }
     }
-    puts("SH3 remap/SMC/page/wrap/MMIO/IRQ/delay/timer differential: 448 x 10 modes PASS");
+    printf("SH3 remap/SMC/page/wrap/MMIO/IRQ/delay/timer differential: 448 x %u modes PASS\n",SH3_CV1K_PCREL?11:10);
     TestDense();TestPure();TestOverflow();TestHostArithmetic();return 0;
 }

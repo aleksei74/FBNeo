@@ -221,16 +221,19 @@ static double Bench(unsigned mode,unsigned kind){
 		(unsigned long long)cv1kFlowSlotHits,(unsigned long long)cv1kFlowStackHits,(unsigned long long)cv1kFlowDTHits);
 	return ms;
 }
-int main(int argc,char **){
+int main(int argc,char **argv){
 	setvbuf(stdout,NULL,_IOLBF,0);
 	for(auto key:{"FBNEO_CV1K_POLL","FBNEO_CV1K_TIMER_FAST","FBNEO_CV1K_DATA_LOOPS","FBNEO_CV1K_DATA_FULL","FBNEO_CV1K_INTERP_LOOPS"})
 		setenv(key,"0",1);
 	if(argc>1){
+		const bool pcrel=!strcmp(argv[1],"pcrel");
+		if(pcrel)Check(SH3_CV1K_PCREL,"PC-relative build required");
+		const unsigned oldMode=pcrel?10:8;
 		for(unsigned kind=0;kind<3;kind++){
 			double a[3],b[3];
 			for(unsigned i=0;i<3;i++){
-				if(i&1){b[i]=Bench(9,kind);a[i]=Bench(8,kind);}
-				else{a[i]=Bench(8,kind);b[i]=Bench(9,kind);}
+				if(i&1){b[i]=Bench(9,kind);a[i]=Bench(oldMode,kind);}
+				else{a[i]=Bench(oldMode,kind);b[i]=Bench(9,kind);}
 			}
 			std::sort(a,a+3);std::sort(b,b+3);
 			printf("flow median %u: %.3f -> %.3f ms\n",kind,a[1],b[1]);

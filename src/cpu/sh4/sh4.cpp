@@ -4279,6 +4279,14 @@ static bool cv1kSlowFetchReuseEnabled = false;
 static bool cv1kDirectMemEnabled = false;
 static bool cv1kSlotDispatchEnabled = false;
 static bool cv1kFlowEnabled = false;
+// GCC AArch64 supports symbolic "S" operands for local static objects
+// and GNU label addresses. Other toolchains retain portable C dispatch.
+#if defined(__aarch64__) && !defined(__AARCH64EB__) && defined(__linux__) && !defined(__ANDROID__) && defined(__GNUC__) && !defined(__clang__) && SH3_FLAT_DISPATCH
+#define SH3_CV1K_PCREL 1
+#else
+#define SH3_CV1K_PCREL 0
+#endif
+static bool cv1kPCRelEnabled = false;
 static bool cv1kPollEnabled=false;
 static Sh3Cv1kPollStats cv1kPollStats;
 struct Cv1kPollReject {UINT32 pc;unsigned cooldown;};
@@ -4301,7 +4309,7 @@ static bool cv1kDispatch8Active = false;
 static UINT64 cv1kSlowFetchReuseHits;
 static bool cv1kDirectMemActive;
 static UINT64 cv1kDirectMoveHits,cv1kSlotDispatchHits;
-static bool cv1kFlowActive;
+static bool cv1kFlowActive,cv1kPCRelActive;
 static UINT64 cv1kFlowBranchHits,cv1kFlowSlotHits,cv1kFlowStackHits,cv1kFlowDTHits,cv1kFlowSeqHits;
 #endif
 #endif
@@ -4535,7 +4543,7 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = cv1kLoopEnabled = false;
 	cv1kFetchPageEnabled = cv1kInterpLoopsEnabled = false;
 	cv1kDispatch8Enabled=cv1kSlowFetchReuseEnabled=false;
-	cv1kDirectMemEnabled=cv1kSlotDispatchEnabled=cv1kFlowEnabled=false;
+	cv1kDirectMemEnabled=cv1kSlotDispatchEnabled=cv1kFlowEnabled=cv1kPCRelEnabled=false;
 	cv1kPollEnabled=cv1kTimerFastEnabled=false;
 	cv1kDataLoopsEnabled=false;cv1kDataStats={};
 	cv1kDataFullEnabled=false;cv1kDataHeadPC=~UINT32(0);cv1kDataFullStats={};
@@ -4550,7 +4558,7 @@ void Sh3SetCv1kNative(INT32 enable)
 #if defined(SH3_INTERPRETER_TEST)
 	cv1kDispatch8Active=false;cv1kSlowFetchReuseHits=0;
 	cv1kDirectMemActive=false;cv1kDirectMoveHits=cv1kSlotDispatchHits=0;
-	cv1kFlowActive=false;cv1kFlowBranchHits=cv1kFlowSlotHits=cv1kFlowStackHits=cv1kFlowDTHits=cv1kFlowSeqHits=0;
+	cv1kFlowActive=cv1kPCRelActive=false;cv1kFlowBranchHits=cv1kFlowSlotHits=cv1kFlowStackHits=cv1kFlowDTHits=cv1kFlowSeqHits=0;
 #endif
 #endif
 	cv1kNativeOps=cv1kNativeSpans=cv1kNativeBuilt=0;
@@ -4615,6 +4623,10 @@ void Sh3SetCv1kNative(INT32 enable)
 		Cv1kPerformanceOption(flow);
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 branch/stack batching: %s\n"),
 		cv1kFlowEnabled?_T("enabled"):_T("disabled"));
+	cv1kPCRelEnabled=SH3_CV1K_PCREL && cv1kFlowEnabled &&
+		Cv1kPerformanceOption(getenv("FBNEO_CV1K_PCREL_DISPATCH"));
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 PC-relative dispatch: %s\n"),
+		cv1kPCRelEnabled?_T("enabled (page-map flow)"):_T("disabled"));
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.
 	// Retain the experiment but require explicit opt-in.
@@ -4785,18 +4797,21 @@ finished:
 // operations. Slow handlers see exactly the published state they saw in
 // the original interpreter (including memory callbacks and IRQ tests).
 // Delay slots and pending IRQs use the original single-step path.
-template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=Dense, bool DirectMem=false, bool Flow=false, bool Regions=false> static int Sh3Run_timerhack_batch(int cycles)
+template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=Dense, bool DirectMem=false, bool Flow=false, bool Regions=false, bool PCRelative=false> static int Sh3Run_timerhack_batch(int cycles)
 {
 	static const void *const handlers[]={
 #define SH3_OPCODE(name) &&batch_op_##name,
 #include "sh3_decode_ops.inc"
 #undef SH3_OPCODE
 	};
-	static INT16 offsets[Dense?4096:65536];
+	// The PC-relative variant uses ADRP alone for the table address.
+	// Alignment is a property of the static object and its ELF section,
+	// not the host OS page size. Keep the compact signed 16-bit entries.
+	alignas(PCRelative?4096:alignof(INT16)) static INT16 offsets[Dense?4096:65536];
 	static bool initialized=false,fits=false;
 	const intptr_t base=(intptr_t)&&batch_base;
 	if (!initialized) {
-		fits=true;
+		fits=!PCRelative || (((uintptr_t)offsets&4095u)==0);
 		for (unsigned i=0;i<SH3_ID_COUNT;i++) {
 			const intptr_t d=(intptr_t)handlers[i]-base;
 			if (d<-32768 || d>32767) {fits=false;break;}
@@ -4813,6 +4828,7 @@ template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=
 	if(Dense)cv1kDispatch8Active=true;
 	if(DirectMem)cv1kDirectMemActive=true;
 	if(Flow)cv1kFlowActive=true;
+	if(PCRelative)cv1kPCRelActive=true;
 #endif
 	m_sh4_icount=cycles;sh3_end_run=0;
 	if (m_cpu_off) {m_sh4_icount=0;sh3_total_cycles+=cycles;return cycles;}
@@ -4907,6 +4923,20 @@ fast_next:
 	}
 	CV1K_VISIT(opcode);
 	if (!FetchPage) pc+=2;
+#if SH3_CV1K_PCREL
+	if(PCRelative){
+		// Rematerialize two local addresses, rather than reloading
+		// spilled copies on every guest opcode. No fixed host register
+		// reservation or global memory clobber. The single output
+		// limits register pressure; x16 is an explicitly clobbered
+		// scratch. The whole-table memory input models the read
+		// dependency on the initialized immutable offset array.
+		intptr_t target;
+		asm volatile("adrp %0, %2\n\tldrsh %0, [%0, %w1, uxtw #1]\n\tadr x16, %3\n\tadd %0, %0, x16"
+			: "=&r"(target) : "r"(opcode), "S"(offsets), "S"(&&batch_base), "m"(offsets) : "x16");
+		goto *(void *)target;
+	}
+#endif
 	goto *(void *)(base+offsets[Dense?Sh3DispatchKey(opcode):opcode]);
 #define SH3_SLOW_BODY(name) \
 	if(Flow)goto shared_slow; \
@@ -5075,6 +5105,10 @@ static int Sh3Run_timerhack(int cycles)
 		if(cv1kFlowEnabled){
 			if(cv1kFastRamBase || cv1kFastRomBase)
 				return Sh3Run_timerhack_batch<false,true,false,true,true,true,true>(cycles);
+#if SH3_CV1K_PCREL
+			if(cv1kPCRelEnabled)
+				return Sh3Run_timerhack_batch<false,true,false,true,true,true,false,true>(cycles);
+#endif
 			return Sh3Run_timerhack_batch<false,true,false,true,true,true>(cycles);
 		}
 		if(cv1kDirectMemEnabled){
