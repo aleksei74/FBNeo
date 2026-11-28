@@ -325,7 +325,7 @@ static void TestDefaultPolicy() {
         cv1kDataFullEnabled==expected && cv1kPollEnabled==expected &&
         cv1kTimerFastEnabled==expected && cv1kDirectMemEnabled==expected &&
         cv1kSlotDispatchEnabled==expected && cv1kFlowEnabled==expected &&
-        cv1kPCRelEnabled==(expected && SH3_CV1K_PCREL),"default CV1000 CPU preset");
+        !cv1kPCRelEnabled,"default CV1000 CPU preset");
     Check(Cv1kPerformanceOption(getenv("FBNEO_CV1K_VRAM16"))==expected &&
         Cv1kPerformanceOption(getenv("FBNEO_CV1K_BLIT_TILES"))==expected,
         "default CV1000 graphics policy");

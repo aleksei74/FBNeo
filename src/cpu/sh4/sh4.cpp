@@ -4624,7 +4624,7 @@ void Sh3SetCv1kNative(INT32 enable)
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 branch/stack batching: %s\n"),
 		cv1kFlowEnabled?_T("enabled"):_T("disabled"));
 	cv1kPCRelEnabled=SH3_CV1K_PCREL && cv1kFlowEnabled &&
-		Cv1kPerformanceOption(getenv("FBNEO_CV1K_PCREL_DISPATCH"));
+		Cv1kPerformanceOption(getenv("FBNEO_CV1K_PCREL_DISPATCH"),false);
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 PC-relative dispatch: %s\n"),
 		cv1kPCRelEnabled?_T("enabled (page-map flow)"):_T("disabled"));
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");

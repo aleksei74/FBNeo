@@ -73,3 +73,13 @@ device measurement.
 Final synthetic AArch64/QEMU 10M guest cycles, three alternating runs,
 median milliseconds (test-only counters, host load not controlled):
 - RAM/branch: 1081.474 -> 816.924 ms (24.5% lower).\n- stack/call/return: 1256.312 -> 988.524 ms (21.3% lower).\n- DT/conditional branch: 911.025 -> 665.396 ms (27.0% lower).\nAll corresponding checksums and path counts matched. These are not\nreal-device FPS predictions.\n
+## RK3566 real-device A/B (2026-11-28)
+
+mmpork, same first 7320 frames, regular ES launch. Stage 2.7 (C)
+vs 2.7B (PC-relative): mean CPU 10.452 -> 10.522 ms; post-startup
+CPU 9.959 -> 10.096 ms; highest-load 360-frame core mean
+19.425 -> 19.841 ms. Startup CPU 21.395 -> 20.798 ms; CPU frames
+over 25 ms 148 -> 92. Poll/data/full counters matched in all 61
+windows. No clock/temperature control, so causality is unproven.
+Prefer the established 2.7 path by default for the next experiment;
+FBNEO_CV1K_PCREL_DISPATCH=1 remains available for A/B.
