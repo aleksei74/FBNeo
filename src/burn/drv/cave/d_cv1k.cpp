@@ -925,6 +925,9 @@ static INT32 DrvFrame()
 	phase = Cv1kNow();
 	const UINT64 threadStart=Cv1kThreadNow();
 
+	// The synchronous CPU loop owns guest memory; external frontend
+	// access is fenced on entry/exit. Tracked writes still fence within.
+	Sh3Cv1kFrameFence(true);
 	if(cv1kDiag){
 		for(INT32 i=0;i<nInterleave;i++){
 			const UINT32 pc=Sh3GetPC(-1);
@@ -946,6 +949,7 @@ static INT32 DrvFrame()
 		}
 	}
 
+	Sh3Cv1kFrameFence(false);
 	Sh3SetIRQLine(2, CPU_IRQSTATUS_HOLD);
 	if (cv1kProfile) {
 		const UINT64 elapsed=Cv1kNow()-phase;

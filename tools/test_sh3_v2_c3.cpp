@@ -3,6 +3,9 @@
 #include "test_sh3_v2_c2.cpp"
 
 static void InitC3(unsigned mode){
+#ifndef SH3_V2_C4_TEST
+	setenv("FBNEO_CV1K_V2_GLOBAL","0",1);
+#endif
 	setenv("FBNEO_CV1K_V2_RESIDENT",mode==3?"1":"0",1);
 	InitC2(mode);
 	Check(cv1kC3Enabled==(mode==3),"C3 opt-in policy");
@@ -113,6 +116,7 @@ static double ResidentBench(unsigned mode,unsigned kind,Snapshot &state){
 		(unsigned long long)cv1kV2Stats.residentOps);
 	return ms;
 }
+#ifndef SH3_V2_C4_TEST
 int main(int argc,char **){
 	setvbuf(stdout,NULL,_IOLBF,0);
 	if(argc>1){
@@ -144,3 +148,5 @@ int main(int argc,char **){
 	puts("C3 direct resident regions: 224 differential slices PASS");
 	return 0;
 }
+
+#endif

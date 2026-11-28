@@ -43,6 +43,7 @@ void Sh3SetCv1kCacheRAM(UINT8 *ram,UINT32 size);
 void Sh3SetCv1kFastMemory(UINT8 *ram,UINT32 ramSize,UINT8 *rom);
 void Sh3Cv1kOpStatsFrame();
 void Sh3Cv1kV2Report();
+void Sh3Cv1kFrameFence(bool on);
 void Sh3SetCv1kIdleRead(UINT8 *ram, UINT32 addr, UINT32 pc,
 	const INT32 *burn, pSh3ReadLongHandler handler);
 void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built);

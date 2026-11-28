@@ -115,6 +115,39 @@ inline unsigned ExtraCycles(uint16_t op){
 	return !Delayed(op)?2:(op&0xf0ff)==0x402b?0:1;
 }
 static constexpr unsigned ExitTaken=0x100,ExitNotTaken=0x200;
+// C4-only additions. Keep C2/C3 decoding and self-repeat controls unchanged.
+inline bool Tier2Memory(uint16_t op){
+	const unsigned hi=op>>8, top=op>>12, f=op&15, key=op&0xf0ff;
+	return hi==0x80||hi==0x81||hi==0x84||hi==0x85||
+		(top==0 && ((f>=4&&f<=6)||(f>=12&&f<=14)))||
+		(hi>=0xc0&&hi<=0xc2)||(hi>=0xc4&&hi<=0xc6)||
+		key==0x4022||key==0x4026;
+}
+inline bool Tier2Candidate(uint16_t op){
+	const unsigned key=op&0xf0ff, k=op&0xf00f;
+	return Tier2Memory(op)||key==0x002a||key==0x402a||
+		key==0x001a||key==0x401a||k==0x400c||k==0x400d||
+		k==0x0007||k==0x200e||k==0x200f;
+}
+inline bool GlobalCandidate(uint16_t op){return ExtendedCandidate(op)||Tier2Candidate(op);}
+inline unsigned GlobalExtra(uint16_t op){return (op&0xf00f)==0x0007?1:0;}
+inline bool GlobalSafeSlot(uint16_t op){
+	// The memory slot is preflighted before committing any branch effect.
+	// PR access slots remain on the authoritative interpreter (call order).
+	return SafeSlot(op)||MemoryOp(op)||
+		(Tier2Memory(op)&&(op&0xf0ff)!=0x4022&&(op&0xf0ff)!=0x4026);
+}
+inline bool SlotWritesEA(uint16_t op){
+	return Tier2Memory(op)||!((op>>12)==2&&(op&15)>=4)&&
+		!((op>>12)==6&&(op&15)>=4);
+}
+struct GlobalStamp {uint64_t token,generation;const uint64_t *liveGeneration;};
+struct GlobalBuild {
+	const GlobalStamp *stamp;
+	uint32_t *patch[3];uint32_t target[3];unsigned count;
+	bool fastDT[64],trusted;
+};
+static_assert(sizeof(GlobalStamp)==24,"C4 stamp ABI");
 
 // Fixed bindings allow a single union-of-writes epilogue, even when a
 // guard exits before an instruction that would otherwise overwrite a
@@ -130,6 +163,7 @@ class CompactEmitter {
 	uint16_t used_,dirty_;
 	bool sr_,writeSR_,extended_,audit_,repeat_,resident_;
 	uint32_t pc_;
+	GlobalBuild *global_;
 	unsigned maps_;
 	uint8_t mapReg_[3],codeReg_,sizeReg_;
 	unsigned RegBase()const{return Wide()?19:0;}
@@ -176,6 +210,15 @@ class CompactEmitter {
 	}
 	static unsigned Footprint(uint16_t op){
 		const unsigned top=op>>12,n=(op>>8)&15,m=(op>>4)&15;
+		if(Tier2Candidate(op)){
+			const unsigned hi=op>>8;
+			if(hi==0x80||hi==0x81||hi==0x84||hi==0x85)return 1u|(1u<<m);
+			if(top==12)return 1;
+			if(top==0 && Tier2Memory(op))return 1u|(1u<<n)|(1u<<m);
+			if((op&0xf00f)==0x400c||(op&0xf00f)==0x400d||
+				(op&0xf00f)==0x0007||(op&0xf00e)==0x200e)return (1u<<n)|(1u<<m);
+			return 1u<<n;
+		}
 		if(top==9||top==13)return 1u<<n;
 		if(top>=1 && top<=6 && top!=4)return (1u<<n)|(1u<<m);
 		if(top==4||top==7||top==14||(op&0xf0ff)==0x0029)return 1u<<n;
@@ -225,11 +268,13 @@ class CompactEmitter {
 		if(IsDT(op)){
 			// Check the live DATA word before decrementing. This preserves
 			// both MMIO lookahead and the original DT/BF busy-loop burn.
+			if(!global_ || !global_->fastDT[done]){
 			Imm32(16,(opPC+2)&0x1fffffffu);
 			ResolveAddress(1,false,done);
 			*p_++=0x78676a28u; // ldrh w8,[x17,x7]
 			Imm(6,0x8bfd);
 			*p_++=0x6b06011fu;Guard(0,done);
+			}
 			const unsigned d=R(n);W(n);SR();
 			*p_++=0x71000400u|(d<<5)|d;SetT(0);return true;
 		}
@@ -249,8 +294,17 @@ class CompactEmitter {
 		}else Imm32(16,StaticTarget(op,pc_+body*2));
 		// Capture the target BEFORE the delay slot changes its source.
 		// All accepted slots are register-only and do not access EA/PR.
-		*p_++=0xb9000010u|(EABase()<<5);
-		if(Delayed(op) && !Emit(ops[body+1],body+1))failed_=true;
+		if(global_ && Delayed(op) && (MemoryOp(ops[body+1])||Tier2Memory(ops[body+1]))){
+			// Resolve the slot before committing the branch. On a guard
+			// exit the original branch+slot can be executed exactly.
+			*p_++=0xb90106d0u; // str w16,[x22,#260]
+			if(!Emit(ops[body+1],body))failed_=true;
+			LdrW(16,MemBase(),260);
+			if(!SlotWritesEA(ops[body+1]))*p_++=0xb9000010u|(EABase()<<5);
+		}else{
+			*p_++=0xb9000010u|(EABase()<<5);
+			if(Delayed(op) && !Emit(ops[body+1],body+1))failed_=true;
+		}
 		return notTaken;
 	}
 	bool EmitMemory(uint16_t op,unsigned done){
@@ -267,8 +321,7 @@ class CompactEmitter {
 			if(resident_){
 				// A resident region may contain any watched code span.
 				// Exit BEFORE a write to a watched/ambiguous backing page.
-				*p_++=0x12007208u;
-				*p_++=0x53107d08u;
+				if(!global_){*p_++=0x12007208u;*p_++=0x53107d08u;}
 				LdrX(6,MemBase(),64);
 				*p_++=0x386868c8u;
 				*p_++=0x7100011fu;Guard(1,done);
@@ -307,9 +360,84 @@ class CompactEmitter {
 		}
 		return true;
 	}
+	void GlobalStore(unsigned size,unsigned value,unsigned done){
+		// ResolveAddress left w8 as the normalized page index.
+		LdrX(6,MemBase(),64);
+		*p_++=0x386868c8u; // ldrb w8,[x6,x8]
+		*p_++=0x7100011fu;Guard(1,done);
+		*p_++=0x8b070231u;
+		if(size==2){*p_++=0x13804006u|(value<<16)|(value<<5);value=6;}
+		*p_++=(size==0?0x39000220u:size==1?0x79000220u:0xb9000220u)|value;
+	}
+	bool EmitTier2(uint16_t op,unsigned done){
+		const unsigned top=op>>12,hi=op>>8,n=(op>>8)&15,m=(op>>4)&15,f=op&15,k=op&0xf0ff;
+		if(Tier2Memory(op)){
+			bool store=false,stack=false;unsigned size=0,value=0,dest=0;
+			if(k==0x4022||k==0x4026){
+				stack=true;store=k==0x4022;size=2;value=2;dest=2;
+				if(store)*p_++=0x51001010u|(R(n)<<5);
+				else *p_++=Mov(16,R(n));
+			}else if(top==8){
+				store=hi==0x80||hi==0x81;size=hi&1;value=R(0);
+				if(!store)dest=W(0);
+				*p_++=0x11000010u|((f<<size)<<10)|(R(m)<<5);
+			}else if(top==0){
+				store=f<8;size=f&3;value=store?R(m):0;
+				if(!store)dest=W(n);
+				*p_++=0x0b000010u|(R(0)<<16)|(R(store?n:m)<<5);
+			}else{
+				store=hi<0xc4;size=hi&3;value=R(0);
+				if(!store)dest=W(0);
+				LdrW(16,MemBase(),252);
+				*p_++=0x11000210u|(((op&255)<<size)<<10);
+			}
+			ResolveAddress(size,store,done);
+			if(store)GlobalStore(size,value,done);
+			else{
+				*p_++=(size==0?0x38e76a20u:size==1?0x78e76a20u:0xb8676a20u)|dest;
+				if(size==2)*p_++=0x13804000u|(dest<<16)|(dest<<5)|dest;
+			}
+			*p_++=0xb9000010u|(EABase()<<5);
+			if(stack){W(n);if(store)*p_++=Mov(R(n),16);
+				else *p_++=0x11001000u|(R(n)<<5)|R(n);}
+			return true;
+		}
+		if(k==0x002a){*p_++=Mov(W(n),2);return true;}
+		if(k==0x402a){*p_++=Mov(2,R(n));return true;}
+		if(k==0x001a){LdrW(W(n),MemBase(),256);return true;}
+		if(k==0x401a){*p_++=0xb90102c0u|R(n);return true;}
+		if(top==4 && (f==12||f==13)){
+			const unsigned a=R(n),b=R(m);W(n);
+			*p_++=0x7100001fu|(b<<5); // cmp wB,#0
+			uint32_t *negative=p_++;
+			*p_++=0x1ac02000u|(b<<16)|(a<<5)|a; // lslv
+			uint32_t *end=p_++;
+			BC(negative,p_,11); // lt
+			*p_++=0x4b0003e6u|(b<<16); // neg w6,wB
+			*p_++=0x720010dfu; // tst w6,#31
+			uint32_t *zero=p_++;
+			*p_++=(f==12?0x1ac02800u:0x1ac02400u)|(6<<16)|(a<<5)|a;
+			uint32_t *end2=p_++;
+			BC(zero,p_,0);
+			if(f==12)*p_++=0x131f7c00u|(a<<5)|a; // asr #31
+			else *p_++=Mov(a,31);
+			B(end,p_);B(end2,p_);return true;
+		}
+		if((top==0&&f==7)||(top==2&&(f==14||f==15))){
+			unsigned a=R(n),b=R(m);
+			if(top==2){
+				const uint32_t ext=f==15?0x13003c00u:0x53003c00u;
+				*p_++=ext|(a<<5)|6;*p_++=ext|(b<<5)|7;a=6;b=7;
+			}
+			*p_++=0x1b007c06u|(b<<16)|(a<<5); // mul w6,wA,wB
+			*p_++=0xb90102c6u; // str w6,[x22,#256]
+			return true;
+		}
+		return false;
+	}
 public:
 	explicit CompactEmitter(uint32_t *p):p_(p),reg_{},used_(0),dirty_(0),
-		sr_(false),writeSR_(false),extended_(false),audit_(false),repeat_(false),resident_(false),pc_(0),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
+		sr_(false),writeSR_(false),extended_(false),audit_(false),repeat_(false),resident_(false),pc_(0),global_(NULL),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
 		fix_{},idle_{},watch_{},fixCount_(0),idleCount_(0),watchCount_(0),entrySR_(NULL),failed_(false){}
 	uint32_t *End()const{return p_;}
 	bool Wide()const{return resident_||repeat_||__builtin_popcount(unsigned(used_))>7;}
@@ -440,18 +568,18 @@ public:
 	}
 	bool BuildResident(const uint16_t *ops,unsigned count,uint32_t pc,unsigned body,
 			const uint32_t *pcs,unsigned nPC,ResidentFixup *edges,unsigned &nEdge,
-			bool hasPrediction=false,uint32_t prediction=0){
+			bool hasPrediction=false,uint32_t prediction=0,GlobalBuild *global=NULL){
 		if(!count||count>CompactMaxOps||!ResidentEligible(ops,count,body))return false;
-		resident_=extended_=true;pc_=pc;
+		resident_=extended_=true;pc_=pc;global_=global;
 		const bool terminal=body<count;
 		if(terminal && (!Terminal(ops[body]) ||
 			count!=body+1+unsigned(Delayed(ops[body])) ||
-			(Delayed(ops[body])&&!SafeSlot(ops[body+1]))))return false;
+			(Delayed(ops[body])&&!(global?GlobalSafeSlot(ops[body+1]):SafeSlot(ops[body+1])))))return false;
 		for(unsigned i=0;i<count;i++){
 			if(terminal && i==body){
 				if(Dynamic(ops[i]) && ops[i]!=0x000b)used_|=1u<<((ops[i]>>8)&15);
 			}else{
-				if(!ExtendedCandidate(ops[i]))return false;
+				if(!(global?GlobalCandidate(ops[i]):ExtendedCandidate(ops[i])))return false;
 				used_|=Footprint(ops[i]);
 			}
 		}
@@ -459,10 +587,34 @@ public:
 			for(unsigned i=0;i<nPC;i++)if(pcs[i]==target)return true;
 			return false;
 		};
-		auto cold=[&](uint32_t target){Imm32(16,target);*p_++=0xd65f03c0u;};
+		auto reason=[&](unsigned why){
+			if(global){Imm(6,why);*p_++=0xb900fac6u;} // str w6,[x22,#248]
+		};
+		auto cold=[&](uint32_t target,unsigned why=2){Imm32(16,target);reason(why);*p_++=0xd65f03c0u;};
 		auto edge=[&](uint32_t target){
-			if(member(target)){edges[nEdge++]={p_,target,false};*p_++=0x14000000u;}
+			if(global){
+				if(global->count>=3){failed_=true;return;}
+				global->patch[global->count]=p_;global->target[global->count++]=target;
+				*p_++=0x14000001u; // initially branch to its own cold tail
+				cold(target);
+			}else if(member(target)){edges[nEdge++]={p_,target,false};*p_++=0x14000000u;}
 			else cold(target);
+		};
+		// Dynamic PC -> guarded global entry. Collisions/misses are safe.
+		auto dynamicEdge=[&](){
+			*p_++=0x53017e08u; // lsr w8,w16,#1
+			*p_++=0x12003108u; // and w8,w8,#8191
+			LdrX(17,MemBase(),240);
+			*p_++=0x8b081231u; // add x17,x17,x8,lsl #4
+			*p_++=0xb9400226u;
+			*p_++=0x6b1000dfu; // cmp w6,w16
+			uint32_t *miss=p_++;
+			LdrX(17,17,8);
+			uint32_t *empty=p_++;
+			*p_++=0xd61f0220u; // br x17
+			BC(miss,p_,1);
+			*empty=0xb4000011u|((uint32_t(p_-empty)&0x7ffffu)<<5);
+			reason(2);*p_++=0xd65f03c0u;
 		};
 		auto flush=[&](){
 			for(unsigned g=0;g<16;g++)if((dirty_&~ResidentHotMask)&(1u<<g))
@@ -473,14 +625,17 @@ public:
 			if(cost)*p_++=0x510003bdu|(cost<<10); // sub w29,w29,#cost
 			if(complete)*p_++=0x11000484u; // add w4,w4,#1
 		};
+		uint32_t *rasAdr=NULL;uint32_t rasGuest=0;
 		auto rasPush=[&](uint32_t ret){
-			if(!member(ret))return;
+			if(!global && !member(ret))return;
 			*p_++=0x7100201fu; // cmp w0,#8
 			uint32_t *full=p_++;
 			*p_++=0x910182d1u; // add x17,x22,#96
 			*p_++=0x8b001231u; // add x17,x17,x0,lsl #4
 			*p_++=0xb9000222u; // str w2,[x17]
-			edges[nEdge++]={p_,ret,true};*p_++=0x10000010u; // ADR x16, continuation
+			if(global){rasAdr=p_;rasGuest=ret;}
+			else edges[nEdge++]={p_,ret,true};
+			*p_++=0x10000010u; // ADR x16, continuation
 			*p_++=0xf9000630u; // str x16,[x17,#8]
 			*p_++=0x11000400u; // add w0,w0,#1
 			BC(full,p_,2);
@@ -497,11 +652,24 @@ public:
 			*p_++=0xd61f0220u; // br x17
 			*empty=0x34000000u|((uint32_t(p_-empty)&0x7ffffu)<<5);
 			BC(miss,p_,1);
-			*p_++=0xd65f03c0u; // return with actual PR in w16
+			if(global)dynamicEdge();else *p_++=0xd65f03c0u;
 		};
-		// Direct and RAS targets enter through this same budget check.
+		// All incoming B/BR/RAS edges hit the same validity and cycle gate.
 		*p_++=0xd50324dfu;
-		const unsigned worst=count+(terminal?ExtraCycles(ops[body]):0);
+		uint32_t *stampLoad=NULL,*epochMiss=NULL,*genMiss=NULL;
+		if(global){
+			stampLoad=p_++; // ldr x17, literal address of pinned stamp
+			*p_++=0xa9401e26u; // ldp x6,x7,[x17]
+			if(global->trusted)*p_++=0xeb1400dfu; // cmp x6,x20 (trusted fence)
+			else{LdrX(8,MemBase(),264);*p_++=0xeb0800dfu;} // invocation-local unknown backing
+			epochMiss=p_++;
+			LdrX(17,17,16);LdrX(17,17,0);
+			*p_++=0xeb1100ffu; // cmp x7,x17 (live generation)
+			genMiss=p_++;
+		}
+		unsigned prefix[CompactMaxOps+1]={};
+		for(unsigned i=0;i<body;i++)prefix[i+1]=prefix[i]+(global?GlobalExtra(ops[i]):0);
+		const unsigned worst=count+prefix[body]+(terminal?ExtraCycles(ops[body]):0);
 		*p_++=0x710003bfu|(worst<<10); // cmp w29,#maxCost
 		uint32_t *budget=p_++;
 		for(unsigned g=0,h=9;g<16;g++){
@@ -526,7 +694,10 @@ public:
 				*p_++=Mov(1,16);
 				if(Call(op))Imm32(2,next+2);
 				if(op==0x000b)rasReturn();
-				else{
+				else if(global){
+					if(Call(op)){*p_++=Mov(8,16);rasPush(next+2);*p_++=Mov(16,8);}
+					dynamicEdge();
+				}else{
 					if(hasPrediction && member(prediction)){
 						Imm32(6,prediction);
 						*p_++=0x6b06021fu; // cmp w16,w6, actual captured target
@@ -545,15 +716,15 @@ public:
 			}else{
 				const uint32_t target=StaticTarget(op,pc+body*2);
 				Imm32(1,Delayed(op)?target:next);
-				if(Call(op)){Imm32(2,next+2);if(member(target))rasPush(next+2);}
+				if(Call(op)){Imm32(2,next+2);if(global||member(target))rasPush(next+2);}
 				edge(target);
 			}
 			if(notTaken){
 				BC(notTaken,p_,(op&0x0200)?1:0);
-				flush();debit(body+1,body+1,true);Imm32(1,next);edge(next);
+				flush();debit(body+1,body+1+prefix[body],true);Imm32(1,next);edge(next);
 			}
 		}
-		BC(budget,p_,3);cold(pc);
+		BC(budget,p_,3);cold(pc,3);
 		for(unsigned i=0;i<idleCount_;i++){
 			const auto &r=idle_[i];
 			BC(r.at,p_,3);
@@ -569,18 +740,32 @@ public:
 		for(unsigned i=0;i<fixCount_;i++){
 			const unsigned d=fix_[i].done;
 			if(!stub[d]){
-				stub[d]=p_;flush();debit(d,d,false);
+				stub[d]=p_;flush();debit(d,d+prefix[d],false);
 				if(d)Imm32(1,pc+d*2);
-				cold(pc+d*2);
+				cold(pc+d*2,4);
 			}
 			BC(fix_[i].at,stub[d],fix_[i].cond);
 		}
-		return true;
+		if(global){
+			if(rasAdr){
+				const int32_t bytes=int32_t(p_-rasAdr)*4;
+				*rasAdr=0x10000010u|((uint32_t(bytes)&3)<<29)|(((uint32_t(bytes)>>2)&0x7ffffu)<<5);
+				*p_++=0xd50324dfu; // RAS indirect branch target
+				edge(rasGuest);
+			}
+			BC(epochMiss,p_,1);BC(genMiss,p_,1);cold(pc,1);
+			if((p_-stampLoad)&1)*p_++=0xd503201fu;
+			*stampLoad=0x58000011u|((uint32_t(p_-stampLoad)&0x7ffffu)<<5);
+			const uint64_t ptr=(uintptr_t)global->stamp;
+			*p_++=uint32_t(ptr);*p_++=uint32_t(ptr>>32);
+		}
+		return !failed_;
 	}
 private:
 	bool Emit(uint16_t op,unsigned done){
 		const unsigned top=op>>12,n=(op>>8)&15,m=(op>>4)&15,f=op&15,imm=op&255;
 		unsigned a,b,d;uint32_t base=0;unsigned cond=0;bool test=false;
+		if(global_ && Tier2Candidate(op))return EmitTier2(op,done);
 		if(extended_ && (PcRelative(op)||IsDT(op)))return EmitExtended(op,done);
 		if(op==0x0009)return true;
 		if(op==0x0008 || op==0x0018){

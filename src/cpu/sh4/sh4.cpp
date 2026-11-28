@@ -4580,6 +4580,8 @@ static bool Cv1kTryNative(UINT16 opcode)
 
 #include "sh3_cv1k_v2.inc"
 
+void Sh3Cv1kFrameFence(bool on){Cv1kC4FrameScope(on);}
+
 void Sh3Cv1kV2Report()
 {
 #if SH3_NATIVE_V2
@@ -4612,11 +4614,24 @@ void Sh3Cv1kV2Report()
 	bprintf(PRINT_UI,_T("CV1K V2 links: groups %llu bodies %llu edges %llu patches %llu built %llu stops %llu\n"),
 		(unsigned long long)s.linkGroups,(unsigned long long)s.linkBodies,(unsigned long long)s.linkEdges,
 		(unsigned long long)s.linkPatched,(unsigned long long)s.linkBuilt,(unsigned long long)s.linkStops);
-	if(cv1kC3Enabled)bprintf(PRINT_UI,_T("CV1K V3 resident: groups %llu blocks %llu ops %llu built %llu reject %llu invalid %llu checks %llu\n"),
+	if(cv1kC3Enabled && !cv1kC4Enabled)bprintf(PRINT_UI,_T("CV1K V3 resident: groups %llu blocks %llu ops %llu built %llu reject %llu invalid %llu checks %llu\n"),
 		(unsigned long long)s.residentGroups,(unsigned long long)s.residentBlocks,
 		(unsigned long long)s.residentOps,(unsigned long long)s.residentBuilt,
 		(unsigned long long)s.residentReject,(unsigned long long)s.residentInvalid,
 		(unsigned long long)s.residentChecks);
+	if(cv1kC4Enabled){
+		bprintf(PRINT_UI,_T("CV1K V4 global: groups %llu blocks %llu ops %llu built %llu patches %llu checks %llu invalid %llu eager %llu full %llu fastDT %llu\n"),
+			(unsigned long long)s.globalGroups,(unsigned long long)s.globalBlocks,
+			(unsigned long long)s.globalOps,(unsigned long long)s.globalBuilt,
+			(unsigned long long)s.globalPatched,(unsigned long long)s.globalChecks,
+			(unsigned long long)s.globalInvalid,(unsigned long long)s.globalEager,
+			(unsigned long long)s.globalFull,(unsigned long long)s.globalDT);
+		bprintf(PRINT_UI,_T("CV1K V4 exits: fence %llu cold %llu budget %llu guard %llu skipped %llu cooldown %llu masked %llu reenabled %llu\n"),
+			(unsigned long long)s.globalFence,(unsigned long long)s.globalCold,
+			(unsigned long long)s.globalBudget,(unsigned long long)s.globalGuard,
+			(unsigned long long)s.globalSkipped,(unsigned long long)s.globalCooldown,
+			(unsigned long long)s.globalMasked,(unsigned long long)s.globalReenabled);
+	}
 #endif
 }
 
@@ -4735,7 +4750,7 @@ void Sh3SetCv1kNative(INT32 enable)
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 Dynarec V2: %s\n"),
 		cv1kV2Enabled?
 #if SH3_NATIVE_V2
-		(cv1kC3Enabled?_T("enabled (stage C-3, resident regions)"):_T("enabled (stage C-2, guarded static links)"))
+		(cv1kC4Enabled?_T("enabled (stage C-4, global resident blocks)"):(cv1kC3Enabled?_T("enabled (stage C-3, resident regions)"):_T("enabled (stage C-2, guarded static links)")))
 #else
 		_T("enabled")
 #endif
@@ -4754,7 +4769,10 @@ void Sh3SetCv1kNative(INT32 enable)
 		cv1kV2Chain?_T("enabled"):_T("disabled"),cv1kV2SelfLoop?_T("enabled"):_T("disabled"));
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 native static links: %s\n"),
 		cv1kV2LinkEnabled?_T("enabled (B rel26)"):_T("disabled"));
-	if(cv1kC3Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V3 resident regions: enabled (experimental, direct B, RAS)\n"));
+	if(cv1kC3Enabled && !cv1kC4Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V3 resident regions: enabled (experimental, direct B, RAS)\n"));
+	if(cv1kC4Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V4 global: direct B/BR, Tier2, RAS, eager; fence %s, min ops %u\n"),
+		cv1kC4FrameOption?_T("scoped CV1000 frame"):_T("CPU slice"),cv1kC4MinOps);
+	if(cv1kV2RepeatOnly)bprintf(PRINT_UI,_T("CV1000 SH3 V2 self-repeat only: enabled\n"));
 #endif
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.
@@ -5139,7 +5157,7 @@ flow_branch:
 			sh3_total_cycles+=spent;m_pc=r.target;m_ppc=r.ppc;
 			pc=r.target;pure=0;
 #if SH3_NATIVE_V2
-			if(NativeV2 && cv1kC3Enabled &&
+			if(NativeV2 && cv1kC3Enabled && !cv1kC4Enabled &&
 				(branchKind==CV1K_BRANCH_JSR || branchKind==CV1K_BRANCH_JMP))
 				Cv1kC3RecordDynamic(nextPC-2,r.target);
 #endif

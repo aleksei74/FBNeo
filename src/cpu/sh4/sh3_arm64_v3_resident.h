@@ -8,9 +8,16 @@ struct ResidentContext {
 	uint32_t remaining,ppc,ops,blocks;
 	ResidentReturn ras[8];
 	uint32_t dynamicSite,dynamicTarget;
+	uint64_t token;
+	const void *dynamicMap;
+	uint32_t reason,gbr,macl,savedTarget;
+	uint64_t unknownToken;
+
 };
 static_assert(offsetof(ResidentContext,remaining)==80 &&
-	offsetof(ResidentContext,ras)==96 && offsetof(ResidentContext,dynamicSite)==224,
+	offsetof(ResidentContext,ras)==96 && offsetof(ResidentContext,dynamicSite)==224 &&
+	offsetof(ResidentContext,token)==232 && offsetof(ResidentContext,dynamicMap)==240 &&
+	offsetof(ResidentContext,reason)==248 && offsetof(ResidentContext,savedTarget)==260 && offsetof(ResidentContext,unknownToken)==264,
 	"resident context ABI");
 }
 extern "C" void fbneo_sh3_v3_enter(const void *,uint32_t *,uint32_t *,
@@ -24,25 +31,25 @@ asm(R"ASM(
 fbneo_sh3_v3_enter:
 .cfi_startproc
 .inst 0xd503245f
-stp x19,x20,[sp,#-96]!
-.cfi_def_cfa_offset 96
-.cfi_offset x19,-96
-.cfi_offset x20,-88
+stp x19,x20,[sp,#-112]!
+.cfi_def_cfa_offset 112
+.cfi_offset x19,-112
+.cfi_offset x20,-104
 stp x21,x22,[sp,#16]
-.cfi_offset x21,-80
-.cfi_offset x22,-72
+.cfi_offset x21,-96
+.cfi_offset x22,-88
 stp x23,x24,[sp,#32]
-.cfi_offset x23,-64
-.cfi_offset x24,-56
+.cfi_offset x23,-80
+.cfi_offset x24,-72
 stp x25,x26,[sp,#48]
-.cfi_offset x25,-48
-.cfi_offset x26,-40
+.cfi_offset x25,-64
+.cfi_offset x26,-56
 stp x27,x28,[sp,#64]
-.cfi_offset x27,-32
-.cfi_offset x28,-24
+.cfi_offset x27,-48
+.cfi_offset x28,-40
 stp x29,x30,[sp,#80]
-.cfi_offset x29,-16
-.cfi_offset x30,-8
+.cfi_offset x29,-32
+.cfi_offset x30,-24
 mov x16,x0
 mov x19,x1
 mov x20,x2
@@ -53,6 +60,8 @@ ldp w25,w26,[x19,#8]
 ldr w27,[x19,#16]
 ldr w28,[x19,#60]
 ldr w5,[x20]
+str x20,[sp,#96]
+ldr x20,[x22,#232]
 ldp w29,w1,[x22,#80]
 ldr w2,[x22,#60]
 mov w0,wzr
@@ -67,6 +76,7 @@ stp w23,w24,[x19]
 stp w25,w26,[x19,#8]
 str w27,[x19,#16]
 str w28,[x19,#60]
+ldr x20,[sp,#96]
 str w5,[x20]
 ldp x29,x30,[sp,#80]
 .cfi_restore x29
@@ -83,7 +93,7 @@ ldp x23,x24,[sp,#32]
 ldp x21,x22,[sp,#16]
 .cfi_restore x21
 .cfi_restore x22
-ldp x19,x20,[sp],#96
+ldp x19,x20,[sp],#112
 .cfi_restore x19
 .cfi_restore x20
 .cfi_def_cfa_offset 0
