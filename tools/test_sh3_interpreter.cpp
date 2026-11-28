@@ -53,6 +53,9 @@ struct State {
 static void Setup(unsigned mode,unsigned test) {
     scenario=test;trace=0;hits=0;
     setenv("FBNEO_CV1K_JIT","0",1);
+    // The standalone control is the interpreter, unless a V2 harness
+    // or an explicitly selected environment asks for native execution.
+    if(!getenv("FBNEO_CV1K_JIT_V2"))setenv("FBNEO_CV1K_JIT_V2","0",1);
     setenv("FBNEO_CV1K_DISPATCH",mode?"1":"0",1);
     setenv("FBNEO_CV1K_COMPACT","1",1);
     setenv("FBNEO_CV1K_BATCH","1",1);
@@ -99,6 +102,7 @@ static void Setup(unsigned mode,unsigned test) {
 // changing the meaning of their loop/poll A/B modes.
 static unsigned TestFetchMode() {
     const char *s=getenv("FBNEO_CV1K_TEST_FETCH_MODE");
+    if(s && !strcmp(s,"10"))return 10;
     return s && s[0]>='2' && s[0]<='9' && !s[1] ? unsigned(s[0]-'0') : 2;
 }
 static State Save(int spent) {
@@ -307,7 +311,7 @@ static void TestDefaultPolicy() {
     const char *options[]={
         "JIT","DISPATCH","COMPACT","BATCH","FETCH_PAGE","DISPATCH8",
         "FETCH_REUSE","INTERP_LOOPS","DATA_LOOPS","DATA_FULL","POLL","TIMER_FAST",
-        "VRAM16","BLIT_TILES","DIRECT_MEM","SLOT_DISPATCH","FLOW","PCREL_DISPATCH"
+        "VRAM16","BLIT_TILES","DIRECT_MEM","SLOT_DISPATCH","FLOW","PCREL_DISPATCH","JIT_V2","FAST_RAM"
     };
     for(const char *key:options) {
         char name[64];snprintf(name,sizeof(name),"FBNEO_CV1K_%s",key);
@@ -325,7 +329,7 @@ static void TestDefaultPolicy() {
         cv1kDataFullEnabled==expected && cv1kPollEnabled==expected &&
         cv1kTimerFastEnabled==expected && cv1kDirectMemEnabled==expected &&
         cv1kSlotDispatchEnabled==expected && cv1kFlowEnabled==expected &&
-        !cv1kPCRelEnabled,"default CV1000 CPU preset");
+        !cv1kPCRelEnabled && cv1kV2Enabled==(expected && SH3_NATIVE_V2),"default CV1000 CPU preset");
     Check(Cv1kPerformanceOption(getenv("FBNEO_CV1K_VRAM16"))==expected &&
         Cv1kPerformanceOption(getenv("FBNEO_CV1K_BLIT_TILES"))==expected,
         "default CV1000 graphics policy");

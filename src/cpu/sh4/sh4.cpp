@@ -39,6 +39,7 @@ Redistributions may not be sold, nor may they be used in a commercial product or
 #include "sh4tmu.h"
 #include "math.h"
 #include "sh3_arm64_native.h"
+#include "sh3_arm64_v2.h"
 #include <chrono>
 
 #define COMBINE_DATA(varptr)		(*(varptr) = (*(varptr) & ~mem_mask) | (data & mem_mask))
@@ -4287,6 +4288,7 @@ static bool cv1kFlowEnabled = false;
 #define SH3_CV1K_PCREL 0
 #endif
 static bool cv1kPCRelEnabled = false;
+static bool cv1kV2Enabled = false;
 static bool cv1kPollEnabled=false;
 static Sh3Cv1kPollStats cv1kPollStats;
 struct Cv1kPollReject {UINT32 pc;unsigned cooldown;};
@@ -4527,6 +4529,21 @@ static bool Cv1kTryNative(UINT16 opcode)
 }
 #endif
 
+#include "sh3_cv1k_v2.inc"
+
+void Sh3Cv1kV2Report()
+{
+#if SH3_NATIVE_V2
+	if(!cv1kV2Enabled)return;
+	const auto &s=cv1kV2Stats;
+	bprintf(PRINT_UI,_T("CV1K V2 total: probes %llu calls %llu ops %llu built %llu reject %llu changed %llu guard %llu full %llu negative %llu code %u bytes\n"),
+		(unsigned long long)s.probes,(unsigned long long)s.hits,(unsigned long long)s.ops,
+		(unsigned long long)s.built,(unsigned long long)s.rejected,(unsigned long long)s.changed,
+		(unsigned long long)s.guards,(unsigned long long)s.full,(unsigned long long)s.negative,
+		(unsigned)cv1kV2Code.Used());
+#endif
+}
+
 void Sh3Cv1kOpStatsFrame()
 {
 #if SH3_FLAT_DISPATCH && defined(SH3_CV1K_OPSTAT) && SH3_CV1K_OPSTAT
@@ -4544,6 +4561,10 @@ void Sh3SetCv1kNative(INT32 enable)
 	cv1kFetchPageEnabled = cv1kInterpLoopsEnabled = false;
 	cv1kDispatch8Enabled=cv1kSlowFetchReuseEnabled=false;
 	cv1kDirectMemEnabled=cv1kSlotDispatchEnabled=cv1kFlowEnabled=cv1kPCRelEnabled=false;
+	cv1kV2Enabled=false;
+#if SH3_NATIVE_V2
+	Cv1kV2Reset();
+#endif
 	cv1kPollEnabled=cv1kTimerFastEnabled=false;
 	cv1kDataLoopsEnabled=false;cv1kDataStats={};
 	cv1kDataFullEnabled=false;cv1kDataHeadPC=~UINT32(0);cv1kDataFullStats={};
@@ -4627,6 +4648,16 @@ void Sh3SetCv1kNative(INT32 enable)
 		Cv1kPerformanceOption(getenv("FBNEO_CV1K_PCREL_DISPATCH"),false);
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 PC-relative dispatch: %s\n"),
 		cv1kPCRelEnabled?_T("enabled (page-map flow)"):_T("disabled"));
+#if SH3_NATIVE_V2
+	// Unlike V1, V2 keeps the fast interpreter and its special kernels.
+	// Only this dedicated experimental branch defaults to V2 on native
+	// Linux ARM64 libretro. Explicit V1 and other experiments win.
+	cv1kV2Enabled=enable && cv1kFlowEnabled && !cv1kNativeEnabled &&
+		!cv1kPCRelEnabled && !Cv1kPerformanceOption(getenv("FBNEO_CV1K_FAST_RAM"),false) &&
+		Cv1kPerformanceOption(getenv("FBNEO_CV1K_JIT_V2")) && Cv1kV2Enable();
+#endif
+	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 Dynarec V2: %s\n"),
+		cv1kV2Enabled?_T("enabled (stage A, guarded blocks)"):_T("disabled"));
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.
 	// Retain the experiment but require explicit opt-in.
@@ -4797,7 +4828,7 @@ finished:
 // operations. Slow handlers see exactly the published state they saw in
 // the original interpreter (including memory callbacks and IRQ tests).
 // Delay slots and pending IRQs use the original single-step path.
-template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=Dense, bool DirectMem=false, bool Flow=false, bool Regions=false, bool PCRelative=false> static int Sh3Run_timerhack_batch(int cycles)
+template<bool Hybrid, bool FetchPage=false, bool Dense=false, bool ReuseCapable=Dense, bool DirectMem=false, bool Flow=false, bool Regions=false, bool PCRelative=false, bool NativeV2=false> static int Sh3Run_timerhack_batch(int cycles)
 {
 	static const void *const handlers[]={
 #define SH3_OPCODE(name) &&batch_op_##name,
@@ -4902,6 +4933,11 @@ start:
 	}
 #endif
 reload_fetch:
+	if(NativeV2 && Cv1kV2Try()){
+		if(m_sh4_icount<=0)goto done;
+		pc=m_pc;remaining=m_sh4_icount;pure=0;
+	}
+reload_fetch_no_v2:
 	if (FetchPage) {
 		// Run entries, delay/IRQ boundaries and nonsequential exits
 		// reload the live map. Dense mode may retain a sequential
@@ -5004,6 +5040,13 @@ flow_branch:
 			sh3_total_cycles+=spent;m_pc=r.target;m_ppc=r.ppc;
 			pc=r.target;pure=0;
 			if(remaining<=0)goto done;
+			// A committed control-flow boundary is a safe native
+			// entry. A cache miss keeps the same-page fetch reuse.
+			if(NativeV2 && Cv1kV2Try()){
+				if(m_sh4_icount<=0)goto done;
+				pc=m_pc;remaining=m_sh4_icount;
+				goto reload_fetch_no_v2;
+			}
 			// Reuse the source fetch page only for the same physical
 			// page. A fused slot cannot call a mapping callback.
 			if((((nextPC-2)^pc)&AM&~SH3_PAGEM)==0 && fetchEpoch==sh3FetchMapEpoch){
@@ -5012,7 +5055,7 @@ flow_branch:
 				if(remaining<window)window=remaining;
 				goto fast_next;
 			}
-			goto reload_fetch;
+			goto reload_fetch_no_v2;
 		}
 		// Unsupported slots, short slices and speedhack edges take
 		// the exact original branch handler and post-branch probes.
@@ -5103,6 +5146,10 @@ static int Sh3Run_timerhack(int cycles)
 	if(cv1kFetchPageEnabled) {
 		if(cv1kDispatch8Enabled)return Sh3Run_timerhack_batch<false,true,true>(cycles);
 		if(cv1kFlowEnabled){
+#if SH3_NATIVE_V2
+			if(cv1kV2Enabled)
+				return Sh3Run_timerhack_batch<false,true,false,true,true,true,false,false,true>(cycles);
+#endif
 			if(cv1kFastRamBase || cv1kFastRomBase)
 				return Sh3Run_timerhack_batch<false,true,false,true,true,true,true>(cycles);
 #if SH3_CV1K_PCREL

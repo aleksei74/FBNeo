@@ -40,6 +40,7 @@ INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd);
 void Sh3SetCv1kNative(INT32 enable);
 void Sh3SetCv1kFastMemory(UINT8 *ram,UINT32 ramSize,UINT8 *rom);
 void Sh3Cv1kOpStatsFrame();
+void Sh3Cv1kV2Report();
 void Sh3SetCv1kIdleRead(UINT8 *ram, UINT32 addr, UINT32 pc,
 	const INT32 *burn, pSh3ReadLongHandler handler);
 void Sh3Cv1kNativeStats(UINT64 *instructions, UINT64 *spans, UINT64 *built);

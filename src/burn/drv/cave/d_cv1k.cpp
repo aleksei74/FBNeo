@@ -228,6 +228,7 @@ static void Cv1kProfileFrame(UINT64 start) {
 	const double scale = 1.0 / (120 * 1000000.0);
 	UINT64 ops, spans, built;
 	Sh3Cv1kNativeStats(&ops, &spans, &built);
+	Sh3Cv1kV2Report();
 	bprintf(PRINT_UI, _T("CV1K PERF: core avg %.3f ms peak %.3f ms late %u; CPU %.3f audio %.3f wait %.3f draw %.3f\n"),
 		cv1kFrameNs*scale, cv1kPeakNs/1000000.0, cv1kLate, cv1kCpuNs*scale,
 		cv1kAudioNs*scale, cv1kWaitNs*scale, cv1kDrawNs*scale);
