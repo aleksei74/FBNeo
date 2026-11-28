@@ -80,6 +80,7 @@ static inline __attribute__((always_inline)) bool Cv1kTryDirectMove(UINT16 opcod
 	UINT8 *p=Cv1kDirectPointer<Width,Store,Regions>(ea);
 	if(!p)return false;
 	if(Store){
+		Cv1kV2NoteWrite(ea,Width);
 		UINT32 v=m_r[valueReg]; // predecrement aliases use the old value
 		if(Form==CV1K_PRE)m_r[base]=ea;
 		else m_ea=ea;

@@ -202,6 +202,7 @@ static bool Cv1kTryInterpLoop(UINT16 branch,bool delayed=false)
 		// live instruction or to the separate data-mapped BF word.
 		if(Cv1kInterpCodeOverlap(out,ops,length*2,width) ||
 			Cv1kInterpCodeOverlap(out,readBF,2,width))return false;
+		Cv1kV2NoteWrite(reverse?dst-bytes:dst,bytes);
 		if(copy){
 			m_r[valueReg]=width==1?Cv1kInterpCopy<1>(in,out):
 				width==2?Cv1kInterpCopy<2>(in,out):Cv1kInterpCopy<4>(in,out);

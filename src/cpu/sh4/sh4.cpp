@@ -613,6 +613,7 @@ static UINT8 *MemMapR[SH3_PAGE_COUNT];
 static UINT8 *MemMapRL[SH3_PAGE_COUNT];
 static UINT8 *MemMapW[SH3_PAGE_COUNT];
 static UINT8 *MemMapF[SH3_PAGE_COUNT];
+#include "sh3_cv1k_write_watch.inc"
 // Fetch pointers may survive a slow instruction only when no mapping
 // API has changed the fetch map. All code words are still read live.
 static UINT32 sh3FetchMapEpoch;
@@ -729,6 +730,7 @@ static INT32 Sh3MapInit()
 	memset(MemMapRL, 0, sizeof(MemMapRL));
 	memset(MemMapW, 0, sizeof(MemMapW));
 	memset(MemMapF, 0, sizeof(MemMapF));
+	Cv1kV2WriteMapChanged();
 	++sh3FetchMapEpoch;
 	Cv1kInvalidateFastMemory();
 	cv1kIdlePage=NULL;cv1kIdleBatchEnabled=false;
@@ -755,6 +757,7 @@ INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType)
 		if (nType & MAP_WRITE)	  pMemMapW[0] = Ptr + i;
 		if (nType & MAP_FETCHOP)  pMemMapF[0] = Ptr + i;
 	}
+	Cv1kV2WriteMapChanged();
 
 	return 0;
 }
@@ -776,6 +779,7 @@ INT32 Sh3MapHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd, INT32 nType)
 		if (nType & MAP_WRITE)	 pMemMapW[0] = (UINT8*)nHandler;
 		if (nType & MAP_FETCHOP) pMemMapF[0] = (UINT8*)nHandler;
 	}
+	Cv1kV2WriteMapChanged();
 	return 0;
 }
 
@@ -787,6 +791,7 @@ INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd)
 	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapRL++) {
 		pMemMapRL[0] = (UINT8*)nHandler;
 	}
+	Cv1kV2WriteMapChanged();
 
 	return 0;
 }
@@ -1246,8 +1251,10 @@ SH3_MEMORY_INLINE void WB(UINT32 A, UINT8 V)
 	    A ^= 1;
 #endif
 		pr[A & SH3_PAGEM] = (UINT8)V;
+		Cv1kV2NoteWrite(A,1);
 		return;
 	}
+	Cv1kV2NoteOpaqueWrite();
 	WriteByte[(uintptr_t)pr](A, V);
 }
 
@@ -1264,8 +1271,10 @@ SH3_MEMORY_INLINE void WW(UINT32 A, UINT16 V)
 	 //   A ^= 2;
 #endif
 		*((UINT16 *)(pr + (A & SH3_PAGEM))) = (UINT16)V;
+		Cv1kV2NoteWrite(A,2);
 		return;
 	}
+	Cv1kV2NoteOpaqueWrite();
 	WriteWord[(uintptr_t)pr](A, V);
 }
 
@@ -1282,8 +1291,10 @@ SH3_MEMORY_INLINE void WL(UINT32 A, UINT32 V)
 		V = (V << 16) | (V >> 16);
 #endif
 		*((UINT32 *)(pr + (A & SH3_PAGEM))) = (UINT32)V;
+		Cv1kV2NoteWrite(A,4);
 		return;
 	}
+	Cv1kV2NoteOpaqueWrite();
 	WriteLong[(uintptr_t)pr](A, V);
 }
 
@@ -4556,6 +4567,12 @@ void Sh3Cv1kV2Report()
 		(unsigned long long)s.extendedBuilt,(unsigned long long)s.terminalBuilt,
 		(unsigned long long)s.terminalCalls,(unsigned long long)s.taken,
 		(unsigned long long)s.notTaken,(unsigned long long)s.cycles);
+	bprintf(PRINT_UI,_T("CV1K V2 audit: pages %u dirty %llu untracked %llu opaque %llu\n"),
+		cv1kV2WatchCount,(unsigned long long)s.dirtyChecks,(unsigned long long)s.untracked,
+		(unsigned long long)cv1kV2OpaqueEpoch);
+	bprintf(PRINT_UI,_T("CV1K V2 chain: groups %llu joined %llu selflaps %llu selfbuilt %llu\n"),
+		(unsigned long long)s.chainGroups,(unsigned long long)s.chainJoined,
+		(unsigned long long)s.selfLaps,(unsigned long long)s.selfBuilt);
 #endif
 }
 
@@ -4672,7 +4689,7 @@ void Sh3SetCv1kNative(INT32 enable)
 		Cv1kPerformanceOption(getenv("FBNEO_CV1K_JIT_V2")) && Cv1kV2Enable();
 #endif
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 Dynarec V2: %s\n"),
-		cv1kV2Enabled?_T("enabled (stage B-2, guarded basic blocks)"):_T("disabled"));
+		cv1kV2Enabled?_T("enabled (stage C-1, guarded chaining)"):_T("disabled"));
 #if SH3_NATIVE_V2
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 lookup-only: %s; 64 KiB pinned directory\n"),
 		cv1kV2LookupOnly?_T("enabled (learn/compile/validate, no native execution)"):_T("disabled"));
@@ -4680,6 +4697,10 @@ void Sh3SetCv1kNative(INT32 enable)
 		cv1kV2Compact?_T("enabled"):_T("disabled (legacy emitter)"));
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 basic blocks: %s\n"),
 		cv1kV2Blocks?_T("enabled (literal/DT/terminal)"):_T("disabled (B-1 candidate scope)"));
+	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 write audit: %s; live code comparison retained\n"),
+		cv1kV2WriteWatch?_T("enabled"):_T("disabled"));
+	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 chaining: %s, self loops: %s\n"),
+		cv1kV2Chain?_T("enabled"):_T("disabled"),cv1kV2SelfLoop?_T("enabled"):_T("disabled"));
 #endif
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.
@@ -4957,7 +4978,7 @@ start:
 	}
 #endif
 reload_fetch:
-	if(NativeV2 && Cv1kV2Try(pc)){
+	if(NativeV2 && Cv1kV2Try(pc,false,true)){
 		if(m_sh4_icount<=0)goto done;
 		pc=m_pc;remaining=m_sh4_icount;pure=0;
 	}
@@ -5066,7 +5087,7 @@ flow_branch:
 			if(remaining<=0)goto done;
 			// A committed control-flow boundary is a safe native
 			// entry. A cache miss keeps the same-page fetch reuse.
-			if(NativeV2 && Cv1kV2Try(pc,pc<nextPC)){
+			if(NativeV2 && Cv1kV2Try(pc,pc<nextPC,true)){
 				if(m_sh4_icount<=0)goto done;
 				pc=m_pc;remaining=m_sh4_icount;
 				goto reload_fetch_no_v2;

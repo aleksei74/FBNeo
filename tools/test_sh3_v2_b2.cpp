@@ -251,6 +251,7 @@ static void BenchmarkB2(){
 		printf("B2 median %u control %.3f B1 %.3f B2 %.3f ms\n",kind,ms[0][1],ms[1][1],ms[2][1]);
 	}
 }
+#ifndef SH3_V2_C1_TEST
 int main(int argc,char **){
 	setvbuf(stdout,NULL,_IOLBF,0);
 	if(argc>1){BenchmarkB2();return 0;}
@@ -266,3 +267,4 @@ int main(int argc,char **){
 	puts("B2 integrated slices: 64 basic loop + 168 existing scenarios PASS");
 	return 0;
 }
+#endif

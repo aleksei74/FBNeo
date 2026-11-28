@@ -151,6 +151,7 @@ static int sh4_dma_transfer(int channel, int timermode, UINT32 chcr, UINT32 *sar
 					const UINT32 n=(count<available?count:available)&~UINT32(1);
 					if (n) {
 						serflash_io_read_words(pw+offset,n);
+						Cv1kV2NoteWrite(dst,n);
 						if (incs==1) src+=n;
 						if (incs==2) src-=n;
 						dst+=n;count-=n;
@@ -163,6 +164,7 @@ static int sh4_dma_transfer(int channel, int timermode, UINT32 chcr, UINT32 *sar
 			const UINT8 data=serflash_io_read();
 			UINT8 *pw=MemMapW[dst>>SH3_SHIFT];
 			if ((uintptr_t)pw>=SH3_MAXHANDLER) {
+				Cv1kV2NoteWrite(dst,1);
 #ifdef LSB_FIRST
 				pw[(dst^1)&SH3_PAGEM]=data;
 #else

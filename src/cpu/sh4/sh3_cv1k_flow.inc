@@ -9,6 +9,7 @@ static inline __attribute__((always_inline)) bool Cv1kTryStack(UINT16 opcode)
 	if(!p)return false;
 	m_ea=ea;
 	if(Store){
+		Cv1kV2NoteWrite(ea,4);
 		UINT32 v=sh3Hot.*Reg;
 #ifdef LSB_FIRST
 		v=(v<<16)|(v>>16);

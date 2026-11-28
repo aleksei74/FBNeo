@@ -165,6 +165,7 @@ static bool Cv1kTryLiteralFull(const Cv1kDataPlan &p,const UINT16 *w,UINT32 pc,
 			Cv1kInterpCodeOverlap(out,r+6,2,1) ||
 			Cv1kInterpCodeOverlap(out,r+10,2,1))return false;
 	}
+	Cv1kV2NoteWrite(dst,laps);
 	m_r[p.value]=Cv1kLiteralCopy(in,out);
 	m_r[p.src]+=laps;m_r[p.dst]+=laps;m_r[p.counter]-=laps;
 	const UINT32 shifted=flags?flags<<(laps-unsigned(countExit)):0;
@@ -268,6 +269,7 @@ static bool Cv1kTryDataLoop(unsigned expected=0)
 	// Do not turn forward overlapping decompression copies into
 	// memmove. This helper retains sequential byte/word/long order
 	// and the guest's endian layout, including physical aliases.
+	Cv1kV2NoteWrite(dst,bytes);
 	m_r[p.value]=width==1?Cv1kInterpCopy<1>(in,out):
 		width==2?Cv1kInterpCopy<2>(in,out):Cv1kInterpCopy<4>(in,out);
 	m_r[p.src]+=bytes;m_r[p.dst]+=bytes;m_r[p.counter]-=laps;

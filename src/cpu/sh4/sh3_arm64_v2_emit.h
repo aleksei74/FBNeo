@@ -38,12 +38,16 @@ asm(
 ".cfi_offset x28,-24\n"
 "str x30,[sp,#80]\n"
 ".cfi_offset x30,-16\n"
+"str x29,[sp,#88]\n"
+".cfi_offset x29,-8\n"
 "mov x16,x0\n"
 "mov x19,x1\n"
 "mov x20,x2\n"
 "mov x21,x3\n"
 "mov x22,x4\n"
 "blr x16\n"
+"ldr x29,[sp,#88]\n"
+".cfi_restore x29\n"
 "ldr x30,[sp,#80]\n"
 ".cfi_restore x30\n"
 "ldp x27,x28,[sp,#64]\n"
@@ -119,7 +123,7 @@ class CompactEmitter {
 	uint32_t *p_;
 	uint8_t reg_[16];
 	uint16_t used_,dirty_;
-	bool sr_,writeSR_,extended_;
+	bool sr_,writeSR_,extended_,audit_,repeat_;
 	uint32_t pc_;
 	unsigned maps_;
 	uint8_t mapReg_[3],codeReg_,sizeReg_;
@@ -240,7 +244,6 @@ class CompactEmitter {
 		// All accepted slots are register-only and do not access EA/PR.
 		*p_++=0xb9000010u|(EABase()<<5);
 		if(Delayed(op) && !Emit(ops[body+1],body+1))failed_=true;
-		Imm(Wide()?0:6,ExitTaken|count);
 		return notTaken;
 	}
 	bool EmitMemory(uint16_t op,unsigned done){
@@ -266,6 +269,17 @@ class CompactEmitter {
 			unsigned value=b;
 			if(size==2){*p_++=0x13804006u|(b<<16)|(b<<5);value=6;}
 			*p_++=(size==0?0x39000220u:size==1?0x79000220u:0xb9000220u)|value;
+			if(audit_){
+				// Map-normalized address, including aliases. No C calls.
+				*p_++=0x12007208u; // and w8,w16,#AM
+				*p_++=0x53107d08u; // lsr w8,w8,#16
+				LdrX(6,MemBase(),64);
+				*p_++=0xf86878c6u; // ldr x6,[x6,x8,lsl #3]
+				*p_++=0xb4000086u; // cbz x6,+16
+				*p_++=0xf94000c8u; // ldr x8,[x6]
+				*p_++=0x91000508u; // add x8,x8,#1
+				*p_++=0xf90000c8u; // str x8,[x6]
+			}
 			if(pre){W(n);*p_++=Mov(a,16);}
 			else *p_++=0xb9000010u|(EABase()<<5); // EA
 		}else{
@@ -279,15 +293,17 @@ class CompactEmitter {
 	}
 public:
 	explicit CompactEmitter(uint32_t *p):p_(p),reg_{},used_(0),dirty_(0),
-		sr_(false),writeSR_(false),extended_(false),pc_(0),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
+		sr_(false),writeSR_(false),extended_(false),audit_(false),repeat_(false),pc_(0),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
 		fix_{},idle_{},fixCount_(0),idleCount_(0),entrySR_(NULL),failed_(false){}
 	uint32_t *End()const{return p_;}
-	bool Wide()const{return __builtin_popcount(unsigned(used_))>7;}
-	bool Build(const uint16_t *ops,unsigned count,uint32_t pc=0,unsigned terminal=~0u,bool extended=false){
+	bool Wide()const{return repeat_||__builtin_popcount(unsigned(used_))>7;}
+	bool Build(const uint16_t *ops,unsigned count,uint32_t pc=0,unsigned terminal=~0u,bool extended=false,bool audit=false,bool repeat=false){
 		if(!count||count>CompactMaxOps)return false;
-		extended_=extended;pc_=pc;
+		extended_=extended;pc_=pc;audit_=audit;repeat_=repeat;
 		const bool branch=terminal<count;
 		const unsigned body=branch?terminal:count;
+		if(repeat_ && (!branch || Dynamic(ops[body]) || Call(ops[body]) ||
+			StaticTarget(ops[body],pc+body*2)!=pc))return false;
 		if(branch){
 			if(!extended || !Terminal(ops[body]) ||
 				count!=body+1+unsigned(Delayed(ops[body])))return false;
@@ -302,6 +318,8 @@ public:
 			used_|=Footprint(op);
 			if(MemoryOp(op)){
 				unsigned t=op>>12,f=op&15;
+				// Stores keep the existing host-span overlap guard on every
+				// lap. A write to this block exits before modifying it.
 				maps_|=(t==1||t==2)?4:(t==5||(f&3)==2)?2:1;
 			}
 			if((op>>12)==9 || IsDT(op))maps_|=1;
@@ -330,6 +348,8 @@ public:
 		}
 		// Reserved prologue instruction patched iff SR is used.
 		entrySR_=p_++;*entrySR_=0xd503201fu;
+		if(repeat_)LdrW(29,MemBase(),40);
+		uint32_t *loopHead=p_;
 		for(unsigned i=0;i<body;i++)if(!Emit(ops[i],i))return false;
 		uint32_t *notTaken=branch?EmitTerminal(ops[body],ops,body,count):NULL;
 		if(failed_)return false;
@@ -337,11 +357,23 @@ public:
 		// The normal exit falls through to the common epilogue.
 		// Failure and not-taken stubs are after RET, off the hot path.
 		const unsigned result=Wide()?0:6;
-		if(!branch)Imm(result,count);
+		if(repeat_){
+			// Completed taken lap: stay native with live GPR/SR bindings.
+			// Last lap returns normally; guards retain earlier completed laps.
+			*p_++=0x710007bdu; // subs w29,w29,#1
+			uint32_t *back=p_++;BC(back,loopHead,1);
+			*p_++=0x110007bdu; // add w29,w29,#1 (exclude final lap)
+		}
+		Imm(result,branch?ExitTaken|count:count);
 		uint32_t *epilogue=p_;
 		for(unsigned g=0;g<16;g++)if(dirty_&(1u<<g))
 			*p_++=0xb9000000u|(RegBase()<<5)|(g<<10)|reg_[g];
 		if(writeSR_)*p_++=0xb9000005u|(SRBase()<<5);
+		if(repeat_){
+			LdrW(8,MemBase(),40);
+			*p_++=0x4b1d0108u; // sub w8,w8,w29
+			*p_++=0x2a082800u; // orr w0,w0,w8,lsl #10
+		}
 		if(!Wide())*p_++=Mov(0,result);
 		*p_++=0xd65f03c0u;
 		if(notTaken){

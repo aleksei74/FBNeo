@@ -25,6 +25,40 @@ static void __fastcall TestWrite(UINT32 a, UINT8 d) {
 	handlerRam[a&0xffff]=d;
 #endif
 }
+#if SH3_NATIVE_V2
+static bool TestNativeCodeDMA(){
+	// The same host backing page appears in the two Type B/C RAM
+	// mirrors. Exercise the real bulk and scalar NAND DMAC paths.
+	for(unsigned scalar=0;scalar<2;scalar++){
+		Cv1kV2Reset();Sh3MapInit();
+		setenv("FBNEO_CV1K_V2_WRITE_AUDIT","1",1);
+		if(!Cv1kV2Enable())return false;
+		std::vector<UINT16> ram(32768,0x7001);
+		std::vector<UINT8> flash(2112,0xe7);
+		flash[1]=0x7f;
+		Sh3MapMemory((UINT8*)ram.data(),0xc000000,0xc00ffff,MAP_RAM);
+		Sh3MapMemory((UINT8*)ram.data(),0xc800000,0xc80ffff,MAP_RAM);
+		m_cpu_type=CPU_TYPE_SH3;m_pc=0x8c000100;
+		m_delay=m_test_irq=m_cpu_off=0;sh3_end_run=0;m_sh4_icount=1000;
+		for(unsigned i=0;i<Cv1kV2Hot;i++)Cv1kV2Observe(m_pc);
+		if(!Cv1kV2Find(m_pc) || !cv1kV2WriteWatch[0xc00] ||
+			cv1kV2WriteWatch[0xc00]!=cv1kV2WriteWatch[0xc80])return false;
+		const auto epoch=*cv1kV2WriteWatch[0xc00];
+		m_flash_page_data=flash.data();m_flash_page_size=flash.size();
+		m_flash_enab=1;m_flash_state=READ;m_flash_page_addr=0;m_flash_read_seq=0;
+		UINT32 sar=0x10000000,dar=0x0c800100,count=scalar?1:2;
+		if(!sh4_dma_transfer(0,0,scalar?0:(1<<14),&sar,&dar,&count) || count ||
+			*cv1kV2WriteWatch[0xc00]==epoch || ram[0x80]==0x7001)return false;
+		// A dirty block must not execute the old code. Its immutable
+		// cached bytes remain valid only for already completed calls.
+		if(Cv1kV2Try(m_pc) || Cv1kV2Find(m_pc) || cv1kV2Stats.changed!=1 ||
+			cv1kV2Stats.untracked || !cv1kV2Stats.dirtyChecks)return false;
+		Cv1kV2Reset();Sh3MapInit();
+	}
+	puts("B3 real NAND DMA: bulk/scalar mirrored code invalidation PASS");
+	return true;
+}
+#endif
 static bool TestDMA(){
 	std::vector<UINT8> page(2112),a(0x20000),b(a.size());
 	for(auto &v:page)v=Rand();
@@ -114,5 +148,9 @@ int main(){
 		}
 	}
 	puts("CV1000 serial-flash DMA block: 20000 byte/state comparisons PASS");
-	return TestDMA()?0:2;
+	if(!TestDMA())return 2;
+#if SH3_NATIVE_V2
+	if(!TestNativeCodeDMA())return 3;
+#endif
+	return 0;
 }
