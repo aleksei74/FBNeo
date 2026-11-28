@@ -119,11 +119,16 @@ static constexpr unsigned ExitTaken=0x100,ExitNotTaken=0x200;
 // Fixed bindings allow a single union-of-writes epilogue, even when a
 // guard exits before an instruction that would otherwise overwrite a
 // register: every used register is initialized at entry.
+struct ResidentFixup {
+	uint32_t *at;
+	uint32_t target;
+	bool adr;
+};
 class CompactEmitter {
 	uint32_t *p_;
 	uint8_t reg_[16];
 	uint16_t used_,dirty_;
-	bool sr_,writeSR_,extended_,audit_,repeat_;
+	bool sr_,writeSR_,extended_,audit_,repeat_,resident_;
 	uint32_t pc_;
 	unsigned maps_;
 	uint8_t mapReg_[3],codeReg_,sizeReg_;
@@ -238,7 +243,7 @@ class CompactEmitter {
 			notTaken=p_++;
 		}
 		if(Dynamic(op)){
-			if(op==0x000b)LdrW(16,MemBase(),60);
+			if(op==0x000b){if(resident_)*p_++=Mov(16,2);else LdrW(16,MemBase(),60);}
 			else *p_++=Mov(16,R((op>>8)&15));
 			*p_++=0x7200021fu;Guard(1,body); // odd target: original handler
 		}else Imm32(16,StaticTarget(op,pc_+body*2));
@@ -259,6 +264,16 @@ class CompactEmitter {
 		else *p_++=Mov(16,a);
 		ResolveAddress(size,store,done);
 		if(store){
+			if(resident_){
+				// A resident region may contain any watched code span.
+				// Exit BEFORE a write to a watched/ambiguous backing page.
+				*p_++=0x12007208u;
+				*p_++=0x53107d08u;
+				LdrX(6,MemBase(),64);
+				*p_++=0x386868c8u;
+				*p_++=0x7100011fu;Guard(1,done);
+				*p_++=0x8b070231u;
+			}else{
 			*p_++=0x8b070231u; // add x17,x17,x7
 			unsigned code=codeReg_;
 			if(code==31){LdrX(4,MemBase(),24);code=4;}
@@ -268,10 +283,11 @@ class CompactEmitter {
 			if(length==31){LdrX(4,MemBase(),32);length=4;}
 			*p_++=0x91000006u|(length<<5)|((bytes-1)<<10);
 			*p_++=0xeb06011fu;Guard(3,done);
+			}
 			unsigned value=b;
 			if(size==2){*p_++=0x13804006u|(b<<16)|(b<<5);value=6;}
 			*p_++=(size==0?0x39000220u:size==1?0x79000220u:0xb9000220u)|value;
-			if(audit_){
+			if(audit_ && !resident_){
 				// Map-normalized address, including aliases. No C calls.
 				*p_++=0x12007208u; // and w8,w16,#AM
 				*p_++=0x53107d08u; // lsr w8,w8,#16
@@ -293,10 +309,10 @@ class CompactEmitter {
 	}
 public:
 	explicit CompactEmitter(uint32_t *p):p_(p),reg_{},used_(0),dirty_(0),
-		sr_(false),writeSR_(false),extended_(false),audit_(false),repeat_(false),pc_(0),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
+		sr_(false),writeSR_(false),extended_(false),audit_(false),repeat_(false),resident_(false),pc_(0),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
 		fix_{},idle_{},watch_{},fixCount_(0),idleCount_(0),watchCount_(0),entrySR_(NULL),failed_(false){}
 	uint32_t *End()const{return p_;}
-	bool Wide()const{return repeat_||__builtin_popcount(unsigned(used_))>7;}
+	bool Wide()const{return resident_||repeat_||__builtin_popcount(unsigned(used_))>7;}
 	bool Build(const uint16_t *ops,unsigned count,uint32_t pc=0,unsigned terminal=~0u,bool extended=false,bool audit=false,bool repeat=false){
 		if(!count||count>CompactMaxOps)return false;
 		extended_=extended;pc_=pc;audit_=audit;repeat_=repeat;
@@ -407,6 +423,157 @@ public:
 			*p_++=0x91000631u; // add x17,x17,#1
 			*p_++=0xf82878d1u; // str x17,[x6,x8,lsl #3]
 			uint32_t *jump=p_++;B(jump,r.resume);
+		}
+		return true;
+	}
+	// Resident C-3 regions share the same audited arithmetic/memory
+	// emitter, but no helper calls or per-block hot GPR/SR round trip.
+	static constexpr unsigned ResidentHotMask=0x801f,ResidentMaxWords=128*CompactMaxOps+512;
+	static bool ResidentEligible(const uint16_t *ops,unsigned count,unsigned body){
+		unsigned mask=0;
+		for(unsigned i=0;i<count;i++){
+			if(i==body && body<count){
+				if(Dynamic(ops[i]) && ops[i]!=0x000b)mask|=1u<<((ops[i]>>8)&15);
+			}else mask|=Footprint(ops[i]);
+		}
+		return __builtin_popcount(mask&~ResidentHotMask)<=7;
+	}
+	bool BuildResident(const uint16_t *ops,unsigned count,uint32_t pc,unsigned body,
+			const uint32_t *pcs,unsigned nPC,ResidentFixup *edges,unsigned &nEdge,
+			bool hasPrediction=false,uint32_t prediction=0){
+		if(!count||count>CompactMaxOps||!ResidentEligible(ops,count,body))return false;
+		resident_=extended_=true;pc_=pc;
+		const bool terminal=body<count;
+		if(terminal && (!Terminal(ops[body]) ||
+			count!=body+1+unsigned(Delayed(ops[body])) ||
+			(Delayed(ops[body])&&!SafeSlot(ops[body+1]))))return false;
+		for(unsigned i=0;i<count;i++){
+			if(terminal && i==body){
+				if(Dynamic(ops[i]) && ops[i]!=0x000b)used_|=1u<<((ops[i]>>8)&15);
+			}else{
+				if(!ExtendedCandidate(ops[i]))return false;
+				used_|=Footprint(ops[i]);
+			}
+		}
+		auto member=[&](uint32_t target){
+			for(unsigned i=0;i<nPC;i++)if(pcs[i]==target)return true;
+			return false;
+		};
+		auto cold=[&](uint32_t target){Imm32(16,target);*p_++=0xd65f03c0u;};
+		auto edge=[&](uint32_t target){
+			if(member(target)){edges[nEdge++]={p_,target,false};*p_++=0x14000000u;}
+			else cold(target);
+		};
+		auto flush=[&](){
+			for(unsigned g=0;g<16;g++)if((dirty_&~ResidentHotMask)&(1u<<g))
+				*p_++=0xb9000000u|(19<<5)|(g<<10)|reg_[g];
+		};
+		auto debit=[&](unsigned opsDone,unsigned cost,bool complete){
+			if(opsDone)*p_++=0x11000063u|(opsDone<<10); // add w3,w3,#ops
+			if(cost)*p_++=0x510003bdu|(cost<<10); // sub w29,w29,#cost
+			if(complete)*p_++=0x11000484u; // add w4,w4,#1
+		};
+		auto rasPush=[&](uint32_t ret){
+			if(!member(ret))return;
+			*p_++=0x7100201fu; // cmp w0,#8
+			uint32_t *full=p_++;
+			*p_++=0x910182d1u; // add x17,x22,#96
+			*p_++=0x8b001231u; // add x17,x17,x0,lsl #4
+			*p_++=0xb9000222u; // str w2,[x17]
+			edges[nEdge++]={p_,ret,true};*p_++=0x10000010u; // ADR x16, continuation
+			*p_++=0xf9000630u; // str x16,[x17,#8]
+			*p_++=0x11000400u; // add w0,w0,#1
+			BC(full,p_,2);
+		};
+		auto rasReturn=[&](){
+			uint32_t *empty=p_++;
+			*p_++=0x51000400u; // sub w0,w0,#1
+			*p_++=0x910182d1u;
+			*p_++=0x8b001231u;
+			*p_++=0xb9400226u; // ldr w6,[x17]
+			*p_++=0x6b1000dfu; // cmp w6,w16
+			uint32_t *miss=p_++;
+			*p_++=0xf9400631u; // ldr x17,[x17,#8]
+			*p_++=0xd61f0220u; // br x17
+			*empty=0x34000000u|((uint32_t(p_-empty)&0x7ffffu)<<5);
+			BC(miss,p_,1);
+			*p_++=0xd65f03c0u; // return with actual PR in w16
+		};
+		// Direct and RAS targets enter through this same budget check.
+		*p_++=0xd50324dfu;
+		const unsigned worst=count+(terminal?ExtraCycles(ops[body]):0);
+		*p_++=0x710003bfu|(worst<<10); // cmp w29,#maxCost
+		uint32_t *budget=p_++;
+		for(unsigned g=0,h=9;g<16;g++){
+			if(g<5)reg_[g]=23+g;
+			else if(g==15)reg_[g]=28;
+			else if(used_&(1u<<g)){
+				reg_[g]=h++;
+				LdrW(reg_[g],19,g*4);
+			}
+		}
+		for(unsigned i=0;i<body;i++)if(!Emit(ops[i],i))return false;
+		uint32_t *notTaken=terminal?EmitTerminal(ops[body],ops,body,count):NULL;
+		if(failed_)return false;
+		flush();debit(count,worst,true);
+		if(!terminal){
+			Imm32(1,pc+count*2);edge(pc+count*2);
+		}else{
+			const uint16_t op=ops[body];
+			const uint32_t next=pc+(body+1)*2;
+			if(Dynamic(op)){
+				// Dynamic target is captured before the register-only slot.
+				*p_++=Mov(1,16);
+				if(Call(op))Imm32(2,next+2);
+				if(op==0x000b)rasReturn();
+				else{
+					if(hasPrediction && member(prediction)){
+						Imm32(6,prediction);
+						*p_++=0x6b06021fu; // cmp w16,w6, actual captured target
+						uint32_t *miss=p_++;
+						if(Call(op))rasPush(next+2);
+						edge(prediction);
+						BC(miss,p_,1);
+					}
+					// Misses train a bounded monomorphic prediction on exit.
+					// Actual guest target and PR have already been committed.
+					Imm32(6,(pc+body*2)|1u);
+					*p_++=0xb900e2c6u; // str w6,[x22,#224]
+					*p_++=0xb900e6d0u; // str w16,[x22,#228]
+					*p_++=0xd65f03c0u;
+				}
+			}else{
+				const uint32_t target=StaticTarget(op,pc+body*2);
+				Imm32(1,Delayed(op)?target:next);
+				if(Call(op)){Imm32(2,next+2);if(member(target))rasPush(next+2);}
+				edge(target);
+			}
+			if(notTaken){
+				BC(notTaken,p_,(op&0x0200)?1:0);
+				flush();debit(body+1,body+1,true);Imm32(1,next);edge(next);
+			}
+		}
+		BC(budget,p_,3);cold(pc);
+		for(unsigned i=0;i<idleCount_;i++){
+			const auto &r=idle_[i];
+			BC(r.at,p_,3);
+			*p_++=0x7130011fu;Guard(1,r.done);
+			LdrX(17,MemBase(),48);
+			*p_++=0xf100023fu;Guard(0,r.done);
+			LdrW(8,MemBase(),56);
+			*p_++=0x6b0800ffu;Guard(0,r.done);
+			uint32_t *jump=p_++;B(jump,r.resume);
+		}
+		if(failed_)return false;
+		uint32_t *stub[CompactMaxOps]={};
+		for(unsigned i=0;i<fixCount_;i++){
+			const unsigned d=fix_[i].done;
+			if(!stub[d]){
+				stub[d]=p_;flush();debit(d,d,false);
+				if(d)Imm32(1,pc+d*2);
+				cold(pc+d*2);
+			}
+			BC(fix_[i].at,stub[d],fix_[i].cond);
 		}
 		return true;
 	}

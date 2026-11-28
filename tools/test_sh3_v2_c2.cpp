@@ -7,6 +7,9 @@
 #include "../src/burn/devices/serflash.cpp"
 
 static void InitC2(unsigned mode,bool always=false){
+#ifndef SH3_V2_C3_TEST
+	setenv("FBNEO_CV1K_V2_RESIDENT","0",1);
+#endif
 	setenv("FBNEO_CV1K_V2_LINK",mode==2?"1":"0",1);
 	setenv("FBNEO_CV1K_V2_VERIFY_ALWAYS",always?"1":"0",1);
 	C1Init(mode!=0,mode!=0);
@@ -184,6 +187,7 @@ static double LinkBench(unsigned mode,unsigned kind,Snapshot &state){
 		(unsigned long long)cv1kV2Stats.linkEdges,(unsigned long long)cv1kV2Stats.cycles);
 	return ms;
 }
+#ifndef SH3_V2_C3_TEST
 int main(int argc,char **){
 	setvbuf(stdout,NULL,_IOLBF,0);
 	if(argc>1){
@@ -213,3 +217,5 @@ int main(int argc,char **){
 	puts("C2 direct B linking: 224 differential slices PASS");
 	return 0;
 }
+
+#endif

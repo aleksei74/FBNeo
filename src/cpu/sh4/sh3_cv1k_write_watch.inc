@@ -13,6 +13,8 @@ static uint64_t cv1kV2MapVersion,cv1kV2SliceEpoch;
 static UINT8 cv1kV2TrackedHandlers;
 static UINT8 *cv1kV2TrustedRam,*cv1kV2TrustedRom;
 static UINT32 cv1kV2TrustedRamSize;
+static uintptr_t cv1kV2ScratchRam;
+static bool cv1kV2ScratchWatched;
 static bool cv1kV2VerifyAlways;
 static bool Cv1kV2RangesOverlap(uintptr_t a,size_t n,uintptr_t b,size_t m){
 	return a<=b?b-a<n:a-b<m;
@@ -27,8 +29,9 @@ static void Cv1kV2BindWritePage(unsigned id){
 	}
 }
 static void Cv1kV2RevokeTrust(){
-	if(cv1kV2TrustedRam || cv1kV2TrustedRom)++cv1kV2MapVersion;
+	if(cv1kV2TrustedRam || cv1kV2TrustedRom || cv1kV2ScratchRam)++cv1kV2MapVersion;
 	cv1kV2TrustedRam=cv1kV2TrustedRom=NULL;cv1kV2TrustedRamSize=0;
+	cv1kV2ScratchRam=0;cv1kV2ScratchWatched=false;
 }
 static void Cv1kV2WriteMapChanged(){
 	++cv1kV2MapVersion;Cv1kV2RevokeTrust();
@@ -43,12 +46,21 @@ static unsigned Cv1kV2WatchCode(const void *base){
 	for(unsigned i=0;i<cv1kV2WatchCount;i++)if(cv1kV2WatchPages[i]==a)return i+1;
 	if(cv1kV2WatchCount==Cv1kV2WatchLimit)return 0;
 	cv1kV2WatchPages[cv1kV2WatchCount++]=a;
+	if(cv1kV2ScratchRam && Cv1kV2RangesOverlap(a,SH3_PAGE_SIZE,cv1kV2ScratchRam,0x4000))
+		cv1kV2ScratchWatched=true;
 	cv1kV2Generations[cv1kV2WatchCount]=0;
 	Cv1kV2BindWritePage(cv1kV2WatchCount);return cv1kV2WatchCount;
 }
 static inline __attribute__((always_inline)) void Cv1kV2NoteWrite(UINT32 a,unsigned n){
 	if(!cv1kV2WriteWatch)return;
-	if(a>=0xe0000000 || n>SH3_PAGE_SIZE-(a&SH3_PAGEM)){++cv1kV2OpaqueEpoch;return;}
+	if(a>=0xe0000000 || n>SH3_PAGE_SIZE-(a&SH3_PAGEM)){
+		// Explicit CV1000 board contract, exact 16 KiB P4 backing only.
+		// All remaps revoke it; any watched host alias restores opacity.
+		const UINT32 off=a-0xf0000000u;
+		if(cv1kV2ScratchRam && !cv1kV2ScratchWatched &&
+			off<0x4000 && n<=0x4000-off)return;
+		++cv1kV2OpaqueEpoch;return;
+	}
 	const unsigned id=cv1kV2WriteWatch[(a&AM)>>SH3_SHIFT];
 	if(id)++cv1kV2Generations[id];
 }
@@ -64,12 +76,13 @@ static void Cv1kV2SetTracked(unsigned i,bool tracked){
 	Cv1kV2NoteOpaqueWrite();
 }
 static void Cv1kV2WatchClear(){
-	cv1kV2WatchCount=0;++cv1kV2OpaqueEpoch;++cv1kV2MapVersion;++cv1kV2SliceEpoch;
+	cv1kV2WatchCount=0;cv1kV2ScratchWatched=false;++cv1kV2OpaqueEpoch;++cv1kV2MapVersion;++cv1kV2SliceEpoch;
 	if(cv1kV2WriteWatch)memset(cv1kV2WriteWatch,0,Cv1kV2WatchMapSize);
 }
 static void Cv1kV2WatchReset(){
 	delete[] cv1kV2WriteWatch;cv1kV2WriteWatch=NULL;
-	cv1kV2WatchCount=0;memset(cv1kV2Generations,0,sizeof(cv1kV2Generations));
+	cv1kV2WatchCount=0;cv1kV2ScratchRam=0;cv1kV2ScratchWatched=false;
+	memset(cv1kV2Generations,0,sizeof(cv1kV2Generations));
 	++cv1kV2MapVersion;++cv1kV2SliceEpoch;cv1kV2VerifyAlways=true;
 }
 static void Cv1kV2WatchEnable(){
@@ -83,6 +96,16 @@ static bool Cv1kV2TrustedCode(UINT32 pc,const UINT8 *base){
 	if(cv1kV2TrustedRom && a<0x400000 && base==cv1kV2TrustedRom+a)return true;
 	return cv1kV2TrustedRam && a>=0xc000000 && a<0xd000000 &&
 		base==cv1kV2TrustedRam+((a-0xc000000)&(cv1kV2TrustedRamSize-1));
+}
+static void Cv1kV2TrustScratch(UINT8 *ram,UINT32 size){
+	cv1kV2ScratchRam=0;cv1kV2ScratchWatched=false;
+	if(!cv1kV2WriteWatch || !(cv1kV2TrackedHandlers&1u) || !ram || size!=0x4000)return;
+	const unsigned page=0xf0000000u>>SH3_SHIFT;
+	if(MemMapW[page]!=ram || MemMapR[page]!=ram || MemMapF[page]!=ram)return;
+	cv1kV2ScratchRam=(uintptr_t)ram;
+	for(unsigned i=0;i<cv1kV2WatchCount;i++)
+		if(Cv1kV2RangesOverlap(cv1kV2WatchPages[i],SH3_PAGE_SIZE,cv1kV2ScratchRam,size))
+			cv1kV2ScratchWatched=true;
 }
 static void Cv1kV2TrustMemory(UINT8 *ram,UINT32 size,UINT8 *rom){
 	Cv1kV2RevokeTrust();
@@ -109,5 +132,6 @@ static inline void Cv1kV2NoteOpaqueWrite(){}
 static inline void Cv1kV2NoteHandlerWrite(unsigned){}
 static inline void Cv1kV2SetTracked(unsigned,bool){}
 static inline void Cv1kV2TrustMemory(UINT8*,UINT32,UINT8*){}
+static inline void Cv1kV2TrustScratch(UINT8*,UINT32){}
 static inline void Cv1kV2RevokeTrust(){}
 #endif

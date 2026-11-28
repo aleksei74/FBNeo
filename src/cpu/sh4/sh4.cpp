@@ -647,6 +647,10 @@ static bool Cv1kIsIdlePage(UINT8 *page)
 }
 // CV1000 Type B/C mirrors 8 MiB across 16 MiB; Type D has 16 MiB.
 // Do not infer these mappings from the guest address alone.
+void Sh3SetCv1kCacheRAM(UINT8 *ram,UINT32 size)
+{
+	Cv1kV2TrustScratch(ram,size);
+}
 void Sh3SetCv1kFastMemory(UINT8 *ram,UINT32 ramSize,UINT8 *rom)
 {
 	Cv1kInvalidateFastMemory();
@@ -4608,6 +4612,11 @@ void Sh3Cv1kV2Report()
 	bprintf(PRINT_UI,_T("CV1K V2 links: groups %llu bodies %llu edges %llu patches %llu built %llu stops %llu\n"),
 		(unsigned long long)s.linkGroups,(unsigned long long)s.linkBodies,(unsigned long long)s.linkEdges,
 		(unsigned long long)s.linkPatched,(unsigned long long)s.linkBuilt,(unsigned long long)s.linkStops);
+	if(cv1kC3Enabled)bprintf(PRINT_UI,_T("CV1K V3 resident: groups %llu blocks %llu ops %llu built %llu reject %llu invalid %llu checks %llu\n"),
+		(unsigned long long)s.residentGroups,(unsigned long long)s.residentBlocks,
+		(unsigned long long)s.residentOps,(unsigned long long)s.residentBuilt,
+		(unsigned long long)s.residentReject,(unsigned long long)s.residentInvalid,
+		(unsigned long long)s.residentChecks);
 #endif
 }
 
@@ -4724,7 +4733,13 @@ void Sh3SetCv1kNative(INT32 enable)
 		Cv1kPerformanceOption(getenv("FBNEO_CV1K_JIT_V2")) && Cv1kV2Enable();
 #endif
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 Dynarec V2: %s\n"),
-		cv1kV2Enabled?_T("enabled (stage C-2, guarded static links)"):_T("disabled"));
+		cv1kV2Enabled?
+#if SH3_NATIVE_V2
+		(cv1kC3Enabled?_T("enabled (stage C-3, resident regions)"):_T("enabled (stage C-2, guarded static links)"))
+#else
+		_T("enabled")
+#endif
+		:_T("disabled"));
 #if SH3_NATIVE_V2
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 lookup-only: %s; 64 KiB pinned directory\n"),
 		cv1kV2LookupOnly?_T("enabled (learn/compile/validate, no native execution)"):_T("disabled"));
@@ -4739,6 +4754,7 @@ void Sh3SetCv1kNative(INT32 enable)
 		cv1kV2Chain?_T("enabled"):_T("disabled"),cv1kV2SelfLoop?_T("enabled"):_T("disabled"));
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 native static links: %s\n"),
 		cv1kV2LinkEnabled?_T("enabled (B rel26)"):_T("disabled"));
+	if(cv1kC3Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V3 resident regions: enabled (experimental, direct B, RAS)\n"));
 #endif
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.
@@ -5122,6 +5138,11 @@ flow_branch:
 			remaining-=spent;m_sh4_icount=remaining;
 			sh3_total_cycles+=spent;m_pc=r.target;m_ppc=r.ppc;
 			pc=r.target;pure=0;
+#if SH3_NATIVE_V2
+			if(NativeV2 && cv1kC3Enabled &&
+				(branchKind==CV1K_BRANCH_JSR || branchKind==CV1K_BRANCH_JMP))
+				Cv1kC3RecordDynamic(nextPC-2,r.target);
+#endif
 			if(remaining<=0)goto done;
 			// A committed control-flow boundary is a safe native
 			// entry. A cache miss keeps the same-page fetch reuse.

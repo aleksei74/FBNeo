@@ -100,5 +100,6 @@ public:
 };
 }
 #include "sh3_arm64_v2_link.h"
+#include "sh3_arm64_v3_resident.h"
 #endif
 #endif

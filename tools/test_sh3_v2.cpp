@@ -31,6 +31,8 @@ static void CacheTest(){
 	puts("V2 RW/RX cache: publish, execute, fill, retain, reset, denied PASS");
 }
 static void Init(bool v2,unsigned test=0){
+	// Old test suites remain explicit controls on the C-3 branch.
+	if(!getenv("FBNEO_CV1K_V2_RESIDENT"))setenv("FBNEO_CV1K_V2_RESIDENT","0",1);
 	setenv("FBNEO_CV1K_JIT_V2",v2?"1":"0",1);
 	setenv("FBNEO_CV1K_V2_LOOKUP_ONLY","0",1);
 	setenv("FBNEO_CV1K_FAST_RAM","0",1);

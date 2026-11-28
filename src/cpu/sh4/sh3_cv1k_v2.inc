@@ -27,7 +27,9 @@ struct Cv1kV2Entry {
 	UINT8 count,shortExits,kind; // 0 legacy, 1 compact-leaf, 2 compact-wide
 	UINT8 body,extra,longRead; // body<count iff a terminal branch is emitted
 	UINT8 repeat,writes;
-	UINT16 watch,link;
+	UINT16 watch,link,region;
+	UINT8 regionMember;
+	uint64_t regionTried;
 	uint64_t generation,opaqueEpoch,sliceEpoch;
 };
 struct Cv1kV2Learn {
@@ -43,6 +45,7 @@ struct Cv1kV2Stats {
 	UINT64 dirtyChecks,untracked,chainGroups,chainJoined,selfLaps,selfBuilt;
 	UINT64 verifyChecks,verifySkipped;
 	UINT64 linkGroups,linkBodies,linkEdges,linkPatched,linkBuilt,linkStops;
+	UINT64 residentGroups,residentBlocks,residentOps,residentBuilt,residentReject,residentInvalid,residentChecks;
 };
 static Cv1kV2Set *cv1kV2Fast;
 static Cv1kV2Entry *cv1kV2Table;
@@ -51,7 +54,56 @@ static Sh3V2::CodeCache cv1kV2Code;
 static Sh3V2::LinkDesc *cv1kV2Links;
 static unsigned cv1kV2LinkCount;
 static bool cv1kV2LinkEnabled;
+// Fixed-size immutable regions; generated code has no references to
+// movable directory entries. Regions share the existing 8 MiB cache.
+static constexpr unsigned Cv1kC3MaxMembers=12,Cv1kC3MaxRegions=512;
+struct Cv1kC3Member {
+	const UINT16 *source;
+	UINT32 pc,offset;
+	UINT16 ops[Sh3Native::MaxOps];
+	UINT16 watch;
+	UINT8 count,body;
+	bool trusted,hasPrediction;
+	UINT32 prediction;
+	uint64_t generation;
+};
+struct Cv1kC3Region {
+	uint64_t mapVersion,opaque,slice,buildEpoch;
+	unsigned count;
+	bool active;
+	Cv1kC3Member members[Cv1kC3MaxMembers];
+};
+static Cv1kC3Region *cv1kC3Regions;
+static unsigned cv1kC3Count;
+static bool cv1kC3Enabled;
+struct Cv1kC3Prediction {
+	UINT32 pc,target,hits;
+	uint64_t mapVersion;
+};
+static constexpr unsigned Cv1kC3PredCount=1024;
+static Cv1kC3Prediction cv1kC3Pred[Cv1kC3PredCount];
+static UINT32 cv1kC3PredSerial;
+static inline Cv1kC3Prediction &Cv1kC3PredictSlot(UINT32 pc){
+	return cv1kC3Pred[((pc>>1)^(pc>>11)^(pc>>21))&(Cv1kC3PredCount-1)];
+}
+static void Cv1kC3RecordDynamic(UINT32 pc,UINT32 target){
+	if(target&1)return;
+	auto &p=Cv1kC3PredictSlot(pc);
+	if(p.pc!=pc || p.mapVersion!=cv1kV2MapVersion || p.target!=target || !p.hits){
+		p={pc,target,1,cv1kV2MapVersion};
+	}else if(p.hits<2){
+		++p.hits;++cv1kC3PredSerial;
+	}
+}
+static bool Cv1kC3Predict(UINT32 pc,UINT32 &target){
+	const auto &p=Cv1kC3PredictSlot(pc);
+	if(p.pc!=pc || p.hits<2 || p.mapVersion!=cv1kV2MapVersion)return false;
+	target=p.target;return true;
+}
 static Cv1kV2Stats cv1kV2Stats;
+static uint64_t Cv1kC3BuildEpoch(){
+	return (cv1kV2Stats.built<<32)|cv1kC3PredSerial;
+}
 static bool cv1kV2Full,cv1kV2LookupOnly,cv1kV2Compact,cv1kV2Blocks,cv1kV2Chain,cv1kV2SelfLoop;
 static inline unsigned Cv1kV2Minimum(){return cv1kV2Blocks?2:Cv1kV2Min;}
 static UINT32 cv1kV2SampleClock,cv1kV2Random;
@@ -60,7 +112,8 @@ static void Cv1kV2InvalidateAll(){
 	if(!cv1kV2Fast)return;
 	memset(cv1kV2Fast,0,sizeof(Cv1kV2Set)*Cv1kV2Sets);
 	Cv1kV2ClearPages();Cv1kV2WatchClear();
-	cv1kV2LinkCount=0;
+	cv1kV2LinkCount=0;cv1kC3Count=0;
+	memset(cv1kC3Pred,0,sizeof(cv1kC3Pred));cv1kC3PredSerial=0;
 	memset(cv1kV2Learn,0,sizeof(cv1kV2Learn));
 	cv1kV2Code.Reset();cv1kV2Full=false;cv1kV2SampleAt=-1;
 	cv1kV2SampleClock=0;cv1kV2Random=0x957fea31u;
@@ -70,6 +123,8 @@ static void Cv1kV2Reset(){
 	delete[] cv1kV2Fast;cv1kV2Fast=NULL;
 	delete[] cv1kV2Table;cv1kV2Table=NULL;
 	delete[] cv1kV2Links;cv1kV2Links=NULL;cv1kV2LinkCount=0;cv1kV2LinkEnabled=false;
+	delete[] cv1kC3Regions;cv1kC3Regions=NULL;cv1kC3Count=0;cv1kC3Enabled=false;
+	memset(cv1kC3Pred,0,sizeof(cv1kC3Pred));cv1kC3PredSerial=0;
 	memset(cv1kV2Learn,0,sizeof(cv1kV2Learn));
 	cv1kV2Code.Reset();cv1kV2Stats={};cv1kV2Full=false;
 	cv1kV2LookupOnly=false;cv1kV2Compact=false;cv1kV2Blocks=false;cv1kV2SampleClock=0;
@@ -92,6 +147,14 @@ static bool Cv1kV2Enable(){
 		cv1kV2LinkEnabled=cv1kV2Links!=NULL;
 	}
 	Cv1kV2WatchEnable();
+	if(cv1kV2Chain && cv1kV2WriteWatch &&
+		Cv1kPerformanceOption(getenv("FBNEO_CV1K_V2_RESIDENT"),true)){
+		cv1kC3Regions=new(std::nothrow) Cv1kC3Region[Cv1kC3MaxRegions]();
+		cv1kC3Enabled=cv1kC3Regions!=NULL;
+		if(cv1kC3Enabled){
+			delete[] cv1kV2Links;cv1kV2Links=NULL;cv1kV2LinkEnabled=false;
+		}
+	}
 	return true;
 }
 static inline __attribute__((always_inline)) unsigned Cv1kV2Hash(UINT32 pc){
@@ -277,7 +340,7 @@ static __attribute__((noinline,cold)) void Cv1kV2Compile(
 	Cv1kV2Entry &b=cv1kV2Table[id-1];
 	b.source=code;b.offset=offset;b.count=n;b.shortExits=0;b.kind=kind;
 	b.body=body;b.extra=terminal?Sh3V2::ExtraCycles(code[body]):0;b.longRead=0;
-	b.repeat=repeat;b.writes=0;b.link=0;
+	b.repeat=repeat;b.writes=0;b.link=0;b.region=0;b.regionMember=0;b.regionTried=~uint64_t(0);
 	b.watch=Cv1kV2WatchCode(MemMapF[(pc&AM)>>SH3_SHIFT]);
 	b.generation=b.watch?cv1kV2Generations[b.watch]:0;
 	b.opaqueEpoch=cv1kV2OpaqueEpoch;b.sliceEpoch=cv1kV2SliceEpoch;
@@ -291,7 +354,7 @@ static __attribute__((noinline,cold)) void Cv1kV2Compile(
 	memcpy(b.ops,code,n*sizeof(UINT16));
 	ways[way]={pc,id};
 	bits[(pc&SH3_PAGEM)>>4]|=1u<<((pc>>1)&7);
-	Cv1kV2PublishLink(b,pc);
+	if(!cv1kC3Enabled)Cv1kV2PublishLink(b,pc);
 	if(repeat)++cv1kV2Stats.selfBuilt;
 	if(terminal)++cv1kV2Stats.terminalBuilt;
 	if(extended)++cv1kV2Stats.extendedBuilt;
@@ -454,6 +517,188 @@ static __attribute__((noinline)) unsigned Cv1kV2RunLinked(Sh3V2::LinkDesc &d){
 	if(completed)cv1kV2Stats.chainJoined+=completed-1;
 	return c.ops;
 }
+// C-3: compile a bounded region of already learned exact blocks. Each
+// internal edge goes directly to a body in the same immutable region.
+// No external pointer survives the region invocation (including RAS).
+static Cv1kV2Entry *Cv1kC3Candidate(UINT32 pc){
+	auto *s=Cv1kV2Find(pc);
+	if(!s || (s->id&Cv1kV2Blocked))return NULL;
+	auto &b=cv1kV2Table[s->id-1];
+	if(!b.kind || b.repeat || !b.watch ||
+		!Sh3V2::CompactEmitter::ResidentEligible(b.ops,b.count,b.body))return NULL;
+	unsigned available;
+	const UINT16 *source=Cv1kV2Source(pc,available);
+	if(!source || source!=b.source || b.count>available ||
+		memcmp(source,b.ops,b.count*sizeof(UINT16)))return NULL;
+	return &b;
+}
+static __attribute__((noinline,cold)) bool Cv1kC3Build(UINT32 pc,Cv1kV2Entry &root){
+	const uint64_t epoch=Cv1kC3BuildEpoch();
+	if(root.regionTried==epoch || cv1kC3Count>=Cv1kC3MaxRegions)return false;
+	root.regionTried=epoch;
+	unsigned available;
+	const UINT16 *source=Cv1kV2Source(pc,available);
+	if(!source || source!=root.source || root.count>available ||
+		memcmp(source,root.ops,root.count*sizeof(UINT16))){
+		if(auto *slot=Cv1kV2Find(pc)){
+			Cv1kV2Retire(*slot);++cv1kV2Stats.changed;++cv1kV2Stats.retired;
+		}
+		return false;
+	}
+	Cv1kC3Region region={};
+	UINT32 pcs[Cv1kC3MaxMembers];
+	auto add=[&](UINT32 target){
+		if(region.count==Cv1kC3MaxMembers)return;
+		for(unsigned i=0;i<region.count;i++)if(pcs[i]==target)return;
+		auto *b=Cv1kC3Candidate(target);
+		if(!b)return;
+		auto &m=region.members[region.count];
+		pcs[region.count++]=target;
+		m.pc=target;m.source=b->source;m.count=b->count;m.body=b->body;
+		m.watch=b->watch;m.generation=cv1kV2Generations[b->watch];
+		m.trusted=Cv1kV2TrustedCode(target,MemMapF[(target&AM)>>SH3_SHIFT]);
+		memcpy(m.ops,b->ops,b->count*sizeof(UINT16));
+	};
+	add(pc);
+	for(unsigned i=0;i<region.count;i++){
+		auto &m=region.members[i];
+		if(m.body==m.count){add(m.pc+m.count*2);continue;}
+		const UINT16 op=m.ops[m.body];
+		const UINT32 branchPC=m.pc+m.body*2;
+		if(!Sh3V2::Dynamic(op))add(Sh3V2::StaticTarget(op,branchPC));
+		else if(op!=0x000b && Cv1kC3Predict(branchPC,m.prediction)){
+			m.hasPrediction=true;add(m.prediction);
+		}
+		if(Sh3V2::Conditional(op))add(branchPC+2);
+		if(Sh3V2::Call(op))add(branchPC+4);
+	}
+	if(region.count<2)return false;
+	// Each member has independent bounded emission scratch. The final
+	// linked region is published atomically with its local B/ADR fixups.
+	const unsigned capacity=region.count*Sh3V2::CompactEmitter::ResidentMaxWords;
+	UINT32 *words=new(std::nothrow) UINT32[capacity];
+	if(!words)return false;
+	Sh3V2::ResidentFixup fix[Cv1kC3MaxMembers*4];
+	unsigned nFix=0,used=0;
+	bool ok=true;
+	for(unsigned i=0;i<region.count;i++){
+		auto &m=region.members[i];m.offset=used*4;
+		Sh3V2::CompactEmitter emit(words+used);
+		if(!emit.BuildResident(m.ops,m.count,m.pc,m.body,pcs,region.count,fix,nFix,m.hasPrediction,m.prediction)){
+			ok=false;break;
+		}
+		used=emit.End()-words;
+		if(used>capacity){ok=false;break;}
+	}
+	if(ok)for(unsigned i=0;i<nFix;i++){
+		unsigned j=0;
+		while(j<region.count && pcs[j]!=fix[i].target)++j;
+		if(j==region.count){ok=false;break;}
+		const int32_t disp=int32_t(region.members[j].offset/4)-int32_t(fix[i].at-words);
+		if(fix[i].adr){
+			const int32_t bytes=disp*4;
+			if(bytes<-(1<<20)||bytes>=(1<<20)){ok=false;break;}
+			*fix[i].at=0x10000010u|((uint32_t(bytes)&3)<<29)|
+				(((uint32_t(bytes)>>2)&0x7ffffu)<<5);
+		}else{
+			if(disp<-(1<<25)||disp>=(1<<25)){ok=false;break;}
+			*fix[i].at=0x14000000u|(uint32_t(disp)&0x3ffffffu);
+		}
+	}
+	UINT32 offset=0;
+	if(ok)ok=cv1kV2Code.Publish(words,used,offset);
+	delete[] words;
+	if(!ok){++cv1kV2Stats.residentReject;return false;}
+	region.mapVersion=cv1kV2MapVersion;region.opaque=cv1kV2OpaqueEpoch;
+	region.slice=cv1kV2SliceEpoch;region.active=true;region.buildEpoch=epoch;
+	for(unsigned i=0;i<region.count;i++)region.members[i].offset+=offset;
+	const unsigned id=++cv1kC3Count;
+	cv1kC3Regions[id-1]=region;
+	for(unsigned i=0;i<region.count;i++){
+		// All members can be entered directly from the interpreter.
+		// Existing regions remain immutable and independently validated.
+		if(auto *b=Cv1kC3Candidate(pcs[i])){
+			b->region=id;b->regionMember=i;
+		}
+	}
+	++cv1kV2Stats.residentBuilt;
+	return true;
+}
+static bool Cv1kC3Validate(Cv1kC3Region &r){
+	if(!r.active || r.mapVersion!=cv1kV2MapVersion)return false;
+	const bool fence=r.opaque!=cv1kV2OpaqueEpoch || r.slice!=cv1kV2SliceEpoch;
+	for(unsigned i=0;i<r.count;i++){
+		auto &m=r.members[i];
+		const uint64_t generation=cv1kV2Generations[m.watch];
+		// Unknown backing memory keeps exact comparisons at each group.
+		// No code checks are needed between the members: no MMIO or
+		// callbacks run inside the region; watched stores exit before write.
+		if(!m.trusted || fence || m.generation!=generation){
+			++cv1kV2Stats.residentChecks;
+			unsigned available;
+			const UINT16 *source=Cv1kV2Source(m.pc,available);
+			if(!source||source!=m.source||m.count>available||
+				memcmp(source,m.ops,m.count*sizeof(UINT16)))return false;
+			m.generation=generation;
+		}
+	}
+	r.opaque=cv1kV2OpaqueEpoch;r.slice=cv1kV2SliceEpoch;
+	return true;
+}
+static __attribute__((noinline)) unsigned Cv1kC3Run(UINT32 pc,Cv1kV2Entry &b){
+	if(!Cv1kV2Allowed())return 0;
+	if(b.region && !cv1kC3Regions[b.region-1].active){b.region=0;b.regionTried=~uint64_t(0);}
+	if(!b.region && !Cv1kC3Build(pc,b))return 0;
+	if(!b.region)return 0;
+	auto &r=cv1kC3Regions[b.region-1];
+	if(!Cv1kC3Validate(r)){
+		r.active=false;b.region=0;b.regionTried=~uint64_t(0);++cv1kV2Stats.residentInvalid;
+		for(unsigned i=0;i<r.count;i++){
+			const auto &m=r.members[i];
+			auto *slot=Cv1kV2Find(m.pc);
+			if(!slot || (slot->id&Cv1kV2Blocked))continue;
+			const auto &entry=cv1kV2Table[slot->id-1];
+			unsigned available;
+			const UINT16 *source=Cv1kV2Source(m.pc,available);
+			if(!source || source!=entry.source || entry.count>available ||
+				memcmp(source,entry.ops,entry.count*sizeof(UINT16))){
+				Cv1kV2Retire(*slot);++cv1kV2Stats.changed;++cv1kV2Stats.retired;
+			}
+		}
+		// The next interpreter visit and ordinary learning can rebuild.
+		// Do not dereference a stale native address or replay instructions.
+		return 0;
+	}
+	const auto &member=r.members[b.regionMember];
+	if(member.pc!=pc)return 0;
+	const UINT8 *idle=NULL;
+	if(cv1kIdleBatchEnabled && Cv1kIsIdlePage(MemMapRL[0xc00]))idle=cv1kIdlePage;
+	Sh3V2::ResidentContext c={};
+	c.memory={MemMapR,MemMapRL,MemMapW,NULL,0,1,pc,idle,cv1kIdleAddress,m_pr,
+		cv1kV2WriteWatch,cv1kV2Generations};
+	c.remaining=m_sh4_icount;c.ppc=m_ppc;
+	fbneo_sh3_v3_enter((const UINT8*)cv1kV2Code.ExecBase()+member.offset,
+		m_r,&m_sr,&m_ea,&c);
+	++cv1kV2Stats.residentGroups;
+	cv1kV2Stats.residentBlocks+=c.blocks;cv1kV2Stats.residentOps+=c.ops;
+	if(c.dynamicSite){
+		const UINT32 site=c.dynamicSite&~1u;
+		Cv1kC3RecordDynamic(site,c.dynamicTarget);
+		UINT32 predicted;
+		if(r.buildEpoch!=Cv1kC3BuildEpoch() && Cv1kC3Predict(site,predicted) &&
+			predicted==c.dynamicTarget && Cv1kC3Candidate(predicted)){
+			// Rebuild only after new learning/compilation, outside native execution.
+			r.active=false;b.region=0;b.regionTried=~uint64_t(0);
+		}
+	}
+	if(!c.ops)return 0;
+	const unsigned spent=unsigned(m_sh4_icount)-c.remaining;
+	m_pc=c.memory.pc;m_ppc=c.ppc;m_pr=c.memory.pr;EAT(spent);
+	cv1kV2Stats.hits+=c.blocks;cv1kV2Stats.compactCalls+=c.blocks;
+	cv1kV2Stats.compactOps+=c.ops;cv1kNativeSpans+=c.blocks;
+	cv1kV2Stats.ops+=c.ops;cv1kV2Stats.cycles+=spent;cv1kNativeOps+=c.ops;
+	return c.ops;
+}
 static inline __attribute__((always_inline)) unsigned Cv1kV2Try(UINT32 pc,bool backward=false,bool chain=false){
 	// Only selected in a dispatcher with an allocated directory.
 	// Ordinary misses do not enter a C function or touch large metadata.
@@ -461,6 +706,13 @@ static inline __attribute__((always_inline)) unsigned Cv1kV2Try(UINT32 pc,bool b
 	if(s){
 		if(s->id&Cv1kV2Blocked)return 0;
 		if(chain && cv1kV2Chain){
+			if(cv1kC3Enabled && !cv1kV2LookupOnly){
+				auto &b=cv1kV2Table[s->id-1];
+				if(!b.repeat)return Cv1kC3Run(pc,b);
+				const unsigned done=Cv1kV2Run(*s,true);
+				if(done)++cv1kV2Stats.chainGroups;
+				return done;
+			}
 			if(!cv1kV2LinkEnabled)return Cv1kV2RunChain(*s);
 			const auto &b=cv1kV2Table[s->id-1];
 			if(!cv1kV2LookupOnly && b.link){

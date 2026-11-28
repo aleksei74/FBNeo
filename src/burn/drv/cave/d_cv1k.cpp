@@ -815,6 +815,7 @@ static INT32 DrvInit()
 	init_speedhack(); // install the hacky speedhack handler
 	Sh3SetCv1kNative(1);
 	Sh3SetCv1kFastMemory(DrvMainRAM,is_type_d?0x1000000:0x800000,DrvMainROM);
+	Sh3SetCv1kCacheRAM(DrvCacheRAM,0x4000);
 	Cv1kProfileInit();
 
 	Sh3Close();
