@@ -38,6 +38,7 @@ INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType);
 INT32 Sh3MapHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd, INT32 nType);
 INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd);
 void Sh3SetCv1kNative(INT32 enable);
+void Sh3SetCv1kTrackedIO();
 void Sh3SetCv1kFastMemory(UINT8 *ram,UINT32 ramSize,UINT8 *rom);
 void Sh3Cv1kOpStatsFrame();
 void Sh3Cv1kV2Report();

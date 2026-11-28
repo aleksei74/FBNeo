@@ -138,7 +138,9 @@ class CompactEmitter {
 	Fixup fix_[CompactMaxOps*7];
 	struct IdleFixup {uint32_t *at,*resume;uint8_t done;};
 	IdleFixup idle_[CompactMaxOps];
-	unsigned fixCount_,idleCount_;
+	struct WatchFixup {uint32_t *at,*resume;};
+	WatchFixup watch_[CompactMaxOps];
+	unsigned fixCount_,idleCount_,watchCount_;
 	uint32_t *entrySR_;
 	bool failed_;
 	static uint32_t Mov(unsigned d,unsigned s){return 0x2a0003e0u|(s<<16)|d;}
@@ -274,11 +276,9 @@ class CompactEmitter {
 				*p_++=0x12007208u; // and w8,w16,#AM
 				*p_++=0x53107d08u; // lsr w8,w8,#16
 				LdrX(6,MemBase(),64);
-				*p_++=0xf86878c6u; // ldr x6,[x6,x8,lsl #3]
-				*p_++=0xb4000086u; // cbz x6,+16
-				*p_++=0xf94000c8u; // ldr x8,[x6]
-				*p_++=0x91000508u; // add x8,x8,#1
-				*p_++=0xf90000c8u; // str x8,[x6]
+				*p_++=0x386868c8u; // ldrb w8,[x6,x8]
+				if(watchCount_>=CompactMaxOps)return false;
+				uint32_t *at=p_++;*at=0;watch_[watchCount_++]={at,p_};
 			}
 			if(pre){W(n);*p_++=Mov(a,16);}
 			else *p_++=0xb9000010u|(EABase()<<5); // EA
@@ -294,7 +294,7 @@ class CompactEmitter {
 public:
 	explicit CompactEmitter(uint32_t *p):p_(p),reg_{},used_(0),dirty_(0),
 		sr_(false),writeSR_(false),extended_(false),audit_(false),repeat_(false),pc_(0),maps_(0),mapReg_{31,31,31},codeReg_(31),sizeReg_(31),
-		fix_{},idle_{},fixCount_(0),idleCount_(0),entrySR_(NULL),failed_(false){}
+		fix_{},idle_{},watch_{},fixCount_(0),idleCount_(0),watchCount_(0),entrySR_(NULL),failed_(false){}
 	uint32_t *End()const{return p_;}
 	bool Wide()const{return repeat_||__builtin_popcount(unsigned(used_))>7;}
 	bool Build(const uint16_t *ops,unsigned count,uint32_t pc=0,unsigned terminal=~0u,bool extended=false,bool audit=false,bool repeat=false){
@@ -398,6 +398,15 @@ public:
 			const unsigned d=fix_[i].done;
 			if(!stub[d]){stub[d]=p_;Imm(result,d);uint32_t *jump=p_++;B(jump,epilogue);}
 			BC(fix_[i].at,stub[d],fix_[i].cond);
+		}
+		for(unsigned i=0;i<watchCount_;i++){
+			const auto &r=watch_[i];
+			*r.at=0x35000008u|((uint32_t(p_-r.at)&0x7ffffu)<<5); // cbnz w8
+			LdrX(6,MemBase(),72);
+			*p_++=0xf86878d1u; // ldr x17,[x6,x8,lsl #3]
+			*p_++=0x91000631u; // add x17,x17,#1
+			*p_++=0xf82878d1u; // str x17,[x6,x8,lsl #3]
+			uint32_t *jump=p_++;B(jump,r.resume);
 		}
 		return true;
 	}

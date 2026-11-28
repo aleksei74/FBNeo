@@ -168,7 +168,7 @@ static void IdleSetup(){
 	data[0x230c/2]=0x1234;data[0x230e/2]=0x9876;
 	data[0x2310/2]=0x5678;data[0x2312/2]=0xabcd;
 }
-static Snapshot IdleCase(bool on,unsigned which){
+static Snapshot IdleCase(bool on,unsigned which,bool expectNative=true){
 	InitB2(on);IdleSetup();
 	code[0]=0x7001;code[1]=0x6312;code[2]=0xa004;code[3]=0x0009;
 	m_r[1]=(which==0?0x8c00230cu:which==1?0xac002310u:0x8c802310u);
@@ -183,12 +183,12 @@ static Snapshot IdleCase(bool on,unsigned which){
 	const unsigned budget=5;
 	if(on){m_sh4_icount=1000;sh3_end_run=0;Promote();}
 	const auto result=Snap(Sh3Run_timerhack(budget));
-	if(on){
+	if(on && expectNative){
 		Check(cv1kV2Stats.hits>0,"idle compiled entry reached");
 		const bool reject=which==1||which==4||which==5;
 		Check(cv1kV2Stats.guards==unsigned(reject),"idle exact/replacement guard");
 		Check(cv1kV2Stats.terminalCalls==unsigned(!reject),"idle rescue terminal");
-	}
+	}else if(on)Check(!cv1kV2Stats.hits,"C2 short unlinked idle interpreter fallback");
 	return result;
 }
 static void Idle(){
@@ -254,6 +254,8 @@ static void BenchmarkB2(){
 #ifndef SH3_V2_C1_TEST
 int main(int argc,char **){
 	setvbuf(stdout,NULL,_IOLBF,0);
+	// B-2 checks deliberately exercise even isolated short native blocks.
+	setenv("FBNEO_CV1K_V2_LINK","0",1);
 	if(argc>1){BenchmarkB2();return 0;}
 	LiteralEncodings();Branches();DTGuards();Idle();
 	for(unsigned k=0;k<2;k++){

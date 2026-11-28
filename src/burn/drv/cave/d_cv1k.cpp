@@ -810,6 +810,7 @@ static INT32 DrvInit()
 
 	Sh3SetReadPortHandler(main_read_port);
 	Sh3SetWritePortHandler(main_write_port);
+	Sh3SetCv1kTrackedIO();
 
 	init_speedhack(); // install the hacky speedhack handler
 	Sh3SetCv1kNative(1);

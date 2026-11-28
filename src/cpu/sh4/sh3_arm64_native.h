@@ -66,12 +66,14 @@ struct Memory {
 	// V2 extension. V1 uses only the original first 48 bytes.
 	const uint8_t *idlePage;
 	uint32_t idleAddress,pr;
-	uint64_t *const *writeWatch; // optional V2 shadow write generations
+	const uint8_t *writeWatch; // compact V2 write watch
+	uint64_t *writeGenerations;
 };
 static_assert(offsetof(Memory,readLong)==8 && offsetof(Memory,write)==16 &&
 	offsetof(Memory,code)==24 && offsetof(Memory,codeBytes)==32 &&
 	offsetof(Memory,iterations)==40 && offsetof(Memory,pc)==44 && offsetof(Memory,idlePage)==48 &&
-	offsetof(Memory,idleAddress)==56 && offsetof(Memory,pr)==60 && offsetof(Memory,writeWatch)==64,"native memory ABI");
+	offsetof(Memory,idleAddress)==56 && offsetof(Memory,pr)==60 && offsetof(Memory,writeWatch)==64 &&
+	offsetof(Memory,writeGenerations)==72,"native memory ABI");
 static inline uint32_t Mov(unsigned d,unsigned s) { return 0x2a0003e0u|(s<<16)|d; }
 class Emitter {
 	uint32_t *p_;

@@ -78,10 +78,27 @@ public:
 			Run(offset,r,sr,ea,memory);
 	}
 	bool Denied()const{return denied_;}
+	// Owner CPU thread only, outside native execution. The published
+	// bodies remain immutable; only an aligned link-stub B is replaced.
+	bool PatchBranch(uint32_t from,uint32_t to){
+		if(!write_ || (from&3) || (to&3) || from>=used_ || to>=used_)return false;
+		const int64_t words=(int64_t(to)-from)/4;
+		if(words<-(1LL<<25) || words>=(1LL<<25))return false;
+		uint32_t old;
+		memcpy(&old,write_+from,4);
+		if((old&0xfc000000u)!=0x14000000u)return false;
+		const uint32_t insn=0x14000000u|(uint32_t(words)&0x03ffffffu);
+		if(old==insn)return true;
+		memcpy(write_+from,&insn,4);
+		__builtin___clear_cache((char*)write_+from,(char*)write_+from+4);
+		__builtin___clear_cache((char*)exec_+from,(char*)exec_+from+4);
+		return true;
+	}
 	size_t Used()const{return used_;}
 	const void *WriteBase()const{return write_;}
 	const void *ExecBase()const{return exec_;}
 };
 }
+#include "sh3_arm64_v2_link.h"
 #endif
 #endif

@@ -650,6 +650,7 @@ static bool Cv1kIsIdlePage(UINT8 *page)
 void Sh3SetCv1kFastMemory(UINT8 *ram,UINT32 ramSize,UINT8 *rom)
 {
 	Cv1kInvalidateFastMemory();
+	Cv1kV2TrustMemory(ram,ramSize,rom);
 	// Full region shortcuts regressed on the RK3566. Keep them opt-in,
 	// independently of the first-page aligned long-load rescue.
 	const bool requested=Cv1kPerformanceOption(getenv("FBNEO_CV1K_FAST_RAM"),false);
@@ -730,6 +731,7 @@ static INT32 Sh3MapInit()
 	memset(MemMapRL, 0, sizeof(MemMapRL));
 	memset(MemMapW, 0, sizeof(MemMapW));
 	memset(MemMapF, 0, sizeof(MemMapF));
+	for(unsigned i=0;i<SH3_MAXHANDLER;i++)Cv1kV2SetTracked(i,false);
 	Cv1kV2WriteMapChanged();
 	++sh3FetchMapEpoch;
 	Cv1kInvalidateFastMemory();
@@ -799,12 +801,16 @@ INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd)
 INT32 Sh3SetReadPortHandler(pSh3ReadLongHandler pHandler)
 {
 	ReadPort = pHandler;
+	Cv1kV2RevokeTrust();
 	return 0;
 }
 
 INT32 Sh3SetWritePortHandler(pSh3WriteLongHandler pHandler)
 {
 	WritePort = pHandler;
+	Cv1kV2RevokeTrust();
+	Cv1kV2SetTracked(SH3_MAXHANDLER-1,false);
+	Cv1kV2SetTracked(SH3_MAXHANDLER-2,false);
 	return 0;
 }
 
@@ -816,6 +822,7 @@ INT32 Sh3SetReadByteHandler(INT32 i, pSh3ReadByteHandler pHandler)
 	}
 
 	ReadByte[i] = pHandler;
+	Cv1kV2RevokeTrust();
 	return 0;
 }
 
@@ -826,7 +833,9 @@ INT32 Sh3SetWriteByteHandler(INT32 i, pSh3WriteByteHandler pHandler)
 		return 1;
 	}
 
+	Cv1kV2SetTracked(i,false);
 	WriteByte[i] = pHandler;
+	Cv1kV2RevokeTrust();
 	return 0;
 }
 
@@ -838,6 +847,7 @@ INT32 Sh3SetReadWordHandler(INT32 i, pSh3ReadWordHandler pHandler)
 	}
 
 	ReadWord[i] = pHandler;
+	Cv1kV2RevokeTrust();
 	return 0;
 }
 
@@ -848,7 +858,9 @@ INT32 Sh3SetWriteWordHandler(INT32 i, pSh3WriteWordHandler pHandler)
 		return 1;
 	}
 
+	Cv1kV2SetTracked(i,false);
 	WriteWord[i] = pHandler;
+	Cv1kV2RevokeTrust();
 	return 0;
 }
 
@@ -861,6 +873,7 @@ INT32 Sh3SetReadLongHandler(INT32 i, pSh3ReadLongHandler pHandler)
 
 	Cv1kInvalidateFastMemory();
 	ReadLong[i] = pHandler;
+	Cv1kV2RevokeTrust();
 	return 0;
 }
 
@@ -871,7 +884,9 @@ INT32 Sh3SetWriteLongHandler(INT32 i, pSh3WriteLongHandler pHandler)
 		return 1;
 	}
 
+	Cv1kV2SetTracked(i,false);
 	WriteLong[i] = pHandler;
+	Cv1kV2RevokeTrust();
 	return 0;
 }
 
@@ -1087,11 +1102,26 @@ void Sh3Init(INT32 num, INT32 hz, char md0, char md1, char md2, char md3, char m
 
 void Sh3Exit()
 {
+	Cv1kV2RevokeTrust();
 	Cv1kInvalidateFastMemory();
 	cv1kIdlePage=NULL;cv1kIdleBatchEnabled=false;
 	Sh3Cv1kDmaPerfEnable(false);
 	Sh3SetCv1kPollRead(NULL,NULL);
 	Sh3SetCv1kNative(0);
+}
+
+// The registered CV1000 I/O handlers cannot write executable RAM
+// except through the watched DMA/write paths. Replacement revokes this.
+void Sh3SetCv1kTrackedIO(){
+#if SH3_NATIVE_V2
+	Cv1kV2SetTracked(0,true);
+	if(WriteByte[SH3_MAXHANDLER-1]==Sh3LowerWriteByte &&
+		WriteWord[SH3_MAXHANDLER-1]==Sh3LowerWriteWord &&
+		WriteLong[SH3_MAXHANDLER-1]==Sh3LowerWriteLong)Cv1kV2SetTracked(SH3_MAXHANDLER-1,true);
+	if(WriteByte[SH3_MAXHANDLER-2]==Sh3UpperWriteByte &&
+		WriteWord[SH3_MAXHANDLER-2]==Sh3UpperWriteWord &&
+		WriteLong[SH3_MAXHANDLER-2]==Sh3UpperWriteLong)Cv1kV2SetTracked(SH3_MAXHANDLER-2,true);
+#endif
 }
 
 void Sh3Open(const INT32 i)
@@ -1254,7 +1284,7 @@ SH3_MEMORY_INLINE void WB(UINT32 A, UINT8 V)
 		Cv1kV2NoteWrite(A,1);
 		return;
 	}
-	Cv1kV2NoteOpaqueWrite();
+	Cv1kV2NoteHandlerWrite((uintptr_t)pr);
 	WriteByte[(uintptr_t)pr](A, V);
 }
 
@@ -1274,7 +1304,7 @@ SH3_MEMORY_INLINE void WW(UINT32 A, UINT16 V)
 		Cv1kV2NoteWrite(A,2);
 		return;
 	}
-	Cv1kV2NoteOpaqueWrite();
+	Cv1kV2NoteHandlerWrite((uintptr_t)pr);
 	WriteWord[(uintptr_t)pr](A, V);
 }
 
@@ -1294,7 +1324,7 @@ SH3_MEMORY_INLINE void WL(UINT32 A, UINT32 V)
 		Cv1kV2NoteWrite(A,4);
 		return;
 	}
-	Cv1kV2NoteOpaqueWrite();
+	Cv1kV2NoteHandlerWrite((uintptr_t)pr);
 	WriteLong[(uintptr_t)pr](A, V);
 }
 
@@ -4573,6 +4603,11 @@ void Sh3Cv1kV2Report()
 	bprintf(PRINT_UI,_T("CV1K V2 chain: groups %llu joined %llu selflaps %llu selfbuilt %llu\n"),
 		(unsigned long long)s.chainGroups,(unsigned long long)s.chainJoined,
 		(unsigned long long)s.selfLaps,(unsigned long long)s.selfBuilt);
+	bprintf(PRINT_UI,_T("CV1K V2 verify: checked %llu skipped %llu slices %llu\n"),
+		(unsigned long long)s.verifyChecks,(unsigned long long)s.verifySkipped,(unsigned long long)cv1kV2SliceEpoch);
+	bprintf(PRINT_UI,_T("CV1K V2 links: groups %llu bodies %llu edges %llu patches %llu built %llu stops %llu\n"),
+		(unsigned long long)s.linkGroups,(unsigned long long)s.linkBodies,(unsigned long long)s.linkEdges,
+		(unsigned long long)s.linkPatched,(unsigned long long)s.linkBuilt,(unsigned long long)s.linkStops);
 #endif
 }
 
@@ -4689,7 +4724,7 @@ void Sh3SetCv1kNative(INT32 enable)
 		Cv1kPerformanceOption(getenv("FBNEO_CV1K_JIT_V2")) && Cv1kV2Enable();
 #endif
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 Dynarec V2: %s\n"),
-		cv1kV2Enabled?_T("enabled (stage C-1, guarded chaining)"):_T("disabled"));
+		cv1kV2Enabled?_T("enabled (stage C-2, guarded static links)"):_T("disabled"));
 #if SH3_NATIVE_V2
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 lookup-only: %s; 64 KiB pinned directory\n"),
 		cv1kV2LookupOnly?_T("enabled (learn/compile/validate, no native execution)"):_T("disabled"));
@@ -4697,10 +4732,13 @@ void Sh3SetCv1kNative(INT32 enable)
 		cv1kV2Compact?_T("enabled"):_T("disabled (legacy emitter)"));
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 basic blocks: %s\n"),
 		cv1kV2Blocks?_T("enabled (literal/DT/terminal)"):_T("disabled (B-1 candidate scope)"));
-	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 write audit: %s; live code comparison retained\n"),
-		cv1kV2WriteWatch?_T("enabled"):_T("disabled"));
+	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 write audit: %s; verification: %s\n"),
+		cv1kV2WriteWatch?_T("8 KiB map"):_T("disabled"),
+		cv1kV2VerifyAlways?_T("always"):_T("registered pages, dirty/slice fence"));
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 chaining: %s, self loops: %s\n"),
 		cv1kV2Chain?_T("enabled"):_T("disabled"),cv1kV2SelfLoop?_T("enabled"):_T("disabled"));
+	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 native static links: %s\n"),
+		cv1kV2LinkEnabled?_T("enabled (B rel26)"):_T("disabled"));
 #endif
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.

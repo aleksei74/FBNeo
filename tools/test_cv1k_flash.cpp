@@ -43,12 +43,12 @@ static bool TestNativeCodeDMA(){
 		for(unsigned i=0;i<Cv1kV2Hot;i++)Cv1kV2Observe(m_pc);
 		if(!Cv1kV2Find(m_pc) || !cv1kV2WriteWatch[0xc00] ||
 			cv1kV2WriteWatch[0xc00]!=cv1kV2WriteWatch[0xc80])return false;
-		const auto epoch=*cv1kV2WriteWatch[0xc00];
+		const auto epoch=cv1kV2Generations[cv1kV2WriteWatch[0xc00]];
 		m_flash_page_data=flash.data();m_flash_page_size=flash.size();
 		m_flash_enab=1;m_flash_state=READ;m_flash_page_addr=0;m_flash_read_seq=0;
 		UINT32 sar=0x10000000,dar=0x0c800100,count=scalar?1:2;
 		if(!sh4_dma_transfer(0,0,scalar?0:(1<<14),&sar,&dar,&count) || count ||
-			*cv1kV2WriteWatch[0xc00]==epoch || ram[0x80]==0x7001)return false;
+			cv1kV2Generations[cv1kV2WriteWatch[0xc00]]==epoch || ram[0x80]==0x7001)return false;
 		// A dirty block must not execute the old code. Its immutable
 		// cached bytes remain valid only for already completed calls.
 		if(Cv1kV2Try(m_pc) || Cv1kV2Find(m_pc) || cv1kV2Stats.changed!=1 ||

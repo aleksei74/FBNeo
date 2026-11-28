@@ -68,7 +68,7 @@ static void ShadowWatch(){
 		Sh3MapMemory((UINT8*)code,0xc800000,0xc80ffff,MAP_WRITE);
 		PromoteAt(base);
 		Check(cv1kV2WriteWatch[0] && cv1kV2WriteWatch[0]==cv1kV2WriteWatch[0xc80],"host backing alias watch");
-		const auto before=*cv1kV2WriteWatch[0];
+		const auto before=cv1kV2Generations[cv1kV2WriteWatch[0]];
 		switch(test){
 		case 0: WB(alias+14,0xe7);break;
 		case 1: cheat_write(alias+15,0x7f);break;
@@ -88,7 +88,7 @@ static void ShadowWatch(){
 			Check(Cv1kV2Try(m_pc)==3,"native writer executed");break;
 		case 7: code[7]=0xe77f;break; // intentionally opaque host mutation
 		}
-		Check((*cv1kV2WriteWatch[0]!=before)==(test!=7),"write generation observed");
+		Check((cv1kV2Generations[cv1kV2WriteWatch[0]]!=before)==(test!=7),"write generation observed");
 		m_pc=base;m_sh4_icount=1000;
 		const auto snap=Snap(0);
 		Check(!Cv1kV2Try(base) && !Cv1kV2Find(base) && cv1kV2Stats.changed==1,"modified block retired before execution");
@@ -117,6 +117,7 @@ static double C1Bench(unsigned mode,unsigned kind,Snapshot &state){
 		(unsigned long long)cv1kV2Stats.selfLaps,(unsigned long long)cv1kV2Stats.chainJoined);
 	return ms;
 }
+#ifndef SH3_V2_C2_TEST
 int main(int argc,char **){
 	setvbuf(stdout,NULL,_IOLBF,0);
 	if(argc>1){
@@ -139,3 +140,4 @@ int main(int argc,char **){
 	puts("C1 repeat/chain: 168 differential slices PASS");
 	return 0;
 }
+#endif
