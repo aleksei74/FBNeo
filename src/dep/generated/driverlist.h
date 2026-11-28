@@ -727,6 +727,7 @@ DRV		BurnSpecAgentx2;
 DRV		BurnDrvgba_aggrinln;
 DRV		BurnDrvgba_aggrinlnu;
 DRV		BurnDrvAodk;
+DRV		BurnDrvAodkr;
 DRV		BurnDrvsms_agidooly;
 DRV		BurnDrvAgressb;
 DRV		BurnDrvAgress;
@@ -1437,9 +1438,9 @@ DRV		BurnDrvnes_argosnosenshi;
 DRV		BurnDrvArgusg;
 DRV		BurnDrvnes_argus;
 DRV		BurnDrvRygarc;
-DRV		BurnDrvRygark;
 DRV		BurnDrvRygarj;
 DRV		BurnDrvRygarj2;
+DRV		BurnDrvRygark;
 DRV		BurnDrvArgus;
 DRV		BurnDrvArian;
 DRV		BurnDrvnes_arispidrag;
@@ -5952,6 +5953,7 @@ DRV		BurnDrvDaioh;
 DRV		BurnDrvDaisenpu;
 DRV		BurnDrvgba_daisenr;
 DRV		BurnDrvDaiskiss;
+DRV		BurnDrvDaiskissk;
 DRV		BurnDrvgba_daisuktd;
 DRV		BurnDrvDaitorid;
 DRV		BurnDrvDaitorida;
@@ -7283,6 +7285,7 @@ DRV		BurnDrvDdragonja;
 DRV		BurnDrvnes_doubledragonj;
 DRV		BurnDrvMSX_ddragon;
 DRV		BurnDrvsms_ddragonk;
+DRV		BurnDrvDoubledrk;
 DRV		BurnDrvDoubledr;
 DRV		BurnDrvDoubledt;
 DRV		BurnDrvDoubledp;
@@ -15695,6 +15698,7 @@ DRV		BurnDrvCHF_mthquiz2;
 DRV		BurnSpecMathsted;
 DRV		BurnDrvfds_matounohou;
 DRV		BurnDrvMatrimbl;
+DRV		BurnDrvMatrimk;
 DRV		BurnDrvMatrim;
 DRV		BurnDrvMatrimbh;
 DRV		BurnDrvsnes_Matsumura;
@@ -17819,6 +17823,7 @@ DRV		BurnDrvNsmb;
 DRV		BurnDrvSyscheck;
 DRV		BurnDrvNeothndr;
 DRV		BurnDrvngpc_neoturfm;
+DRV		BurnDrvTurfmastk;
 DRV		BurnDrvTurfmastsc;
 DRV		BurnDrvTurfmast;
 DRV		BurnDrvTurfmastplus;
@@ -20315,6 +20320,7 @@ DRV		BurnDrvmd_psycho1;
 DRV		BurnDrvmd_psychop;
 DRV		BurnSpecPsychosold;
 DRV		BurnDrvPsychosj;
+DRV		BurnDrvPsychosk;
 DRV		BurnDrvPsychos;
 DRV		BurnDrvOscarj1;
 DRV		BurnDrvOscarj2;
@@ -20671,10 +20677,12 @@ DRV		BurnDrvnes_quinty;
 DRV		BurnDrvsnes_Quinty;
 DRV		BurnSpecQuiviria;
 DRV		BurnDrvCpsQadjr;
+DRV		BurnDrvCpsQadjrk;
 DRV		BurnDrvCpsQad;
 DRV		BurnDrvInufuku;
 DRV		BurnDrvQuiz365t;
 DRV		BurnDrvQuiz365;
+DRV		BurnDrvQuizmoonk;
 DRV		BurnDrvQuizmoon;
 DRV		BurnDrvQuizchq;
 DRV		BurnDrvQuizchqk;
@@ -20696,12 +20704,14 @@ DRV		BurnDrvQzkklogy;
 DRV		BurnDrvQuizdai2;
 DRV		BurnDrvQuizmeku;
 DRV		BurnDrvCpsQndream;
+DRV		BurnDrvCpsQndreamk;
 DRV		BurnDrvQuizo;
 DRV		BurnDrvQuizoa;
 DRV		BurnDrvQzquest;
 DRV		BurnDrvQrouka;
 DRV		BurnDrvQuizdaisk;
 DRV		BurnDrvQsangoku;
+DRV		BurnDrvQsangokuk;
 DRV		BurnDrvQzshowby;
 DRV		BurnDrvQsww;
 DRV		BurnDrvQtheater;
@@ -32045,6 +32055,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvgba_aggrinln,		// Aggressive Inline (Europe)
 	&BurnDrvgba_aggrinlnu,		// Aggressive Inline (USA)
 	&BurnDrvAodk,				// Aggressors of Dark Kombat / Tsuukai GANGAN Koushinkyoku (ADM-008 ~ ADH-008)
+	&BurnDrvAodkr,				// Aggressors of Dark Kombat / Tsuukai GANGAN Koushinkyoku (Korean Translation)
 	&BurnDrvsms_agidooly,		// Agigongnyong Dooly (Korea)
 	&BurnDrvAgressb,			// Agress - Missile Daisenryaku (English bootleg)
 	&BurnDrvAgress,				// Agress - Missile Daisenryaku (Japan)
@@ -32755,9 +32766,9 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvArgusg,				// Argus (Gottlieb, prototype)
 	&BurnDrvnes_argus,			// Argus (Japan)
 	&BurnDrvRygarc,				// Argus no Senshi (Hack, Chinese)
-	&BurnDrvRygark,				// Argus no Senshi (Hack, Korean)
 	&BurnDrvRygarj,				// Argus no Senshi (Japan set 1)
 	&BurnDrvRygarj2,			// Argus no Senshi (Japan set 2)
+	&BurnDrvRygark,				// Argus no Senshi (Korean Translation)
 	&BurnDrvArgus,				// Argus
 	&BurnDrvArian,				// Arian Mission
 	&BurnDrvnes_arispidrag,		// Arispi Dragon (HB)
@@ -37270,6 +37281,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvDaisenpu,			// Daisenpu (Japan)
 	&BurnDrvgba_daisenr,		// Daisenryaku for Game Boy Advance (Japan)
 	&BurnDrvDaiskiss,			// Daisu-Kiss (ver JAA)
+	&BurnDrvDaiskissk,			// Daisu-Kiss (ver JAA, Korean Translation)
 	&BurnDrvgba_daisuktd,		// Daisuki Teddy (Japan)
 	&BurnDrvDaitorid,			// Daitoride (Japan)
 	&BurnDrvDaitorida,			// Daitoride (Japan, YMF278B version)
@@ -38601,6 +38613,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvnes_doubledragonj,	// Double Dragon (Japan)
 	&BurnDrvMSX_ddragon,		// Double Dragon (Korea) (Unl)
 	&BurnDrvsms_ddragonk,		// Double Dragon (Korea)
+	&BurnDrvDoubledrk,			// Double Dragon (Korean Translation)
 	&BurnDrvDoubledr,			// Double Dragon (Neo-Geo)
 	&BurnDrvDoubledt,			// Double Dragon (Optimized, Hack)
 	&BurnDrvDoubledp,			// Double Dragon (Plus, Hack)
@@ -47013,6 +47026,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnSpecMathsted,			// Mathsted (48K)
 	&BurnDrvfds_matounohou,		// Matou no Houkai - The Hero of Babel (Japan)
 	&BurnDrvMatrimbl,			// Matrimelee / Shin Gouketsuji Ichizoku Toukon (bootleg)
+	&BurnDrvMatrimk,			// Matrimelee / Shin Gouketsuji Ichizoku Toukon (Korean Translation)
 	&BurnDrvMatrim,				// Matrimelee / Shin Gouketsuji Ichizoku Toukon (NGM-2660 ~ NGH-2660)
 	&BurnDrvMatrimbh,			// Matrimelee ~ Shin Gouketsuji Ichizoku Toukon (Hack, Enable Hidden Characters V2)
 	&BurnDrvsnes_Matsumura,		// Matsumura Kuni Hiroden - Saikyou no Rekishi o Nurikaero! (Japan)
@@ -49137,6 +49151,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvSyscheck,			// Neo System Check (ver 1.0b)
 	&BurnDrvNeothndr,			// Neo Thunder (HB)
 	&BurnDrvngpc_neoturfm,		// Neo Turf Masters - Pocket Sport Series (World)
+	&BurnDrvTurfmastk,			// Neo Turf Masters / Big Tournament Golf (Korean Translation)
 	&BurnDrvTurfmastsc,			// Neo Turf Masters / Big Tournament Golf: Scotland Course (Hack, v1.10)
 	&BurnDrvTurfmast,			// Neo Turf Masters / Big Tournament Golf
 	&BurnDrvTurfmastplus,		// Neo Turf Masters Plus / Big Tournament Golf Plus (Hack, v2.0)
@@ -51633,6 +51648,7 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvmd_psychop,			// Psycho Pinball (Prototype)
 	&BurnSpecPsychosold,		// Psycho Soldier (48K)
 	&BurnDrvPsychosj,			// Psycho Soldier (Japan)
+	&BurnDrvPsychosk,			// Psycho Soldier (Korean Translation)
 	&BurnDrvPsychos,			// Psycho Soldier (US)
 	&BurnDrvOscarj1,			// Psycho-Nics Oscar (Japan revision 1)
 	&BurnDrvOscarj2,			// Psycho-Nics Oscar (Japan revision 2)
@@ -51989,10 +52005,12 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvsnes_Quinty,		// Quinty (Prototype)
 	&BurnSpecQuiviria,			// Quivira (128K) (HB)
 	&BurnDrvCpsQadjr,			// Quiz & Dragons: Capcom Quiz Game (Japan Resale Ver. 940921)
+	&BurnDrvCpsQadjrk,			// Quiz & Dragons: Capcom Quiz Game (Japan Resale Ver. 940921)
 	&BurnDrvCpsQad,				// Quiz & Dragons: Capcom Quiz Game (USA 920701)
 	&BurnDrvInufuku,			// Quiz & Variety Sukusuku Inufuku (Japan)
 	&BurnDrvQuiz365t,			// Quiz 365 (Hong Kong & Taiwan)
 	&BurnDrvQuiz365,			// Quiz 365 (Japan)
+	&BurnDrvQuizmoonk,			// Quiz Bishoujo Senshi Sailor Moon - Chiryoku Tairyoku Toki no Un (Korean Translation)
 	&BurnDrvQuizmoon,			// Quiz Bishoujo Senshi Sailor Moon - Chiryoku Tairyoku Toki no Un
 	&BurnDrvQuizchq,			// Quiz Channel Question (Japan, Ver 1.00)
 	&BurnDrvQuizchqk,			// Quiz Channel Question (Korea, Ver 1.10)
@@ -52014,12 +52032,14 @@ static struct BurnDriver* pDriver[] = {
 	&BurnDrvQuizdai2,			// Quiz Meitantei Neo & Geo - Quiz Daisousa Sen part 2 (NGM-042 ~ NGH-042)
 	&BurnDrvQuizmeku,			// Quiz Mekurumeku Story (Japan, ROM Based)
 	&BurnDrvCpsQndream,			// Quiz Nanairo Dreams: Nijiirochou no Kiseki (Japan 960826)
+	&BurnDrvCpsQndreamk,		// Quiz Nanairo Dreams: Nijiirochou no Kiseki (Korean Translation 960826)
 	&BurnDrvQuizo,				// Quiz Olympic (set 1)
 	&BurnDrvQuizoa,				// Quiz Olympic (set 2)
 	&BurnDrvQzquest,			// Quiz Quest - Hime to Yuusha no Monogatari (Japan)
 	&BurnDrvQrouka,				// Quiz Rouka Ni Tattenasai (Japan, ROM Based)
 	&BurnDrvQuizdaisk,			// Quiz Salibtamjeong - The Last Count Down (Korean localized Quiz Daisousa Sen)
 	&BurnDrvQsangoku,			// Quiz Sangokushi (Japan)
+	&BurnDrvQsangokuk,			// Quiz Sangokushi (Korean Translation)
 	&BurnDrvQzshowby,			// Quiz Sekai wa SHOW by shobai (Japan)
 	&BurnDrvQsww,				// Quiz Syukudai wo Wasuremashita (Japan, Floppy Based, FD1094 317-0058-08b)
 	&BurnDrvQtheater,			// Quiz Theater - 3tsu no Monogatari (Ver 2.3J 1994/11/10)
@@ -63361,6 +63381,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "gba_aggrinln", "gba/d_gba.cpp"},
 	{ "gba_aggrinlnu", "gba/d_gba.cpp"},
 	{ "aodk", "neogeo/d_neogeo.cpp"},
+	{ "aodkr", "neogeo/d_neogeo.cpp"},
 	{ "sms_agidooly", "sms/d_sms.cpp"},
 	{ "agressb", "pre90s/d_blockout.cpp"},
 	{ "agress", "pre90s/d_blockout.cpp"},
@@ -64065,9 +64086,9 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "argusg", "pre90s/d_qbert.cpp"},
 	{ "nes_argus", "nes/d_nes.cpp"},
 	{ "rygarc", "pre90s/d_tecmo.cpp"},
-	{ "rygark", "pre90s/d_tecmo.cpp"},
 	{ "rygarj", "pre90s/d_tecmo.cpp"},
 	{ "rygarj2", "pre90s/d_tecmo.cpp"},
+	{ "rygark", "pre90s/d_tecmo.cpp"},
 	{ "argus", "pre90s/d_argus.cpp"},
 	{ "arian", "pre90s/d_snk.cpp"},
 	{ "nes_arispidrag", "nes/d_nes.cpp"},
@@ -68556,6 +68577,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "daisenpu", "taito/d_taitox.cpp"},
 	{ "gba_daisenr", "gba/d_gba.cpp"},
 	{ "daiskiss", "konami/d_konamigx.cpp"},
+	{ "daiskissk", "konami/d_konamigx.cpp"},
 	{ "gba_daisuktd", "gba/d_gba.cpp"},
 	{ "daitorid", "pst90s/d_metro.cpp"},
 	{ "daitorida", "pst90s/d_metro.cpp"},
@@ -69879,6 +69901,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "nes_doubledragonj", "nes/d_nes.cpp"},
 	{ "msx_ddragon", "msx/d_msx.cpp"},
 	{ "sms_ddragonk", "sms/d_sms.cpp"},
+	{ "doubledrk", "neogeo/d_neogeo.cpp"},
 	{ "doubledr", "neogeo/d_neogeo.cpp"},
 	{ "doubledt", "neogeo/d_neogeo.cpp"},
 	{ "doubledp", "neogeo/d_neogeo.cpp"},
@@ -78245,6 +78268,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "spec_mathsted", "spectrum/d_spectrum.cpp"},
 	{ "fds_matounohou", "nes/d_nes.cpp"},
 	{ "matrimbl", "neogeo/d_neogeo.cpp"},
+	{ "matrimk", "neogeo/d_neogeo.cpp"},
 	{ "matrim", "neogeo/d_neogeo.cpp"},
 	{ "matrimbh", "neogeo/d_neogeo.cpp"},
 	{ "snes_matsumura", "snes/d_snes.cpp"},
@@ -80355,6 +80379,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "syscheck", "neogeo/d_neogeo.cpp"},
 	{ "neothndr", "neogeo/d_neogeo.cpp"},
 	{ "ngp_neoturfm", "pst90s/d_ngp.cpp"},
+	{ "turfmastk", "neogeo/d_neogeo.cpp"},
 	{ "turfmastsc", "neogeo/d_neogeo.cpp"},
 	{ "turfmast", "neogeo/d_neogeo.cpp"},
 	{ "turfmastplus", "neogeo/d_neogeo.cpp"},
@@ -82837,6 +82862,7 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "md_psychop", "megadrive/d_megadrive.cpp"},
 	{ "spec_psychosold", "spectrum/d_spectrum.cpp"},
 	{ "psychosj", "pre90s/d_snk.cpp"},
+	{ "psychosk", "pre90s/d_snk.cpp"},
 	{ "psychos", "pre90s/d_snk.cpp"},
 	{ "oscarj1", "dataeast/d_dec8.cpp"},
 	{ "oscarj2", "dataeast/d_dec8.cpp"},
@@ -83187,10 +83213,12 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "snes_quinty", "snes/d_snes.cpp"},
 	{ "spec_quiviria", "spectrum/d_spectrum.cpp"},
 	{ "qadjr", "capcom/d_cps1.cpp"},
+	{ "qadjrk", "capcom/d_cps1.cpp"},
 	{ "qad", "capcom/d_cps1.cpp"},
 	{ "inufuku", "pst90s/d_inufuku.cpp"},
 	{ "quiz365t", "pst90s/d_ddenlovr.cpp"},
 	{ "quiz365", "pst90s/d_ddenlovr.cpp"},
+	{ "quizmoonk", "pst90s/d_macrossp.cpp"},
 	{ "quizmoon", "pst90s/d_macrossp.cpp"},
 	{ "quizchq", "pst90s/d_ddenlovr.cpp"},
 	{ "quizchqk", "pst90s/d_ddenlovr.cpp"},
@@ -83212,12 +83240,14 @@ static game_sourcefile_entry sourcefile_table[] = {
 	{ "quizdai2", "neogeo/d_neogeo.cpp"},
 	{ "quizmeku", "sega/d_sys24.cpp"},
 	{ "qndream", "capcom/d_cps2.cpp"},
+	{ "qndreamk", "capcom/d_cps2.cpp"},
 	{ "quizo", "pre90s/d_quizo.cpp"},
 	{ "quizoa", "pre90s/d_quizo.cpp"},
 	{ "qzquest", "taito/d_taitof2.cpp"},
 	{ "qrouka", "sega/d_sys24.cpp"},
 	{ "quizdaisk", "neogeo/d_neogeo.cpp"},
 	{ "qsangoku", "capcom/d_mitchell.cpp"},
+	{ "qsangokuk", "capcom/d_mitchell.cpp"},
 	{ "qzshowby", "taito/d_taitob.cpp"},
 	{ "qsww", "sega/d_sys24.cpp"},
 	{ "qtheater", "taito/d_taitof3.cpp"},

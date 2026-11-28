@@ -1243,3 +1243,55 @@ struct BurnDriver BurnDrvQuizmoon = {
 	quizmoonInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
 	384, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Quiz Bishoujo Senshi Sailor Moon - Chiryoku Tairyoku Toki no Un (Korean Translation)
+
+static struct BurnRomInfo quizmoonkRomDesc[] = {
+	{ "u1k.bin",    0x020000, 0x88744606, 1 | BRF_PRG | BRF_ESS }, //  0 68ec20 code
+	{ "u2k.bin",    0x020000, 0xf6980295, 1 | BRF_PRG | BRF_ESS }, //  1
+	{ "u3k.bin",    0x020000, 0x45e19270, 1 | BRF_PRG | BRF_ESS }, //  2
+	{ "u4k.bin",    0x020000, 0xcda917a3, 1 | BRF_PRG | BRF_ESS }, //  3
+	{ "u5k.bin",    0x080000, 0x77c31821, 1 | BRF_PRG | BRF_ESS }, //  4
+	{ "u6k.bin",    0x080000, 0x024d0c7b, 1 | BRF_PRG | BRF_ESS }, //  5
+	{ "u7k.bin",    0x080000, 0x2458630c, 1 | BRF_PRG | BRF_ESS }, //  6
+	{ "u8k.bin",    0x080000, 0x60865981, 1 | BRF_PRG | BRF_ESS }, //  7
+
+	{ "u20.bin",    0x020000, 0xd7ad1ffb, 2 | BRF_PRG | BRF_ESS }, //  8 68k code
+	{ "u21.bin",    0x020000, 0x6fc625c6, 2 | BRF_PRG | BRF_ESS }, //  9
+
+	{ "u49.bin",    0x020000, 0x1590ad81, 3 | BRF_GRA },           // 10 Bios? code
+
+	{ "u9k.bin",    0x400000, 0xe4a4f035, 4 | BRF_GRA },           // 11 Sprites
+	{ "u10k.bin",   0x400000, 0x48c69a50, 4 | BRF_GRA },           // 12
+	{ "u11k.bin",   0x400000, 0xc2f628f8, 4 | BRF_GRA },           // 13
+	{ "u12k.bin",   0x400000, 0x825f67ff, 4 | BRF_GRA },           // 14
+
+	{ "u13.bin",    0x400000, 0x3dcbb041, 5 | BRF_GRA },           // 15 Layer 'A' tiles
+
+	{ "u15.bin",    0x400000, 0xb84224f0, 6 | BRF_GRA },           // 16 Layer 'B' tiles
+
+	{ "u17k.bin",   0x200000, 0x0db7f0d3, 7 | BRF_GRA },           // 17 Layer 'C' tiles
+
+	{ "u26.bin",    0x400000, 0x6c8f30d4, 8 | BRF_SND },           // 18 Ensoniq samples, bank 0
+	{ "u24.bin",    0x400000, 0x5b12d0b1, 8 | BRF_SND },           // 19
+
+	{ "u27.bin",    0x400000, 0xbd75d165, 9 | BRF_SND },           // 20 Ensoniq samples, bank 2
+	{ "u25.bin",    0x400000, 0x3b9689bc, 9 | BRF_SND },           // 21
+};
+
+STD_ROM_PICK(quizmoonk)
+STD_ROM_FN(quizmoonk)
+
+struct BurnDriver BurnDrvQuizmoonk = {
+	"quizmoonk", "quizmoon", NULL, NULL, "2026",
+	"Quiz Bishoujo Senshi Sailor Moon - Chiryoku Tairyoku Toki no Un (Korean Translation)\0", NULL, "Banpresto", "Miscellaneous",
+	L"Quiz Bishoujo Senshi Sailor Moon - Chiryoku Tairyoku Toki no Un (Korean Translation)\0\uD034\uC988 \uB2EC\uC758 \uC694\uC815 \uC138\uC77C\uB7EC\uBB38 - \uC9C0\uB825 \uCCB4\uB825 \uD589\uC6B4 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK, 2, HARDWARE_MISC_POST90S, GBF_QUIZ, 0,
+	NULL, quizmoonkRomInfo, quizmoonkRomName, NULL, NULL, NULL, NULL, MacrosspInputInfo, MacrosspDIPInfo, //QuizmoonInputInfo, QuizmoonDIPInfo,
+	quizmoonInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x1000,
+	384, 224, 4, 3
+};

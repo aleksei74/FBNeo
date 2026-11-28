@@ -19259,3 +19259,35 @@ struct BurnDriver BurnDrvCpsXmvsfexj = {
 	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
 	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
 };
+
+static struct BurnRomInfo QndreamkRomDesc[] = {
+	{ "tqzk.03a",      0x080000, 0xd58918a0, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "tqzk.04",       0x080000, 0x65254265, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "tqzj.05",       0x080000, 0x4105ba0e, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+	{ "tqzk.06",       0x080000, 0xcbd2c9de, CPS2_PRG_68K | BRF_ESS | BRF_PRG },
+
+	{ "tqzk.14m",      0x200000, 0xe8845a5a, CPS2_GFX | BRF_GRA },
+	{ "tqzk.16m",      0x200000, 0x36a03b20, CPS2_GFX | BRF_GRA },
+	{ "tqzk.18m",      0x200000, 0xa54eb042, CPS2_GFX | BRF_GRA },
+	{ "tqzk.20m",      0x200000, 0x898ce797, CPS2_GFX | BRF_GRA },
+
+	{ "tqz.01",        0x020000, 0xe9ce9d0a, CPS2_PRG_Z80 | BRF_ESS | BRF_PRG },
+
+	{ "tqz.11m",       0x200000, 0x78e7884f, CPS2_QSND | BRF_SND },
+	{ "tqz.12m",       0x200000, 0x2e049b13, CPS2_QSND | BRF_SND },
+
+	{ "qndream.key",   0x000014, 0x97eee4ff, CPS2_ENCRYPTION_KEY },
+};
+
+STD_ROM_PICK(Qndreamk)
+STD_ROM_FN(Qndreamk)
+
+struct BurnDriver BurnDrvCpsQndreamk = {
+	"qndreamk", "qndream", NULL, NULL, "2026",
+	"Quiz Nanairo Dreams: Nijiirochou no Kiseki (Korean Translation 960826)\0", NULL, "Capcom", "CPS2",
+	L"Quiz Nanairo Dreams: Nijiirochou no Kiseki (Korean Translation 960826)\0\uD034\uC988 \uC77C\uACF1 \uBE5B\uAE54 \uB4DC\uB9BC\uC988: \uBB34\uC9C0\uAC1C \uB9C8\uC744\uC758 \uAE30\uC801 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED 960826)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS2, GBF_QUIZ, 0,
+	NULL, QndreamkRomInfo, QndreamkRomName, NULL, NULL, NULL, NULL, QndreamInputInfo, NULL,
+	Cps2Init, DrvExit, Cps2Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};

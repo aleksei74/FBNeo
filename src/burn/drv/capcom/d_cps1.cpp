@@ -18105,6 +18105,7 @@ static const struct GameConfig ConfigTable[] =
 	{ "knightsk"      , CPS_B_21_BT4, mapper_KR63B , 0, NULL                },
 	{ "kodk"          , CPS_B_21_BT2, mapper_KD29B , 0, NULL                },
 	{ "punisherk"     , CPS_B_21_QS3, mapper_PS63B , 0, punisher_decode     },
+	{ "qadjrk"        , CPS_B_21_DEF, mapper_QD63B , 0, NULL                },
 	{ "rockmank"      , CPS_B_21_DEF, mapper_RCM63B, 0, NULL                },
 	{ "sf2k"          , CPS_B_11    , mapper_STF29 , 0, NULL                },
 	{ "sf2cek"        , CPS_B_21_DEF, mapper_S9263B, 0, NULL                },
@@ -30792,6 +30793,32 @@ static struct BurnRomInfo PunisherkRomDesc[] = {
 STD_ROM_PICK(Punisherk)
 STD_ROM_FN(Punisherk)
 
+static struct BurnRomInfo QadjrkRomDesc[] = {
+	{ "qad_23ak.8f",   0x080000, 0x8348d8f9, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "qad_22ak.7f",   0x080000, 0xbe39d84e, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+
+	{ "qad_01k.3a",    0x080000, 0xa6e9971c, BRF_GRA | CPS1_TILES },
+	{ "qad_02k.4a",    0x080000, 0x2af48526, BRF_GRA | CPS1_TILES },
+	{ "qad_03k.5a",    0x080000, 0x1701ab5d, BRF_GRA | CPS1_TILES },
+	{ "qad_04k.6a",    0x080000, 0xf5af5bc1, BRF_GRA | CPS1_TILES },
+
+	{ "qad_09.12a",    0x010000, 0x733161cc, BRF_PRG | CPS1_Z80_PROGRAM },
+
+	{ "qad_18.11c",    0x020000, 0x2bfe6f6a, BRF_SND | CPS1_OKIM6295_SAMPLES },
+	{ "qad_19.12c",    0x020000, 0x13d3236b, BRF_SND | CPS1_OKIM6295_SAMPLES },
+
+	A_BOARD_PLDS
+
+	{ "qad63b.1a",     0x000117, 0xb3312b13, BRF_OPT },	// b-board PLDs
+	{ "iob1.12d",      0x000117, 0x3abc0700, BRF_OPT },
+	{ "bprg1.11d",     0x000117, 0x31793da7, BRF_OPT },
+	{ "ioc1.ic7",      0x000104, 0xa399772d, BRF_OPT },	// c-board PLDs
+	{ "c632.ic1",      0x000117, 0x0fbd9270, BRF_OPT },
+};
+
+STD_ROM_PICK(Qadjrk)
+STD_ROM_FN(Qadjrk)
+
 static struct BurnRomInfo RockmankRomDesc[] = {
 	{ "rcmk_23.8f",    0x080000, 0xcb60d510, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
 	{ "rcmk_22.7f",    0x080000, 0xee2b97ff, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
@@ -30832,12 +30859,12 @@ STD_ROM_PICK(Rockmank)
 STD_ROM_FN(Rockmank)
 
 static struct BurnRomInfo Sf2kRomDesc[] = {
-	{ "sf2e_30gk.11e", 0x020000, 0x20c58beb, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
-	{ "sf2e_37gk.11f", 0x020000, 0x3ad472df, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
-	{ "sf2e_31gk.12e", 0x020000, 0xd5b06f9c, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
-	{ "sf2e_38gk.12f", 0x020000, 0x047ebdd1, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
-	{ "sf2e_28gk.9e",  0x020000, 0xe52f3556, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
-	{ "sf2e_35gk.9f",  0x020000, 0x3811f02c, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sf2e_30gk.11e", 0x020000, 0x2479cc9e, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sf2e_37gk.11f", 0x020000, 0x81d348b1, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sf2e_31gk.12e", 0x020000, 0xc9e4361f, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sf2e_38gk.12f", 0x020000, 0xd2cf61ca, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sf2e_28gk.9e",  0x020000, 0x684fc6a9, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
+	{ "sf2e_35gk.9f",  0x020000, 0x0e049455, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
 	{ "sf2_29b.10e",   0x020000, 0xbb4af315, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
 	{ "sf2_36b.10f",   0x020000, 0xc02a13eb, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_BYTESWAP },
 
@@ -30871,7 +30898,7 @@ STD_ROM_FN(Sf2k)
 
 static struct BurnRomInfo Sf2cekRomDesc[] = {
 	{ "s92e_23bk.8f",  0x080000, 0x11341f77, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
-	{ "s92_22bk.7f",   0x080000, 0x4a00b4d5, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "s92_22bk.7f",   0x080000, 0x9a993ac4, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
 	{ "s92_21a.6f",    0x080000, 0x925a7877, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
 
 	{ "s92-1mk.3a",    0x080000, 0x7372842d, BRF_GRA | CPS1_TILES },
@@ -30906,7 +30933,7 @@ STD_ROM_FN(Sf2cek)
 
 static struct BurnRomInfo Sf2hfkRomDesc[] = {
 	{ "s2te_23k.8f",   0x080000, 0xbab350f1, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
-	{ "s2te_22k.7f",   0x080000, 0x2ffc7086, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
+	{ "s2te_22k.7f",   0x080000, 0xc84bc5f9, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
 	{ "s2te_21.6f",    0x080000, 0xfd200288, BRF_ESS | BRF_PRG | CPS1_68K_PROGRAM_NO_BYTESWAP },
 
 	{ "s92-1mk.3a",    0x080000, 0x7372842d, BRF_GRA | CPS1_TILES },
@@ -31351,6 +31378,16 @@ struct BurnDriver BurnDrvCpsPunisherk = {
 	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1_QSOUND, GBF_SCRFIGHT, 0,
 	NULL, PunisherkRomInfo, PunisherkRomName, NULL, NULL, NULL, NULL, PunisherInputInfo, PunisherDIPInfo,
 	TwelveMhzInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
+	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
+};
+
+struct BurnDriver BurnDrvCpsQadjrk = {
+	"qadjrk", "qad", NULL, NULL, "2026",
+	"Quiz & Dragons: Capcom Quiz Game (Japan Resale Ver. 940921)\0", NULL, "Capcom", "CPS1",
+	L"Quiz & Dragons: Capcom Quiz Game (Japan Resale Ver. 940921)\0\uD034\uC988 & \uB4DC\uB798\uACE4\uC2A4: \uCEA1\uCF64 \uD034\uC988 \uAC8C\uC784 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED \uB9AC\uC138\uC77C Ver. 940921)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_CAPCOM_CPS1, GBF_QUIZ, 0,
+	NULL, QadjrkRomInfo, QadjrkRomName, NULL, NULL, NULL, NULL, QadInputInfo, QadjrDIPInfo,
+	QadInit, DrvExit, Cps1Frame, CpsRedraw, CpsAreaScan,
 	&CpsRecalcPal, 0x1000, 384, 224, 4, 3
 };
 
