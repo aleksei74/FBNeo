@@ -77,3 +77,7 @@ void Sh2SetIRQCallback(int (*callback)(int));
 
 // SH7014 has a full 32-bit address space, unlike SH7604 aliases.
 void Sh2SetAddressMask(UINT32 mask);
+
+// SH7604 board pins. Configure the active CPU before executing it.
+void Sh2SetSlave(INT32 isSlave);
+void Sh2PulseFRTInput();

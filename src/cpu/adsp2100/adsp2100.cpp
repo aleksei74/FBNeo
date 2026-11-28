@@ -301,6 +301,7 @@ void (*adsp21xx_dmovlay_cb)(INT32 data) = NULL;
 INLINE UINT16 RWORD_IO(adsp2100_state *adsp, UINT32 addr)
 {
     //return memory_read_word_16le(adsp->io, addr << 1);
+    if (adsp->io_read) return adsp->io_read(addr & 0x7ff);
     if (adsp21xx_io_read) return adsp21xx_io_read(addr & 0x7ff);
     return adsp21xx_data_read_word_16le(addr << 1);
 }
@@ -308,6 +309,7 @@ INLINE UINT16 RWORD_IO(adsp2100_state *adsp, UINT32 addr)
 INLINE void WWORD_IO(adsp2100_state *adsp, UINT32 addr, UINT16 data)
 {
     //memory_write_word_16le(adsp->io, addr << 1, data);
+    if (adsp->io_write) { adsp->io_write(addr & 0x7ff, data); return; }
     if (adsp21xx_io_write) { adsp21xx_io_write(addr & 0x7ff, data); return; }
     adsp21xx_data_write_word_16le(addr << 1, data);
 }
@@ -778,7 +780,8 @@ void adsp21xx_reset(adsp2100_state *adsp)
 
 	/* reset interrupts */
 	adsp->imask = 0;
-	for (irq = 0; irq < 8; irq++)
+	adsp->pmovlay = adsp->dmovlay = 0;
+	for (irq = 0; irq < 9; irq++)
 		adsp->irq_state[irq] = adsp->irq_latch[irq] = CLEAR_LINE;
 }
 
@@ -908,6 +911,12 @@ void adsp21xx_exit(adsp2100_state *adsp)
 }
 
 // States
+void Adsp2181BdmaComplete(adsp2100_state *adsp)
+{
+	adsp->bdma_latch = 1;
+	check_irqs(adsp);
+}
+
 void adsp21xx_scan(adsp2100_state *adsp, INT32 nAction)
 {
 	if (nAction & ACB_DRIVER_DATA) {
@@ -955,6 +964,11 @@ int adsp21xx_execute(adsp2100_state *adsp, int cycles)
 	adsp->cycles_start = cycles;
 
 	check_irqs(adsp);
+	if (adsp->chip_type == CHIP_TYPE_ADSP2181 && adsp->idle) {
+		adsp->cycles_start = adsp->icount = 0;
+		adsp->total_cycles += cycles;
+		return cycles;
+	}
 
 	/* count cycles and interrupt cycles */
 	adsp->icount = cycles;

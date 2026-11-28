@@ -5733,8 +5733,40 @@ struct BurnDriver BurnDrvTbyahhook = {
 	"tbyahhook", "tbyahhoo", "konamigx", NULL, "2026",
 	"Twin Bee Yahhoo! (ver JAA, Korean Translation)\0", NULL, "Konami", "Konami System GX",
 	L"Twin Bee Yahhoo! (ver JAA, Korean Translation)\0\uD2B8\uC708\uBE44 \uC58F\uD638! - \uC774\uC0C1\uD55C \uB098\uB77C\uC5D0\uC11C\uC758 \uB300\uC18C\uB3D9!! (ver JAA, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
-	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_HORSHOOT, 0,
 	NULL, tbyahhookRomInfo, tbyahhookRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
+	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
+	288, 224, 4, 3
+};
+
+static struct BurnRomInfo daiskisskRomDesc[] = {
+	{ "300a01.34k",    0x00020000, 0xd5fa95f5, 1 | BRF_PRG | BRF_ESS }, //  0 maincpu
+	{ "535jaa02k.31b", 0x00080000, 0xa2c98c6c, 1 | BRF_PRG | BRF_ESS }, //  1 maincpu
+	{ "535jaa03k.27b", 0x00080000, 0x2fb1d690, 1 | BRF_PRG | BRF_ESS }, //  2 maincpu
+
+	{ "535a08.9c",     0x00020000, 0x449416a7, 2 | BRF_PRG | BRF_ESS }, //  3 soundcpu
+	{ "535a09.7c",     0x00020000, 0x8ec57ab4, 2 | BRF_PRG | BRF_ESS }, //  4 soundcpu
+
+	{ "535a19k.17h",   0x00200000, 0xaf6d2f5e, 3 | BRF_GRA           }, //  5 k056832
+	{ "535a18k.13g",   0x00080000, 0x4f9b0da8, 3 | BRF_GRA           }, //  6 k056832
+
+	{ "535a17k.25g",   0x00100000, 0xc96566c1, 4 | BRF_GRA           }, //  7 k055673
+	{ "535a13k.28g",   0x00100000, 0x2f32198d, 4 | BRF_GRA           }, //  8 k055673
+	{ "535a11k.30g",   0x00080000, 0x6d7a164f, 4 | BRF_GRA           }, //  9 k055673
+
+	{ "535a22.9g",     0x00200000, 0x7ee59acb, 5 | BRF_SND           }, // 10 k054539
+};
+
+STD_ROM_PICK(daiskissk)
+
+STD_ROM_FN(daiskissk)
+
+struct BurnDriver BurnDrvDaiskissk = {
+	"daiskissk", "daiskiss", "konamigx", NULL, "2026",
+	"Daisu-Kiss (ver JAA, Korean Translation)\0", NULL, "Konami", "Konami System GX",
+	L"Daisu-Kiss (ver JAA, Korean Translation)\0\uB2E4\uC774\uC2A4-\uD0A4\uC2A4 (ver JAA, \uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_PREFIX_KONAMI, GBF_PUZZLE, 0,
+	NULL, daiskisskRomInfo, daiskisskRomName, NULL, NULL, NULL, NULL, GxInputInfo, GxDIPInfo,
 	DrvInit, DrvExit, DrvFrame, DrvDraw, DrvScan, &DrvRecalc, 0x2000,
 	288, 224, 4, 3
 };

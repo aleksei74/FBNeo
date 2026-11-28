@@ -90,6 +90,7 @@ typedef struct
 	INT8	irq_line_hold[17];
 	UINT32	m[0x200];
 	INT8  nmi_line_state;
+	INT8  sleep_mode; // Uses the former padding byte; 0=running, 1=sleeping, 2=exception wake-up.
 
 	UINT16 	frc;
 	UINT16 	ocra, ocrb, icr;
@@ -187,6 +188,7 @@ typedef struct
 	
 	unsigned char * opbase;
 	UINT32 addressMask;
+	INT32 isSlave; // Board-level BCR1 MD5 pin; configured at initialization.
 	int suspend;
 
 	// external dma requests (DREQ0/1)
@@ -894,6 +896,7 @@ SH2_INLINE void sh2_exception(/*const char *message,*/ int irqline)
 	/* fetch PC */
 	sh2->pc = RL( sh2->vbr + vector * 4 );
 	change_pc(sh2->pc & AM);
+	if (sh2->sleep_mode == 1) sh2->sleep_mode = 2;
 }
 
 #define CHECK_PENDING_IRQ(/*message*/)			\
@@ -916,6 +919,8 @@ do {											\
 	if (sh2->pending_irq & (1 << 14)) irq = 14;	\
 	if (sh2->pending_irq & (1 << 15)) irq = 15;	\
 	if ((sh2->internal_irq_level != -1) && (sh2->internal_irq_level > irq)) irq = sh2->internal_irq_level; \
+	/* ST-V SMPC clock changes wake SH-2 via NMI (vector 11), above maskable IRQs. */ \
+	if (sh2->pending_irq & (1 << 16)) irq = 16; \
 	if (irq >= 0)								\
 		sh2_exception(/*message,*/irq); 			\
 } while(0)
@@ -2304,7 +2309,10 @@ SH2_INLINE void SHLR16(UINT32 n)
 /*  SLEEP */
 SH2_INLINE void SLEEP(void)
 {
-	sh2->pc -= 2;
+	// Match MAME: a returning interrupt must pass the suspended SLEEP instruction.
+	if (sh2->sleep_mode != 2) sh2->pc -= 2;
+	if (sh2->sleep_mode == 0) sh2->sleep_mode = 1;
+	else if (sh2->sleep_mode == 2) sh2->sleep_mode = 0;
 	sh2->sh2_icount -= 2;
 	sh2->sh2_total_cycles += 2;
 	/* Wait_for_exception; */
@@ -3315,31 +3323,32 @@ static void sh2_dmac_unit(int dma)
 	INT32 sm = (chcr >> 12) & 3;
 	INT32 dm = (chcr >> 14) & 3;
 
+	const UINT32 count = sh2->m[0x62+4*dma];
+	UINT32 units = 1;
+	UINT32 bytes = 1U << ts;
 	switch (ts)
 	{
 		case 0: WB(dst & AM, RB(src & AM)); break;
 		case 1: WW(dst & AM, RW(src & AM)); break;
 		case 2: WL(dst & AM, RL(src & AM)); break;
 		case 3:
-			WL((dst +  0) & AM, RL((src +  0) & AM));
-			WL((dst +  4) & AM, RL((src +  4) & AM));
-			WL((dst +  8) & AM, RL((src +  8) & AM));
-			WL((dst + 12) & AM, RL((src + 12) & AM));
-			src += 16;
-			sh2->m[0x62+4*dma] = (sh2->m[0x62+4*dma] - 3) & 0xffffff;
+			// TCR counts longwords even in 16-byte burst mode. A zero
+			// initial count means 2^24 words, but a short tail ends at zero.
+			units = (count && count < 4) ? count : 4;
+			bytes = units * 4;
+			for (UINT32 i = 0; i < bytes; i += 4)
+				WL((dst + i) & AM, RL((src + i) & AM));
 			break;
 	}
 
-	static const UINT32 ssize[4] = { 1, 2, 4, 0 };
-	static const UINT32 dsize[4] = { 1, 2, 4, 16 };
-	if (sm == 1) src += ssize[ts];
-	if (sm == 2) src -= ssize[ts];
-	if (dm == 1) dst += dsize[ts];
-	if (dm == 2) dst -= dsize[ts];
+	if (ts == 3 || sm == 1) src += bytes;
+	else if (sm == 2) src -= bytes;
+	if (dm == 1) dst += bytes;
+	if (dm == 2) dst -= bytes;
 
 	sh2->m[0x60+4*dma] = src;
 	sh2->m[0x61+4*dma] = dst;
-	sh2->m[0x62+4*dma] = (sh2->m[0x62+4*dma] - 1) & 0xffffff;
+	sh2->m[0x62+4*dma] = (count - units) & 0xffffff;
 
 	if (sh2->m[0x62+4*dma] == 0) {
 		sh2_dmac_callback(dma); // sets TE, raises the irq if enabled
@@ -3571,7 +3580,7 @@ static UINT32 sh2_internal_r(UINT32 offset, UINT32 /*mem_mask*/)
 		return (sh2->m[0x38] & 0x7fffffff) | 0x80000000;
 
 	case 0x78: // BCR1
-		return /*(m_is_slave ? 0x00008000 : 0)*/ 0 | (sh2->m[0x78] & 0x7fff);
+		return (pSh2Ext->isSlave ? 0x8000 : 0) | (sh2->m[0x78] & 0x7fff);
 		//return 0;
 
 	case 0x41: // dvdntl mirrors
@@ -3780,6 +3789,19 @@ static void sh2_update_events()
 	pSh2Ext->event_icount = (INT32)ev;
 }
 
+static INT32 sh2_dmac_pending_channel()
+{
+	if ((sh2->m[0x6c] & 7) != 1) return -1;
+
+	for (INT32 channel = 0; channel < 2; channel++) {
+		const UINT32 chcr = sh2->m[0x63 + 4 * channel];
+		if ((chcr & 3) == 1 && ((chcr & 0x200) || pSh2Ext->dreq[channel] || pSh2Ext->dreq_pulse[channel]))
+			return channel;
+	}
+
+	return -1;
+}
+
 int Sh2Run(int cycles)
 {
 #if defined FBNEO_DEBUG
@@ -3795,7 +3817,14 @@ int Sh2Run(int cycles)
 
 	for (;;)
 	{
-		if (pSh2Ext->slow && pSh2Ext->suspend) {
+		const INT32 dma_channel = sh2_dmac_pending_channel();
+		// CHCR.TB holds the bus for the transfer. The CPU cannot reprogram
+		// the channel or read its destination midway through the copy.
+		const bool dma_holds_cpu = dma_channel >= 0 && (sh2->m[0x63 + 4 * dma_channel] & 0x10);
+		if (dma_holds_cpu) {
+			sh2->sh2_total_cycles++;
+			sh2->sh2_icount -= sh2->sh2_eat_cycles;
+		} else if (pSh2Ext->slow && pSh2Ext->suspend) {
 			if (!sh2->test_irq) {
 				INT32 skip = sh2_suspend_skip();
 				if (skip > 0) {
@@ -3985,7 +4014,7 @@ int Sh2Run(int cycles)
 			}
 		}
 
-		if(sh2->test_irq && !sh2->delay)
+		if(sh2->test_irq && !sh2->delay && !dma_holds_cpu)
 		{
 			CHECK_PENDING_IRQ(/*"mame_sh2_execute"*/);
 			sh2->test_irq = 0;
@@ -3995,16 +4024,11 @@ int Sh2Run(int cycles)
 			sh2_wdt_sync();
 		}
 
-		// dma: one unit per step (auto request) or per external request
-		if ((sh2->m[0x6c] & 7) == 1) {
-			for (INT32 c = 0; c < 2; c++) {
-				UINT32 chcr = sh2->m[0x63+4*c];
-				if ((chcr & 3) == 1 && ((chcr & 0x200) || pSh2Ext->dreq[c] || pSh2Ext->dreq_pulse[c])) { // DE, !TE, AR or DREQ
-					pSh2Ext->dreq_pulse[c] = 0;
-					sh2_dmac_unit(c);
-					break;
-				}
-			}
+		// An instruction may start a DMA transfer during this step.
+		const INT32 transfer_channel = dma_holds_cpu ? dma_channel : sh2_dmac_pending_channel();
+		if (transfer_channel >= 0) {
+			pSh2Ext->dreq_pulse[transfer_channel] = 0;
+			sh2_dmac_unit(transfer_channel);
 		}
 
 		sh2->sh2_total_cycles++;
@@ -4261,4 +4285,19 @@ void Sh2SetIRQCallback(int (*callback)(int))
 void Sh2SetAddressMask(UINT32 mask)
 {
 	pSh2Ext->addressMask = mask;
+}
+
+// A complete FRT pin pulse contains both edges, so exactly one capture occurs
+// regardless of TCR.IEDG. Used by ST-V MINIT/SINIT communication.
+void Sh2PulseFRTInput()
+{
+	sh2_timer_resync();
+	sh2->icr = sh2->frc;
+	sh2->m[4] |= ICF;
+	sh2_recalc_irq();
+}
+
+void Sh2SetSlave(INT32 isSlave)
+{
+	pSh2Ext->isSlave = isSlave != 0;
 }

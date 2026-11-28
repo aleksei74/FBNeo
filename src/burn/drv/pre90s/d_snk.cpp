@@ -9382,3 +9382,62 @@ struct BurnDriver BurnDrvFsoccerba = {
 	TdfeverInit, DrvExit, GwarFrame, FsoccerDraw, DrvScan, &DrvRecalc, 0x400,
 	400, 224, 4, 3
 };
+
+//========================
+// Add Korean Translation
+//========================
+
+// Psycho Soldier (Korean Translation)
+
+static struct BurnRomInfo psychoskRomDesc[] = {
+	{ "ps7.4m",			0x10000, 0x05dfb409, 1 | BRF_ESS | BRF_PRG }, //  0 Z80 #0 Code
+
+	{ "ps6.8m",			0x10000, 0x5f426ddb, 2 | BRF_ESS | BRF_PRG }, //  1 Z80 #1 Code
+
+	{ "ps5.6j",			0x10000, 0xbbd0a8e3, 3 | BRF_ESS | BRF_PRG }, //  2 Z80 #2 Code
+
+	{ "psc1.1k",		0x00400, 0x27b8ca8c, 14 | BRF_GRA },	      //  3 Color Data
+	{ "psc3.1l",		0x00400, 0x40e78c9e, 14 | BRF_GRA },	      //  4
+	{ "psc2.2k",		0x00400, 0xd845d5ac, 14 | BRF_GRA },	      //  5
+	{ "horizon.8j",		0x00400, 0xc20b197b, 0 | BRF_GRA },	      	  //  6
+	{ "vertical.8k",	0x00400, 0x5d0c617f, 0 | BRF_GRA },	      	  //  7
+
+	{ "ps8k.3a",		0x08000, 0x515db994, 4 | BRF_GRA },	      	  //  8 Text Characters
+
+	{ "ps16.1f",		0x10000, 0x167e5765, 5 | BRF_GRA },	      	  //  9 Background Layer
+	{ "ps15.1d",		0x10000, 0x8b0fe8d0, 5 | BRF_GRA },	      	  // 10
+	{ "ps14.1c",		0x10000, 0xf4361c50, 5 | BRF_GRA },	      	  // 11
+	{ "ps13.1a",		0x10000, 0xe4b0b95e, 5 | BRF_GRA },	      	  // 12
+
+	{ "ps12k.3g",		0x08000, 0xacc9fb77, 7 | BRF_GRA },	      	  // 13 16x16 Sprites
+	{ "ps11k.3e",		0x08000, 0x6fc83b60, 7 | BRF_GRA },	      	  // 14
+	{ "ps10k.3c",		0x08000, 0xab607cb2, 7 | BRF_GRA },	      	  // 15
+	{ "ps9k.3b",		0x08000, 0x353bab1e, 7 | BRF_GRA },	      	  // 16
+
+	{ "ps17.10f",		0x10000, 0x2bac250e, 8 | BRF_GRA },	      	  // 17 32x32 Sprites
+	{ "ps18.10h",		0x10000, 0x5e1ba353, 8 | BRF_GRA },	      	  // 18
+	{ "ps19.10j",		0x10000, 0x9ff91a97, 8 | BRF_GRA },	      	  // 19
+	{ "ps20.10l",		0x10000, 0xae1965ef, 8 | BRF_GRA },	      	  // 20
+	{ "ps21.10m",		0x10000, 0xdf283b67, 8 | BRF_GRA },	      	  // 21
+	{ "ps22.10n",		0x10000, 0x914f051f, 8 | BRF_GRA },	      	  // 22
+	{ "ps23.10r",		0x10000, 0xc4488472, 8 | BRF_GRA },	      	  // 23
+	{ "ps24.10s",		0x10000, 0x8ec7fe18, 8 | BRF_GRA },	      	  // 24
+
+	{ "ps1k.5b",		0x10000, 0x2e1d3408, 15 | BRF_SND },	      // 25 Samples
+	{ "ps2k.5c",		0x10000, 0xebc181b1, 15 | BRF_SND },	      // 26
+	{ "ps3k.5d",		0x10000, 0x93f00dc7, 15 | BRF_SND },	      // 27
+	{ "ps4k.5f",		0x10000, 0x332189e3, 15 | BRF_SND },	      // 28
+};
+
+STD_ROM_PICK(psychosk)
+STD_ROM_FN(psychosk)
+
+struct BurnDriver BurnDrvPsychosk = {
+	"psychosk", "psychos", NULL, NULL, "2026",
+	"Psycho Soldier (Korean Translation)\0", NULL, "SNK", "Miscellaneous",
+	L"Psycho Soldier (Korean Translation)\0Psycho Soldier (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_PRE90S, GBF_SCRFIGHT, 0,
+	NULL, psychoskRomInfo, psychoskRomName, NULL, NULL, NULL, NULL, PsychosInputInfo, PsychosDIPInfo,
+	PsychosInit, DrvExit, GwarFrame, GwarDraw, DrvScan, &DrvRecalc, 0x400,
+	400, 224, 4, 3
+};

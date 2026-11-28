@@ -3523,3 +3523,36 @@ struct BurnDriver BurnDrvDokabenk = {
 	DokabenInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
 	NULL, 0x800, 384, 240, 4, 3
 };
+
+static struct BurnRomInfo QsangokukRomDesc[] = {
+	{ "q4-05ck.14f",  0x08000, 0xaa3d8793, BRF_ESS | BRF_PRG }, //   0  Z80 #1 Program Code
+	{ "q4-06k.15f",   0x20000, 0x9ed0cbc4, BRF_ESS | BRF_PRG }, //   1
+	{ "q4-07k.16f",   0x20000, 0xf2d5008a, BRF_ESS | BRF_PRG }, //   2
+
+	{ "q4-08k.8h",    0x20000, 0x534c3253, BRF_GRA },           //   3  Characters
+	{ "q4-09k.9h",    0x20000, 0x61625aee, BRF_GRA },           //   4
+	{ "q4-10k.10h",   0x20000, 0x7efe6546, BRF_GRA },           //   5
+	{ "q4-11.11h",    0x20000, 0x4ff66aed, BRF_GRA },           //   6
+	{ "q4-18k.8j",    0x20000, 0x09d6a720, BRF_GRA },           //   7
+	{ "q4-19k.9j",    0x20000, 0xeae1136b, BRF_GRA },           //   8
+	{ "q4-20k.10j",   0x20000, 0x2e9525cd, BRF_GRA },           //   9
+	{ "q4-21.11j",    0x20000, 0x432b1dc1, BRF_GRA },           //  10
+
+	{ "q4-16k.2j",    0x20000, 0x2c2c6953, BRF_GRA },           //  11  Sprites
+	{ "q4-17k.3j",    0x20000, 0xbb735ca4, BRF_GRA },           //  12
+
+	{ "q4-01.2d",     0x20000, 0x5d0d07d8, BRF_SND },           //  13  Samples
+};
+
+STD_ROM_PICK(Qsangokuk)
+STD_ROM_FN(Qsangokuk)
+
+struct BurnDriver BurnDrvQsangokuk = {
+	"qsangokuk", "qsangoku", NULL, NULL, "2026",
+	"Quiz Sangokushi (Korean Translation)\0", NULL, "Capcom", "Miscellaneous",
+	L"Quiz Sangokushi (Korean Translation)\0\uD034\uC988 \uC0BC\uAD6D\uC9C0 (\uD55C\uAD6D\uC5B4 \uBC88\uC5ED)\0", NULL, NULL, NULL,
+	BDF_GAME_WORKING | BDF_CLONE | BDF_HACK | BDF_HISCORE_SUPPORTED, 2, HARDWARE_MISC_POST90S, GBF_QUIZ, 0,
+	NULL, QsangokukRomInfo, QsangokukRomName, NULL, NULL, NULL, NULL, Qtono1InputInfo, NULL,
+	QsangokuInit, DrvExit, DrvFrame, DrvDraw, DrvScan,
+	NULL, 0x800, 384, 240, 4, 3
+};

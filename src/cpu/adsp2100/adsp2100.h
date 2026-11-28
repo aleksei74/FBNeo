@@ -170,6 +170,7 @@ void adsp2115_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);
 
 //CPU_GET_INFO( adsp2181 );
 //#define CPU_ADSP2181 CPU_GET_INFO_NAME( adsp2181 )
+void Adsp2181BdmaComplete(adsp2100_state *adsp);
 void adsp2181_init(adsp2100_state *adsp, cpu_irq_callback irqcallback);
 void adsp2181_load_boot_data(UINT8 *srcdata, UINT32 *dstdata);
 void adsp2181_idma_addr_w(adsp2100_state *adsp, UINT16 data);

@@ -2840,10 +2840,10 @@ struct BurnDriver BurnDrvJojobanrb = {
 static struct BurnRomInfo sfiiikRomDesc[] = {
 	{ "sfiii_euro.29f400.u2",	0x080000, 0x27699ddc, BRF_ESS | BRF_BIOS },	// SH-2 Bios
 
-	{ "sfiii-simm1k.0",			0x200000, 0x8cf38236, BRF_ESS | BRF_PRG },
-	{ "sfiii-simm1k.1",			0x200000, 0x2338a85a, BRF_ESS | BRF_PRG },
-	{ "sfiii-simm1k.2",			0x200000, 0x42bb690d, BRF_ESS | BRF_PRG },
-	{ "sfiii-simm1k.3",			0x200000, 0xc4358cb8, BRF_ESS | BRF_PRG },
+	{ "sfiii-simm1k.0",			0x200000, 0xe3468fa2, BRF_ESS | BRF_PRG },
+	{ "sfiii-simm1k.1",			0x200000, 0xdf47f91a, BRF_ESS | BRF_PRG },
+	{ "sfiii-simm1k.2",			0x200000, 0x32a93d71, BRF_ESS | BRF_PRG },
+	{ "sfiii-simm1k.3",			0x200000, 0x917e95db, BRF_ESS | BRF_PRG },
 	{ "sfiii-simm3.0",			0x200000, 0x080b3bd3, BRF_GRA },
 	{ "sfiii-simm3.1",			0x200000, 0x5c356f2f, BRF_GRA },
 	{ "sfiii-simm3.2",			0x200000, 0xf9c97a45, BRF_GRA },
@@ -2885,10 +2885,10 @@ static struct BurnRomInfo sfiii2kRomDesc[] = {
 
 	{ "sfiii2_usa.29f400.u2",				0x080000, 0x75dd72e0, BRF_ESS | BRF_BIOS },	// SH-2 Bios
 
-	{ "sfiii2-simm1k.0",		0x200000, 0x1dd6348b, BRF_ESS | BRF_PRG },
-	{ "sfiii2-simm1k.1",		0x200000, 0xca148a5a, BRF_ESS | BRF_PRG },
-	{ "sfiii2-simm1k.2",		0x200000, 0x46b3fe24, BRF_ESS | BRF_PRG },
-	{ "sfiii2-simm1k.3",		0x200000, 0x24c7fa74, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm1k.0",		0x200000, 0x22e0974f, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm1k.1",		0x200000, 0x6d0cf203, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm1k.2",		0x200000, 0x3b12148a, BRF_ESS | BRF_PRG },
+	{ "sfiii2-simm1k.3",		0x200000, 0x46a7ed79, BRF_ESS | BRF_PRG },
 	{ "sfiii2-simm2k.0",		0x200000, 0x51d61911, BRF_ESS | BRF_PRG },
 	{ "sfiii2-simm2k.1",		0x200000, 0xf64066f5, BRF_ESS | BRF_PRG },
 	{ "sfiii2-simm2k.2",		0x200000, 0x8b0266c7, BRF_ESS | BRF_PRG },
@@ -2940,10 +2940,10 @@ static struct BurnRomInfo sfiii3kRomDesc[] = {
 
 	{ "sfiii3_euro.29f400.u2",				0x080000, 0x30bbf293, BRF_ESS | BRF_BIOS },	// SH-2 Bios
 	
-	{ "sfiii3-simm1k.0",		0x200000, 0x165ad612, BRF_ESS | BRF_PRG },
-	{ "sfiii3-simm1k.1",		0x200000, 0x00864bdb, BRF_ESS | BRF_PRG },
-	{ "sfiii3-simm1k.2",		0x200000, 0xc5952a35, BRF_ESS | BRF_PRG },
-	{ "sfiii3-simm1k.3",		0x200000, 0x2f8ffb30, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm1k.0",		0x200000, 0x4135138f, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm1k.1",		0x200000, 0x67468070, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm1k.2",		0x200000, 0xe5910d01, BRF_ESS | BRF_PRG },
+	{ "sfiii3-simm1k.3",		0x200000, 0x866e0d78, BRF_ESS | BRF_PRG },
 	{ "sfiii3-simm2k.0",		0x200000, 0x18df884a, BRF_ESS | BRF_PRG },
 	{ "sfiii3-simm2k.1",		0x200000, 0xbdeb9f91, BRF_ESS | BRF_PRG },
 	{ "sfiii3-simm2k.2",		0x200000, 0xb13f2399, BRF_ESS | BRF_PRG },
