@@ -1,5 +1,5 @@
-// CV1000 dynarec V2, stage A. Independently implemented cache/frontend;
-// reuse the audited straight-line V1 instruction emitter until V2 IR.
+// CV1000 dynarec V2 dual-mapped cache. Compact block emitter and
+// legacy straight-line fallback share the immutable executable cache.
 // Never map a page with both WRITE and EXEC permission.
 #ifndef FBNEO_SH3_ARM64_V2_H
 #define FBNEO_SH3_ARM64_V2_H
@@ -17,6 +17,7 @@
 #endif
 
 #if SH3_NATIVE_V2
+#include "sh3_arm64_v2_emit.h"
 namespace Sh3V2 {
 class CodeCache {
 	uint8_t *write_, *exec_;
@@ -70,6 +71,11 @@ public:
 	unsigned Run(uint32_t offset,uint32_t *r,uint32_t *sr,uint32_t *ea,
 		const Sh3Native::Memory &memory)const{
 		return reinterpret_cast<unsigned (*)(uint32_t*,uint32_t*,uint32_t*,const Sh3Native::Memory*)>(exec_+offset)(r,sr,ea,&memory);
+	}
+	unsigned RunCompact(uint32_t offset,uint32_t *r,uint32_t *sr,uint32_t *ea,
+		const Sh3Native::Memory &memory,bool wide)const{
+		return wide?fbneo_sh3_v2_enter(exec_+offset,r,sr,ea,&memory):
+			Run(offset,r,sr,ea,memory);
 	}
 	bool Denied()const{return denied_;}
 	size_t Used()const{return used_;}

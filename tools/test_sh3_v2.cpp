@@ -83,7 +83,7 @@ static std::vector<Snapshot> Scenarios(bool on,unsigned test){
 	// Timer expiry and IRQ/remap remain in original slice machinery.
 	if(test==5){
 		m_timer[0].timer_prescaler=1;m_timer[0].timer_exec=TimerTest;
-		m_timer[0].start(11000,0,1,0);
+		m_timer[0].start(21000,0,1,0);
 	}
 	std::vector<Snapshot> states;
 	for(unsigned step=0;step<24;step++){
@@ -101,7 +101,7 @@ static std::vector<Snapshot> Scenarios(bool on,unsigned test){
 			case 6: break;
 			}
 		}
-		const int budget=step<8?2049:(step%7==0?1:30+int(step*7%127));
+		const int budget=step<8?3073:(step%7==0?1:30+int(step*7%127));
 		states.push_back(Snap(Sh3Run_timerhack(budget)));
 	}
 	if(on){
@@ -142,7 +142,7 @@ static void TestPolicy(){
 }
 static void TestBudgetAndEdges(){
 	Init(true);Loop(20,0);
-	Sh3Run_timerhack(15000);
+	for(unsigned i=0;i<12;i++)Sh3Run_timerhack(2049);
 	Check(cv1kV2Stats.ops>0,"warm block");
 	UINT64 before=cv1kV2Stats.hits;
 	m_pc=0x80000000;m_delay=0;m_test_irq=0;m_sh4_icount=11;
@@ -234,29 +234,76 @@ static void TestFrontend(){
 	Check(!Cv1kV2Try(m_pc) && cv1kV2Stats.skipped==1 &&
 		!cv1kV2Stats.hits && !cv1kV2Stats.ops,"lookup-only suppresses execution");
 	const auto b=Snap(0);Compare(a,b,99,0);
+	const auto resetCount=cv1kV2Stats.resets;
+	Sh3Scan(ACB_WRITE);
+	Check(!Cv1kV2Find(base) && !cv1kV2Code.Used() &&
+		cv1kV2Stats.resets==resetCount+1 && cv1kV2Enabled,"state restore clears cache");
+	cv1kV2LookupOnly=false;m_pc=base;m_sh4_icount=1000;
+	for(unsigned j=0;j<3;j++)Cv1kV2Observe(m_pc);
+	Check(Cv1kV2Find(base)!=NULL,"recompile after restore");
+	Sh3Reset();
+	Check(!Cv1kV2Find(base) && !cv1kV2Code.Used() && cv1kV2Enabled,"CPU reset clears cache");
 	puts("V2 frontend: four-way pinning, collision/full, negative, remap and lookup-only PASS");
 }
-static double Bench(bool on,unsigned kind){
-	Init(on);
+// Check both emitter selections and the bounded sampling/page filter.
+static void TestCompactPolicy(){
+	Init(true);Loop(20,0);
+	m_sh4_icount=1000;sh3_end_run=0;
+	const UINT32 base=m_pc;
+	// Explicitly select the new emitter for this fixture, even when
+	// the remaining suite is run with the legacy emitter override.
+	cv1kV2Compact=true;
+	for(unsigned i=0;i<3;i++)Cv1kV2Observe(base);
+	auto *slot=Cv1kV2Find(base);
+	Check(slot && cv1kV2Table[slot->id-1].kind!=0,"compact published");
+	Check(cv1kV2PageTags[(base&AM)>>SH3_SHIFT]!=0,"page filter publication");
+	Check(!Cv1kV2Find(base+0x10000),"unregistered page filter");
+	const auto before=cv1kV2Stats.samples;
+	m_pc=base+0x10000;m_sh4_icount=1000;
+	Cv1kV2SliceSample();
+	m_sh4_icount=100;
+	for(unsigned i=0;i<10000;i++)Cv1kV2Try(m_pc,true);
+	Check(cv1kV2Stats.samples<=before+2,"bounded per-slice samples");
+	// A 14-register span cannot fit the 13 compact bindings and must
+	// be emitted through the existing V1 fallback, with no guest change.
+	Init(true);cv1kV2Compact=true;m_sh4_icount=1000;sh3_end_run=0;
+	for(unsigned i=0;i<14;i++)code[i]=0x7001|(i<<8);
+	code[14]=0xa000;code[15]=0x0009;
+	for(unsigned i=0;i<3;i++)Cv1kV2Observe(m_pc);
+	slot=Cv1kV2Find(m_pc);
+	Check(slot && !cv1kV2Table[slot->id-1].kind && cv1kV2Stats.legacyBuilt==1,"wide footprint fallback");
+	Check(Cv1kV2Try(m_pc)==14,"fallback executed");
+	for(unsigned i=0;i<14;i++)Check(m_r[i]==1,"fallback state");
+	puts("V2 compact selection, page filter, bounded sampling and wide fallback PASS");
+}
+static double Bench(unsigned mode,unsigned kind,Snapshot &result){
+	setenv("FBNEO_CV1K_V2_COMPACT",mode==2?"1":"0",1);
+	Init(mode!=0);
 	Loop(kind==0?40:kind==1?32:2,kind==1?1:0);
-	Sh3Run_timerhack(25000);
+	for(unsigned j=0;j<12;j++)Sh3Run_timerhack(2049);
 	auto t=std::chrono::steady_clock::now();
 	for(unsigned i=0;i<200;i++)Sh3Run_timerhack(25000);
 	double ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-t).count();
 	printf("V2 bench %u %u %.3f ms state %08x/%08x/%08x/%08x cycles %d ops %llu calls %llu\n",
-		kind,on,ms,m_r[0],m_r[2],m_r[3],m_r[10],sh3_total_cycles,
+		kind,mode,ms,m_r[0],m_r[2],m_r[3],m_r[10],sh3_total_cycles,
 		(unsigned long long)cv1kV2Stats.ops,(unsigned long long)cv1kV2Stats.hits);
-	return ms;
+	result=Snap(0);return ms;
 }
 int main(int argc,char **){
 	setvbuf(stdout,NULL,_IOLBF,0);
 	if(argc>1){
 		for(unsigned kind=0;kind<3;kind++){
-			double a[3],b[3];
-			for(unsigned i=0;i<3;i++)if(i&1){b[i]=Bench(true,kind);a[i]=Bench(false,kind);}
-			else{a[i]=Bench(false,kind);b[i]=Bench(true,kind);}
-			std::sort(a,a+3);std::sort(b,b+3);
-			printf("V2 median %u %.3f -> %.3f ms\n",kind,a[1],b[1]);
+			double ms[3][3]={};
+			Snapshot states[3];
+			for(unsigned i=0;i<3;i++){
+				for(unsigned j=0;j<3;j++){
+					const unsigned mode=(i+j)%3;
+					ms[mode][i]=Bench(mode,kind,states[mode]);
+				}
+				Compare(states[0],states[1],kind,i);Compare(states[0],states[2],kind,i);
+			}
+			for(auto &a:ms)std::sort(a,a+3);
+			printf("V2 median %u control %.3f legacy %.3f compact %.3f ms\n",kind,ms[0][1],ms[1][1],ms[2][1]);
 		}
 		return 0;
 	}
@@ -266,5 +313,5 @@ int main(int argc,char **){
 		for(unsigned j=0;j<a.size();j++)Compare(a[j],b[j],i,j);
 	}
 	puts("V2 live interpreter differential: 7 x 24 slices PASS");
-	TestBudgetAndEdges();TestFrontend();return 0;
+	TestBudgetAndEdges();TestFrontend();TestCompactPolicy();return 0;
 }

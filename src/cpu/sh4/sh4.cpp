@@ -456,6 +456,8 @@ INT32 sh4_get_cpu_speed() {
 	return c_clock;
 }
 
+static void Cv1kV2InvalidateAll();
+
 INT32 Sh3Scan(INT32 nAction)
 {
 	SCAN_VAR(m_ppc);
@@ -590,6 +592,7 @@ INT32 Sh3Scan(INT32 nAction)
 	m_dma_timer[3].scan();
 
 	cave_blitter_delay.scan();
+	if(nAction&ACB_WRITE)Cv1kV2InvalidateAll();
 
 	return 0;
 }
@@ -4150,6 +4153,7 @@ static void sh34_device_reset()
 
 void Sh3Reset()
 {
+	Cv1kV2InvalidateAll();
 	sh34_device_reset();
 
 	m_SH4_TCOR0 = 0xffffffff;
@@ -4544,6 +4548,10 @@ void Sh3Cv1kV2Report()
 	bprintf(PRINT_UI,_T("CV1K V2 frontend: samples %llu ready %llu setfull %llu retired %llu disabled %llu skipped %llu\n"),
 		(unsigned long long)s.samples,(unsigned long long)s.ready,(unsigned long long)s.setFull,
 		(unsigned long long)s.retired,(unsigned long long)s.disabled,(unsigned long long)s.skipped);
+	bprintf(PRINT_UI,_T("CV1K V2 emitter: compact built %llu calls %llu ops %llu bytes %llu legacy built %llu resets %llu\n"),
+		(unsigned long long)s.compactBuilt,(unsigned long long)s.compactCalls,
+		(unsigned long long)s.compactOps,(unsigned long long)s.compactBytes,
+		(unsigned long long)s.legacyBuilt,(unsigned long long)s.resets);
 #endif
 }
 
@@ -4660,10 +4668,12 @@ void Sh3SetCv1kNative(INT32 enable)
 		Cv1kPerformanceOption(getenv("FBNEO_CV1K_JIT_V2")) && Cv1kV2Enable();
 #endif
 	if(enable)bprintf(PRINT_UI,_T("CV1000 SH3 Dynarec V2: %s\n"),
-		cv1kV2Enabled?_T("enabled (stage A-fix, sparse promotion)"):_T("disabled"));
+		cv1kV2Enabled?_T("enabled (stage B-1, compact blocks)"):_T("disabled"));
 #if SH3_NATIVE_V2
 	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 lookup-only: %s; 64 KiB pinned directory\n"),
 		cv1kV2LookupOnly?_T("enabled (learn/compile/validate, no native execution)"):_T("disabled"));
+	if(cv1kV2Enabled)bprintf(PRINT_UI,_T("CV1000 SH3 V2 compact emitter: %s; page tag filter, bounded slice samples\n"),
+		cv1kV2Compact?_T("enabled"):_T("disabled (legacy emitter)"));
 #endif
 	const char *interpLoops=getenv("FBNEO_CV1K_INTERP_LOOPS");
 	// Real mmpork A/B: substantially slower startup with fusion on.

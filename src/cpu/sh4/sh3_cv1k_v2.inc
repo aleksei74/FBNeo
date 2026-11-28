@@ -5,7 +5,11 @@
 static constexpr unsigned Cv1kV2Sets=2048,Cv1kV2Ways=4;
 static constexpr unsigned Cv1kV2Entries=Cv1kV2Sets*Cv1kV2Ways;
 static constexpr unsigned Cv1kV2LearnEntries=1024,Cv1kV2Hot=3,Cv1kV2Min=12;
-static constexpr unsigned Cv1kV2SampleMask=63;
+// A bounded, time-stratified sample in each CPU slice replaces the
+// global increment on every backward miss. The physical-page mask
+// rejects absent PC tags without accessing the 64 KiB directory.
+static constexpr unsigned Cv1kV2PageCount=(AM>>SH3_SHIFT)+1;
+static UINT16 cv1kV2PageTags[Cv1kV2PageCount];
 static constexpr UINT32 Cv1kV2Blocked=0x80000000u;
 struct Cv1kV2Slot {
 	UINT32 pc,id; // 0 = empty; 1-based metadata index; high bit = pinned/disabled
@@ -16,7 +20,7 @@ struct Cv1kV2Entry {
 	const UINT16 *source;
 	UINT32 offset;
 	UINT16 ops[Sh3Native::MaxOps];
-	UINT8 count,shortExits;
+	UINT8 count,shortExits,kind; // 0 legacy, 1 compact-leaf, 2 compact-wide
 };
 struct Cv1kV2Learn {
 	UINT32 pc,epoch;
@@ -26,20 +30,33 @@ struct Cv1kV2Learn {
 struct Cv1kV2Stats {
 	UINT64 probes,hits,ops,built,rejected,changed,guards,full,negative;
 	UINT64 samples,ready,setFull,retired,disabled,skipped;
+	UINT64 compactBuilt,compactCalls,compactOps,compactBytes,legacyBuilt,resets;
 };
 static Cv1kV2Set *cv1kV2Fast;
 static Cv1kV2Entry *cv1kV2Table;
 static Cv1kV2Learn cv1kV2Learn[Cv1kV2LearnEntries];
 static Sh3V2::CodeCache cv1kV2Code;
 static Cv1kV2Stats cv1kV2Stats;
-static bool cv1kV2Full,cv1kV2LookupOnly;
-static UINT32 cv1kV2SampleClock;
+static bool cv1kV2Full,cv1kV2LookupOnly,cv1kV2Compact;
+static UINT32 cv1kV2SampleClock,cv1kV2Random;
+static INT32 cv1kV2SampleAt=-1;
+static void Cv1kV2InvalidateAll(){
+	if(!cv1kV2Fast)return;
+	memset(cv1kV2Fast,0,sizeof(Cv1kV2Set)*Cv1kV2Sets);
+	memset(cv1kV2PageTags,0,sizeof(cv1kV2PageTags));
+	memset(cv1kV2Learn,0,sizeof(cv1kV2Learn));
+	cv1kV2Code.Reset();cv1kV2Full=false;cv1kV2SampleAt=-1;
+	cv1kV2SampleClock=0;cv1kV2Random=0x957fea31u;
+	++cv1kV2Stats.resets;
+}
 static void Cv1kV2Reset(){
 	delete[] cv1kV2Fast;cv1kV2Fast=NULL;
 	delete[] cv1kV2Table;cv1kV2Table=NULL;
 	memset(cv1kV2Learn,0,sizeof(cv1kV2Learn));
 	cv1kV2Code.Reset();cv1kV2Stats={};cv1kV2Full=false;
-	cv1kV2LookupOnly=false;cv1kV2SampleClock=0;
+	cv1kV2LookupOnly=false;cv1kV2Compact=false;cv1kV2SampleClock=0;
+	cv1kV2Random=0x957fea31u;cv1kV2SampleAt=-1;
+	memset(cv1kV2PageTags,0,sizeof(cv1kV2PageTags));
 }
 static bool Cv1kV2Enable(){
 	cv1kV2Fast=new(std::nothrow) Cv1kV2Set[Cv1kV2Sets]();
@@ -47,13 +64,18 @@ static bool Cv1kV2Enable(){
 	if(!cv1kV2Fast || !cv1kV2Table){Cv1kV2Reset();return false;}
 	const char *lookup=getenv("FBNEO_CV1K_V2_LOOKUP_ONLY");
 	cv1kV2LookupOnly=lookup && !strcmp(lookup,"1");
+	cv1kV2Compact=Cv1kPerformanceOption(getenv("FBNEO_CV1K_V2_COMPACT"),true);
 	return true;
 }
 static inline __attribute__((always_inline)) unsigned Cv1kV2Hash(UINT32 pc){
 	const UINT32 h=pc>>1;
 	return (h^(h>>11)^(h>>22))&(Cv1kV2Sets-1);
 }
+static inline __attribute__((always_inline)) UINT16 Cv1kV2Tag(UINT32 pc){
+	return UINT16(1u<<(((pc>>1)^(pc>>5)^(pc>>9))&15u));
+}
 static inline __attribute__((always_inline)) Cv1kV2Slot *Cv1kV2Find(UINT32 pc){
+	if(!(cv1kV2PageTags[(pc&AM)>>SH3_SHIFT]&Cv1kV2Tag(pc)))return NULL;
 	Cv1kV2Slot *w=cv1kV2Fast[Cv1kV2Hash(pc)].way;
 	// No writes, no opcode decode, no live fetch-map walk on an ordinary
 	// miss. Empty entries can occur between occupied ways after remap.
@@ -63,7 +85,7 @@ static inline __attribute__((always_inline)) Cv1kV2Slot *Cv1kV2Find(UINT32 pc){
 }
 static bool Cv1kV2Candidate(UINT16 op){
 	// Preserve the existing full-literal CMP/PZ dispatch hook.
-	return (op&0xf0ff)!=0x4011 && Sh3Native::Candidate(op);
+	return (op&0xf0ff)!=0x4011 && Sh3V2::Candidate(op);
 }
 static inline bool Cv1kV2Allowed(){
 	return m_cpu_type==CPU_TYPE_SH3 && !m_delay && !m_test_irq &&
@@ -97,13 +119,24 @@ static __attribute__((noinline,cold)) void Cv1kV2Compile(
 		++cv1kV2Stats.setFull;Cv1kV2Reject(learn);return;
 	}
 	UINT32 words[Sh3Native::MaxWords];
-	Sh3Native::Emitter emit(words);
-	for(unsigned i=0;i<n;i++)if(!emit.Emit(code[i],i)){
-		Cv1kV2Reject(learn);return;
+	unsigned kind=0,wordCount=0;
+	if(cv1kV2Compact){
+		Sh3V2::CompactEmitter emit(words);
+		if(emit.Build(code,n)){
+			wordCount=emit.End()-words;kind=emit.Wide()?2:1;
+		}
 	}
-	emit.Finish(n);
+	if(!kind){
+		// Wide footprints or unsupported compact forms use the audited
+		// V1 emitter. Keep the previous emitter for same-binary A/B.
+		Sh3Native::Emitter emit(words);
+		for(unsigned i=0;i<n;i++)if(!emit.Emit(code[i],i)){
+			Cv1kV2Reject(learn);return;
+		}
+		emit.Finish(n);wordCount=emit.End()-words;
+	}
 	UINT32 offset;
-	if(!cv1kV2Code.Publish(words,emit.End()-words,offset)){
+	if(!cv1kV2Code.Publish(words,wordCount,offset)){
 		cv1kV2Full=true;++cv1kV2Stats.full;++cv1kNativeFull;
 		bprintf(PRINT_UI,_T("CV1000 SH3 V2 cache: %s; no new promotions\n"),
 			cv1kV2Code.Denied()?_T("RW/RX allocation denied"):_T("full"));
@@ -111,9 +144,12 @@ static __attribute__((noinline,cold)) void Cv1kV2Compile(
 	}
 	const UINT32 id=set*Cv1kV2Ways+way+1;
 	Cv1kV2Entry &b=cv1kV2Table[id-1];
-	b.source=code;b.offset=offset;b.count=n;b.shortExits=0;
+	b.source=code;b.offset=offset;b.count=n;b.shortExits=0;b.kind=kind;
 	memcpy(b.ops,code,n*sizeof(UINT16));
-	ways[way]={pc,id}; // publication last, on the owning CPU thread
+	ways[way]={pc,id};
+	cv1kV2PageTags[(pc&AM)>>SH3_SHIFT]|=Cv1kV2Tag(pc);
+	if(kind){++cv1kV2Stats.compactBuilt;cv1kV2Stats.compactBytes+=wordCount*4;}
+	else ++cv1kV2Stats.legacyBuilt;
 	++cv1kV2Stats.built;++cv1kNativeBuilt;
 }
 static __attribute__((noinline,cold)) void Cv1kV2Observe(UINT32 pc){
@@ -154,7 +190,10 @@ static __attribute__((noinline)) unsigned Cv1kV2Run(Cv1kV2Slot &slot){
 	if(cv1kV2LookupOnly){++cv1kV2Stats.skipped;return 0;}
 	const Sh3Native::Memory memory={MemMapR,MemMapRL,MemMapW,code,
 		size_t(b.count)*sizeof(UINT16),0,pc};
-	const unsigned done=cv1kV2Code.Run(b.offset,m_r,&m_sr,&m_ea,memory);
+	const unsigned done=b.kind?
+		cv1kV2Code.RunCompact(b.offset,m_r,&m_sr,&m_ea,memory,b.kind==2):
+		cv1kV2Code.Run(b.offset,m_r,&m_sr,&m_ea,memory);
+	if(b.kind){++cv1kV2Stats.compactCalls;cv1kV2Stats.compactOps+=done;}
 	++cv1kV2Stats.hits;++cv1kNativeSpans;
 	if(done!=b.count)++cv1kV2Stats.guards;
 	if(done<Cv1kV2Min){
@@ -173,15 +212,23 @@ static inline __attribute__((always_inline)) unsigned Cv1kV2Try(UINT32 pc,bool b
 	// Ordinary misses do not enter a C function or touch large metadata.
 	Cv1kV2Slot *s=Cv1kV2Find(pc);
 	if(s)return s->id&Cv1kV2Blocked?0:Cv1kV2Run(*s);
-	if(backward && !cv1kV2Full && !(++cv1kV2SampleClock&Cv1kV2SampleMask))
+	if(backward && cv1kV2SampleAt>=m_sh4_icount && m_sh4_icount>=INT32(Cv1kV2Min) && !cv1kV2Full){
+		cv1kV2SampleAt=-1;
 		Cv1kV2Observe(pc);
+	}
 	return 0;
 }
 static inline __attribute__((always_inline)) void Cv1kV2SliceSample(){
-	// One sample per 16 slice entries; do not scan every reload_fetch.
-	if(!cv1kV2Full && !(++cv1kV2SampleClock&15u))Cv1kV2Observe(m_pc);
+	// One time-stratified backward-miss sample per slice, plus a
+	// low-rate entry sample. No RMW on ordinary backward misses.
+	cv1kV2SampleAt=-1;
+	if(cv1kV2Full || m_sh4_icount<INT32(Cv1kV2Min))return;
+	UINT32 r=cv1kV2Random;r^=r<<13;r^=r>>17;r^=r<<5;cv1kV2Random=r;
+	cv1kV2SampleAt=INT32((UINT64(r)*UINT32(m_sh4_icount))>>32);
+	if(!(++cv1kV2SampleClock&15u))Cv1kV2Observe(m_pc);
 }
 #else
+static void Cv1kV2InvalidateAll(){}
 static inline unsigned Cv1kV2Try(UINT32,bool=false){return 0;}
 static inline void Cv1kV2SliceSample(){}
 #endif
