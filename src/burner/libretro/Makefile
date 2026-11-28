@@ -7,6 +7,8 @@ FASTCALL = 0
 # fastmath should improve performance with every arch, and there is no known issue with fbneo
 FASTMATH = 1
 USE_SPEEDHACKS = 1
+# Diagnostic-only opcode/path counts; never use for performance comparisons.
+CV1K_OPSTAT ?= 0
 EXTERNAL_ZLIB = 0
 INCLUDE_7Z_SUPPORT = 1
 INCLUDE_CHD_SUPPORT = 1
@@ -565,6 +567,10 @@ INCFLAGS := $(foreach dir,$(INCLUDE_DIRS),-I$(dir))
 
 ifeq ($(USE_SPEEDHACKS), 1)
 	FBNEO_DEFINES += -DUSE_SPEEDHACKS
+endif
+
+ifeq ($(CV1K_OPSTAT), 1)
+	FBNEO_DEFINES += -DSH3_CV1K_OPSTAT=1
 endif
 
 ifeq ($(FASTCALL), 1)

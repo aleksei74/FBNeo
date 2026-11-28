@@ -5,11 +5,8 @@ static inline __attribute__((always_inline)) bool Cv1kTryStack(UINT16 opcode)
 {
 	const unsigned n=Rn;
 	const UINT32 ea=m_r[n]-(Store?4:0);
-	if(ea>=0xe0000000u || (ea&3))return false;
-	const UINT32 a=ea&AM;
-	UINT8 *page=Store?MemMapW[a>>SH3_SHIFT]:MemMapRL[a>>SH3_SHIFT];
-	if((uintptr_t)page<SH3_MAXHANDLER)return false;
-	UINT8 *p=page+(a&SH3_PAGEM);
+	UINT8 *p=Cv1kDirectPointer<4,Store>(ea);
+	if(!p)return false;
 	m_ea=ea;
 	if(Store){
 		UINT32 v=*Reg;
@@ -32,12 +29,10 @@ static inline bool Cv1kTryFlowDT(UINT16 opcode,UINT32 nextPC)
 #if BUSY_LOOP_HACKS
 	// DT's original lookahead uses the DATA read map, not fetch.
 	// Preserve MMIO callbacks and the exact existing busy-loop burn.
-	const UINT32 a=nextPC&AM;
-	if(a&1)return false;
-	const UINT8 *p=MemMapR[a>>SH3_SHIFT];
-	if((uintptr_t)p<SH3_MAXHANDLER)return false;
-	UINT16 next;memcpy(&next,p+(a&SH3_PAGEM),2);
-	if(next==0x8bfd)return false;
+	const UINT8 *p=Cv1kDirectPointer<2,false>(nextPC&AM);
+	if(!p){CV1K_STAT(dtHandler);return false;}
+	UINT16 next;memcpy(&next,p,2);
+	if(next==0x8bfd){CV1K_STAT(dtBusy);return false;}
 #endif
 	--m_r[Rn];m_sr=(m_sr&~T)|UINT32(!m_r[Rn]);
 	return true;
@@ -81,7 +76,7 @@ struct Cv1kFlowResult {UINT32 target,ppc;INT32 cost;bool slot;};
 static inline bool Cv1kTryFlowBranch(Cv1kBranchKind kind,UINT16 opcode,UINT32 nextPC,
 	INT32 available,const UINT16 *sequential,Cv1kFlowResult &out)
 {
-	if(available<=0)return false;
+	if(available<=0){CV1K_STAT(branchReject[0]);return false;}
 	UINT32 target;
 	INT32 cost=2;
 	bool slot=true,setEA=true,setPR=false;
@@ -90,7 +85,7 @@ static inline bool Cv1kTryFlowBranch(Cv1kBranchKind kind,UINT16 opcode,UINT32 ne
 	case CV1K_BRANCH_BT:
 		// The original post-BF data/counted-loop probes must still run.
 		if(kind==CV1K_BRANCH_BF &&
-			(cv1kInterpLoopsEnabled || (opcode==0x8bfa && cv1kDataLoopsEnabled)))return false;
+			(cv1kInterpLoopsEnabled || (opcode==0x8bfa && cv1kDataLoopsEnabled))){CV1K_STAT(branchReject[1]);return false;}
 		cost=3;slot=false;
 		target=nextPC+2+INT32(INT8(opcode&255))*2;break;
 	case CV1K_BRANCH_BFS:
@@ -100,7 +95,7 @@ static inline bool Cv1kTryFlowBranch(Cv1kBranchKind kind,UINT16 opcode,UINT32 ne
 	case CV1K_BRANCH_BSR:{
 		const INT32 disp=INT32(UINT32(opcode&0xfff)<<20)>>20;
 #if BUSY_LOOP_HACKS
-		if(kind==CV1K_BRANCH_BRA && disp==-2)return false;
+		if(kind==CV1K_BRANCH_BRA && disp==-2){CV1K_STAT(branchReject[2]);return false;}
 #endif
 		target=nextPC+2+disp*2;setPR=kind==CV1K_BRANCH_BSR;break;
 	}
@@ -114,17 +109,18 @@ static inline bool Cv1kTryFlowBranch(Cv1kBranchKind kind,UINT16 opcode,UINT32 ne
 	case CV1K_BRANCH_RTS:target=m_pr;break;
 	default:return false;
 	}
-	if(target&1)return false;
+	if(target&1){CV1K_STAT(branchReject[3]);return false;}
 	if(slot){
 		// A slice ending after the branch must retain the pending slot.
 		// A zero slot address is also the original delay sentinel.
-		if(available<=cost || !nextPC || (nextPC&1))return false;
+		if(available<=cost){CV1K_STAT(branchReject[0]);return false;}
+		if(!nextPC || (nextPC&1)){CV1K_STAT(branchReject[3]);return false;}
 		UINT16 op;
 		if(sequential && (nextPC&SH3_PAGEM))op=*sequential;
 		else {
 			const UINT32 a=nextPC&AM;
 			const UINT8 *page=MemMapF[a>>SH3_SHIFT];
-			if((uintptr_t)page<SH3_MAXHANDLER)return false;
+			if((uintptr_t)page<SH3_MAXHANDLER){CV1K_STAT(branchReject[4]);return false;}
 			memcpy(&op,page+(a&SH3_PAGEM),2);
 		}
 		const UINT32 distance=nextPC-target;
@@ -133,10 +129,10 @@ static inline bool Cv1kTryFlowBranch(Cv1kBranchKind kind,UINT16 opcode,UINT32 ne
 		// Conservatively leave every potentially matching probe edge
 		// to the existing dispatcher, even at a smaller cycle budget.
 		if(cv1kDataLoopsEnabled &&
-			((distance==22 && (op&0xf00f)==0x600e) || (distance==8 && addSmall)))return false;
+			((distance==22 && (op&0xf00f)==0x600e) || (distance==8 && addSmall))){CV1K_STAT(branchReject[1]);return false;}
 		if(cv1kInterpLoopsEnabled &&
 			(op==0x0009 || (op&0xf000)==0x7000) &&
-			(distance==4 || distance==6 || distance==8))return false;
+			(distance==4 || distance==6 || distance==8)){CV1K_STAT(branchReject[1]);return false;}
 		// Common register-only slots neither read nor write the
 		// branch's EA or PR. Avoid a second dispatch and rollback.
 		if((op&0xf000)==0x7000)ADDI(op);
@@ -146,17 +142,19 @@ static inline bool Cv1kTryFlowBranch(Cv1kBranchKind kind,UINT16 opcode,UINT32 ne
 		else if((op&0xf00f)==0x600e)EXTSB(op);
 		else {
 			Cv1kSlotFn fn=cv1kFlowSlots[sh3OpIds[op]];
-			if(!fn)return false;
+			if(!fn){CV1K_STAT(branchReject[5]);return false;}
 			const UINT32 oldEA=m_ea,oldPR=m_pr;
 			if(setEA)m_ea=target;
 			if(setPR)m_pr=nextPC+2;
 			// PC-relative MOVs use the branch target. A rejected
 			// direct access has not changed any guest state.
-			if(!fn(op,target)){m_ea=oldEA;m_pr=oldPR;return false;}
+			if(!fn(op,target)){m_ea=oldEA;m_pr=oldPR;CV1K_STAT(branchReject[6]);return false;}
+			CV1K_STAT(fused[sh3OpIds[op]]);CV1K_STAT(indirect[sh3OpIds[op]]);
 			++cost;
 			out={target,target,cost,true};
 			return true;
 		}
+		CV1K_STAT(fused[sh3OpIds[op]]);
 		if(setEA)m_ea=target;
 		if(setPR)m_pr=nextPC+2;
 		++cost;

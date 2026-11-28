@@ -6,6 +6,50 @@ enum Cv1kMoveForm {
 	CV1K_DISP4_R0,CV1K_DISP4,CV1K_LITERAL
 };
 
+// Resolve a live, aligned, callback-free access. The registered base
+// shortcuts are revoked by all map APIs and idle-handler replacement.
+template<unsigned Width, bool Store>
+static inline __attribute__((always_inline)) UINT8 *Cv1kDirectPointer(UINT32 ea)
+{
+	if(ea>=0xe0000000u){CV1K_STAT(p4);return nullptr;}
+	if(ea&(Width-1)){CV1K_STAT(unaligned);return nullptr;}
+	UINT32 a=ea&AM;
+	const UINT32 off=a-0xc000000u;
+	if(off<0x1000000u && cv1kFastRamBase){
+		if(!Store && Width==4 && a==cv1kFastIdleAddress){
+			CV1K_STAT(idleReject);return nullptr;
+		}
+		CV1K_STAT(ram);
+		if(!Store && Width==4 && off<0x10000u &&
+			cv1kFastIdleAddress!=~UINT32(0))CV1K_STAT(idlePage);
+		UINT32 pos=off&cv1kFastRamMask;
+#ifdef LSB_FIRST
+		if(Width==1)pos^=1;
+#endif
+		return cv1kFastRamBase+pos;
+	}
+	if(!Store && a<0x400000u && cv1kFastRomBase){
+		CV1K_STAT(rom);
+#ifdef LSB_FIRST
+		if(Width==1)a^=1;
+#endif
+		return cv1kFastRomBase+a;
+	}
+	UINT8 *page=Store?MemMapW[a>>SH3_SHIFT]:
+		(Width==4?MemMapRL[a>>SH3_SHIFT]:MemMapR[a>>SH3_SHIFT]);
+	if((uintptr_t)page<SH3_MAXHANDLER){
+		if(!Store && Width==4 && (a>>SH3_SHIFT)==0xc00 &&
+			Cv1kIsIdlePage(page))CV1K_STAT(idleReject);
+		else CV1K_STAT(handler);
+		return nullptr;
+	}
+	CV1K_STAT(mapped);
+#ifdef LSB_FIRST
+	if(Width==1)a^=1;
+#endif
+	return page+(a&SH3_PAGEM);
+}
+
 template<unsigned Width, bool Store, Cv1kMoveForm Form>
 static inline __attribute__((always_inline)) bool Cv1kTryDirectMove(UINT16 opcode,UINT32 nextPC)
 {
@@ -21,17 +65,8 @@ static inline __attribute__((always_inline)) bool Cv1kTryDirectMove(UINT16 opcod
 		if(Form==CV1K_INDEX)ea+=m_r[0];
 		if(Form==CV1K_DISP4 || Form==CV1K_DISP4_R0)ea+=(opcode&15)*Width;
 	}
-	// Preserve P4/internal/cache accesses, unaligned accesses and every
-	// MMIO or long-only idle handler by taking the normal slow path.
-	if(ea>=0xe0000000u || (ea&(Width-1)))return false;
-	UINT32 a=ea&AM;
-	UINT8 *page=Store?MemMapW[a>>SH3_SHIFT]:
-		(Width==4?MemMapRL[a>>SH3_SHIFT]:MemMapR[a>>SH3_SHIFT]);
-	if((uintptr_t)page<SH3_MAXHANDLER)return false;
-#ifdef LSB_FIRST
-	if(Width==1)a^=1;
-#endif
-	UINT8 *p=page+(a&SH3_PAGEM);
+	UINT8 *p=Cv1kDirectPointer<Width,Store>(ea);
+	if(!p)return false;
 	if(Store){
 		UINT32 v=m_r[valueReg]; // predecrement aliases use the old value
 		if(Form==CV1K_PRE)m_r[base]=ea;

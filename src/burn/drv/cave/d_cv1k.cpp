@@ -812,6 +812,7 @@ static INT32 DrvInit()
 
 	init_speedhack(); // install the hacky speedhack handler
 	Sh3SetCv1kNative(1);
+	Sh3SetCv1kFastMemory(DrvMainRAM,is_type_d?0x1000000:0x800000,DrvMainROM);
 	Cv1kProfileInit();
 
 	Sh3Close();
@@ -985,6 +986,9 @@ static INT32 DrvFrame()
 
 	if (cv1kProfile) cv1kDrawNs += Cv1kNow() - phase;
 	Cv1kProfileFrame(frameStart);
+#if defined(SH3_CV1K_OPSTAT) && SH3_CV1K_OPSTAT
+	Sh3Cv1kOpStatsFrame();
+#endif
 	return 0;
 }
 

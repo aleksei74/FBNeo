@@ -614,6 +614,50 @@ static UINT8 *cv1kIdlePage;
 static UINT32 cv1kIdleAddress, cv1kIdlePC;
 static const INT32 *cv1kIdleCycles;
 static pSh3ReadLongHandler cv1kIdleHandler;
+// Registered only after checking every page against the actual maps.
+// Mapping or handler changes revoke this authorization before mutation.
+static UINT8 *cv1kFastRamBase,*cv1kFastRomBase;
+static UINT32 cv1kFastRamMask,cv1kFastIdleAddress;
+static void Cv1kInvalidateFastMemory()
+{
+	cv1kFastRamBase=cv1kFastRomBase=NULL;
+	cv1kFastRamMask=0;cv1kFastIdleAddress=~UINT32(0);
+}
+static bool Cv1kIsIdlePage(UINT8 *page)
+{
+	return (uintptr_t)page==1 && cv1kIdlePage && cv1kIdleCycles &&
+		MemMapR[0xc00]==cv1kIdlePage && ReadLong[1]==cv1kIdleHandler;
+}
+// CV1000 Type B/C mirrors 8 MiB across 16 MiB; Type D has 16 MiB.
+// Do not infer these mappings from the guest address alone.
+void Sh3SetCv1kFastMemory(UINT8 *ram,UINT32 ramSize,UINT8 *rom)
+{
+	Cv1kInvalidateFastMemory();
+	const bool requested=Cv1kPerformanceOption(getenv("FBNEO_CV1K_FAST_RAM"));
+	bool ramOK=requested && !SH3_WAIT_STATE_ACTIVE && ram &&
+		(ramSize==0x800000 || ramSize==0x1000000);
+	UINT32 idle=~UINT32(0);
+	if(ramOK)for(UINT32 off=0;off<0x1000000;off+=SH3_PAGE_SIZE){
+		const UINT32 idx=(0xc000000+off)>>SH3_SHIFT;
+		UINT8 *p=ram+(off&(ramSize-1));
+		if(MemMapR[idx]!=p || MemMapW[idx]!=p){ramOK=false;break;}
+		if(MemMapRL[idx]!=p){
+			if(idx!=0xc00 || cv1kIdlePage!=ram || !Cv1kIsIdlePage(MemMapRL[idx])){
+				ramOK=false;break;
+			}
+			idle=cv1kIdleAddress;
+		}
+	}
+	if(ramOK){cv1kFastRamBase=ram;cv1kFastRamMask=ramSize-1;cv1kFastIdleAddress=idle;}
+	bool romOK=requested && !SH3_WAIT_STATE_ACTIVE && rom;
+	if(romOK)for(UINT32 off=0;off<0x400000;off+=SH3_PAGE_SIZE){
+		const UINT32 idx=off>>SH3_SHIFT;
+		if(MemMapR[idx]!=rom+off || MemMapRL[idx]!=rom+off){romOK=false;break;}
+	}
+	if(romOK)cv1kFastRomBase=rom;
+	bprintf(PRINT_UI,_T("CV1000 SH3 validated direct RAM: %s, ROM: %s, idle exception: %08x\n"),
+		ramOK?_T("enabled"):_T("disabled"),romOK?_T("enabled"):_T("disabled"),cv1kFastIdleAddress);
+}
 static pSh3ReadLongHandler cv1kPollReadHandler;
 static pSh3Cv1kPollPeek cv1kPollPeek;
 void Sh3SetCv1kPollRead(pSh3ReadLongHandler handler,pSh3Cv1kPollPeek peek)
@@ -638,6 +682,7 @@ unsigned Sh3Cv1kPeekCode(UINT32 pc,UINT16 *ops,unsigned count)
 void Sh3SetCv1kIdleRead(UINT8 *ram, UINT32 addr, UINT32 pc,
 	const INT32 *burn, pSh3ReadLongHandler handler)
 {
+	Cv1kInvalidateFastMemory();
 	const char *option=getenv("FBNEO_CV1K_IDLE_DIRECT");
 	cv1kIdlePage=(ram && burn && handler && (!option || strcmp(option,"0")!=0))?ram:NULL;
 	cv1kIdleAddress=addr;
@@ -663,6 +708,7 @@ static INT32 Sh3MapInit()
 	memset(MemMapW, 0, sizeof(MemMapW));
 	memset(MemMapF, 0, sizeof(MemMapF));
 	++sh3FetchMapEpoch;
+	Cv1kInvalidateFastMemory();
 	cv1kIdlePage=NULL;
 	Sh3SetCv1kPollRead(NULL,NULL);
 
@@ -671,6 +717,7 @@ static INT32 Sh3MapInit()
 
 INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType)
 {
+	Cv1kInvalidateFastMemory();
 	if (nType & MAP_FETCHOP) ++sh3FetchMapEpoch;
 	UINT8* Ptr = pMemory - nStart;
 	UINT8** pMemMapR = MemMapR + (nStart >> SH3_SHIFT);
@@ -692,6 +739,7 @@ INT32 Sh3MapMemory(UINT8* pMemory, UINT32 nStart, UINT32 nEnd, INT32 nType)
 
 INT32 Sh3MapHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd, INT32 nType)
 {
+	Cv1kInvalidateFastMemory();
 	if (nType & MAP_FETCHOP) ++sh3FetchMapEpoch;
 	UINT8** pMemMapR = MemMapR + (nStart >> SH3_SHIFT);
 	UINT8** pMemMapRL = MemMapRL + (nStart >> SH3_SHIFT);
@@ -711,6 +759,7 @@ INT32 Sh3MapHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd, INT32 nType)
 
 INT32 Sh3MapReadLongHandler(uintptr_t nHandler, UINT32 nStart, UINT32 nEnd)
 {
+	Cv1kInvalidateFastMemory();
 	UINT8** pMemMapRL = MemMapRL + (nStart >> SH3_SHIFT);
 
 	for (UINT64 i = (nStart & ~SH3_PAGEM); i <= nEnd; i += SH3_PAGE_SIZE, pMemMapRL++) {
@@ -783,6 +832,7 @@ INT32 Sh3SetReadLongHandler(INT32 i, pSh3ReadLongHandler pHandler)
 		return 1;
 	}
 
+	Cv1kInvalidateFastMemory();
 	ReadLong[i] = pHandler;
 	return 0;
 }
@@ -1010,6 +1060,8 @@ void Sh3Init(INT32 num, INT32 hz, char md0, char md1, char md2, char md3, char m
 
 void Sh3Exit()
 {
+	Cv1kInvalidateFastMemory();
+	cv1kIdlePage=NULL;
 	Sh3Cv1kDmaPerfEnable(false);
 	Sh3SetCv1kPollRead(NULL,NULL);
 	Sh3SetCv1kNative(0);
@@ -4240,6 +4292,7 @@ static UINT64 cv1kNativeMisses, cv1kNativeRejected, cv1kNativeFull;
 static UINT64 cv1kLoopAttempts, cv1kLoopHits, cv1kLoopOps;
 static UINT64 cv1kInterpLoopBlocks,cv1kInterpLoopLaps,cv1kInterpLoopOps,cv1kInterpLoopKinds[3];
 #if SH3_FLAT_DISPATCH
+#include "sh3_cv1k_opstat.inc"
 #include "sh3_cv1k_direct.inc"
 #include "sh3_cv1k_flow.inc"
 #include "sh3_cv1k_interp_loops.inc"
@@ -4448,8 +4501,19 @@ static bool Cv1kTryNative(UINT16 opcode)
 }
 #endif
 
+void Sh3Cv1kOpStatsFrame()
+{
+#if SH3_FLAT_DISPATCH && defined(SH3_CV1K_OPSTAT) && SH3_CV1K_OPSTAT
+	if(cv1kFetchPageEnabled)Cv1kOpStatReport();
+#endif
+}
+
 void Sh3SetCv1kNative(INT32 enable)
 {
+#if SH3_FLAT_DISPATCH && defined(SH3_CV1K_OPSTAT) && SH3_CV1K_OPSTAT
+	Cv1kOpStatReset();
+	if(enable)bprintf(PRINT_UI,_T("CV1000 opcode/path counters: enabled (diagnostic build, timing overhead)\n"));
+#endif
 	cv1kNativeEnabled = cv1kFlatEnabled = cv1kCompactEnabled = cv1kBatchEnabled = cv1kHybridEnabled = cv1kLoopEnabled = false;
 	cv1kFetchPageEnabled = cv1kInterpLoopsEnabled = false;
 	cv1kDispatch8Enabled=cv1kSlowFetchReuseEnabled=false;
@@ -4761,6 +4825,7 @@ start:
 			opcode=sh3_cpu_readop16(UINT32(m_pc&AM));
 			m_pc+=2;m_ppc=m_pc;
 		}
+		CV1K_VISIT(opcode);
 		if(FetchPage && cv1kSlotDispatchEnabled && slotPC){
 #if defined(SH3_INTERPRETER_TEST)
 			++cv1kSlotDispatchHits;
@@ -4822,6 +4887,7 @@ fast_next:
 		// otherwise rematerializes the operand with a second ldrh.
 		asm("" : "+r"(opcode));
 	}
+	CV1K_VISIT(opcode);
 	if (!FetchPage) pc+=2;
 	goto *(void *)(base+offsets[Dense?Sh3DispatchKey(opcode):opcode]);
 #define SH3_SLOW_BODY(name) \
